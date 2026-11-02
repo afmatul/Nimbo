@@ -4,6 +4,7 @@ import type { AddressInfo } from 'node:net';
 import { resolve } from 'node:path';
 
 import { compiledEntry } from '../setup/compiled-api';
+import type { ApiEntry } from '../setup/compiled-api';
 
 const API_ROOT = resolve(__dirname, '../../..');
 const START_TIMEOUT_MS = 60_000;
@@ -57,11 +58,15 @@ const freePort = async (): Promise<number> => {
 
 /**
  * Arranca el worker compilado con `tsc` (con `tsx` la inyección por tipo de Nest falla, `compiled-api.ts`) y el
- * entorno del arnés (Redis real); devuelve la línea `worker.started`.
+ * entorno del arnés (Redis real); devuelve la línea `worker.started` después de correr `whileRunning` con el proceso vivo.
  */
-const waitForWorkerStarted = (env: NodeJS.ProcessEnv): Promise<Record<string, unknown>> =>
+const waitForWorkerStarted = (
+  env: NodeJS.ProcessEnv,
+  entry: ApiEntry = 'worker.main',
+  whileRunning: () => Promise<void> = () => Promise.resolve(),
+): Promise<Record<string, unknown>> =>
   new Promise((resolvePromise, reject) => {
-    const child = spawn(process.execPath, [compiledEntry('worker.main')], { cwd: API_ROOT, env });
+    const child = spawn(process.execPath, [compiledEntry(entry)], { cwd: API_ROOT, env });
     let buffer = '';
     const timer = setTimeout(() => {
       child.kill();
@@ -76,8 +81,17 @@ const waitForWorkerStarted = (env: NodeJS.ProcessEnv): Promise<Record<string, un
         .find((line) => line.event === 'worker.started');
       if (started === undefined) return;
       clearTimeout(timer);
-      child.kill();
-      resolvePromise(started);
+      buffer = '';
+      whileRunning().then(
+        () => {
+          child.kill();
+          resolvePromise(started);
+        },
+        (error: unknown) => {
+          child.kill();
+          reject(error);
+        },
+      );
     });
     child.once('error', reject);
   });
@@ -102,10 +116,25 @@ describe('bootstrap del worker (CA-18, CA-21)', () => {
   });
 
   it('CA-21, 005 CA-9, 006 CA-19, 007 CA-13, 009 CA-2 y CA-6, 010 CA-1, 019 CA-8 y CA-23: `worker.started` lista las colas `ping`, `mail`, `upload-cleanup`, `trash-purge`, `usage-reconcile`, `subscription-reconcile`, `invoice-retry`, `subscription-renewal`, `indexing` e `index-reconcile`', async () => {
-    const env = { ...process.env, WORKER_PORT: String(await freePort()) };
+    const port = await freePort();
+    const env = {
+      ...process.env,
+      WORKER_PORT: String(port),
+      WORKER_OPTIMIZER_PORT: '0',
+      OPTIMIZER_MAX_ATTEMPTS: '0',
+      OPTIMIZER_TIMEOUT_MS: '0',
+      OPTIMIZER_MAX_PIXELS: '0',
+      OPTIMIZER_MIN_SAVED_PERCENT: '0',
+      OPTIMIZER_MIN_SAVED_BYTES: '0',
+      OPTIMIZER_JPEG_QUALITY: '0',
+    };
 
-    const started = await waitForWorkerStarted(env);
+    const started = await waitForWorkerStarted(env, 'worker.main', async () => {
+      const live = await fetch(`http://127.0.0.1:${String(port)}/health/live`);
+      expect(live.status).toBe(200);
+    });
 
+    expect(started.process).toBe('worker');
     expect(started.queues).toEqual([
       'ping',
       'mail',
@@ -119,4 +148,68 @@ describe('bootstrap del worker (CA-18, CA-21)', () => {
       'index-reconcile',
     ]);
   });
+
+  /** Lo que el `worker` general rechaza (CA-20, CA-21) y el `worker-optimizer` no lee (PD-159). */
+  const BROKEN_MAIL = { SMTP_HOST: '', SMTP_TLS: 'invalido', MAIL_FROM: '' };
+  const runOptimizerSync = (env: NodeJS.ProcessEnv) =>
+    spawnSync(process.execPath, [compiledEntry('worker-optimizer.main')], {
+      cwd: API_ROOT,
+      env,
+      encoding: 'utf8',
+      timeout: START_TIMEOUT_MS,
+    });
+  const jsonLines = (output: string): Record<string, unknown>[] =>
+    output
+      .split('\n')
+      .filter((line) => line.startsWith('{'))
+      .map((line) => JSON.parse(line) as Record<string, unknown>);
+
+  it('ADR-0038, PD-159: el `worker-optimizer` escucha en `WORKER_OPTIMIZER_PORT` (no en `WORKER_PORT`), sin SMTP válido, y consume solo `optimization`', async () => {
+    const generalPort = await freePort();
+    const optimizerPort = await freePort();
+    const env = {
+      ...process.env,
+      ...BROKEN_MAIL,
+      GEMINI_EMBEDDING_MODEL: '',
+      INDEXING_MAX_ATTEMPTS: '0',
+      OPTIMIZER_MAX_ATTEMPTS: '0',
+      WORKER_PORT: String(generalPort),
+      WORKER_OPTIMIZER_PORT: String(optimizerPort),
+    };
+
+    const started = await waitForWorkerStarted(env, 'worker-optimizer.main', async () => {
+      const live = await fetch(`http://127.0.0.1:${String(optimizerPort)}/health/live`);
+      expect(live.status).toBe(200);
+      await expect(fetch(`http://127.0.0.1:${String(generalPort)}/health/live`)).rejects.toThrow();
+    });
+
+    expect(started.process).toBe('worker-optimizer');
+    expect(started.queues).toEqual(['optimization']);
+  });
+
+  it('PD-159: una variable del optimizador inválida impide arrancar: exit ≠ 0 y una sola línea `config.invalid`', () => {
+    const result = runOptimizerSync({ ...process.env, OPTIMIZER_JPEG_QUALITY: '0' });
+
+    expect(result.status).not.toBe(0);
+    const lines = result.stderr.split('\n').filter((line) => line.trim() !== '');
+    expect(lines).toHaveLength(1);
+    expect(JSON.parse(lines[0] ?? '')).toMatchObject({ event: 'config.invalid' });
+    expect(lines[0]).toContain('OPTIMIZER_JPEG_QUALITY');
+  });
+
+  it('M-4: un arranque fallido (base de datos inalcanzable) deja una línea `worker.start_failed` con el proceso y la clase del error, sin la URL, y sale con 1', async () => {
+    const closedPort = await freePort();
+    const url = `postgres://nimbo_app:clave-que-no-debe-salir@127.0.0.1:${String(closedPort)}/nimbo`;
+
+    const result = runOptimizerSync({ ...process.env, DATABASE_URL: url });
+
+    expect(result.status).toBe(1);
+    const failure = jsonLines(result.stderr).find((line) => line.event === 'worker.start_failed');
+    expect(failure).toEqual({
+      event: 'worker.start_failed',
+      process: 'worker-optimizer',
+      errorClass: expect.any(String),
+    });
+    expect(`${result.stdout}${result.stderr}`).not.toContain('clave-que-no-debe-salir');
+  }, 90_000);
 });

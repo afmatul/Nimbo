@@ -77,7 +77,7 @@ Cada tarea referencia un criterio. Cada prueba de aceptación nombra el criterio
 ## Artículo IX — Seguridad y privacidad por diseño
 
 1. **El rol nunca da acceso a contenido.** El acceso nace de la propiedad o de una compartición explícita.
-2. La autorización se resuelve en el servidor **dentro de la consulta** (RNF-05), con Row Level Security como segunda barrera. Todo servicio que toca datos de un usuario recibe `actor: Actor` (DF-01).
+2. La autorización se resuelve en el servidor **dentro de la consulta** (RNF-05), con Row Level Security como segunda barrera. Todo servicio que toca datos de un usuario recibe `actor: Actor` (DF-01), salvo el visitante de un enlace público, que actúa como el propietario por ADR-0039.
 3. La recuperación del agente se restringe en SQL a los archivos accesibles antes de ordenar por similitud (RF-33).
 4. Toda acción de un rol interno sobre una cuenta ajena se audita y es visible para el cliente (RF-07).
 5. No existe suplantación. Cuentas internas y de cliente son distintas; un usuario no acumula roles.

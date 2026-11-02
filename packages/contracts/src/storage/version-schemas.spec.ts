@@ -10,6 +10,7 @@ const VERSION = {
   createdAt: '2026-10-08T10:00:00.000Z',
   createdById: '7a8b9c0d-1e2f-4c5d-8e6f-2f0c1d2e3a4b',
   isCurrent: true,
+  keptUntil: null,
 };
 
 const FIRST = {
@@ -52,6 +53,12 @@ describe('fileVersionsResponseSchema (014 plan §4)', () => {
     expect(fileVersionsResponseSchema.parse(historyWith([grown]))).toBeTruthy();
   });
 
+  it('014b CA-4: `keptUntil` es la fecha de un original conservado, o `null` en las demás', () => {
+    const kept = { ...FIRST, keptUntil: '2026-11-07T10:00:00.000Z' };
+
+    expect(fileVersionsResponseSchema.parse(historyWith([VERSION, kept]))).toBeTruthy();
+  });
+
   it('CA-5: los orígenes son los de `version_archivo.origen`', () => {
     expect([...FILE_VERSION_ORIGINS].sort()).toEqual(
       ['carga', 'edicion', 'optimizacion', 'restauracion'].sort(),
@@ -67,6 +74,8 @@ describe('fileVersionsResponseSchema (014 plan §4)', () => {
     ['número de origen en cero', { ...VERSION, restoredFromNumber: 0 }],
     ['clave de objeto', { ...VERSION, objectKey: 'u/a/b/c' }],
     ['nombre del autor', { ...VERSION, createdByName: 'Ana López' }],
+    ['conservación sin fecha válida', { ...VERSION, keptUntil: 'mañana' }],
+    ['conservación ausente', { ...VERSION, keptUntil: undefined }],
   ])('CA-7: rechaza una versión con %s', (_case, version) => {
     expect(fileVersionsResponseSchema.safeParse(historyWith([version])).success).toBe(false);
   });

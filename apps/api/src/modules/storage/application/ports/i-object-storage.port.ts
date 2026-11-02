@@ -79,7 +79,8 @@ export interface IObjectStorage {
   getObjectStream(key: string): Promise<Readable | null>;
   /**
    * Sube `body` a `key` en una sola petición (016: el documento que entrega el editor, acotado por
-   * `EDITING_MAX_DOC_BYTES`). `sizeBytes` es obligatorio: S3 no acepta un flujo sin longitud. Solo acepta claves
+   * `EDITING_MAX_DOC_BYTES`; 021: el resultado de una optimización). Acepta cualquier tamaño de trozo del flujo.
+   * `sizeBytes` es obligatorio: S3 no acepta un flujo sin longitud. Solo acepta claves
    * `u/{propietario}/{archivo}/{versión}` (`ObjectKey`): cualquier otra, también las `invoices/` de 009, se rechaza.
    */
   putObjectStream(key: string, body: Readable, sizeBytes: bigint): Promise<void>;

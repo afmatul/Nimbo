@@ -16,6 +16,7 @@ import { AutoRenewSwitch } from './auto-renew-switch';
 import { CardBrand } from './billing-account-cards';
 import {
   cardLabel,
+  expiryInstantLabel,
   expiryLabel,
   isDowngradeToPersonal,
   type Card as SavedCard,
@@ -62,7 +63,7 @@ function ChargeFacts({ charge }: { readonly charge: NonNullable<SubscriptionView
 
 /** Lo que dice la tarjeta cuando no hay cobro que mostrar (mockups `vencida`, `renovacion-desactivada`, `cambio-a-personal`). */
 const noChargeText = ({ subscription, rejectedCard }: NextChargeCardProps): string => {
-  const until = expiryLabel(subscription);
+  const until = expiryInstantLabel(subscription);
   if (subscription.status === 'readOnly') {
     const rejected =
       rejectedCard === null
@@ -72,7 +73,7 @@ const noChargeText = ({ subscription, rejectedCard }: NextChargeCardProps): stri
   }
   if (isDowngradeToPersonal(subscription))
     return `Sin cobro: el ${until} pasas a Personal, que es gratis.`;
-  return `No habrá cobro automático. Tu plan vence el ${until}.`;
+  return `No habrá cobro automático. Tu plan vence el ${expiryLabel(subscription)}.`;
 };
 
 /** El pie: «Renovar ahora» solo si se ofrece y la renovación automática está encendida; si no, por qué (CA-26, CA-28). */

@@ -15,14 +15,14 @@ const ALLOWED: Readonly<Record<string, readonly string[]>> = {
   audit: [],
   realtime: [],
   notifications: ['realtime'],
-  identity: ['notifications', 'audit', 'editing'],
+  identity: ['notifications', 'audit', 'editing', 'sharing'],
   billing: ['notifications', 'audit', 'storage', 'identity'],
   access: [],
   storage: ['access', 'audit', 'realtime'],
   sharing: ['access', 'storage', 'audit'],
   editing: ['storage', 'access', 'realtime', 'audit'],
   intelligence: ['storage', 'access', 'billing', 'realtime', 'audit'],
-  optimizer: ['storage', 'access'],
+  optimizer: ['storage', 'access', 'audit'],
   backoffice: ['audit', 'identity', 'billing', 'storage'],
 };
 

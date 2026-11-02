@@ -26,13 +26,14 @@ eventos y tipos públicos). Nada de `infrastructure/**` cruza la frontera. Nombr
 
 ## API pública (003, plan §5 y §6.5)
 
-| Exportación                | Qué es                                                                                                                                                        |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AccessModule`             | Lo importa `AppModule`. Provee `PermissionResolver` y, detrás de `I_ACCESS_LEVEL_READER` (interno), `SqlAccessLevelReader`                                    |
-| `PermissionResolver`       | `levelFor(actor, nodeId)` y `can(actor, nodeId, action)`. Los roles internos reciben `null`/`false` sin consultar (CA-9); un `nodeId` que no es UUID, también |
-| `accessibleNodes(actor)`   | Función pura: `AccessibleNodesFragment` `{ sql, parameters }`, un `SELECT (nodo_id uuid, tipo_nodo text, nivel text)` con parámetros `access_*`               |
-| `ownedTrashedNodes(actor)` | Igual que `accessibleNodes`, pero con las **raíces de la papelera** del actor (`eliminado_con_carpeta_id IS NULL`); vacío para roles internos (006, RN-7)     |
-| `AccessLevel`, `Action`    | `OWNER > EDITOR > VIEWER` y las once acciones de la tabla de plan §6.5 (Owner todo; Editor y Viewer, lista cerrada)                                           |
+| Exportación                | Qué es                                                                                                                                                                                                                             |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AccessModule`             | Lo importa `AppModule`. Provee `PermissionResolver` y, detrás de `I_ACCESS_LEVEL_READER` (interno), `SqlAccessLevelReader`                                                                                                         |
+| `PermissionResolver`       | `levelFor(actor, nodeId)` y `can(actor, nodeId, action)`. Los roles internos reciben `null`/`false` sin consultar (CA-9); un `nodeId` que no es UUID, también                                                                      |
+| `accessibleNodes(actor)`   | Función pura: `AccessibleNodesFragment` `{ sql, parameters }`, un `SELECT (nodo_id uuid, tipo_nodo text, nivel text)` con parámetros `access_*`: propios vivos (`OWNER`) ∪ compartidos (`EDITOR`/`VIEWER`, 012). **Solo lecturas** |
+| `ownedNodes(actor)`        | Igual, pero solo los propios vivos (`OWNER`): escrituras, destinos y la raíz de «Mis archivos» (012, DF-85)                                                                                                                        |
+| `ownedTrashedNodes(actor)` | Igual que `accessibleNodes`, pero con las **raíces de la papelera** del actor (`eliminado_con_carpeta_id IS NULL`); vacío para roles internos (006, RN-7)                                                                          |
+| `AccessLevel`, `Action`    | `OWNER > EDITOR > VIEWER` y las once acciones de la tabla de plan §6.5 (Owner todo; Editor y Viewer, lista cerrada)                                                                                                                |
 
 Uso desde otro módulo (siempre dentro de `ITransactionRunner.withActor(actor, …)`; sin él, el lector lanza
 `ActorScopeMissingError`):
@@ -59,7 +60,14 @@ En 003 `accessibleNodes` devolvía el **conjunto vacío tipado** para todos los 
   una carpeta marca todo su subárbol, el filtro sigue siendo plano. Los consumidores que unen por `nodo_id` filtran
   también por `tipo_nodo`. `ownedTrashedNodes(actor)` da las raíces de la papelera del dueño. RLS en `carpeta`
   (migración `20261001100200`). Prueba: `test/int/access/accessible-nodes.int-spec.ts`.
-- **012**: `UNION ALL` con las comparticiones directas y heredadas por `carpeta.ruta`, `inheritedGrants` e
-  `IGrantRepository`; si la regla se repite en la política RLS, una función SQL `STABLE` versionada (ADR-0005).
+- **012 (T-02)**: `accessibleNodes` suma `UNION ALL SELECT … FROM nodos_compartidos()` (directos y heredados por
+  `carpeta.ruta`, vivos, de cuentas `activa`, nivel mayor por nodo); la función SQL `STABLE` sin parámetros
+  (migración `20261101100000`) es la regla única que usan también las políticas `archivo_compartido`,
+  `carpeta_compartida` y `version_archivo_compartida` (migración `20261101100100`). Nace `ownedNodes(actor)` (la
+  propiedad viva) para que `storage` escriba solo lo propio. Sin `inheritedGrants` ni `IGrantRepository` (YAGNI).
+  Prueba: `test/int/access/accessible-nodes-shared.int-spec.ts`.
+- **012 (T-09)**: la misma función decide las políticas del Editor en `sesion_edicion`/`participacion` y la lectura de
+  `indexacion`/`fragmento` vigentes de lo compartido para el agente (migración `20261101100200`). Pruebas:
+  `test/int/editing/shared-editing.int-spec.ts` y `test/isolation/agent.iso-spec.ts` (ISO-16 a ISO-19).
 - Un valor nuevo de `Action` (p. ej. historial o restaurar, 014) queda negado para Editor y Viewer hasta que su spec lo
   agregue a la política.

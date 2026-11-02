@@ -45,6 +45,7 @@ function page(items: readonly FileSummary[]): FolderContentsResponse {
     breadcrumbs: [],
     items: items.map((file) => ({ type: 'file', ...file })),
     nextCursor: null,
+    accessLevel: 'OWNER',
   };
 }
 

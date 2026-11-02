@@ -79,6 +79,8 @@ describe('migración renovacion-de-suscripcion (spec 010 CA-15, RN-3, RN-5, RN-7
     await expect(app.runner.withActor(ana, () => repository.findStanding(ana))).resolves.toEqual({
       planId: PERSONAL_ID,
       readOnly: false,
+      extraQuotaBytes: 0n,
+      extraQuotaUntil: null,
     });
   });
 
@@ -119,6 +121,8 @@ describe('migración renovacion-de-suscripcion (spec 010 CA-15, RN-3, RN-5, RN-7
     await expect(app.runner.withActor(ana, () => repository.findStanding(ana))).resolves.toEqual({
       planId: TEAM_ID,
       readOnly: true,
+      extraQuotaBytes: 0n,
+      extraQuotaUntil: null,
     });
   });
 

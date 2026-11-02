@@ -1,4 +1,10 @@
 import type {
+  ISupportTrashRepository,
+  SupportRestoreRequest,
+  SupportRestoreResult,
+  SupportTrashQuery,
+} from '../../src/modules/storage/application/ports/i-support-trash.repository.port';
+import type {
   ITrashRepository,
   PurgeFile,
   TrashedFolder,
@@ -218,5 +224,33 @@ export class FakeTrashRepository implements ITrashRepository {
     return [...this.nodes.files.values()]
       .filter((file) => carriedBy(file, folderId))
       .reduce((sum, file) => sum + file.sizeBytes, 0n);
+  }
+}
+
+/**
+ * Papelera de Soporte en memoria (011b): las reglas viven en `restaurar_raiz_papelera` y se prueban en integración;
+ * aquí solo se registra lo que pide la fachada y se devuelve `page`/`result` o se lanza `failure`.
+ */
+export class FakeSupportTrashRepository implements ISupportTrashRepository {
+  readonly queries: SupportTrashQuery[] = [];
+  readonly requests: SupportRestoreRequest[] = [];
+  page: TrashPage = { items: [], nextCursor: null };
+  result: SupportRestoreResult | null = null;
+  failure: Error | null = null;
+
+  constructor(private readonly journal: Journal) {}
+
+  listRoots(_actor: Actor, query: SupportTrashQuery): Promise<TrashPage> {
+    this.journal.add('supportTrash:listRoots');
+    this.queries.push(query);
+    return Promise.resolve(this.page);
+  }
+
+  restoreRoot(_actor: Actor, request: SupportRestoreRequest): Promise<SupportRestoreResult> {
+    this.journal.add('supportTrash:restoreRoot');
+    this.requests.push(request);
+    if (this.failure !== null) return Promise.reject(this.failure);
+    if (this.result === null) return Promise.reject(new Error('sin resultado preparado'));
+    return Promise.resolve(this.result);
   }
 }

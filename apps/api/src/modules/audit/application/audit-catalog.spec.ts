@@ -14,7 +14,12 @@ const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | numb
   [AuditAction.FILE_UPLOAD_REJECTED]: { reason: 'TYPE_MISMATCH', mode: 'simple', sizeBytes: 2048 },
   [AuditAction.FILE_DOWNLOAD_URL_ISSUED]: { sizeBytes: 12_582_912 },
   [AuditAction.NODE_TRASHED]: { nodeType: 'folder', itemCount: 3, sizeBytes: 2048 },
-  [AuditAction.NODE_RESTORED]: { nodeType: 'file', itemCount: 1, sizeBytes: 1024 },
+  [AuditAction.NODE_RESTORED]: {
+    nodeType: 'file',
+    itemCount: 1,
+    sizeBytes: 1024,
+    note: 'El cliente lo pidió por teléfono',
+  },
   [AuditAction.NODE_PURGED]: {
     nodeType: 'file',
     itemCount: 1,
@@ -33,6 +38,11 @@ const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | numb
   [AuditAction.ACCOUNT_REACTIVATED]: {},
   [AuditAction.ACCOUNT_INTERNAL_CREATED]: { role: 'SUPPORT' },
   [AuditAction.ACCOUNT_BOOTSTRAP_ADMIN]: {},
+  [AuditAction.ACCOUNT_QUOTA_ADJUSTED]: {
+    extraBytes: 5_368_709_120,
+    until: '2026-12-01T06:00:00.000Z',
+  },
+  [AuditAction.ACCOUNT_VALIDITY_ADJUSTED]: { expiresAt: '2027-01-01T06:00:00.000Z' },
   [AuditAction.CLIENT_FILES_VIEWED]: {},
   [AuditAction.PLAN_CREATED]: {},
   [AuditAction.PLAN_DEACTIVATED]: {},
@@ -69,6 +79,29 @@ const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | numb
     durationMs: 12_400,
   },
   [AuditAction.FILE_INDEX_RETRIED]: { versionId: VERSION_ID },
+  [AuditAction.SHARE_GRANTED]: { nodeType: 'folder', level: 'EDITOR' },
+  [AuditAction.SHARE_LEVEL_CHANGED]: { nodeType: 'file', level: 'VIEWER' },
+  [AuditAction.SHARE_REVOKED]: { nodeType: 'file', level: 'EDITOR' },
+  [AuditAction.FILE_OPTIMIZED]: {
+    optimizationId: SESSION_ID,
+    sourceVersionId: VERSION_ID,
+    versionId: VERSION_ID,
+    originalBytes: 4_800_000,
+    resultBytes: 2_000_000,
+  },
+  [AuditAction.FILE_OPTIMIZATION_DISCARDED]: {
+    optimizationId: SESSION_ID,
+    sourceVersionId: VERSION_ID,
+    originalBytes: 4_800_000,
+    resultBytes: 4_700_000,
+    reason: 'ahorro_minimo',
+  },
+  [AuditAction.FILE_OPTIMIZATION_FAILED]: {
+    optimizationId: SESSION_ID,
+    sourceVersionId: VERSION_ID,
+    originalBytes: 4_800_000,
+    reason: 'integridad',
+  },
 };
 
 describe('AUDIT_CATALOG', () => {
@@ -169,6 +202,33 @@ describe('AUDIT_CATALOG', () => {
     expect(result.rejections.map((rejection) => rejection.key)).toEqual(['reason']);
   });
 
+  it.each([AuditAction.SHARE_GRANTED, AuditAction.SHARE_LEVEL_CHANGED, AuditAction.SHARE_REVOKED])(
+    '012 CA-19: `%s` guarda tipo de nodo y nivel, y descarta nombre, correo y `OWNER`',
+    (action) => {
+      const raw = {
+        nodeType: 'file',
+        level: 'OWNER',
+        fileName: 'informe.pdf',
+        email: 'b@nimbo.me',
+      };
+
+      const result = sanitizeAttributes(AUDIT_CATALOG[action].attributes, raw);
+
+      expect(result.attributes).toEqual({ nodeType: 'file' });
+      expect(result.rejections.map((rejection) => rejection.key).sort()).toEqual(
+        ['email', 'fileName', 'level'].sort(),
+      );
+    },
+  );
+
+  it('011b RN-4: solo `node.restored` admite el motivo escrito de Soporte (`note`)', () => {
+    const withNote = Object.values(AuditAction).filter((action) =>
+      Object.hasOwn(AUDIT_CATALOG[action].attributes, 'note'),
+    );
+
+    expect(withNote).toEqual([AuditAction.NODE_RESTORED]);
+  });
+
   it('CA-4: el tope de texto del saneo es el del motivo en el contrato', () => {
     expect(AUDIT_NOTE_MAX_LENGTH).toBe(CONTRACT_NOTE_MAX_LENGTH);
   });
@@ -189,11 +249,16 @@ describe('resourceTypeOf', () => {
     [AuditAction.ACCOUNT_REACTIVATED, {}, 'account'],
     [AuditAction.ACCOUNT_INTERNAL_CREATED, {}, 'account'],
     [AuditAction.ACCOUNT_BOOTSTRAP_ADMIN, {}, 'account'],
+    [AuditAction.ACCOUNT_QUOTA_ADJUSTED, {}, 'account'],
+    [AuditAction.ACCOUNT_VALIDITY_ADJUSTED, {}, 'account'],
     [AuditAction.CLIENT_FILES_VIEWED, {}, 'account'],
     [AuditAction.PLAN_CREATED, {}, 'plan'],
     [AuditAction.PLAN_DEACTIVATED, {}, 'plan'],
     [AuditAction.FILE_INDEXED, {}, 'file'],
     [AuditAction.FILE_INDEX_RETRIED, {}, 'file'],
+    [AuditAction.SHARE_GRANTED, { nodeType: 'folder' }, 'folder'],
+    [AuditAction.SHARE_LEVEL_CHANGED, { nodeType: 'file' }, 'file'],
+    [AuditAction.SHARE_REVOKED, { nodeType: 'folder' }, 'folder'],
   ] as const)('D-3: `%s` con %p es de tipo %p', (action, attributes, expected) => {
     expect(resourceTypeOf(action, attributes)).toBe(expected);
   });

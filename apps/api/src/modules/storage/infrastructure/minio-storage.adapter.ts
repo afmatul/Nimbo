@@ -37,6 +37,21 @@ import { ObjectKey } from '../domain/object-key';
 export const INTERNAL_CONNECT_TIMEOUT_MS = 2_000;
 export const INTERNAL_REQUEST_TIMEOUT_MS = 10_000;
 
+/**
+ * Tamaño máximo de cada trozo que `putObjectStream` entrega al SDK. MinIO rechaza un trozo de más de 16 MiB en una
+ * subida en flujo («chunk too big»; en Windows la petición queda colgada): se re-entregan vistas de 1 MiB (021 T-08).
+ */
+export const STREAM_UPLOAD_SLICE_BYTES = 1024 * 1024;
+
+/** Re-entrega cada trozo en vistas de a lo sumo `STREAM_UPLOAD_SLICE_BYTES`, sin copiar ni juntar el flujo. */
+async function* sliced(body: Readable): AsyncGenerator<Buffer> {
+  for await (const chunk of body as AsyncIterable<Buffer | string>) {
+    const bytes = typeof chunk === 'string' ? Buffer.from(chunk) : chunk;
+    for (let offset = 0; offset < bytes.length; offset += STREAM_UPLOAD_SLICE_BYTES)
+      yield bytes.subarray(offset, offset + STREAM_UPLOAD_SLICE_BYTES);
+  }
+}
+
 /** Dos clientes: uno para operar contra el endpoint interno y otro que solo firma contra el público. */
 export interface MinioStorageClients {
   readonly operations: S3Client;
@@ -288,7 +303,7 @@ export class MinioStorageAdapter implements IObjectStorage {
       new PutObjectCommand({
         Bucket: this.bucket,
         Key: key,
-        Body: body,
+        Body: Readable.from(sliced(body)),
         ContentLength: Number(sizeBytes),
       }),
     );

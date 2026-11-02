@@ -11,8 +11,9 @@ const ALLOWED = {
   realtime: [],
   // Transversales: solo `notifications → realtime` (regla 5).
   notifications: ['realtime'],
-  // `editing` solo para implementar `IUserDirectory` (016, DF-74), como `billing → storage`.
-  identity: ['notifications', 'audit', 'editing'],
+  // `editing` y `sharing` solo para implementar `IUserDirectory` (016, DF-74) e `IShareeDirectory` (012, DF-84), como
+  // `billing → storage`.
+  identity: ['notifications', 'audit', 'editing', 'sharing'],
   // `storage` para implementar `IPlanLimitsProvider` (DF-51) y subir facturas (`IObjectStorage`); `identity` por el evento
   // de cuenta verificada (ADR-0019) y las fachadas de lectura de la 009 (`VerifiedClientLister`, `AccountContactReader`).
   billing: ['notifications', 'audit', 'storage', 'identity'],
@@ -25,7 +26,7 @@ const ALLOWED = {
   editing: ['storage', 'access', 'realtime', 'audit'],
   // `audit` para los resultados de la indexación (019 CA-21, DF-78; transversal sin dependencias, regla 5).
   intelligence: ['storage', 'access', 'billing', 'realtime', 'audit'],
-  optimizer: ['storage', 'access'],
+  optimizer: ['storage', 'access', 'audit'],
   backoffice: ['audit', 'identity', 'billing', 'storage'],
 };
 
@@ -79,9 +80,16 @@ const onlyImports = (from, allowed) => ({
 
 export default [
   ...Object.entries(ALLOWED).map(([from, allowed]) => onlyImports(from, allowed)),
-  // Composición del worker: de `storage` solo `StorageWorkerModule`, y solo desde `storage/index.ts` (plan 005 §3b).
+  // Composición de los worker: de `storage` solo `StorageWorkerModule` (plan 005 §3b) o, en `worker-optimizer`,
+  // `StorageFacadesWorkerModule` (ADR-0038), y solo desde `storage/index.ts`.
   {
-    files: ['apps/api/src/worker.module.ts', 'apps/api/src/worker.main.ts', 'apps/worker/**/*.ts'],
+    files: [
+      'apps/api/src/worker.module.ts',
+      'apps/api/src/worker.main.ts',
+      'apps/api/src/worker-base.ts',
+      'apps/api/src/worker-bootstrap.ts',
+      'apps/worker/**/*.ts',
+    ],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -91,6 +99,30 @@ export default [
               name: './modules/storage',
               allowImportNames: ['StorageWorkerModule'],
               message: 'El worker importa de `storage` solo `StorageWorkerModule`.',
+            },
+          ],
+          patterns: [
+            {
+              regex: deepImport(['storage']),
+              message: 'El worker importa `storage` solo desde `storage/index.ts`.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['apps/api/src/worker-optimizer.module.ts', 'apps/api/src/worker-optimizer.main.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: './modules/storage',
+              allowImportNames: ['StorageFacadesWorkerModule'],
+              message:
+                'El `worker-optimizer` importa de `storage` solo `StorageFacadesWorkerModule`.',
             },
           ],
           patterns: [

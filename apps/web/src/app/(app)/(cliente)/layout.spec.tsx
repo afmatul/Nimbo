@@ -3,10 +3,12 @@
  */
 import type { RoleName } from '@nimbo/contracts';
 import { act, render, screen } from '@testing-library/react';
+import type * as React from 'react';
 
 import { forgetSession, rememberSession } from '../../../features/identity/session/session-memory';
 import { SessionProvider } from '../../../features/identity/session/session-provider';
 import { sessionFixture } from '../../../features/identity/session/test-session';
+import { useAgent } from '../../../features/intelligence/components/agent-provider';
 
 import ClienteGroupLayout from './layout';
 
@@ -16,16 +18,33 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ replace }),
 }));
 
+function group(page: React.ReactNode): React.JSX.Element {
+  return (
+    <SessionProvider apiPublicUrl="http://localhost/api/v1">
+      <ClienteGroupLayout>{page}</ClienteGroupLayout>
+    </SessionProvider>
+  );
+}
+
 async function renderGroup(role: RoleName): Promise<void> {
   rememberSession(sessionFixture({ role }));
-  render(
-    <SessionProvider apiPublicUrl="http://localhost/api/v1">
-      <ClienteGroupLayout>
-        <p>Contenido de cliente</p>
-      </ClienteGroupLayout>
-    </SessionProvider>,
-  );
+  render(group(<p>Contenido de cliente</p>));
   await act(async () => undefined);
+}
+
+/** Una página que abre el agente con un ámbito y dice cuál está vigente. */
+function AgentProbe({ name }: { readonly name: string }): React.JSX.Element {
+  const { open, conversation } = useAgent();
+  const { scope } = conversation.state;
+  return (
+    <>
+      <h1>{name}</h1>
+      <button type="button" onClick={() => open({ type: 'folder', id: 'f-1', name: 'Finanzas' })}>
+        Preguntar sobre Finanzas
+      </button>
+      <p>{`Ámbito: ${scope.type === 'all' ? 'todos' : scope.name}`}</p>
+    </>
+  );
 }
 
 describe('grupo (cliente)', () => {
@@ -50,6 +69,21 @@ describe('grupo (cliente)', () => {
 
     expect(screen.getByText('Contenido de cliente')).toBeTruthy();
     expect(screen.queryByRole('button', { name: /panel de cargas/ })).toBeNull();
+  });
+
+  it('020b CA-17: navegar entre páginas del cliente conserva la sesión del agente, sin guardarla en el navegador', async () => {
+    const setItem = jest.spyOn(Storage.prototype, 'setItem');
+    rememberSession(sessionFixture({ role: 'CLIENT' }));
+    const { rerender } = render(group(<AgentProbe name="Mis archivos" />));
+    await act(async () => undefined);
+
+    await act(async () => screen.getByRole('button', { name: 'Preguntar sobre Finanzas' }).click());
+    rerender(group(<AgentProbe name="Papelera" />));
+
+    expect(screen.getByRole('heading', { name: 'Papelera' })).toBeTruthy();
+    expect(screen.getByText('Ámbito: Finanzas')).toBeTruthy();
+    expect(setItem).not.toHaveBeenCalled();
+    setItem.mockRestore();
   });
 
   it('007 D-15: monta el resumen de espacio compartido, que se pide una vez a GET /storage/summary', async () => {

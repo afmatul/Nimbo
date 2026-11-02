@@ -6,6 +6,8 @@ import userEvent from '@testing-library/user-event';
 import { act, createRef, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
+import { AgentProvider, useAgent } from '../../intelligence';
+import { agentStatus } from '../../intelligence/test-agent';
 import type { ListControls } from '../hooks/use-folder-contents';
 import { DEFAULT_NODE_ORDER, type NodeOrder } from '../node-order';
 
@@ -659,5 +661,73 @@ describe('FileExplorer: «Cargar más» (007 CA-9, CA-12)', () => {
     await renderExplorer({ nodes: FILE_NODES, controls: controls({ more: 'error' }) });
 
     expect(document.body.innerHTML).not.toMatch(RAW_COLOR);
+  });
+});
+
+/** Lo que el panel tiene abierto: el ámbito vigente, o «cerrado». */
+function AgentProbe(): ReactElement {
+  const { isOpen, conversation } = useAgent();
+  return (
+    <output data-testid="agente">
+      {isOpen ? JSON.stringify(conversation.state.scope) : 'cerrado'}
+    </output>
+  );
+}
+
+function renderWithAgent(overrides: Partial<FileExplorerProps>): Promise<void> {
+  const deps = { loadStatus: jest.fn(() => Promise.resolve(agentStatus())), ask: jest.fn() };
+  return mount(
+    <AgentProvider deps={deps}>
+      <FileExplorer
+        status="ready"
+        folderId={null}
+        breadcrumbs={[]}
+        nodes={[]}
+        onFiles={jest.fn()}
+        onRetry={jest.fn()}
+        onNewFolder={jest.fn()}
+        {...overrides}
+      />
+      <AgentProbe />
+    </AgentProvider>,
+  );
+}
+
+function askButton(): HTMLButtonElement | undefined {
+  return Array.from(document.querySelectorAll('button')).find(
+    (button) => button.textContent?.trim() === 'Preguntar sobre esto',
+  );
+}
+
+describe('FileExplorer: «Preguntar sobre esto» (020b CA-15)', () => {
+  it('CA-15: en una carpeta abre el panel con esa carpeta como ámbito', async () => {
+    await renderWithAgent({ folderId: FASE3.id, breadcrumbs: [ALPHA, FASE3] });
+
+    await userEvent.click(buttonByText('Preguntar sobre esto'));
+
+    const probe = document.querySelector('[data-testid="agente"]');
+    expect(JSON.parse(probe?.textContent ?? '')).toEqual({
+      type: 'folder',
+      id: FASE3.id,
+      name: 'Fase 3 · RAG',
+    });
+  });
+
+  it('en «Mis archivos» no aplica: la raíz no es una carpeta', async () => {
+    await renderWithAgent({ folderId: null });
+
+    expect(askButton()).toBeUndefined();
+  });
+
+  it('mientras no llega el nombre de la carpeta, todavía no aparece', async () => {
+    await renderWithAgent({ status: 'loading', folderId: FASE3.id, breadcrumbs: [] });
+
+    expect(askButton()).toBeUndefined();
+  });
+
+  it('sin la sesión del agente (roles internos) no aparece', async () => {
+    await renderExplorer({ folderId: FASE3.id, breadcrumbs: [ALPHA, FASE3] });
+
+    expect(askButton()).toBeUndefined();
   });
 });

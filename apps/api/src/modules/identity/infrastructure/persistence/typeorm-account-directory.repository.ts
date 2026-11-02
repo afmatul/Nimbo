@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 
-import { Role, TransactionContext } from '../../../../shared';
+import { escapeLike, Role, TransactionContext } from '../../../../shared';
 import type {
   AccountListQuery,
   AccountPage,
@@ -52,10 +52,6 @@ const STATISTICS_SQL = `SELECT count(*)::int AS total,
     count(*) FILTER (WHERE estado = '${AccountStatus.SUSPENDED}')::int AS suspended,
     COALESCE(sum(espacio_usado), 0)::text AS used
   FROM usuario`;
-
-/** `%`, `_` y la barra invertida: precedidos de la barra, `LIKE` los toma como literales (escape por omisión). */
-const LIKE_SPECIALS = /[\\%_]/g;
-const escapeLike = (value: string): string => value.replace(LIKE_SPECIALS, (match) => `\\${match}`);
 
 const toSummary = (row: SummaryRow): AccountSummary => ({
   id: row.id,

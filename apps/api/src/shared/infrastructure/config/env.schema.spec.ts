@@ -1,12 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { redactDeep } from '../logging/redact-deep';
+
 import {
   apiEnvObjectSchema,
   apiEnvSchema,
   LOCAL_JWT_ACCESS_SECRET,
   SECRET_KEYS,
   workerEnvObjectSchema,
+  workerOptimizerEnvSchema,
 } from './env.schema';
 import { loadEnv } from './load-env';
 
@@ -33,6 +36,7 @@ const declaredIn = (key: string): string[] =>
   [
     ['api', apiEnvObjectSchema.shape],
     ['worker', workerEnvObjectSchema.shape],
+    ['worker-optimizer', workerOptimizerEnvSchema.shape],
   ]
     .filter(([, shape]) => Object.hasOwn(shape as object, key))
     .map(([process]) => process as string);
@@ -70,12 +74,13 @@ const definitionsAgree = (
   right: Record<string, unknown>,
 ): boolean => !Object.hasOwn(left, key) || !Object.hasOwn(right, key) || left[key] === right[key];
 
-describe('MinIO compartido por `api` y `worker` (005 T-20)', () => {
+describe('MinIO compartido por los tres procesos (005 T-20, ADR-0038)', () => {
   it.each(MINIO_KEYS)(
-    'RN-2: `%s` tiene una sola definición, compuesta por ambos esquemas',
+    'RN-2: `%s` tiene una sola definición, compuesta por los tres esquemas',
     (key) => {
-      expect(declaredIn(key)).toEqual(['api', 'worker']);
+      expect(declaredIn(key)).toEqual(['api', 'worker', 'worker-optimizer']);
       expect(apiShape[key]).toBe(workerShape[key]);
+      expect(apiShape[key]).toBe(workerOptimizerEnvSchema.shape[key]);
     },
   );
 
@@ -314,7 +319,6 @@ describe('indexación (019 plan §5)', () => {
     ['INDEX_RECONCILE_INTERVAL_MINUTES', 1440],
     ['INDEX_RECONCILE_BATCH_SIZE', 100],
     ['GHOSTSCRIPT_BIN', 'gs'],
-    ['GEMINI_EMBEDDING_MODEL', 'gemini-embedding-001'],
   ] as const)(
     'RN-7, RN-12, D-1: `%s` es solo del `worker` y vale %p por defecto',
     (key, fallback) => {
@@ -346,17 +350,206 @@ describe('indexación (019 plan §5)', () => {
     expect(batch.safeParse('0').success).toBe(false);
   });
 
-  it('RN-9: `GEMINI_API_KEY` es secreta, solo la declara el `worker` y es opcional (vacía cuenta como ausente)', () => {
-    const key = workerEnvObjectSchema.shape.GEMINI_API_KEY;
+  it('D-1: `GHOSTSCRIPT_BIN` no puede quedar vacía', () => {
+    expect(workerEnvObjectSchema.shape.GHOSTSCRIPT_BIN.safeParse('').success).toBe(false);
+  });
+});
+
+describe('Gemini y agente con citas (020 plan D-8)', () => {
+  const apiIssuesFor = (patch: Record<string, string | undefined>): readonly string[] => {
+    const result = loadEnv(apiEnvSchema, { ...API_ENV, ...patch });
+    return result.ok ? [] : result.issues;
+  };
+
+  it.each(['GEMINI_API_KEY', 'GEMINI_EMBEDDING_MODEL'])(
+    'D-8: `%s` tiene una sola definición, compuesta por `api` (pregunta) y `worker` (indexa)',
+    (key) => {
+      expect(declaredIn(key)).toEqual(['api', 'worker']);
+      expect(apiShape[key]).toBe(workerShape[key]);
+    },
+  );
+
+  it('CA-18: `GEMINI_API_KEY` es secreta, opcional (vacía cuenta como ausente) y se redacta en bitácoras', () => {
+    const key = apiEnvObjectSchema.shape.GEMINI_API_KEY;
 
     expect(SECRET_KEYS).toContain('GEMINI_API_KEY');
-    expect(declaredIn('GEMINI_API_KEY')).toEqual(['worker']);
     expect(key.parse('')).toBeUndefined();
     expect(key.parse(undefined)).toBeUndefined();
+    expect(redactDeep({ GEMINI_API_KEY: 'AIza-clave-de-prueba' })).toEqual({
+      GEMINI_API_KEY: '[REDACTED]',
+    });
   });
 
-  it('D-1: `GHOSTSCRIPT_BIN` y `GEMINI_EMBEDDING_MODEL` no pueden quedar vacías', () => {
-    expect(workerEnvObjectSchema.shape.GHOSTSCRIPT_BIN.safeParse('').success).toBe(false);
-    expect(workerEnvObjectSchema.shape.GEMINI_EMBEDDING_MODEL.safeParse('').success).toBe(false);
+  it('CA-18: el valor inválido de una variable del agente no aparece en el mensaje', () => {
+    const issues = apiIssuesFor({ AGENT_MAX_QUESTION_CHARS: 'mil-caracteres' });
+
+    expect(issues).toEqual(['`AGENT_MAX_QUESTION_CHARS` debe ser un entero positivo']);
+    expect(issues.join()).not.toContain('mil-caracteres');
+  });
+
+  it('RNF-09: sin clave el `api` arranca igual (el agente responde `AGENT_UNAVAILABLE`)', () => {
+    expect(apiIssuesFor({ GEMINI_API_KEY: undefined })).toEqual([]);
+  });
+
+  it.each([
+    ['GEMINI_EMBEDDING_MODEL', 'gemini-embedding-001'],
+    ['GEMINI_CHAT_MODEL', 'gemini-3.5-flash'],
+    ['AGENT_MAX_QUESTION_CHARS', 1000],
+    ['AGENT_MODEL_FIRST_CHUNK_TIMEOUT_MS', 5_000],
+    ['AGENT_MODEL_IDLE_TIMEOUT_MS', 5_000],
+  ] as const)('RN-7, D-7: `%s` vale %p por defecto', (key, fallback) => {
+    expect(apiEnvObjectSchema.shape[key].parse(undefined)).toBe(fallback);
+  });
+
+  it.each([
+    'GEMINI_CHAT_MODEL',
+    'AGENT_MAX_QUESTION_CHARS',
+    'AGENT_MODEL_FIRST_CHUNK_TIMEOUT_MS',
+    'AGENT_MODEL_IDLE_TIMEOUT_MS',
+  ])('D-8: `%s` es solo del `api`', (key) => {
+    expect(declaredIn(key)).toEqual(['api']);
+  });
+
+  it.each([
+    'AGENT_MAX_QUESTION_CHARS',
+    'AGENT_MODEL_FIRST_CHUNK_TIMEOUT_MS',
+    'AGENT_MODEL_IDLE_TIMEOUT_MS',
+  ])('RN-7, CA-15: `%s=0` no pasa (entero positivo)', (key) => {
+    expect(apiIssuesFor({ [key]: '0' })).toEqual([`\`${key}\` debe ser un entero positivo`]);
+  });
+
+  it('D-1, D-7: los modelos no pueden quedar vacíos', () => {
+    expect(apiEnvObjectSchema.shape.GEMINI_EMBEDDING_MODEL.safeParse('').success).toBe(false);
+    expect(apiEnvObjectSchema.shape.GEMINI_CHAT_MODEL.safeParse('').success).toBe(false);
+  });
+});
+
+describe('optimizador de imágenes (021 plan §6)', () => {
+  it('plan §5: solo el `api` valida los intentos que guarda al encolar; el consumidor usa job.opts.attempts', () => {
+    const attempts = apiEnvObjectSchema.shape.OPTIMIZER_MAX_ATTEMPTS;
+
+    expect(declaredIn('OPTIMIZER_MAX_ATTEMPTS')).toEqual(['api']);
+    expect(attempts.parse(undefined)).toBe(3);
+    expect(attempts.safeParse('0').success).toBe(false);
+  });
+
+  it('plan §5: el tiempo límite tiene una sola definición para caducidad en el `api` y sharp en `worker-optimizer`', () => {
+    const timeout = workerOptimizerEnvSchema.shape.OPTIMIZER_TIMEOUT_MS;
+
+    expect(declaredIn('OPTIMIZER_TIMEOUT_MS')).toEqual(['api', 'worker-optimizer']);
+    expect(apiShape.OPTIMIZER_TIMEOUT_MS).toBe(timeout);
+    expect(timeout.parse(undefined)).toBe(100_000);
+  });
+
+  it.each([
+    ['OPTIMIZER_MAX_PIXELS', 36_000_000],
+    ['OPTIMIZER_MIN_SAVED_PERCENT', 20],
+    ['OPTIMIZER_MIN_SAVED_BYTES', 1_000_000],
+    ['OPTIMIZER_JPEG_QUALITY', 80],
+  ] as const)(
+    'RN-2, RN-8: `%s` es solo de `worker-optimizer` y vale %p por defecto',
+    (key, fallback) => {
+      expect(declaredIn(key)).toEqual(['worker-optimizer']);
+      expect(workerOptimizerEnvSchema.shape[key].parse(undefined)).toBe(fallback);
+    },
+  );
+
+  it('RN-2: el porcentaje mínimo va de 1 a 99 y la calidad JPEG de 1 a 100', () => {
+    const percent = workerOptimizerEnvSchema.shape.OPTIMIZER_MIN_SAVED_PERCENT;
+    const quality = workerOptimizerEnvSchema.shape.OPTIMIZER_JPEG_QUALITY;
+
+    expect([percent.safeParse('0').success, percent.safeParse('100').success]).toEqual([
+      false,
+      false,
+    ]);
+    expect([quality.safeParse('0').success, quality.safeParse('101').success]).toEqual([
+      false,
+      false,
+    ]);
+    expect(quality.safeParse('100').success).toBe(true);
+  });
+
+  it('ADR-0038: solo el schema del `api` declara tope de bytes, consulta y tasa', () => {
+    expect(declaredIn('OPTIMIZER_MAX_FILE_BYTES')).toEqual(['api']);
+    expect(declaredIn('OPTIMIZER_POLL_INTERVAL_MS')).toEqual(['api']);
+    expect(declaredIn('RATE_LIMIT_OPTIMIZER_PER_MINUTE')).toEqual(['api']);
+  });
+});
+
+describe('worker del optimizador (ADR-0038)', () => {
+  /** Lo único que lee su composición (PD-159): la base común, MinIO, el optimizador y su puerto de salud. */
+  const OPTIMIZER_ENV = {
+    NODE_ENV: 'production',
+    APP_ENV: 'staging',
+    LOG_LEVEL: 'info',
+    DATABASE_URL: 'postgres://nimbo_app:secreto@postgres:5432/nimbo',
+    REDIS_URL: 'redis://redis:6379',
+    MINIO_ENDPOINT: 'http://minio:9000',
+    MINIO_ACCESS_KEY: 'nimbo',
+    MINIO_SECRET_KEY: 'nimbo-secret',
+  };
+
+  it('PD-159: el esquema propio declara solo la base común, MinIO, el optimizador y su puerto', () => {
+    expect(Object.keys(workerOptimizerEnvSchema.shape).sort()).toEqual(
+      [
+        'NODE_ENV',
+        'APP_ENV',
+        'APP_VERSION',
+        'LOG_LEVEL',
+        'DATABASE_URL',
+        'REDIS_URL',
+        'MINIO_ENDPOINT',
+        'MINIO_ACCESS_KEY',
+        'MINIO_SECRET_KEY',
+        'MINIO_BUCKET',
+        'MINIO_REGION',
+        'OPTIMIZER_TIMEOUT_MS',
+        'OPTIMIZER_MAX_PIXELS',
+        'OPTIMIZER_MIN_SAVED_PERCENT',
+        'OPTIMIZER_MIN_SAVED_BYTES',
+        'OPTIMIZER_JPEG_QUALITY',
+        'WORKER_OPTIMIZER_PORT',
+      ].sort(),
+    );
+  });
+
+  it('PD-159: arranca en staging sin SMTP, `MAIL_FROM` ni Gemini (un correo mal configurado no lo tumba)', () => {
+    const result = loadEnv(workerOptimizerEnvSchema, {
+      ...OPTIMIZER_ENV,
+      SMTP_TLS: 'invalido',
+      GEMINI_EMBEDDING_MODEL: '',
+      INDEXING_MAX_ATTEMPTS: '0',
+      OPTIMIZER_MAX_ATTEMPTS: '0',
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.env).not.toHaveProperty('SMTP_TLS');
+    expect(result.ok && result.env).not.toHaveProperty('GEMINI_EMBEDDING_MODEL');
+    expect(result.ok && result.env).not.toHaveProperty('OPTIMIZER_MAX_ATTEMPTS');
+  });
+
+  it.each([
+    'OPTIMIZER_TIMEOUT_MS',
+    'OPTIMIZER_MAX_PIXELS',
+    'OPTIMIZER_MIN_SAVED_PERCENT',
+    'OPTIMIZER_MIN_SAVED_BYTES',
+    'OPTIMIZER_JPEG_QUALITY',
+    'WORKER_OPTIMIZER_PORT',
+  ])('PD-159: `%s=0` sí impide validar el optimizador', (key) => {
+    const result = loadEnv(workerOptimizerEnvSchema, {
+      ...OPTIMIZER_ENV,
+      [key]: '0',
+    });
+
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.issues.join(' ')).toContain(key);
+  });
+
+  it('`WORKER_OPTIMIZER_PORT` es solo de `worker-optimizer`, vale 3003 por defecto y es un puerto válido', () => {
+    const port = workerOptimizerEnvSchema.shape.WORKER_OPTIMIZER_PORT;
+
+    expect(declaredIn('WORKER_OPTIMIZER_PORT')).toEqual(['worker-optimizer']);
+    expect(port.parse(undefined)).toBe(3003);
+    expect(port.safeParse('70000').success).toBe(false);
   });
 });

@@ -3,6 +3,8 @@ import type { AuthFetch } from '../identity/session/auth-fetch';
 import { createBackofficeApi } from './api';
 import { accountItem, accountsPage } from './test-accounts';
 import { clientFile, clientFilesPage, LAURA } from './test-client-files';
+import { clientTrashPage, restored, TRASH_PDF, TRASH_SHEET } from './test-client-trash';
+import { accountLimits, WITH_EXTRA } from './test-limits';
 import { metricsResponse } from './test-metrics';
 import { PERSONAL_PLAN, plansResponse, PRO_PLAN } from './test-plans';
 
@@ -38,6 +40,56 @@ describe('createBackofficeApi (011 plan §4)', () => {
     await expect(api.listClientFiles({ email: LAURA.email, page: 1 })).rejects.toMatchObject({
       status: 500,
     });
+  });
+
+  it('CA-10: GET /backoffice/client-trash con el correo y, si hay, el cursor', async () => {
+    const page = clientTrashPage([TRASH_SHEET], 'cursor-2');
+    const api = apiWith(page);
+
+    expect(await api.listClientTrash({ email: LAURA.email })).toEqual(page);
+    await api.listClientTrash({ email: LAURA.email, cursor: 'cursor-2' });
+
+    expect(api.authFetch.mock.calls).toEqual([
+      [
+        'http://localhost/api/v1/backoffice/client-trash?email=laura.barrios%40alpha.gt',
+        { method: 'GET' },
+      ],
+      [
+        'http://localhost/api/v1/backoffice/client-trash?email=laura.barrios%40alpha.gt&cursor=cursor-2',
+        { method: 'GET' },
+      ],
+    ]);
+  });
+
+  it('CA-10, RN-3: una papelera con algo más que los datos de la raíz (p. ej. una URL) se rechaza', async () => {
+    const page = clientTrashPage([{ ...TRASH_PDF, url: 'https://x' } as never]);
+    const api = apiWith(page);
+
+    await expect(api.listClientTrash({ email: LAURA.email })).rejects.toMatchObject({
+      status: 500,
+    });
+  });
+
+  it('CA-11: POST /backoffice/client-trash/:nodeId/restore con el correo, el tipo y el motivo (sin el id)', async () => {
+    const response = restored(TRASH_SHEET);
+    const api = apiWith(response);
+
+    const result = await api.restoreClientNode({
+      nodeId: TRASH_SHEET.id,
+      email: LAURA.email,
+      type: 'file',
+      note: 'El cliente lo pidió',
+    });
+
+    expect(result).toEqual(response);
+    expect(api.authFetch).toHaveBeenCalledWith(
+      `http://localhost/api/v1/backoffice/client-trash/${TRASH_SHEET.id}/restore`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: LAURA.email, type: 'file', note: 'El cliente lo pidió' }),
+      },
+    );
   });
 
   it('CA-1: GET /backoffice/accounts con la página y, si hay, el inicio del correo', async () => {
@@ -134,5 +186,54 @@ describe('createBackofficeApi (011 plan §4)', () => {
       `http://localhost/api/v1/backoffice/plans/${PRO_PLAN.id}/deactivation`,
       { method: 'POST' },
     );
+  });
+});
+
+describe('createBackofficeApi: límites y vigencia (011b plan §4)', () => {
+  const limitsUrl = `http://localhost/api/v1/backoffice/accounts/${LAURA.id}`;
+
+  it('CA-1: GET …/limits devuelve los límites de la cuenta', async () => {
+    const api = apiWith(accountLimits());
+
+    expect(await api.getAccountLimits(LAURA.id)).toEqual(accountLimits());
+    expect(api.authFetch).toHaveBeenCalledWith(`${limitsUrl}/limits`, { method: 'GET' });
+  });
+
+  it('CA-1, CA-4: fijar el extra es PUT …/quota con el cuerpo en JSON y quitarlo DELETE sin cuerpo', async () => {
+    const api = apiWith(WITH_EXTRA);
+    const body = { extraBytes: WITH_EXTRA.extraQuotaBytes, until: '2030-11-15' };
+
+    expect(await api.adjustQuota(LAURA.id, body)).toEqual(WITH_EXTRA);
+    await api.removeQuota(LAURA.id);
+
+    expect(api.authFetch.mock.calls).toEqual([
+      [
+        `${limitsUrl}/quota`,
+        {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+        },
+      ],
+      [`${limitsUrl}/quota`, { method: 'DELETE' }],
+    ]);
+  });
+
+  it('CA-6: extender la vigencia es PUT …/validity con el día elegido', async () => {
+    const api = apiWith(accountLimits());
+
+    await api.adjustValidity(LAURA.id, { expiresAt: '2030-11-30' });
+
+    expect(api.authFetch).toHaveBeenCalledWith(`${limitsUrl}/validity`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ expiresAt: '2030-11-30' }),
+    });
+  });
+
+  it('CA-1: unos límites con algo más que la lista blanca se rechazan como falla del servidor', async () => {
+    const api = apiWith({ ...accountLimits(), files: [] });
+
+    await expect(api.getAccountLimits(LAURA.id)).rejects.toMatchObject({ status: 500 });
   });
 });

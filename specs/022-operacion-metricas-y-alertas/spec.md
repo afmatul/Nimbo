@@ -1,14 +1,14 @@
 # Spec 022 — Operación: métricas, tableros, alertas y respaldos
 
-> Qué y por qué, en ≤ 150 líneas. El cómo va en `./plan.md` (obligatorio).
+> Qué y por qué, en ≤ 150 líneas. Plan y tareas pendientes: Modo 2 bloqueado por §9.
 
 | Campo | Valor |
 |---|---|
 | Estado | Borrador |
 | Dueño | Abel (3) |
-| Fase | 3 |
+| Fase prevista | 3 (asignación original; calendario pendiente de reprogramación) |
 | Requisitos | RNF-18 (métricas, tableros y alertas; la salud ya la entregó 000), RNF-20, RNF-21 (principales); aplican RF-05, RF-22, RNF-01, RNF-09, RNF-12, RNF-15, RNF-16, RNF-17 |
-| Depende de | 000 (salud CA-20 a CA-23, bitácoras con `correlationId`, CI; rollback CA-31; bloques 5–6 de imágenes y staging aún diferidos: tareas 000 y `workflow.md` §7.2, verificación en §8). Señales de 001, 002, 003, 004 (PD-67), 005, 010, 014, 015 y 016 (RN-3); agente: P-8 |
+| Depende de | 000 (salud, bitácoras, CI; imágenes/staging y rollback CA-31 pendientes: `workflow.md` §7.2). Señales de 001, 002, 003, 004 (PD-67), 005, 010, 014, 015, 016, 019 y 021 (RN-3); agente 020: P-8 |
 | Última actualización | 2026-11-01 |
 
 ## 1. Contexto y objetivo
@@ -24,7 +24,7 @@ bitácoras técnicas y trabajos con reintento para Administrador, Soporte y Oper
 cuentas (PD-74, PD-122), son de 022b. La alerta de «> 50 trabajos pendientes o uno reintentado 3 veces» es de 022.
 
 ## 2. Historias de usuario
-- **HU-1** Como Operador, quiero que `api`, `worker` y las dependencias expongan métricas, para saber cómo está el sistema sin entrar al servidor.
+- **HU-1** Como Operador, quiero que `api`, `worker`, `worker-optimizer` y las dependencias expongan métricas, para saber cómo está el sistema sin entrar al servidor.
 - **HU-2** Como Operador, quiero tableros de operación y negocio, y el del agente si P-8 lo incluye en 022, para leer el estado de un vistazo.
 - **HU-3** Como equipo, queremos alertas sobre las condiciones definidas, para enterarnos antes que el cliente.
 - **HU-4** Como Operador, quiero un respaldo diario de la base de datos y objetos versionados, para restaurarlos con un procedimiento probado.
@@ -35,7 +35,7 @@ cuentas (PD-74, PD-122), son de 022b. La alerta de «> 50 trabajos pendientes o 
 > Umbrales y ventanas: los de `product-context.md` §7 «Alertas definidas», sin repetirlos aquí. Métricas por grupo: RN-3.
 
 ### Métricas (HU-1, HU-6)
-- **CA-1** (HU-1, RNF-18) Dado `api` y `worker` en marcha, cuando el recolector los consulta por la red interna, entonces obtiene peticiones por ruta y código, latencia (p50, p95, p99) y, por cola, trabajos en espera, activos, completados y fallidos, con su tiempo de espera y de ejecución.
+- **CA-1** (HU-1, RNF-18) Dados `api`, `worker` y `worker-optimizer` en marcha, cuando se recolectan sus métricas por la red interna, entonces se distinguen los tres procesos, las peticiones HTTP por ruta y código con latencia (p50, p95, p99) y, por cola, trabajos en espera, activos, completados y fallidos, con tiempo de espera y de ejecución; incluye `indexing`, `index-status`, `index-reconcile` y `optimization`.
 - **CA-2** (HU-1, RNF-18, DF-29) — error: Dada una petición a las métricas desde fuera de la red interna (por Traefik o directa al host), cuando llega, entonces no recibe métricas; Traefik no enruta ningún host ni ruta hacia las métricas y lo público sigue siendo lo de 000.
 - **CA-3** (HU-1, RNF-18) Dados los servicios del compose, cuando se consultan las métricas de sistema, entonces se ven CPU, memoria y disco por contenedor y la disponibilidad de Postgres, Redis, MinIO y, con su perfil activo, ONLYOFFICE.
 - **CA-4** (HU-1, RNF-18) Dado cada grupo de RN-3 cuyo alcance en 022 está decidido (el del Agente depende de P-8), cuando ocurre su evento, entonces su serie cambia y se lee en un tablero.
@@ -77,6 +77,8 @@ Diseño y pendientes: DF-28, DF-29; PD-05, PD-60, PD-62, PD-67, PD-113, PD-165, 
   - **Almacenamiento**: las métricas declaradas en 005 plan §7 (cargas por resultado, rechazos por motivo, bytes cargados, enlaces de descarga emitidos, límites de frecuencia alcanzados y duración de la limpieza); espacio usado (por cuenta o total: P-11); tasa de error de MinIO.
   - **Identidad y acceso**: las diferidas por 001 plan §7 (registros, verificaciones y correos fallidos), 002 plan §7 (inicios de sesión por resultado, reúso de tokens de refresco y bloqueos) y 003 plan §7 (denegaciones de autorización).
   - **Edición** (016 existe): sesiones abiertas, editores concurrentes (por documento, o máximo y distribución: P-11), versiones generadas y guardados fallidos.
+  - **Indexación**: duración y cola de indexación diferidas por 019 plan §5; distinguir espera de ejecución y resultados, sin exportar fragmentos ni identificadores. La lista de trabajos y su reintento siguen en 022b.
+  - **Optimizador**: 021 plan §5 difiere las métricas sin fijar un catálogo. Se observan solicitudes, estimaciones y resultados (no conviene, no disponible, completada, descartada, fallida y caducada), bytes antes/después cuando existan, y espera/ejecución de `optimization` en `worker-optimizer`; solo JPEG/PNG, sin atribuir a 021 PDF, GIF ni WebP.
   - **Canal en vivo**: 015 difiere a 022 «Métricas y tableros del canal» (015 spec §7) y no define su conjunto concreto (§8).
   - **Negocio**: CA-7. **Auditoría**: CA-17. **Sistema**: CA-3.
   - **Agente** (consultas por plan, latencia hasta el primer fragmento, fragmentos recuperados por consulta, consumo y costo estimado): propuesta §4.3. 020/020b ya están integradas; 020 remite métricas y tablero a 022, pero su responsabilidad y alcance siguen abiertos en P-8; «por cuenta», P-11.
@@ -99,10 +101,10 @@ Diseño y pendientes: DF-28, DF-29; PD-05, PD-60, PD-62, PD-67, PD-113, PD-165, 
 ## 7. Fuera de alcance
 - RF-37 completo (022b): lista de trabajos, reintento, pantalla de bitácoras técnicas, conteos al momento (PD-74, PD-122).
 - Panel de métricas agregadas de la app (011, CA-12) y sus cambios.
-- Pruebas de carga k6 y aislamiento global (023, `specs/README.md`), incluidas las mediciones con k6 de PD-60 y PD-62 (antes P-12).
+- Pruebas de carga k6 y aislamiento global (023, `specs/README.md`), incluidas las mediciones con k6 de PD-60 y PD-62.
 - Imágenes en ghcr.io, staging y el mecanismo de despliegue (000, bloques 5–6); 022 solo ensaya la vuelta atrás.
-- Que Traefik retire del enrutamiento lo que deje de responder (propuesta §4.3): es configuración de despliegue y no está asignada (antes P-13; PD-167).
-- Objetos huérfanos y credencial raíz de MinIO en `api` y `worker` (005 plan R-7 y R-13, «revisar en 022»): no rastrean a RNF-18, 20 ni 21 y se tratan como endurecimiento de staging (antes P-15; PD-167).
+- Que Traefik retire del enrutamiento lo que deje de responder (propuesta §4.3): es configuración de despliegue y no está asignada (PD-167).
+- Objetos huérfanos y credencial raíz de MinIO por proceso (005 plan R-7 y R-13, «revisar en 022»): no rastrean a RNF-18, 20 ni 21 y se tratan como endurecimiento de staging (PD-167).
 - Restaurar un respaldo sobre cuentas reales: sería una acción interna sobre cuentas ajenas (RF-07, Art. IX.4) sin decisión que la defina.
 - Alta disponibilidad multi-región y certificaciones de cumplimiento (`product-context.md` §9). Redibujar el diagrama (DF-28): Adrián (PD-05).
 
@@ -110,10 +112,11 @@ Diseño y pendientes: DF-28, DF-29; PD-05, PD-60, PD-62, PD-67, PD-113, PD-165, 
 - Prometheus recolecta y Grafana presenta (stack de `CLAUDE.md` y propuesta §4.3); toda librería o imagen nueva va con su ADR en el plan.
 - La alerta de prueba (CA-18) se provoca en un ambiente que no es producción.
 - Canal en vivo (RN-3): como 015 no define su conjunto de métricas, el plan concreta las señales observables necesarias; si al hacerlo aparece una decisión que cambia comportamiento observable o un RF/RNF, se registra como pregunta bloqueante antes de cerrar el plan.
-- Las métricas de RN-3 viven en módulos de Adrián y de Juan Marcos, y la recolección toca infraestructura de Adrián: quién instrumenta cada una y con qué autorización (como en la 011) se acuerda con cada dueño en el plan; 022 no cambia el comportamiento de esos módulos (antes P-1).
-- ADR-0034 y `workflow.md` §4 (regla 1) piden partir antes de redactar si el esbozo supera 12 archivos o una pantalla. Propuesta de Matul, pendiente de decisión expresa de Adrián antes del plan: 022 para observabilidad (RNF-18) y posible 022c para respaldos y vuelta atrás (RNF-20, RNF-21). Hasta decidir, se conservan HU-4/HU-5, CA-19 a CA-23 y RN-5; no se crea 022c (antes P-4).
-- DF-28 se resuelve «antes de 022»: el redibujo del diagrama de arquitectura (PD-05; DF-28 (e) le suma Prometheus y Grafana) es tarea documental de Adrián como guardián de diagramas y no cambia el comportamiento (antes P-14).
-- Estado contrastado con `origin/main` (`6a2ccb1a`, 2026-10-30): 020/020b integradas (PR #83/#84); 020 §7 y plan §5 remiten Grafana/métricas a 022, no equivalen al panel web de 020b ni resuelven P-8. 000 T-35 a T-44 siguen sin marcar; faltan publicación de imágenes y despliegue de staging, y GitHub no registra ambientes ni despliegues. El Dockerfile del worker en la rama 021 no completa esos bloques ni demuestra CA-23.
+- Las métricas de RN-3 viven en módulos de Adrián, Juan Marcos y Abel; la recolección toca infraestructura de Adrián. Quién instrumenta y con qué autorización se acuerda con cada dueño antes del plan oficial; no se reasigna ownership.
+- **Propuesta de partición, sin ejecutar:** 022 = RNF-18 (CA-1 a CA-18); posible 022c = RNF-21 (CA-19 a CA-22); CA-23/RNF-20 al cierre de 000, con su CA-31 e imágenes N/N-1. Adrián decide destino, alcance y tamaño según ADR-0034/`workflow.md` §4.1; partir no garantiza ≤ 12 archivos, una pantalla ni ≤ 3 días. Hasta decidir, permanecen aquí los 23 CA, HU-4/HU-5 y RN-5; no se crea ni reserva 022c.
+- DF-28 y PD-05: redibujar arquitectura, incluida observabilidad, corresponde a Adrián como guardián de diagramas. PD-166 registra la actualización pendiente de DF-29; ningún puerto nuevo se presenta como aprobado o existente.
+- Base documental: 020/020b y 021 integradas; 020 remite Grafana/métricas a 022 y 020b es el panel web del cliente (no resuelve P-8). 021 y ADR-0038 separan `worker-optimizer`; su imagen compartida con `worker` no entrega por sí sola publicación ni staging de 000, ni demuestra CA-23.
+- Plan y tareas retirados del árbol por Modo 2, con originales verificados y propuestas corregidas fuera del repositorio. El [seguimiento documental](review.md) registra hallazgos y decisiones; no es una revisión de implementación ni aprobación. El exceso de tamaño y duración de la rama sigue pendiente de Adrián.
 
 ## 9. Preguntas
 - [ABIERTA] **P-2** ¿Dónde se demuestran RNF-18, RNF-20 y RNF-21? Los bloques 5–6 de 000 siguen diferidos y no hay staging integrado (§8): ¿RNF-18/RNF-21 en local primero y repetición en staging cuando exista, o se espera? ¿CA-23/RNF-20 queda pendiente de esos bloques y de 000 CA-31? — bloquea: sí
@@ -127,12 +130,7 @@ Diseño y pendientes: DF-28, DF-29; PD-05, PD-60, PD-62, PD-67, PD-113, PD-165, 
 ## 10. Registro de cambios
 | Fecha | Cambio | Motivo | Aprobó |
 |---|---|---|---|
-| 2026-10-24 | Creación en `Borrador`; plan y tareas pendientes porque existen preguntas bloqueantes según el flujo de `/spec` (Modo 2). P-1 a P-14 | `/spec 022` | — |
-| 2026-10-24 | Revisión documental: P-1 (dueños e instrumentación) y P-4 (partir por tamaño) pasan a no bloqueantes; P-2 se acota al ambiente de RNF-20; se retiran rutas de archivos | Regla de bloqueo del planner (solo comportamiento, RF o RNF) | — |
-| 2026-10-24 | Revisión del PR #78: P-5 sin la premisa falsa (la purga borra todas las versiones del objeto); CA-17 queda como contador y la alerta pasa a P-9; CA-21/CA-22 con datos sintéticos (RNF-16) y restaurar sobre cuentas reales fuera de alcance; RN-3 completo con 001, 002, 003, 005, 014, 015 y 016, edición y agente (diferido); CA-7 como eventos «degradadas a solo lectura»; RN-7 (tableros sin acceso a datos de clientes); P-15; PD-130 y PD-131; menores (encabezado, trazabilidad, umbrales citados de §7, CA-2, CA-23, §7, concordancia) | Hallazgos M-1 a M-8 y menores de la revisión | — |
-| 2026-10-24 | Normalización de §8 y §9 según ADR-0034 (como en la 021): solo quedan las 6 preguntas bloqueantes (P-2, P-3, P-5, P-6, P-7, P-8). P-1, P-4 y P-14 pasan a Supuestos (P-14 con PD-05); P-9 pasa a PD-67 (`audit.record_failed`) y PD-133 (demás alertas candidatas); P-10, P-11, P-13 y P-15 pasan a PD-133; P-12 a §7 (k6 es de 023, con PD-60 y PD-62). Sin cambios de comportamiento ni de CA | ADR-0034 y revisión del PR #78 | — |
-| 2026-10-24 | Pulido final: HU-4 y HU-6 con su «para»; CA-17 rastrea a RNF-18; trazabilidad completa con los requisitos del encabezado; alcance exacto de PD-05 frente a DF-28 (e). Sin cambios de comportamiento | Auditoría de cierre | — |
-| 2026-10-24 | Segunda revisión del PR #78: RN-3, CA-4 y CA-8 quedan condicionados a P-8 (sigue abierta); P-11 vuelve como bloqueante y RN-2, CA-5, RN-3, RN-7 y §5 quedan condicionados a ella; canal en vivo sin métricas inventadas (015 no las define); RN-3 sin nombres de series; §8 cita ADR-0034 tal como está escrito; PD-67, PD-133, PD-60 y PD-62 ajustados | Hallazgos M-1 a M-3 y menores | — |
-| 2026-10-25 | HU-6 alineada con RN-2, CA-5 y P-11 (no decide identificadores); la regla de planificación del canal en vivo pasa de RN-3 a §8. Sin cambios de comportamiento ni de preguntas | Menores de la tercera revisión | — |
-| 2026-10-30 | §1 simplificado; CA-11 a CA-17 y CA-20 con Dado/Cuando/Entonces sin cambiar condiciones; ruta completa de salud en CA-21 (000); HU-2/CA-8/CA-10 condicionados a P-8; 020/020b y 000 contrastadas con main; división solo propuesta. Trazabilidad fuera del encabezado; PD propios 130→145, 131→146, 133→147 por colisiones con main (los números anteriores en este registro son históricos). Siguen las siete preguntas abiertas | Consolidación posterior a las tres auditorías del PR #78 | — |
-| 2026-11-01 | PD propios 145→165, 146→166 y 147→167 tras comprobar colisiones con 018 y disponibilidad en las 14 referencias y el árbol local; se conserva el historial 130→145→165, 131→146→166, 133→147→167. Se incorporan plan y tareas preparatorios, sin aprobación; fila 022 del backlog alineada. Borrador, siete preguntas abiertas y alcance funcional intactos | Preparación de la publicación documental del PR #78 | — |
+| 2026-10-24 | Creación en Borrador | `/spec 022` | — |
+| 2026-10-24 a 2026-10-30 | Auditorías del PR #78: purga no recuperable; restauración sintética; seis alertas; privacidad y agente condicionados a P-11/P-8; eventos frente a conteos actuales; trazabilidad y formato alineados | Coherencia con producto y roles | — |
+| 2026-11-01 | Plan y tareas preparatorios incorporados sin aprobación; pendientes propios conciliados (historial único en `pendientes.md`) | Preparación documental | — |
+| 2026-11-01 | Última auditoría: RN-3/CA-1 incluyen 019, 021 y `worker-optimizer`; base conciliada; plan/tareas archivados externamente y retirados por Modo 2; partición y destino de CA-23 siguen como propuestas | Corrección documental; siete preguntas abiertas, sin implementación | — |

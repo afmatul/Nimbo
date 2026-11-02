@@ -1,0 +1,32 @@
+import { InvalidInputError } from '../../../../shared/domain/errors';
+import type { FieldIssue } from '../../../../shared/domain/errors';
+
+/**
+ * Por qué no se extiende la vigencia (011b CA-7): Personal, sin suscripción, un día que no es posterior o un cuerpo que
+ * no trae un día del calendario.
+ */
+export type ValidityRejection = 'personal' | 'no_subscription' | 'not_later' | 'invalid';
+
+const MESSAGES: Readonly<Record<ValidityRejection, string>> = {
+  personal:
+    'Personal no vence: no tiene vigencia que extender. Si la cuenta necesita más espacio, dale espacio extra.',
+  no_subscription:
+    'Esta cuenta aún no tiene una suscripción, así que no tiene vigencia que extender. Vuelve a abrir la ficha más tarde.',
+  not_later:
+    'Solo puedes extender la vigencia: elige un día posterior al último día vigente que no sea anterior a hoy.',
+  /** El texto de `INVALID_DAY` en `BACKOFFICE_FIELD_MESSAGES` de `contracts` (sin importarlo, ADR-0008). */
+  invalid: 'Elige un día válido del calendario.',
+};
+
+/**
+ * La vigencia no se extiende (011b CA-7, RN-2): lo decide `extender_vigencia`, fuente de verdad (ADR-0035), o el
+ * contrato si el cuerpo no tiene su forma (con `fields`). HTTP 422 y nada cambia; el código coincide con
+ * `BACKOFFICE_ERROR_CODES` de `contracts` sin importarlo (ADR-0008).
+ */
+export class ValidityNotExtendedError extends InvalidInputError {
+  readonly code = 'BACKOFFICE_VALIDITY_NOT_EXTENDED';
+
+  constructor(rejection: ValidityRejection, fields?: readonly FieldIssue[]) {
+    super(MESSAGES[rejection], fields);
+  }
+}

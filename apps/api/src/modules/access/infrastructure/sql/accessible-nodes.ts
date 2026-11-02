@@ -25,11 +25,21 @@ const ownedSelect = (table: 'archivo' | 'carpeta', alias: string): string =>
 /**
  * Rama de propiedad (plan 005 D-17, plan 006 §1): los archivos y carpetas del actor fuera de la papelera. Eliminar una
  * carpeta marca todo su subárbol, así que el filtro sigue siendo plano. `access` lee las tablas por SQL, sin importar
- * `storage` (ADR-0010). 012 agrega aquí el `UNION ALL` de comparticiones.
+ * `storage` (ADR-0010).
  */
 const OWNED_LIVE_NODES_SQL =
   `${ownedSelect('archivo', 'a')} AND a.eliminado_en IS NULL UNION ALL ` +
   `${ownedSelect('carpeta', 'c')} AND c.eliminado_en IS NULL`;
+
+/**
+ * Rama compartida (plan 012 §1, §3; DF-85): lo que otros clientes comparten con el actor, directo o heredado por
+ * `carpeta.ruta`, vivo y de cuentas `activa`, con el nivel mayor por nodo. La regla vive una sola vez en
+ * `nodos_compartidos()` (también la usan las políticas RLS); sin parámetros, el actor sale de la sesión (`withActor`).
+ * Un nodo nunca es a la vez propio y compartido con su dueño (`ck_comparticion_distinto`): no hay filas repetidas.
+ */
+const ACCESSIBLE_NODES_SQL =
+  `${OWNED_LIVE_NODES_SQL} UNION ALL ` +
+  'SELECT s.nodo_id, s.tipo_nodo, s.nivel FROM nodos_compartidos() s';
 
 /**
  * Raíces de la papelera del actor (plan 006 §1): lo que eliminó él mismo, sin lo que arrastró una carpeta. Sin
@@ -52,10 +62,20 @@ const clientFragment = (actor: Actor, sql: string): AccessibleNodesFragment =>
     : EMPTY_ACCESSIBLE_NODES;
 
 /**
- * Nodos a los que el actor tiene acceso, con su nivel (plan 003 §6.5). Función pura, sin DI. Los roles internos
+ * Nodos a los que el actor tiene acceso, con su nivel (plan 003 §6.5, plan 012 §2): los propios vivos (`OWNER`) y los
+ * compartidos con él (`EDITOR` o `VIEWER`). Solo para leer: toda escritura y todo destino usan `ownedNodes`. Función
+ * pura, sin DI; exige la transacción `withActor` del actor (la rama compartida lee la sesión). Los roles internos
  * reciben siempre el conjunto vacío (CA-9): ven metadatos por `INodeMetadataReader` (011), nunca por aquí.
  */
 export const accessibleNodes = (actor: Actor): AccessibleNodesFragment =>
+  clientFragment(actor, ACCESSIBLE_NODES_SQL);
+
+/**
+ * Archivos y carpetas propios del actor fuera de la papelera, todos `OWNER` (plan 012 §2, DF-85): lo que `storage`
+ * escribe, renombra, mueve, elimina o usa como destino. Mismas columnas que `accessibleNodes`; vacío para los roles
+ * internos.
+ */
+export const ownedNodes = (actor: Actor): AccessibleNodesFragment =>
   clientFragment(actor, OWNED_LIVE_NODES_SQL);
 
 /**

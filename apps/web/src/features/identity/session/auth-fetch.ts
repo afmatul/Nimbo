@@ -12,13 +12,14 @@ export interface AuthFetchDeps {
 
 export type AuthFetch = (url: string, init?: RequestInit) => Promise<unknown>;
 
-function withBearer(init: RequestInit, token: string | null): RequestInit {
+export function withBearer(init: RequestInit, token: string | null): RequestInit {
   const headers = new Headers(init.headers);
   if (token !== null) headers.set('authorization', `Bearer ${token}`);
   return { ...init, headers };
 }
 
-function isUnauthenticated(caught: unknown): boolean {
+/** Solo este `401` se resuelve renovando la sesión; un `401 IDENTITY_*` no. */
+export function isUnauthenticated(caught: unknown): boolean {
   return caught instanceof ApiClientError && caught.code === SHARED_ERROR_CODES.UNAUTHENTICATED;
 }
 

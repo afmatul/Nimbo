@@ -169,6 +169,20 @@ describe('MinioStorageAdapter contra MinIO real (CA-2, CA-5, CA-11, CA-13, CA-14
     await adapter.purgeObject(key);
   });
 
+  it('021 T-08: `putObjectStream` acepta un flujo con un trozo de más de 16 MiB (MinIO rechaza «chunk too big»)', async () => {
+    const key = newKey();
+    // 17 MiB en un solo trozo, como el candidato de un PNG de 36 MP que entrega el optimizador.
+    const content = Buffer.alloc(17 * 1024 * 1024 + 3, 'imagen optimizada ');
+
+    await adapter.putObjectStream(key, Readable.from([content]), BigInt(content.length));
+    const stream = await adapter.getObjectStream(key);
+
+    const read = await readAll(stream as Readable);
+    expect(Buffer.compare(read, content)).toBe(0);
+    await expect(adapter.headObject(key)).resolves.toEqual({ sizeBytes: BigInt(content.length) });
+    await adapter.purgeObject(key);
+  });
+
   it('016 SEC-3: `putObjectStream` rechaza una clave `invoices/` y no crea el objeto', async () => {
     const key = `invoices/${randomUUID()}/${randomUUID()}.pdf`;
 

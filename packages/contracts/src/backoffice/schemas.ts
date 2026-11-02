@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
-import { EMAIL_MAX_LENGTH, isValidEmail } from '../identity';
+import { EMAIL_MAX_LENGTH } from '../identity';
 import { roleSchema } from '../shared';
 import { FILE_KINDS } from '../storage';
 
-import { BACKOFFICE_FIELD_MESSAGES, type BackofficeFieldIssueReason } from './error-codes';
+import { addReason, byteText, clientRefSchema, exactEmailField, timestamp } from './fields';
 import { BACKOFFICE_PAGE_SIZE } from './parameters';
 
 /** Esquemas del backoffice (spec 011, plan §4): cuentas, métricas y metadatos de archivos; respuestas estrictas. */
@@ -12,20 +12,7 @@ import { BACKOFFICE_PAGE_SIZE } from './parameters';
 const PAGE_PATTERN = /^[1-9][0-9]*$/;
 const FIRST_PAGE = 1;
 
-const timestamp = z.string().datetime();
 const count = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
-
-/** Bytes como texto decimal sin signo ni ceros a la izquierda: un `bigint` no cabe en un número de JSON (ADR-0016). */
-const byteText = z.string().regex(/^(0|[1-9][0-9]*)$/);
-
-function addReason(ctx: z.RefinementCtx, reason: BackofficeFieldIssueReason): typeof z.NEVER {
-  ctx.addIssue({
-    code: z.ZodIssueCode.custom,
-    message: BACKOFFICE_FIELD_MESSAGES[reason],
-    params: { reason },
-  });
-  return z.NEVER;
-}
 
 /** Número de página desde 1; ausente es la primera (DF-66). */
 const pageField = z.unknown().transform((value, ctx): number => {
@@ -36,23 +23,14 @@ const pageField = z.unknown().transform((value, ctx): number => {
   return Number.isSafeInteger(parsed) ? parsed : addReason(ctx, 'INVALID_PAGE');
 });
 
-const normalizeEmail = (value: string): string => value.trim().toLowerCase();
-
 /** Inicio del correo (Q-5): recortado y en minúsculas; vacío no filtra. */
 const emailPrefixField = z.unknown().transform((value, ctx): string | undefined => {
   if (value === undefined) return undefined;
   if (typeof value !== 'string' || value.length > EMAIL_MAX_LENGTH) {
     return addReason(ctx, 'INVALID_EMAIL');
   }
-  const prefix = normalizeEmail(value);
+  const prefix = value.trim().toLowerCase();
   return prefix === '' ? undefined : prefix;
-});
-
-/** Correo exacto de un cliente (CA-13): obligatorio y válido. */
-const exactEmailField = z.unknown().transform((value, ctx): string => {
-  const email = typeof value === 'string' ? normalizeEmail(value) : '';
-  if (email === '') return addReason(ctx, 'REQUIRED');
-  return isValidEmail(email) ? email : addReason(ctx, 'INVALID_EMAIL');
 });
 
 /** `GET /backoffice/accounts?email&page` (CA-1). Responde `400 BACKOFFICE_INVALID_QUERY` con `fields`. */
@@ -137,9 +115,7 @@ const clientFileSchema = z
 /** `GET /backoffice/client-files` (CA-13): el cliente encontrado y una página de sus archivos. */
 export const clientFilesResponseSchema = z
   .object({
-    client: z
-      .object({ id: z.string().uuid(), fullName: z.string().min(1), email: z.string().email() })
-      .strict(),
+    client: clientRefSchema,
     ...pageOf(clientFileSchema),
   })
   .strict();

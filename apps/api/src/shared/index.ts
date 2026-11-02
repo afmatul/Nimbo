@@ -46,7 +46,11 @@ export type { BatchFailure } from './application/batch/attempt-each';
 export { IncompleteBatchError } from './application/batch/incomplete-batch.error';
 export { HealthModule } from './health.module';
 export { SystemClock } from './infrastructure/clock/system.clock';
-export { apiEnvSchema, workerEnvSchema } from './infrastructure/config/env.schema';
+export {
+  apiEnvSchema,
+  workerEnvSchema,
+  workerOptimizerEnvSchema,
+} from './infrastructure/config/env.schema';
 export type { Env, SharedEnvBase } from './infrastructure/config/env.schema';
 export { ENV, EnvModule } from './infrastructure/config/env.module';
 export { MINIO_CONFIG, MinioConfigModule } from './infrastructure/config/minio-config.module';
@@ -63,6 +67,7 @@ export { PostgresHealthIndicator } from './infrastructure/health/postgres.health
 export { RedisHealthIndicator } from './infrastructure/health/redis.health-indicator';
 export { BIGINT_TRANSFORMER } from './infrastructure/persistence/bigint.transformer';
 export { buildDataSourceOptions } from './infrastructure/persistence/data-source';
+export { escapeLike } from './infrastructure/persistence/escape-like';
 export { TransactionContext } from './infrastructure/persistence/transaction-context';
 export { REDIS_CLIENT } from './infrastructure/redis/redis-client.provider';
 export { enqueueWithCorrelation } from './infrastructure/queue/enqueue-with-correlation';

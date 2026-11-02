@@ -25,6 +25,8 @@ const LIMITS = {
   retainedVersions: RETAINED,
   readOnly: false,
   maxEditors: 0,
+  extraQuotaBytes: 0n,
+  extraQuotaUntil: null,
 };
 
 function setup() {
@@ -79,7 +81,7 @@ describe('VersionHistoryService (plan 014 §2, CA-6, CA-16)', () => {
 
     expect(journal.entries).toEqual([
       'tx:begin',
-      'nodes:findAccessibleById',
+      'nodes:findOwnedLiveFile',
       'versions:list',
       'tx:end',
     ]);

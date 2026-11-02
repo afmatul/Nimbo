@@ -18,6 +18,9 @@ export enum AuditAction {
   ACCOUNT_INTERNAL_CREATED = 'account.internal_created',
   /** Alta inicial por comando (011 CA-7): actor de sistema y sin afectado. */
   ACCOUNT_BOOTSTRAP_ADMIN = 'account.bootstrap_admin',
+  /** Ajustes del Administrador (011b RN-4): recurso y afectado, la cuenta; el extra y su fin, o el `vence_en` nuevo. */
+  ACCOUNT_QUOTA_ADJUSTED = 'account.quota_adjusted',
+  ACCOUNT_VALIDITY_ADJUSTED = 'account.validity_adjusted',
   /** Soporte o Administración consultó los metadatos de un cliente (011 CA-13): recurso y afectado, la cuenta. */
   CLIENT_FILES_VIEWED = 'client.files_viewed',
   /** Catálogo (011): recurso `plan`, sin afectado (ningún cliente los ve). */
@@ -51,6 +54,17 @@ export enum AuditAction {
   FILE_INDEX_UNINDEXABLE = 'file.index_unindexable',
   FILE_INDEX_FAILED = 'file.index_failed',
   FILE_INDEX_RETRIED = 'file.index_retried',
+  /**
+   * Comparticiones (012 CA-19, plan §5): en la actividad del propietario, `attributes { nodeType, level }` y el nodo
+   * como recurso; nunca nombres de archivo ni correos. Revocar y salir (CA-23) son `share.revoked`.
+   */
+  SHARE_GRANTED = 'share.granted',
+  SHARE_LEVEL_CHANGED = 'share.level_changed',
+  SHARE_REVOKED = 'share.revoked',
+  /** Optimización (021 §5, CA-21): solo resultados terminales; estimar no se audita. */
+  FILE_OPTIMIZED = 'file.optimized',
+  FILE_OPTIMIZATION_DISCARDED = 'file.optimization_discarded',
+  FILE_OPTIMIZATION_FAILED = 'file.optimization_failed',
 }
 
 const AUDIT_ACTIONS: ReadonlySet<string> = new Set(Object.values(AuditAction));

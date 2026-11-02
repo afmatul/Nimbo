@@ -5,6 +5,8 @@ import type { FileVersionSummary } from '@nimbo/contracts';
 import { render, screen, within } from '@testing-library/react';
 import { axe } from 'jest-axe';
 
+import { dayLabel } from '../../lib/format-date';
+
 import { VersionTimeline, type VersionTimelineProps } from './version-timeline';
 
 const OWNER = '0b7e6c1a-6f0e-4c1b-9d3a-2f5b8e9a1c4d';
@@ -20,6 +22,7 @@ function version(overrides: Partial<FileVersionSummary> & { number: number }): F
     createdAt: '2026-10-08T16:42:00.000Z',
     createdById: OWNER,
     isCurrent: false,
+    keptUntil: null,
     ...overrides,
   };
 }
@@ -63,6 +66,22 @@ function itemOf(number: number): HTMLElement {
 }
 
 describe('VersionTimeline (014 CA-6, CA-20)', () => {
+  it.each([360, 1440])(
+    '021 CA-15: marca solo el original con el keptUntil real y conserva acciones a %i px',
+    async (width) => {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+      const keptUntil = '2027-01-15T16:00:00.000Z';
+      renderTimeline({ versions: [V5, { ...V4, keptUntil }, V3] });
+      const label = `Original conservado hasta ${dayLabel(keptUntil)} · no ocupa tu espacio`;
+      expect(within(itemOf(4)).getByText(label)).toBeTruthy();
+      expect(itemOf(5).textContent).not.toContain('Original conservado');
+      expect(itemOf(3).textContent).not.toContain('Original conservado');
+      expect(
+        within(itemOf(4)).getByRole('button', { name: 'Descargar la versión 4' }),
+      ).toBeTruthy();
+      expect((await axe(document.body)).violations).toEqual([]);
+    },
+  );
   it('CA-6: lista de la más reciente a la más antigua con número, fecha, autor, origen y tamaño', () => {
     renderTimeline();
 

@@ -35,6 +35,8 @@ const LIMITS = {
   retainedVersions: 3,
   readOnly: false,
   maxEditors: 0,
+  extraQuotaBytes: 0n,
+  extraQuotaUntil: null,
 };
 const VERIFIED: VerifiedUpload = { sizeBytes: 500n, kind: 'docx' };
 
@@ -98,7 +100,7 @@ describe('UploadRegistrar con reemplazo (014)', () => {
     expect(ctx.journal.entries.slice(0, 10)).toEqual([
       'tx:begin',
       'quota:lockUsage',
-      'nodes:findAccessibleById',
+      'nodes:findOwnedLiveFile',
       'session:transition:completada',
       'quota:lockUsage',
       'versions:nextNumber',

@@ -12,7 +12,9 @@ import { EditingModule } from './modules/editing';
 import { IDENTITY_THROTTLERS, IdentityModule } from './modules/identity';
 import { IntelligenceModule } from './modules/intelligence';
 import { NotificationsModule } from './modules/notifications';
+import { OptimizerModule } from './modules/optimizer';
 import { RealtimeModule } from './modules/realtime';
+import { SharingModule } from './modules/sharing';
 import { StorageModule } from './modules/storage';
 import { PlanLimitsBindingModule } from './plan-limits-binding.module';
 import {
@@ -28,6 +30,7 @@ import {
   SharedModule,
 } from './shared';
 import type { Env } from './shared';
+import { ShareeDirectoryBindingModule } from './sharee-directory-binding.module';
 import { UserDirectoryBindingModule } from './user-directory-binding.module';
 
 /**
@@ -43,14 +46,16 @@ import { UserDirectoryBindingModule } from './user-directory-binding.module';
  * módulo dinámico por referencia) y la edición (016), que recibe así las mismas instancias de `StorageModule` y de
  * `RealtimeModule`, y la indexación (019), que escucha `storage.file-version-created`, expone su estado y recibe las
  * mismas instancias de `StorageModule` (`IndexableFileGateway`) y de `RealtimeModule` (aviso en vivo);
- * `IUserDirectory` lo enlaza `UserDirectoryBindingModule` con la de `IdentityModule`.
+ * `IUserDirectory` lo enlaza `UserDirectoryBindingModule` con la de `IdentityModule`, e `IShareeDirectory` (012),
+ * `ShareeDirectoryBindingModule` con la misma, que usa la compartición (012) junto con la misma instancia de `StorageModule`. El optimizador (021) recibe la misma instancia de
+ * `StorageModule` (`OptimizableFileGateway`).
  */
 @Module({})
 export class AppModule {
   static forRoot(env: Env): DynamicModule {
     const identity = IdentityModule.forRoot(env);
-    // Una sola instancia de `storage`: `billing`, `backoffice` y `editing` la importan de forma explícita (009,
-    // ampliación de la decisión 1; 011; 016).
+    // Una sola instancia de `storage`: `billing`, `backoffice`, `editing` y `sharing` la importan de forma explícita
+    // (009, ampliación de la decisión 1; 011; 016; 012).
     const storage = StorageModule.forRoot(env);
     const realtime = RealtimeModule.forRoot(env, identity);
     return {
@@ -71,6 +76,7 @@ export class AppModule {
         AccessModule,
         PlanLimitsBindingModule,
         UserDirectoryBindingModule.forRoot(identity),
+        ShareeDirectoryBindingModule.forRoot(identity),
         storage,
         AuditHttpModule,
         BillingHttpModule.forRoot(env, storage),
@@ -78,6 +84,8 @@ export class AppModule {
         realtime,
         EditingModule.forRoot(env, { storage, realtime }),
         IntelligenceModule.forRoot(env, { storage, realtime }),
+        SharingModule.forRoot(env, storage),
+        OptimizerModule.forRoot(env, { storage }),
       ],
       providers: [PingQueue],
     };

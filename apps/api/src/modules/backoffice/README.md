@@ -33,7 +33,7 @@ eventos y tipos públicos). Nada de `infrastructure/**` cruza la frontera. Nombr
 - `run(actor, action)`: lo mismo y, si `action.locksAdminRoster` (acciones sobre cuentas, RN-7), toma el candado del
   padrón de Administradores **antes** de la comprobación; después `action.work()` y
   `IAuditLogger.recordInTransaction(action.event(resultado))` en la misma transacción: si el evento falla, la acción
-  se revierte.
+  se revierte. `event` puede devolver un evento o una lista (011b); `run` registra cada uno en orden.
 
 Un actor que ya no está `activa` recibe `403 SHARED_FORBIDDEN` antes de la acción o de la lectura, aunque su token siga
 vigente (RN-7, CA-14), y deja la bitácora `backoffice.actor.inactive` con `actorId` y `actorRole`. No autoriza por rol
@@ -73,6 +73,33 @@ para clientes; es `null` («—») en internas y en clientes sin suscripción, y
   `accountId`) y `backoffice.account.enrolled` (`actorId`, `accountId`, `role`). Nunca correo, nombre ni código de
   empleado. `identity.session.revoked` (`reason: account_suspended`, `count`, solo si revocó alguna sesión) la escribe
   `identity`: `AdminService` llama a `Suspension.logRevokedSessions()` después del commit, como el correo del alta.
+
+## Límites, cuota y vigencia de una cuenta (011b)
+
+`AccountAdjustmentsController` (`@Roles(ADMIN)`) valida con los contratos y delega en `AccountAdjustmentsService`, que
+compone `AccountDirectory` (`identity`: una cuenta interna o inexistente es el mismo `404`) y
+`SubscriptionAdministration` (`billing`). Las reglas que dependen del estado (`plan + extra >= usado`, fecha futura,
+tope de `2^53-1`) las decide la función `SECURITY DEFINER` de `billing` (ADR-0035); `billing` traduce sus códigos a
+sus errores. Toda respuesta es un `AccountLimits` por lista blanca (`account-limits.response.ts`): estado (`active`,
+`readOnly`, `personal` o `none`), plan, usado, cuota del plan, extra vigente y su fin, total y vencimiento; bytes como
+texto decimal. El día elegido (`YYYY-MM-DD`, Guatemala) se guarda como las 00:00 del día siguiente en Guatemala.
+
+| Ruta                                           | Respuesta                                           | Errores (`code`)                                                                                                                                                         |
+| ---------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/v1/backoffice/accounts/:id/limits`   | `200`; sin suscripción, `status: none`              | `404 IDENTITY_ACCOUNT_NOT_FOUND` (interna, inexistente o `:id` que no es UUID)                                                                                           |
+| `PUT /api/v1/backoffice/accounts/:id/quota`    | `200` con el extra nuevo (reemplaza al anterior)    | `404` · `422 BACKOFFICE_QUOTA_INVALID` (`fields` si el cuerpo no vale; sin suscripción) · `422 BACKOFFICE_QUOTA_BELOW_USAGE` (`details`: `usedBytes`, `totalQuotaBytes`) |
+| `DELETE /api/v1/backoffice/accounts/:id/quota` | `200` sin extra                                     | `404` · `422 BACKOFFICE_QUOTA_INVALID` (sin suscripción) · `422 BACKOFFICE_QUOTA_BELOW_USAGE`                                                                            |
+| `PUT /api/v1/backoffice/accounts/:id/validity` | `200` con el `vence_en` nuevo; sale de solo lectura | `404` · `422 BACKOFFICE_VALIDITY_NOT_EXTENDED` (Personal, sin suscripción, día no posterior al último vigente o anterior a hoy; `fields` si el cuerpo no vale)           |
+
+- La ficha corre en `InternalActionService.read`; los ajustes, en `run` sin el candado del padrón, con su evento contra
+  el cliente en la misma transacción: `account.quota_adjusted` (`extraBytes` y, si hay, `until`) o
+  `account.validity_adjusted` (`expiresAt`), más `subscription.read_only_exited` (010) si la cuenta salió de solo
+  lectura; `InternalAction.event` devuelve entonces una lista. Un rechazo no cambia ni audita nada, y ajustar no borra
+  archivos.
+- Extender la vigencia no cobra, no factura y no toca la renovación automática, el cambio programado ni los avisos de la
+  010; ajustar la cuota tampoco toca los avisos.
+- Bitácoras `backoffice.account.quota_adjusted` (`actorId`, `accountId`) y `backoffice.account.validity_adjusted`
+  (`actorId`, `accountId`, `exitedReadOnly`).
 
 ## Métricas (CA-12)
 

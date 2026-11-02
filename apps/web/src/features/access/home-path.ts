@@ -11,6 +11,8 @@ const ADMIN_ACCOUNTS = '/admin/cuentas';
 /** Rutas del área interna (011 plan §2): un solo lugar para `backoffice`, `identity` y `audit`. */
 export const INTERNAL_PATHS = {
   supportFiles: '/soporte/metadatos',
+  /** Papelera de un cliente, que Soporte restaura con motivo (011b CA-10, CA-11). */
+  supportTrash: '/soporte/papelera',
   adminAccounts: ADMIN_ACCOUNTS,
   adminNewAccount: `${ADMIN_ACCOUNTS}/nueva`,
   /** Catálogo de planes del Administrador (011 CA-8). */

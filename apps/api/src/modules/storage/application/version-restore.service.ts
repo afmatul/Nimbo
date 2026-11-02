@@ -68,7 +68,7 @@ interface Restoration {
 /**
  * Restaurar una versión (plan 014 §1, CA-9 a CA-12): crea una versión **nueva** de origen `restauracion` con el
  * contenido de una retenida; ninguna existente cambia. Tasa propia antes de resolver el archivo (sin oráculo) →
- * archivo con `accessibleNodes` → versión (404/409) → cuota (RN-9: sin máximo por archivo) → `copyObject` fuera de la
+ * archivo propio (`ownedNodes`, 012 CA-14) → versión (404/409) → cuota (RN-9: sin máximo por archivo) → `copyObject` fuera de la
  * transacción (como los bytes de una carga) → transacción que bajo `lockUsage` revalida todo y llama a
  * `FileVersionService.register` → poda y auditoría tras el commit. Si la transacción falla, purga la copia (Art. XI).
  */
@@ -110,7 +110,7 @@ export class VersionRestoreService {
 
   /** Ajeno, inexistente o en la papelera ⇒ 404 de nodo; versión ajena al archivo ⇒ 404; la actual ⇒ 409; cuota ⇒ 422. */
   private async resolveRestorable(actor: Actor, request: RestoreRequest): Promise<Restorable> {
-    const file = await this.nodes.findAccessibleById(actor, request.fileId);
+    const file = await this.nodes.findOwnedLiveFile(actor, request.fileId);
     if (file === null) throw new NodeNotFoundError();
     const source = await this.versions.find(actor, file.id, request.versionId);
     if (source === null) throw new VersionNotFoundError();

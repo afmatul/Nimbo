@@ -38,7 +38,8 @@ versiones). `index.spec.ts` fija esa lista (`RUNTIME_EXPORTS`). `StorageModule` 
 (adaptador `SqlNodeMetadataReader`); `backoffice` importa el mismo `DynamicModule` que la raíz. No salen el detector de
 tipos, `IExpiredUploadScanner`, el adaptador de auditoría ni los repositorios. Ni `StorageModule` ni
 `StorageWorkerModule` enlazan `I_PLAN_LIMITS_PROVIDER` (DF-51): lo hace la raíz de composición (`AppModule`,
-`WorkerModule`).
+`WorkerModule`). Desde 012 (PD-121), `index.ts` y `StorageModule` exportan también `WritableAccountPolicy`: `sharing`
+rechaza compartir desde una cuenta en solo lectura con la misma regla.
 
 ## Persistencia (005, PR-C)
 
@@ -184,6 +185,7 @@ STORAGE_NODE_NOT_FOUND` que un nodo ajeno, inexistente o en la papelera.
   `propietario_id = actor.id`, agrupadas por `tipo`) + `ITrashRepository.trashSummary` (raíces: una carpeta pesa lo que
   arrastró) en un `SpaceBreakdown`. La reutiliza la conciliación (T-05).
 - `FILE_BYTES_SQL` y `selectRows` (parámetros con nombre) viven en `node-sql.ts` y los comparten papelera y espacio.
+  Toda suma de versiones filtra con `COUNTED_VERSION_SQL`: un original conservado (014b) no cuenta en el espacio.
 - Pruebas: `space-measurer.spec.ts`, `space-summary.service.spec.ts`, `space.controller.spec.ts`,
   `storage-routes.contract.spec.ts` y `test/int/storage/space-summary.int-spec.ts`.
 
@@ -235,7 +237,7 @@ Pruebas: `upload-cleanup.processor.spec.ts` y `upload-cleanup.scheduler.spec.ts`
 | `UploadService`                            | `init` (reserva de cuota y URLs prefirmadas), `resume`, `complete`, `cancel`, `expire`             |
 | `UploadRegistrar`                          | Paso final de `complete`: CAS `activa → completada`, nombre definitivo, `archivo` + versión, cuota |
 | `QuotaService`                             | Máximo por archivo y cuota total con reservas de cargas activas (`QuotaPolicy`)                    |
-| `FileService`                              | Renombrar y mover archivos (006) y URL de descarga de 300 s                                        |
+| `FileService`                              | Ficha (012), renombrar y mover archivos (006) y URL de descarga de 300 s                           |
 | `FolderService` (006)                      | Crear, renombrar, mover y abrir carpetas, con migas                                                |
 | `TrashService` (006)                       | Mandar a la papelera, listar, resumir y restaurar                                                  |
 | `IObjectStorage` → `MinioStorageAdapter`   | Multipart, URLs prefirmadas (`Content-Length` firmado), `headObject`, `getRange`, copia, purga     |
@@ -245,7 +247,8 @@ Rutas (solo `CLIENT`; roles internos → 403, sin token → 401; un id que no es
 inexistente): `POST /uploads`, `POST /uploads/:uploadId/resume`, `POST /uploads/:uploadId/complete`,
 `DELETE /uploads/:uploadId`, `POST /files/:fileId/download-url` (y desde 006 `PATCH /files/:fileId` y
 `POST /files/:fileId/move`; desde 014 `GET /files/:fileId/versions`,
-`POST /files/:fileId/versions/:versionId/download-url` y `POST /files/:fileId/versions/:versionId/restore`). `init`, las
+`POST /files/:fileId/versions/:versionId/download-url` y `POST /files/:fileId/versions/:versionId/restore`; desde 012
+`GET /files/:fileId`). `init`, las
 dos `download-url` y `restore` (con su propio `RATE_LIMIT_VERSION_RESTORE_PER_MINUTE`) pasan por `IRateLimiter`.
 
 - Pruebas HTTP: `apps/api/test/int/storage/*.int-spec.ts` (`pnpm test:int`); aislamiento:
@@ -305,3 +308,24 @@ ambientes (rol dueño de las migraciones) está en `docs/operations/ambientes.md
 - **Multipart abandonados**: MinIO los limpia por su cuenta (`stale_uploads_expiry=24h`, revisión cada 6 h), es decir
   después del vencimiento de la carga. Es solo una red de seguridad; la limpieza real es `upload-cleanup`.
 - Resultado completo del spike: `specs/005-carga-y-descarga/plan.md` §8.
+
+## Lo compartido (012, T-03 y T-04)
+
+- `accessibleNodes(actor)` suma lo compartido con el actor (012 T-02), así que **solo las lecturas** lo usan:
+  `findAccessibleById` (ficha y descarga de la versión vigente), `findAccessibleFolder`, `listContents` dentro de una
+  carpeta, `breadcrumbs` (solo antepasados accesibles: en lo compartido las migas empiezan en la carpeta compartida),
+  las fachadas de edición e indexación y los accesos rápidos.
+- Toda escritura, todo destino y todo lo que solo hace el propietario usan `ownedNodes(actor)`: `findOwnedLiveFile`
+  (renombrar, mover, eliminar, reemplazar, historial, restaurar y descargar una versión retenida), `findOwnedFolder`
+  (destino de crear, subir, mover y restaurar), `findLiveFileByName`, `findTakenNames`, `findTakenFolderNames`,
+  `maxSubtreeDepth`, los `UPDATE` de nombre y carpeta, la papelera (`TypeOrmTrashRepository`) y la poda de originales.
+  `listContents` de la raíz también es solo lo propio (012 R-2). Un nodo compartido responde como inexistente (`404`,
+  012 CA-14).
+- `GET /folders/contents` responde `accessLevel` (`OWNER`, `EDITOR` o `VIEWER`): el nivel del actor sobre la carpeta
+  abierta según `PermissionResolver.levelFor` de `access` (en la raíz, `OWNER`). La web lo usa solo para ocultar
+  acciones (012b RN-1). Lo compartido no cuenta en el espacio ni en la cuota del destinatario (`propietario_id`).
+- `GET /files/:fileId` es la ficha del archivo (012 CA-12): `{ file: FileSummary, accessLevel }`, con
+  `FileService.getDetail` (`findAccessibleById` y `levelFor`). La abren el propietario y el destinatario; el historial
+  (`GET /files/:fileId/versions`) sigue siendo solo del propietario (CA-14). No se audita.
+- Pruebas: `test/isolation/storage-shared-writes.iso-spec.ts` recorre todas las rutas de escritura como Lector y Editor;
+  `test/int/storage/shared-access.int-spec.ts`, lo que el destinatario abre.

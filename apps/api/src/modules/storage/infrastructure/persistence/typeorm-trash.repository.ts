@@ -4,7 +4,7 @@ import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialE
 
 import { TransactionContext } from '../../../../shared';
 import type { Actor } from '../../../../shared';
-import { accessibleNodes, ownedTrashedNodes } from '../../../access';
+import { ownedNodes, ownedTrashedNodes } from '../../../access';
 import type {
   ITrashRepository,
   PurgeFile,
@@ -17,7 +17,6 @@ import type {
   TrashTotals,
 } from '../../application/ports/i-trash.repository.port';
 import type { File } from '../../domain/file';
-import type { FileKind } from '../../domain/file-kind';
 import type { Folder } from '../../domain/folder';
 import { FolderName } from '../../domain/folder-name.vo';
 import { FolderPath } from '../../domain/folder-path';
@@ -25,19 +24,29 @@ import type { TrashState } from '../../domain/trash-state';
 
 import { ArchivoOrmEntity } from './archivo.orm-entity';
 import { CarpetaOrmEntity } from './carpeta.orm-entity';
-import { FILE_BYTES_SQL, nodesIn, rebaseSubtree, selectRows } from './node-sql';
+import { toFile } from './node-mappers';
+import {
+  COUNTED_VERSION_SQL,
+  FILE_BYTES_SQL,
+  nodesIn,
+  rebaseSubtree,
+  selectRows,
+} from './node-sql';
 import type { Condition, NodeTable } from './node-sql';
 import { trashColumns } from './trash-columns';
-import { decodeTrashCursor, encodeTrashCursor } from './trash-cursor';
-import { toFile } from './typeorm-node.repository';
+import { afterCursor, selectTrashEntries, toEntry, trashPageOf } from './trash-entries';
+import type { TrashEntryRow } from './trash-entries';
 
 /** Columnas de papelera de un nodo que vuelve. */
 const LIVE = trashColumns(null);
 
-/** Bytes de una carpeta de la papelera: las versiones de los archivos que arrastró (RN-6, en `numeric` sin pérdida). */
+/**
+ * Bytes de una carpeta de la papelera: las versiones que cuentan de los archivos que arrastró (RN-6, 014b CA-10; en
+ * `numeric` sin pérdida).
+ */
 const FOLDER_BYTES_SQL =
   '(SELECT COALESCE(SUM(v.tamano_bytes), 0) FROM archivo h JOIN version_archivo v ON v.archivo_id = h.id ' +
-  'WHERE h.eliminado_con_carpeta_id = c.id)';
+  `WHERE h.eliminado_con_carpeta_id = c.id AND ${COUNTED_VERSION_SQL})`;
 
 /** Raíces de la papelera del actor con su tamaño: `ownedTrashedNodes` va dentro de cada rama (ADR-0005). */
 const trashRootsSql = (actor: Actor): Condition => {
@@ -52,33 +61,6 @@ const trashRootsSql = (actor: Actor): Condition => {
     parameters: { ...files.parameters, ...folders.parameters },
   };
 };
-
-/** Fila de `trashRootsSql` con su carpeta original (si sigue existiendo). */
-interface TrashEntryRow {
-  readonly tipo: TrashItemType;
-  readonly id: string;
-  readonly nombre: string;
-  readonly clase: FileKind | null;
-  readonly eliminado_en: Date;
-  readonly purgar_en: Date;
-  readonly tamano: string;
-  readonly padre_id: string | null;
-  readonly padre_nombre: string | null;
-}
-
-const toEntry = (row: TrashEntryRow): TrashEntry => ({
-  id: row.id,
-  type: row.tipo,
-  name: row.nombre,
-  kind: row.clase,
-  sizeBytes: BigInt(row.tamano),
-  originalFolder:
-    row.padre_id === null || row.padre_nombre === null
-      ? null
-      : { id: row.padre_id, name: row.padre_nombre },
-  deletedAt: row.eliminado_en,
-  purgeAt: row.purgar_en,
-});
 
 interface TrashedFolderRow {
   readonly id: string;
@@ -104,7 +86,7 @@ const toTrashedFolder = (row: TrashedFolderRow): TrashedFolder => ({
   sizeBytes: BigInt(row.tamano),
 });
 
-/** Fila de `purgeTargets`: un archivo con la suma y las claves de sus versiones. */
+/** Fila de `purgeTargets`: un archivo con lo que libera (sus versiones que cuentan) y las claves de todas. */
 interface PurgeFileRow {
   readonly id: string;
   readonly tamano: string;
@@ -123,19 +105,12 @@ const ROOT_TABLE: Readonly<Record<TrashItemType, { table: NodeTable; alias: stri
   folder: { table: 'carpeta', alias: 'c' },
 };
 
-/** Página con `nextCursor` (`[tipo, eliminado_en, id]`) en la última fila si quedan más. */
-const pageOf = (entries: readonly TrashEntry[], hasMore: boolean): TrashPage => {
-  const last = entries.at(-1);
-  if (!hasMore || last === undefined) return { items: entries, nextCursor: null };
-  const position = { type: last.type, deletedAt: last.deletedAt, id: last.id };
-  return { items: entries, nextCursor: encodeTrashCursor(position) };
-};
-
 /**
  * `ITrashRepository` sobre Postgres (plan 006 §2). Las raíces se leen y escriben con `ownedTrashedNodes(actor)` y lo
- * vivo con `accessibleNodes(actor)`, siempre dentro de la consulta; lo arrastrado se alcanza por
- * `eliminado_con_carpeta_id` de una raíz propia. Todo método toma el `EntityManager` de `requireActorScope(actor)`
- * (la RLS es la segunda barrera). `@Inject` explícito: con `tsx` (esbuild) no hay `design:paramtypes`.
+ * vivo con `ownedNodes(actor)` (lo compartido no se elimina, 012 CA-14), siempre dentro de la consulta; lo arrastrado
+ * se alcanza por `eliminado_con_carpeta_id` de una raíz propia. Todo método toma el `EntityManager` de
+ * `requireActorScope(actor)` (la RLS es la segunda barrera). `@Inject` explícito: con `tsx` (esbuild) no hay
+ * `design:paramtypes`.
  */
 @Injectable()
 export class TypeOrmTrashRepository implements ITrashRepository {
@@ -143,7 +118,7 @@ export class TypeOrmTrashRepository implements ITrashRepository {
 
   async markFileTrashed(actor: Actor, fileId: string, state: TrashState): Promise<void> {
     await this.update(actor, ArchivoOrmEntity, trashColumns(state), [
-      nodesIn(accessibleNodes(actor), 'id', 'archivo'),
+      nodesIn(ownedNodes(actor), 'id', 'archivo'),
       { sql: 'id = :fileId', parameters: { fileId } },
     ]);
   }
@@ -152,39 +127,31 @@ export class TypeOrmTrashRepository implements ITrashRepository {
   async markFolderSubtreeTrashed(actor: Actor, folder: Folder, state: TrashState): Promise<number> {
     const carried = trashColumns(state.carriedBy(folder.id));
     const subtree = { subtree: `${folder.path.value}%` };
-    const liveFolder = nodesIn(accessibleNodes(actor), 's.id', 'carpeta');
+    const liveFolder = nodesIn(ownedNodes(actor), 's.id', 'carpeta');
     const files = await this.update(actor, ArchivoOrmEntity, carried, [
-      nodesIn(accessibleNodes(actor), 'id', 'archivo'),
+      nodesIn(ownedNodes(actor), 'id', 'archivo'),
       {
         sql: `carpeta_id IN (SELECT s.id FROM carpeta s WHERE s.ruta LIKE :subtree AND ${liveFolder.sql})`,
         parameters: { ...subtree, ...liveFolder.parameters },
       },
     ]);
     const folders = await this.update(actor, CarpetaOrmEntity, carried, [
-      nodesIn(accessibleNodes(actor), 'id', 'carpeta'),
+      nodesIn(ownedNodes(actor), 'id', 'carpeta'),
       {
         sql: 'ruta LIKE :subtree AND id <> :rootId',
         parameters: { ...subtree, rootId: folder.id },
       },
     ]);
     const root = await this.update(actor, CarpetaOrmEntity, trashColumns(state), [
-      nodesIn(accessibleNodes(actor), 'id', 'carpeta'),
+      nodesIn(ownedNodes(actor), 'id', 'carpeta'),
       { sql: 'id = :rootId', parameters: { rootId: folder.id } },
     ]);
     return files + folders + root;
   }
 
   async listTrash(actor: Actor, query: TrashListQuery): Promise<TrashPage> {
-    const after = query.cursor === undefined ? null : decodeTrashCursor(query.cursor);
-    const filter: Condition =
-      after === null
-        ? { sql: 'true', parameters: {} }
-        : {
-            sql: '(n.eliminado_en, n.id) < (:afterDeletedAt, :afterId)',
-            parameters: { afterDeletedAt: after.deletedAt, afterId: after.id },
-          };
-    const rows = await this.entries(actor, filter, query.limit + 1);
-    return pageOf(rows.slice(0, query.limit).map(toEntry), rows.length > query.limit);
+    const rows = await this.entries(actor, afterCursor(query.cursor), query.limit + 1);
+    return trashPageOf(rows, query.limit);
   }
 
   async trashSummary(actor: Actor): Promise<TrashTotals> {
@@ -287,7 +254,7 @@ export class TypeOrmTrashRepository implements ITrashRepository {
         : this.carriedBy(actor, item.id, 'a.eliminado_con_carpeta_id');
     const rows = await this.select<PurgeFileRow>(
       actor,
-      `SELECT a.id, COALESCE(SUM(v.tamano_bytes), 0)::text AS tamano,
+      `SELECT a.id, COALESCE(SUM(v.tamano_bytes) FILTER (WHERE ${COUNTED_VERSION_SQL}), 0)::text AS tamano,
               COALESCE(array_agg(v.clave_objeto ORDER BY v.creada_en) FILTER (WHERE v.id IS NOT NULL), '{}') AS claves
          FROM archivo a LEFT JOIN version_archivo v ON v.archivo_id = a.id
         WHERE ${files.sql}
@@ -365,20 +332,15 @@ export class TypeOrmTrashRepository implements ITrashRepository {
     };
   }
 
-  /** Raíces de la papelera que cumplen `filter`, `eliminado_en DESC, id DESC`, con su carpeta original. */
+  /** Raíces de la papelera del actor que cumplen `filter`, con su carpeta original. */
   private entries(actor: Actor, filter: Condition, take: number): Promise<TrashEntryRow[]> {
     const roots = trashRootsSql(actor);
-    return this.select<TrashEntryRow>(
-      actor,
-      `SELECT n.tipo, n.id, n.nombre, n.clase, n.eliminado_en, n.purgar_en, n.tamano::text AS tamano,
-              p.id AS padre_id, p.nombre AS padre_nombre
-         FROM (${roots.sql}) n
-         LEFT JOIN carpeta p ON p.id = n.padre_id AND p.propietario_id = :access_actor_id
-        WHERE ${filter.sql}
-        ORDER BY n.eliminado_en DESC, n.id DESC
-        LIMIT :take`,
-      { ...roots.parameters, ...filter.parameters, take },
-    );
+    return selectTrashEntries(this.manager(actor), {
+      roots,
+      ownerParameter: 'access_actor_id',
+      filter,
+      take,
+    });
   }
 
   private select<T>(

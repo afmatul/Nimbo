@@ -46,6 +46,8 @@ const LIMITS: PlanLimits = {
   retainedVersions: 10,
   readOnly: false,
   maxEditors: 3,
+  extraQuotaBytes: 0n,
+  extraQuotaUntil: null,
 };
 
 function setup(limits: PlanLimits = LIMITS) {
@@ -142,14 +144,14 @@ describe('VersionRestoreService (plan 014 §1, CA-9 a CA-12, CA-19)', () => {
     expect(journal.entries).toEqual([
       'rate:consume',
       'tx:begin',
-      'nodes:findAccessibleById',
+      'nodes:findOwnedLiveFile',
       'versions:find',
       'quota:lockAndReadUsage',
       'tx:end',
       'storage:copyObject',
       'tx:begin',
       'quota:lockUsage',
-      'nodes:findAccessibleById',
+      'nodes:findOwnedLiveFile',
       'versions:find',
       'quota:lockAndReadUsage',
       'quota:lockUsage',
@@ -160,7 +162,7 @@ describe('VersionRestoreService (plan 014 §1, CA-9 a CA-12, CA-19)', () => {
       'tx:end',
       `events:${FILE_VERSION_CREATED}`,
       'tx:begin',
-      'nodes:findAccessibleById',
+      'nodes:findOwnedLiveFile',
       'versions:list',
       'tx:end',
       `audit:${AuditAction.FILE_VERSION_RESTORED}`,

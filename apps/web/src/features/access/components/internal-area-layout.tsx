@@ -1,7 +1,7 @@
 'use client';
 
 import type { RoleName } from '@nimbo/contracts';
-import { BarChart3, FileSearch, LayoutGrid, Users } from 'lucide-react';
+import { BarChart3, FileSearch, LayoutGrid, Trash2, Users } from 'lucide-react';
 import type { JSX, ReactNode } from 'react';
 
 import { AppLayout, type NavItem } from '../../../components/nimbo/app-layout';
@@ -24,6 +24,7 @@ const INTERNAL_NAV: Readonly<Record<RoleName, readonly NavEntry[]>> = {
   ],
   SUPPORT: [
     { label: 'Metadatos de archivos', icon: FileSearch, href: INTERNAL_PATHS.supportFiles },
+    { label: 'Papelera', icon: Trash2, href: INTERNAL_PATHS.supportTrash },
   ],
   OPERATOR: [{ label: 'Métricas', icon: BarChart3, href: INTERNAL_PATHS.operatorMetrics }],
 };

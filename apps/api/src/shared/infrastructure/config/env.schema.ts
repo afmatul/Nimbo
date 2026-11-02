@@ -25,6 +25,8 @@ const LOCAL_JWT_SECRET_MESSAGE = 'no puede ser el valor de desarrollo de .env.ex
 
 const DEFAULT_API_PORT = 3000;
 const DEFAULT_WORKER_PORT = 3001;
+/** Salud interna del proceso `worker-optimizer` (ADR-0038): otro puerto para que los dos convivan en el host en local. */
+const DEFAULT_WORKER_OPTIMIZER_PORT = 3003;
 const DEFAULT_APP_VERSION = 'dev';
 const DEFAULT_MINIO_BUCKET = 'nimbo';
 const DEFAULT_MINIO_REGION = 'us-east-1';
@@ -98,10 +100,41 @@ const DEFAULT_INDEX_RECONCILE_BATCH_SIZE = 100;
 const MAX_INDEX_RECONCILE_BATCH_SIZE = 1000;
 /** «Reintentar» por usuario y minuto (019 CA-13): es una acción manual y rara; el límite frena la repetición. */
 const DEFAULT_RATE_LIMIT_INDEX_RETRY_PER_MINUTE = 10;
+/**
+ * Intentos de compartir por propietario y minuto (012 CA-7, S-4, RNF-07): holgado para quien comparte a mano y bajo
+ * para quien prueba correos (la respuesta de CA-3 dice si un correo tiene cuenta, §5).
+ */
+const DEFAULT_SHARING_RATE_LIMIT_PER_MINUTE = 20;
 /** Modelo de embeddings por defecto (ADR-0007): se vectoriza a 768 dimensiones (ADR-0003). */
 const DEFAULT_GEMINI_EMBEDDING_MODEL = 'gemini-embedding-001';
+/** Modelo que redacta las respuestas del agente (020 D-7, RNF-09). */
+const DEFAULT_GEMINI_CHAT_MODEL = 'gemini-3.5-flash';
+/** Largo máximo inicial de la pregunta al agente (020 RN-7, P-6). */
+const DEFAULT_AGENT_MAX_QUESTION_CHARS = 1000;
+/** Plazos iniciales del modelo hasta el primer trozo y entre trozos (020 D-7, CA-15); se miden en T-09. */
+const DEFAULT_AGENT_MODEL_FIRST_CHUNK_TIMEOUT_MS = 5_000;
+const DEFAULT_AGENT_MODEL_IDLE_TIMEOUT_MS = 5_000;
 /** Ghostscript en Linux y macOS; en Windows se configura `gswin64c` (019 D-1). */
 const DEFAULT_GHOSTSCRIPT_BIN = 'gs';
+/** Tope de bytes optimizable (021 plan §6 B, medido en el spike de ADR-0037): 40 MB; por encima, `no_disponible`. */
+const DEFAULT_OPTIMIZER_MAX_FILE_BYTES = 40_000_000;
+/** Intentos de un trabajo de optimización: 1 + 2 reintentos (`architecture.md` §8). */
+const DEFAULT_OPTIMIZER_MAX_ATTEMPTS = 3;
+/** Tiempo límite de una operación de `sharp` (021 plan §6 B): unas 3 veces el peor caso medido (34,3 s). */
+const DEFAULT_OPTIMIZER_TIMEOUT_MS = 100_000;
+/** Cada cuánto la ficha vuelve a consultar una optimización en curso (021 plan §6 A, RN-10). */
+const DEFAULT_OPTIMIZER_POLL_INTERVAL_MS = 3000;
+/** Calcular y optimizar por cuenta y minuto (021 plan §6 A, RNF-07). */
+const DEFAULT_RATE_LIMIT_OPTIMIZER_PER_MINUTE = 10;
+/** Píxeles decodificados optimizables (021 plan §6 B, RN-8): 36 MP; por encima, `no_disponible(pixeles)`. */
+const DEFAULT_OPTIMIZER_MAX_PIXELS = 36_000_000;
+/** Ahorro mínimo en porcentaje (021 plan §6 A, RN-2); se exige junto con el mínimo en bytes. */
+const DEFAULT_OPTIMIZER_MIN_SAVED_PERCENT = 20;
+/** Ahorro mínimo en bytes (021 plan §6 A, RN-2): 1 MB. */
+const DEFAULT_OPTIMIZER_MIN_SAVED_BYTES = 1_000_000;
+/** Calidad JPEG con mozjpeg (021 plan §6 B, ADR-0037). */
+const DEFAULT_OPTIMIZER_JPEG_QUALITY = 80;
+const MAX_PERCENT = 100;
 
 /**
  * Valor de desarrollo de `JWT_ACCESS_SECRET` que trae `.env.example` (plan 002 §6.10). Público a propósito: en
@@ -187,8 +220,14 @@ const sharedEnvBaseSchema = z.object({
 /** Lo que `SharedModule` y sus piezas internas necesitan; cada proceso provee un superconjunto. */
 export type SharedEnvBase = z.infer<typeof sharedEnvBaseSchema>;
 
-/** Ambos procesos comparten el mismo `.env` (CA-19), así que ambos validan el puerto interno de salud. */
+/** Puerto de salud del general; el `api` conserva su validación previa y el especializado tiene su propio puerto. */
 const workerPortShape = { WORKER_PORT: port(DEFAULT_WORKER_PORT) };
+
+/**
+ * Puerto de salud del proceso `worker-optimizer` (ADR-0038), sin publicar nunca (CA-23). Solo lo lee su entrypoint;
+ * el `api` no lo declara.
+ */
+const workerOptimizerPortShape = { WORKER_OPTIMIZER_PORT: port(DEFAULT_WORKER_OPTIMIZER_PORT) };
 
 /**
  * MinIO, **una sola definición** que componen `api` y `worker` (005 plan §5): el `api` firma y valida cargas y el
@@ -279,10 +318,41 @@ const indexingApiShape = {
 };
 
 /**
- * Indexación en el `worker` (019 plan §5): tope indexable, conciliación, Ghostscript y el proveedor de embeddings.
- * `GEMINI_API_KEY` es opcional: sin ella la indexación termina `fallido/proveedor_no_disponible` y el resto sigue
- * (RNF-09); el `api` nunca la lee (RN-9).
+ * Tiempo límite compartido por el `api` (caducidad) y `worker-optimizer` (sharp), con una sola definición.
+ * Los intentos los fija únicamente el `api` al encolar; el consumidor consulta `job.opts.attempts`.
  */
+const optimizerTimeoutShape = {
+  OPTIMIZER_TIMEOUT_MS: positiveInt(DEFAULT_OPTIMIZER_TIMEOUT_MS),
+};
+
+/** Optimizador en el `api`: intentos al encolar, tope de bytes, intervalo de consulta y límite de tasa. */
+const optimizerApiShape = {
+  OPTIMIZER_MAX_ATTEMPTS: positiveInt(DEFAULT_OPTIMIZER_MAX_ATTEMPTS),
+  OPTIMIZER_MAX_FILE_BYTES: positiveInt(DEFAULT_OPTIMIZER_MAX_FILE_BYTES),
+  OPTIMIZER_POLL_INTERVAL_MS: positiveInt(DEFAULT_OPTIMIZER_POLL_INTERVAL_MS),
+  RATE_LIMIT_OPTIMIZER_PER_MINUTE: positiveInt(DEFAULT_RATE_LIMIT_OPTIMIZER_PER_MINUTE),
+};
+
+/** `worker-optimizer` (021 plan §6): tope de píxeles (RN-8), umbral de ahorro (RN-2) y calidad JPEG. */
+const optimizerWorkerShape = {
+  OPTIMIZER_MAX_PIXELS: positiveInt(DEFAULT_OPTIMIZER_MAX_PIXELS),
+  OPTIMIZER_MIN_SAVED_PERCENT: intBetween(1, MAX_PERCENT - 1, DEFAULT_OPTIMIZER_MIN_SAVED_PERCENT),
+  OPTIMIZER_MIN_SAVED_BYTES: positiveInt(DEFAULT_OPTIMIZER_MIN_SAVED_BYTES),
+  OPTIMIZER_JPEG_QUALITY: intBetween(1, MAX_PERCENT, DEFAULT_OPTIMIZER_JPEG_QUALITY),
+};
+
+/**
+ * Proveedor Gemini, **una sola definición** para el `worker` (vectoriza los fragmentos, 019) y el `api` (vectoriza la
+ * pregunta al agente en proceso, 020 D-8; enmienda RN-9 de la 019). `GEMINI_API_KEY` es opcional: sin ella la
+ * indexación termina `fallido/proveedor_no_disponible`, el agente responde `AGENT_UNAVAILABLE` y el resto sigue
+ * (RNF-09). Nunca llega al navegador.
+ */
+const geminiShape = {
+  GEMINI_API_KEY: optionalText(),
+  GEMINI_EMBEDDING_MODEL: nonEmpty().default(DEFAULT_GEMINI_EMBEDDING_MODEL),
+};
+
+/** Indexación en el `worker` (019 plan §5): tope indexable, conciliación y Ghostscript. */
 const indexingWorkerShape = {
   INDEXING_MAX_FILE_BYTES: positiveInt(DEFAULT_INDEXING_MAX_FILE_BYTES),
   INDEX_RECONCILE_INTERVAL_MINUTES: positiveInt(DEFAULT_INDEX_RECONCILE_INTERVAL_MINUTES),
@@ -292,8 +362,19 @@ const indexingWorkerShape = {
     DEFAULT_INDEX_RECONCILE_BATCH_SIZE,
   ),
   GHOSTSCRIPT_BIN: nonEmpty().default(DEFAULT_GHOSTSCRIPT_BIN),
-  GEMINI_API_KEY: optionalText(),
-  GEMINI_EMBEDDING_MODEL: nonEmpty().default(DEFAULT_GEMINI_EMBEDDING_MODEL),
+};
+
+/** Compartir con otro cliente en el `api` (012 plan §2, CA-7). */
+const sharingApiShape = {
+  SHARING_RATE_LIMIT_PER_MINUTE: positiveInt(DEFAULT_SHARING_RATE_LIMIT_PER_MINUTE),
+};
+
+/** Agente con citas en el `api` (020 plan D-7, D-8): modelo, largo máximo de la pregunta (RN-7) y plazos (CA-15). */
+const agentApiShape = {
+  GEMINI_CHAT_MODEL: nonEmpty().default(DEFAULT_GEMINI_CHAT_MODEL),
+  AGENT_MAX_QUESTION_CHARS: positiveInt(DEFAULT_AGENT_MAX_QUESTION_CHARS),
+  AGENT_MODEL_FIRST_CHUNK_TIMEOUT_MS: positiveInt(DEFAULT_AGENT_MODEL_FIRST_CHUNK_TIMEOUT_MS),
+  AGENT_MODEL_IDLE_TIMEOUT_MS: positiveInt(DEFAULT_AGENT_MODEL_IDLE_TIMEOUT_MS),
 };
 
 /** Purga programada de la papelera en el `worker` (006 plan §4, CA-19). */
@@ -355,8 +436,9 @@ const renewalReminderShape = {
 /**
  * Forma del entorno del `worker`: el contrato común, su puerto de salud, MinIO, el barrido de cargas (005), la purga
  * de la papelera (006), la conciliación de espacio (007), la de suscripciones y el reintento de facturas (009), la
- * indexación (019) y el SMTP (001 plan §6.10); sin `PORT` ni `MINIO_PUBLIC_ENDPOINT`. `SMTP_PASSWORD` y
- * `GEMINI_API_KEY` se declaran **solo** aquí.
+ * indexación con Gemini (019) y el SMTP (001 plan §6.10); sin configuración del optimizador, `PORT` ni
+ * `MINIO_PUBLIC_ENDPOINT`. `SMTP_PASSWORD` se declara **solo** aquí; `GEMINI_API_KEY` también la declara el `api`,
+ * con la misma definición (020 D-8).
  */
 export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...workerPortShape,
@@ -370,6 +452,7 @@ export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...renewalReminderShape,
   ...indexingQueueShape,
   ...indexingWorkerShape,
+  ...geminiShape,
   SMTP_HOST: nonEmpty(),
   SMTP_PORT: requiredPort(),
   SMTP_TLS: oneOf(['none', 'starttls', 'implicit']),
@@ -381,8 +464,8 @@ export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
 /**
  * Forma del entorno del `api`: además el puerto HTTP público, MinIO, la carga de archivos (005), las carpetas y los
  * accesos rápidos (006), el límite de intentos del canal en vivo (015), la edición (016), los intentos y el reintento
- * de la indexación (019), la URL pública de `web`, CORS y la clave que firma los tokens de acceso (002), que se declara
- * **solo** aquí.
+ * de la indexación (019), Gemini y el agente (020), los intentos de compartir (012), el optimizador (021), la URL
+ * pública de `web`, CORS y la clave que firma los tokens de acceso (002), que se declara **solo** aquí.
  */
 export const apiEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...workerPortShape,
@@ -396,6 +479,11 @@ export const apiEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...editingApiShape,
   ...indexingQueueShape,
   ...indexingApiShape,
+  ...optimizerTimeoutShape,
+  ...optimizerApiShape,
+  ...geminiShape,
+  ...agentApiShape,
+  ...sharingApiShape,
   WEB_PUBLIC_URL: url(),
   CORS_ORIGIN: urlList(),
   JWT_ACCESS_SECRET: z.string().min(JWT_SECRET_MIN_LENGTH, JWT_SECRET_LENGTH_MESSAGE),
@@ -482,6 +570,18 @@ const refineWorkerEnv = (
 
 /** Entorno validado del `worker`. */
 export const workerEnvSchema = workerEnvObjectSchema.superRefine(refineWorkerEnv);
+
+/**
+ * Entorno del proceso `worker-optimizer` (ADR-0038, PD-159): solo lo que su composición lee. La base común (registro,
+ * base de datos, Redis), MinIO, el optimizador y su puerto de salud; sin SMTP, Gemini, indexación ni configuración de
+ * mantenimiento de storage/billing. Sus variables ajenas no le impiden arrancar. Sin reglas entre variables.
+ */
+export const workerOptimizerEnvSchema = sharedEnvBaseSchema.extend({
+  ...workerOptimizerPortShape,
+  ...minioShape,
+  ...optimizerTimeoutShape,
+  ...optimizerWorkerShape,
+});
 
 /** Entorno validado del `api`. */
 export const apiEnvSchema = apiEnvObjectSchema.superRefine(refineApiEnv);
