@@ -122,8 +122,8 @@ beforeAll(() => {
 
 afterEach(() => jest.useRealTimers());
 
-describe('Accesibilidad del diálogo «Compartir» (spec 012b CA-7)', () => {
-  it('foco: entra al correo, Escape cierra y vuelve al disparador', async () => {
+describe('Accesibilidad del diálogo «Compartir» a 360 y 1440 px (spec 012b CA-7)', () => {
+  it('CA-7: foco: entra al correo, Escape cierra y vuelve al disparador', async () => {
     const dialog = await openDialog(fakeSharingApi());
 
     expect(document.activeElement).toBe(
@@ -135,30 +135,30 @@ describe('Accesibilidad del diálogo «Compartir» (spec 012b CA-7)', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Abrir compartir' }));
   });
 
-  it('cargando', async () => {
+  it('CA-7: cargando', async () => {
     await openDialog(fakeSharingApi());
     await expectNoBlockingViolations();
   });
 
-  it('vacía', async () => {
+  it('CA-7: vacía', async () => {
     await openDialog(fakeSharingApi({ listAccess: accessOf() }));
     await screen.findByText('Todavía no compartiste esto con nadie.');
     await expectNoBlockingViolations();
   });
 
-  it('lista de accesos con uno directo y uno heredado', async () => {
+  it('CA-7: lista de accesos con uno directo y uno heredado', async () => {
     await openDialog(fakeSharingApi({ listAccess: accessOf(directEntry(), INHERITED_ENTRY) }));
     await screen.findByText(/Viene de «Proyecto Alpha»/);
     await expectNoBlockingViolations();
   });
 
-  it('error de carga', async () => {
+  it('CA-7: error de carga', async () => {
     await openDialog(fakeSharingApi({ listAccess: jest.fn(() => Promise.reject(new Error())) }));
     await screen.findByText(/No pudimos cargar quién tiene acceso/);
     await expectNoBlockingViolations();
   });
 
-  it('compartiendo: «Compartiendo…» pasados 2 s', async () => {
+  it('CA-7: compartiendo: «Compartiendo…» pasados 2 s', async () => {
     jest.useFakeTimers();
     const user = userEvent.setup({ advanceTimers: (ms) => jest.advanceTimersByTime(ms) });
     render(
@@ -176,7 +176,7 @@ describe('Accesibilidad del diálogo «Compartir» (spec 012b CA-7)', () => {
     await expectNoBlockingViolations();
   });
 
-  it('éxito', async () => {
+  it('CA-7: éxito', async () => {
     const share = jest.fn(() => Promise.resolve(directEntry()));
     await openDialog(fakeSharingApi({ listAccess: accessOf(), share }));
     await shareWith('juan@nimbo.gt');
@@ -189,7 +189,7 @@ describe('Accesibilidad del diálogo «Compartir» (spec 012b CA-7)', () => {
     ['contigo mismo', 422, SHARING_ERROR_CODES.SHARING_CANNOT_SHARE_WITH_SELF, {}],
     ['solo lectura', 403, STORAGE_ERROR_CODES.STORAGE_ACCOUNT_READ_ONLY, {}],
     ['demasiados intentos', 429, SHARED_ERROR_CODES.TOO_MANY_REQUESTS, { retryAfterSeconds: 60 }],
-  ])('%s: el error se anuncia con su acción', async (_state, status, code, details) => {
+  ])('CA-7: %s: el error se anuncia con su acción', async (_state, status, code, details) => {
     await openDialog(
       fakeSharingApi({ listAccess: accessOf(), share: rejectWith(status, code, details) }),
     );
@@ -198,7 +198,7 @@ describe('Accesibilidad del diálogo «Compartir» (spec 012b CA-7)', () => {
     await expectNoBlockingViolations();
   });
 
-  it('nivel cambiado', async () => {
+  it('CA-7: nivel cambiado', async () => {
     const share = jest.fn(() => Promise.resolve(directEntry({ level: 'VIEWER' })));
     await openDialog(fakeSharingApi({ listAccess: accessOf(directEntry()), share }));
     await userEvent.selectOptions(
@@ -209,13 +209,13 @@ describe('Accesibilidad del diálogo «Compartir» (spec 012b CA-7)', () => {
     await expectNoBlockingViolations();
   });
 
-  it('solo lectura de la cuenta: solo se ofrece bajar a Lector', async () => {
+  it('CA-7: solo lectura de la cuenta: solo se ofrece bajar a Lector', async () => {
     await openDialog(fakeSharingApi({ listAccess: accessOf(directEntry()) }), true);
     await screen.findByRole('combobox', { name: 'Nivel de Juan Cortés' });
     await expectNoBlockingViolations();
   });
 
-  it('confirmar quitar y quitando', async () => {
+  it('CA-7: confirmar quitar y quitando', async () => {
     jest.useFakeTimers();
     const user = userEvent.setup({ advanceTimers: (ms) => jest.advanceTimersByTime(ms) });
     render(
@@ -255,43 +255,43 @@ async function chooseLeave(): Promise<HTMLElement> {
   return screen.getByRole('alertdialog');
 }
 
-describe('Accesibilidad de «Compartidos conmigo» (spec 012b CA-7)', () => {
-  it('cargando', async () => {
+describe('Accesibilidad de «Compartidos conmigo» a 360 y 1440 px (spec 012b CA-7)', () => {
+  it('CA-7: cargando', async () => {
     await renderReceived(fakeSharingApi());
     await expectNoBlockingViolations();
   });
 
-  it('con elementos', async () => {
+  it('CA-7: con elementos', async () => {
     await renderReceived(withTwo());
     await expectNoBlockingViolations();
   });
 
-  it('vacía', async () => {
+  it('CA-7: vacía', async () => {
     await renderReceived(fakeSharingApi({ listReceived: receivedOf() }));
     await expectNoBlockingViolations();
   });
 
-  it('error de carga', async () => {
+  it('CA-7: error de carga', async () => {
     await renderReceived(
       fakeSharingApi({ listReceived: jest.fn(() => Promise.reject(new Error())) }),
     );
     await expectNoBlockingViolations();
   });
 
-  it('menú de la fila abierto', async () => {
+  it('CA-7: menú de la fila abierto', async () => {
     await renderReceived(withTwo());
     await userEvent.click(screen.getByRole('button', { name: `Acciones de ${DOCX}` }));
     await expectNoBlockingViolations();
   });
 
-  it('confirmar salir: el foco empieza en «Cancelar»', async () => {
+  it('CA-7: confirmar salir: el foco empieza en «Cancelar»', async () => {
     await renderReceived(withTwo());
     const dialog = await chooseLeave();
     expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Cancelar' }));
     await expectNoBlockingViolations();
   });
 
-  it('cancelar salir devuelve el foco al ⋮ de la fila', async () => {
+  it('CA-7: cancelar salir devuelve el foco al ⋮ de la fila', async () => {
     await renderReceived(withTwo());
     const dialog = await chooseLeave();
     await userEvent.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
@@ -301,13 +301,13 @@ describe('Accesibilidad de «Compartidos conmigo» (spec 012b CA-7)', () => {
     );
   });
 
-  it('saliendo', async () => {
+  it('CA-7: saliendo', async () => {
     await renderReceived(withTwo());
     await userEvent.click(within(await chooseLeave()).getByRole('button', { name: 'Salir' }));
     await expectNoBlockingViolations();
   });
 
-  it('salió', async () => {
+  it('CA-7: salió', async () => {
     await renderReceived(withTwo({ leave: jest.fn(() => Promise.resolve()) }));
     await userEvent.click(within(await chooseLeave()).getByRole('button', { name: 'Salir' }));
     await screen.findByText(`Saliste de «${DOCX}».`);
@@ -317,14 +317,14 @@ describe('Accesibilidad de «Compartidos conmigo» (spec 012b CA-7)', () => {
   it.each([
     ['acceso inexistente', rejectWith(404, SHARING_ERROR_CODES.SHARING_SHARE_NOT_FOUND)],
     ['sin conexión', jest.fn(() => Promise.reject(new TypeError('Failed to fetch')))],
-  ])('error al salir: %s', async (_state, leave) => {
+  ])('CA-7, CA-11: error al salir: %s', async (_state, leave) => {
     await renderReceived(withTwo({ leave }));
     await userEvent.click(within(await chooseLeave()).getByRole('button', { name: 'Salir' }));
     await screen.findByRole('alert');
     await expectNoBlockingViolations();
   });
 
-  it('solo lectura', async () => {
+  it('CA-7: solo lectura', async () => {
     await renderReceived(withTwo(), true);
     await screen.findByText('Tu cuenta está en solo lectura.');
     await expectNoBlockingViolations();
