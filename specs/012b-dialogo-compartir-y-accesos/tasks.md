@@ -13,7 +13,7 @@
 - [x] **T-06** «Salir»: confirmación, progreso, éxito, `SHARING_SHARE_NOT_FOUND` con «Actualizar lista», y disponible en solo lectura — CA: CA-10, CA-11 — Prueba: componente (feliz y error principal) — Depende: T-05
 - [x] **T-07** Página `/compartidos` y el ítem «Compartidos» del menú lateral apuntando a ella — CA: CA-8 — Prueba: componente `app-layout.spec.tsx` (enlace y estado activo) y render de la página — Depende: T-05
 - [x] **T-08** Accesibilidad de ambas superficies a 360 y 1440 px: foco, anuncios, contraste y progreso — CA: CA-7 — Prueba: `a11y.spec.tsx` con axe sobre todos los estados de spec §6 — Depende: T-04, T-06, T-07
-- [ ] **T-09** **(humana)** Recorrido de la demo en local con la 012 integrada: A comparte una carpeta con B como Editor desde el menú, ve el acceso, B la ve en «Compartidos conmigo», la abre y sale de otra; A revoca y B ya no la alcanza; nota en el PR — CA: los visibles — Depende: T-08, 012 T-12
+- [x] **T-09** **(humana)** Recorrido de la demo en local con la 012 integrada: A comparte una carpeta con B como Editor desde el menú, ve el acceso, B la ve en «Compartidos conmigo», la abre y sale de otra; A revoca y B ya no la alcanza; nota en el PR — CA: los visibles — Depende: T-08, 012 T-12
 
 ## Notas del developer
 Desviaciones y decisiones (2026-11-01, sin cambio de comportamiento de la spec; sin DF nuevo):
