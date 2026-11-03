@@ -44,6 +44,7 @@ describe('AuditAction', () => {
         'public_link.created',
         'public_link.revoked',
         'public_link.downloaded',
+        'public_link.locked',
       ].sort(),
     );
   });

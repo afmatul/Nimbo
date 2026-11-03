@@ -84,7 +84,7 @@ export interface AuditEventRow {
  * instancia de `StorageModule`, el directorio real de destinatarios y la ruta de «Mi actividad» (`AuditHttpModule`).
  */
 export const createSharingHttpApp = async (
-  options: Pick<StorageHttpOptions, 'env'> = {},
+  options: Pick<StorageHttpOptions, 'env' | 'overrides'> = {},
 ): Promise<SharingHttpApp> => {
   const storage = await createStorageHttpApp({
     ...options,

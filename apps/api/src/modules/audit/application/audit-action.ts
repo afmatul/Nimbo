@@ -73,6 +73,11 @@ export enum AuditAction {
    * de») y `attributes { trigger: 'public_link' }`, que la distingue de una descarga suya.
    */
   PUBLIC_LINK_DOWNLOADED = 'public_link.downloaded',
+  /**
+   * Bloqueo por contraseñas fallidas de un enlace desde una red (013 CA-13, CA-18): una vez por bloqueo, con el actor
+   * derivado del propietario y `attributes { trigger: 'public_link' }`. Los fallos sueltos no se auditan; nunca IP.
+   */
+  PUBLIC_LINK_LOCKED = 'public_link.locked',
 }
 
 const AUDIT_ACTIONS: ReadonlySet<string> = new Set(Object.values(AuditAction));

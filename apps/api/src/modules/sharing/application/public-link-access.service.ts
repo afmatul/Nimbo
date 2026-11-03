@@ -5,14 +5,21 @@ import { PinoLogger } from 'nestjs-pino';
 
 import {
   createActor,
+  I_ATTEMPT_LOCKOUT,
   I_PASSWORD_HASHER,
   I_RATE_LIMITER,
   I_TRANSACTION_RUNNER,
   RateLimitExceededError,
   Role,
 } from '../../../shared';
-import type { Actor, IPasswordHasher, IRateLimiter, ITransactionRunner } from '../../../shared';
-import { I_AUDIT_LOGGER } from '../../audit';
+import type {
+  Actor,
+  IAttemptLockout,
+  IPasswordHasher,
+  IRateLimiter,
+  ITransactionRunner,
+} from '../../../shared';
+import { AuditAction, I_AUDIT_LOGGER } from '../../audit';
 import type { IAuditLogger } from '../../audit';
 import { LinkedFileGateway } from '../../storage';
 import type { DownloadUrl, LinkedFile } from '../../storage';
@@ -27,7 +34,7 @@ import { I_PUBLIC_LINK_REPOSITORY } from './ports/i-public-link.repository.port'
 import type { IPublicLinkRepository } from './ports/i-public-link.repository.port';
 import { I_SHAREE_DIRECTORY } from './ports/i-sharee-directory.port';
 import type { IShareeDirectory } from './ports/i-sharee-directory.port';
-import { linkDownloadedEvent, logLink } from './public-link-records';
+import { logLink, visitorEvent } from './public-link-records';
 import { SHARING_CONFIG } from './sharing-config';
 import type { SharingConfig } from './sharing-config';
 import type { SharingLogger } from './sharing-logger';
@@ -35,6 +42,8 @@ import type { SharingLogger } from './sharing-logger';
 const RATE_LIMIT_WINDOW_SECONDS = 60;
 /** Clave del límite por red de las rutas del visitante (plan §5): el hash de la red, nunca la IP (S-3). */
 const NETWORK_RATE_KEY_PREFIX = 'sharing:link-ip:';
+/** Clave del bloqueo por contraseñas fallidas (plan §5, RN-7): por enlace y por el hash de la red. */
+const FAILURE_KEY_PREFIX = 'sharing:link-fail:';
 
 /** Lo único que trae la petición del visitante (ADR-0039 regla 3): ningún id. */
 export interface OpenPublicLinkCommand {
@@ -76,8 +85,18 @@ type ResolvedOwner =
   | { readonly row: null; readonly sharedBy: null }
   | { readonly row: ResolvedPublicLink; readonly sharedBy: string | null };
 
-const networkKeyOf = (ip: string): string =>
-  `${NETWORK_RATE_KEY_PREFIX}${createHash('sha256').update(limitNetworkOf(ip)).digest('hex')}`;
+/** La red de los límites (RN-7) con hash: en Redis nunca va la IP ni la red en claro (S-3). */
+const networkHashOf = (ip: string): string =>
+  createHash('sha256').update(limitNetworkOf(ip)).digest('hex');
+
+const networkKeyOf = (ip: string): string => `${NETWORK_RATE_KEY_PREFIX}${networkHashOf(ip)}`;
+
+const failureKeyOf = (link: PublicLink, ip: string): string =>
+  `${FAILURE_KEY_PREFIX}${link.id}:${networkHashOf(ip)}`;
+
+/** CA-12: una contraseña ausente o vacía (`""`, el campo vacío del formulario) no es un intento. */
+const isMissing = (password: string | undefined): password is undefined | '' =>
+  password === undefined || password === '';
 
 const detailsOf = ({ link, file, sharedBy }: AvailableLink): PublicLinkDetails => ({
   name: file.name,
@@ -106,9 +125,14 @@ export class PublicLinkAccessService {
     private readonly files: Pick<LinkedFileGateway, 'findOwnedFile' | 'issueDownload'>,
     @Inject(I_RATE_LIMITER) private readonly rateLimiter: IRateLimiter,
     @Inject(I_PASSWORD_HASHER) private readonly hasher: Pick<IPasswordHasher, 'verify'>,
+    @Inject(I_ATTEMPT_LOCKOUT)
+    private readonly lockout: Pick<IAttemptLockout, 'reserveAttempt' | 'clear'>,
     @Inject(I_AUDIT_LOGGER) private readonly audit: Pick<IAuditLogger, 'record'>,
     @Inject(SHARING_CONFIG)
-    private readonly config: Pick<SharingConfig, 'publicLinkRequestsPerMinute'>,
+    private readonly config: Pick<
+      SharingConfig,
+      'publicLinkRequestsPerMinute' | 'publicLinkLockout'
+    >,
     @Inject(PinoLogger) private readonly logger: SharingLogger,
   ) {}
 
@@ -118,16 +142,17 @@ export class PublicLinkAccessService {
   }
 
   /**
-   * CA-10, CA-14, CA-18: la URL de 5 minutos a la versión vigente, sin contraseña o con la correcta. La firma la hace
+   * CA-10 a CA-14, CA-18: la URL de 5 minutos a la versión vigente, sin contraseña o con la correcta y sin bloqueo de
+   * esa red para el enlace (`assertPassword`). La firma la hace
    * `LinkedFileGateway` con el actor derivado (sin la auditoría ni el límite de descargas del propietario); la
    * auditoría es de mejor esfuerzo (`record` nunca lanza), como `FileService`. Devuelve solo `{ url, expiresAt }`.
    */
   async downloadLink(command: DownloadPublicLinkCommand): Promise<DownloadUrl> {
     const { owner, link, file } = await this.resolveAvailable(command);
-    await this.assertPassword(link, command.password);
+    await this.assertPassword(owner, link, command);
     const issued = await this.files.issueDownload(owner, file.id);
     if (issued === null) throw this.unavailable({ linkId: link.id, fileId: file.id });
-    await this.audit.record(linkDownloadedEvent(owner, link));
+    await this.audit.record(visitorEvent(AuditAction.PUBLIC_LINK_DOWNLOADED, owner, link));
     logLink(this.logger, 'public_link.downloaded', link);
     return issued;
   }
@@ -167,15 +192,44 @@ export class PublicLinkAccessService {
   }
 
   /**
-   * CA-10, CA-12 (T-07): sin contraseña en el enlace no se verifica nada; si la pide, Argon2id fuera de toda
-   * transacción. Falta (ausente o `""`) o no coincide: `403`. El bloqueo por enlace + red y `password_failed` son de T-08.
+   * CA-10, CA-12, CA-13 (plan §5): sin contraseña en el enlace no se verifica nada. Si la pide y falta (ausente o
+   * `""`), `403` sin contar ni registrar. Con una, el intento se reserva por enlace + red **antes** de Argon2id (fuera
+   * de toda transacción), así el bloqueo vigente da `429` aunque sea la correcta; un acierto libera la reserva.
    */
-  private async assertPassword(link: PublicLink, password: string | undefined): Promise<void> {
+  private async assertPassword(
+    owner: Actor,
+    link: PublicLink,
+    { password, ip }: DownloadPublicLinkCommand,
+  ): Promise<void> {
     const { passwordHash } = link.toSnapshot();
     if (passwordHash === null) return;
-    if (password === undefined || password === '') throw new PublicLinkPasswordInvalidError();
-    if (!(await this.hasher.verify(passwordHash, password)))
-      throw new PublicLinkPasswordInvalidError();
+    if (isMissing(password)) throw new PublicLinkPasswordInvalidError();
+    const key = failureKeyOf(link, ip);
+    const engagedLock = await this.reserveAttempt(key);
+    if (await this.hasher.verify(passwordHash, password)) {
+      await this.lockout.clear(key);
+      return;
+    }
+    await this.recordFailure(owner, link, engagedLock);
+    throw new PublicLinkPasswordInvalidError();
+  }
+
+  /** CA-13: con el bloqueo vigente, `429` con la espera sin verificar; si no, si este intento es el que lo activa. */
+  private async reserveAttempt(key: string): Promise<boolean> {
+    const reservation = await this.lockout.reserveAttempt(key, this.config.publicLinkLockout);
+    if (!reservation.allowed) throw new RateLimitExceededError(reservation.retryAfterSeconds);
+    return reservation.engagedLock;
+  }
+
+  /**
+   * CA-12, CA-13, CA-18: cada fallo va solo a la bitácora técnica, sin IP ni contraseña; el que activa el bloqueo se
+   * audita una vez en la actividad del propietario, con el actor derivado (mejor esfuerzo, `record` nunca lanza).
+   */
+  private async recordFailure(owner: Actor, link: PublicLink, engagedLock: boolean): Promise<void> {
+    this.logger.info({ event: 'public_link.password_failed', linkId: link.id });
+    if (!engagedLock) return;
+    await this.audit.record(visitorEvent(AuditAction.PUBLIC_LINK_LOCKED, owner, link));
+    logLink(this.logger, 'public_link.locked', link);
   }
 
   /** CA-14: antes de mirar el token, así el `429` no revela nada; nunca dice cuántos quedan. */

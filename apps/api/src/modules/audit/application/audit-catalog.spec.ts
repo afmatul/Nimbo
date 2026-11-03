@@ -85,6 +85,7 @@ const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | numb
   [AuditAction.PUBLIC_LINK_CREATED]: { expiresInDays: 7, protection: 'password' },
   [AuditAction.PUBLIC_LINK_REVOKED]: { reason: 'replaced' },
   [AuditAction.PUBLIC_LINK_DOWNLOADED]: { trigger: 'public_link' },
+  [AuditAction.PUBLIC_LINK_LOCKED]: { trigger: 'public_link' },
 };
 
 describe('AUDIT_CATALOG', () => {
@@ -231,24 +232,23 @@ describe('AUDIT_CATALOG', () => {
     );
   });
 
-  it('013 CA-18: una descarga por enlace guarda solo `trigger` del catálogo cerrado; descarta token, IP y nombre', () => {
-    const result = sanitizeAttributes(
-      AUDIT_CATALOG[AuditAction.PUBLIC_LINK_DOWNLOADED].attributes,
-      {
+  it.each([AuditAction.PUBLIC_LINK_DOWNLOADED, AuditAction.PUBLIC_LINK_LOCKED])(
+    '013 CA-18: `%s` guarda solo `trigger` del catálogo cerrado; descarta token, IP, contraseña y nombre',
+    (action) => {
+      const result = sanitizeAttributes(AUDIT_CATALOG[action].attributes, {
         trigger: 'public_link',
         token: 'q3Zx',
         ip: '203.0.113.7',
+        password: 'secreta-123',
         fileName: 'informe.pdf',
-      },
-    );
+      });
 
-    expect(result.attributes).toEqual({ trigger: 'public_link' });
-    expect(
-      sanitizeAttributes(AUDIT_CATALOG[AuditAction.PUBLIC_LINK_DOWNLOADED].attributes, {
-        trigger: 'visitante',
-      }).attributes,
-    ).toEqual({});
-  });
+      expect(result.attributes).toEqual({ trigger: 'public_link' });
+      expect(
+        sanitizeAttributes(AUDIT_CATALOG[action].attributes, { trigger: 'visitante' }).attributes,
+      ).toEqual({});
+    },
+  );
 
   it('011b RN-4: solo `node.restored` admite el motivo escrito de Soporte (`note`)', () => {
     const withNote = Object.values(AuditAction).filter((action) =>
@@ -291,6 +291,7 @@ describe('resourceTypeOf', () => {
     [AuditAction.PUBLIC_LINK_CREATED, {}, 'file'],
     [AuditAction.PUBLIC_LINK_REVOKED, {}, 'file'],
     [AuditAction.PUBLIC_LINK_DOWNLOADED, {}, 'file'],
+    [AuditAction.PUBLIC_LINK_LOCKED, {}, 'file'],
   ] as const)('D-3: `%s` con %p es de tipo %p', (action, attributes, expected) => {
     expect(resourceTypeOf(action, attributes)).toBe(expected);
   });

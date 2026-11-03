@@ -42,6 +42,8 @@ export interface PublicLinkRow {
   readonly createdAt?: Date;
   /** Por omisión, siete días después de `now()`. */
   readonly expiresAt?: Date;
+  /** PHC Argon2id de la contraseña del enlace; por omisión, sin contraseña. */
+  readonly passwordHash?: string;
 }
 
 /** Un `token_hash` válido de relleno: 64 caracteres hexadecimales en minúscula, como el SHA-256 del token. */
@@ -55,10 +57,18 @@ export const insertPublicLink = async (
   const id = randomUUID();
   const tokenHash = link.tokenHash ?? randomTokenHash();
   await runner.query(
-    `INSERT INTO enlace_publico (id, archivo_id, propietario_id, token_hash, creado_en, vence_en)
+    `INSERT INTO enlace_publico (id, archivo_id, propietario_id, token_hash, creado_en, vence_en, clave_hash)
      VALUES ($1, $2, $3, $4, COALESCE($5::timestamptz, now()),
-             COALESCE($6::timestamptz, now() + interval '7 days'))`,
-    [id, link.fileId, link.ownerId, tokenHash, link.createdAt ?? null, link.expiresAt ?? null],
+             COALESCE($6::timestamptz, now() + interval '7 days'), $7)`,
+    [
+      id,
+      link.fileId,
+      link.ownerId,
+      tokenHash,
+      link.createdAt ?? null,
+      link.expiresAt ?? null,
+      link.passwordHash ?? null,
+    ],
   );
   return { id, tokenHash };
 };

@@ -147,6 +147,7 @@ const setup = (options: SetupOptions = {}) => {
       shareAttemptsPerMinute: RATE_LIMIT_PER_MINUTE,
       webPublicUrl: 'https://nimbo.test',
       publicLinkRequestsPerMinute: RATE_LIMIT_PER_MINUTE,
+      publicLinkLockout: { maxFailures: 5, windowSeconds: 900, lockSeconds: 900 },
     },
     logger,
   );

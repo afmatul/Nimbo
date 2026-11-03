@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import type { DynamicModule } from '@nestjs/common';
 
-import type { Env } from '../../shared';
+import type { Env, LockoutPolicy } from '../../shared';
 import { AccessModule } from '../access';
 import { AuditModule } from '../audit';
 
@@ -25,14 +25,28 @@ import { SharingController } from './presentation/sharing.controller';
 /** Variables del `api` que `sharing` usa (planes 012 y 013 §2). */
 export type SharingEnv = Pick<
   Env,
-  'SHARING_RATE_LIMIT_PER_MINUTE' | 'WEB_PUBLIC_URL' | 'PUBLIC_LINK_RATE_LIMIT_PER_MINUTE'
+  | 'SHARING_RATE_LIMIT_PER_MINUTE'
+  | 'WEB_PUBLIC_URL'
+  | 'PUBLIC_LINK_RATE_LIMIT_PER_MINUTE'
+  | 'PUBLIC_LINK_MAX_FAILURES'
+  | 'PUBLIC_LINK_FAILURE_WINDOW_MINUTES'
+  | 'PUBLIC_LINK_LOCK_MINUTES'
 >;
+
+const SECONDS_PER_MINUTE = 60;
+
+/** 013 CA-13, S-1: el bloqueo por enlace + red con los minutos del entorno pasados a segundos. */
+const publicLinkLockoutOf = (env: SharingEnv): LockoutPolicy => ({
+  maxFailures: env.PUBLIC_LINK_MAX_FAILURES,
+  windowSeconds: env.PUBLIC_LINK_FAILURE_WINDOW_MINUTES * SECONDS_PER_MINUTE,
+  lockSeconds: env.PUBLIC_LINK_LOCK_MINUTES * SECONDS_PER_MINUTE,
+});
 
 /**
  * Módulo `sharing` (M3b, planes 012 y 013 §2). `forRoot(env, storage)` recibe **la misma** instancia de `StorageModule`
  * que la raíz (aporta `WritableAccountPolicy`, PD-121, y `LinkedFileGateway`, 013). `I_SHAREE_DIRECTORY` lo enlaza la
  * raíz (`ShareeDirectoryBindingModule`, global; DF-84); `SharedModule` (global) aporta transacciones, reloj, el límite
- * de tasa y el hasher de contraseñas (013 D-2).
+ * de tasa, el hasher de contraseñas y el bloqueo por intentos (013 D-2).
  */
 @Module({})
 export class SharingModule {
@@ -41,6 +55,7 @@ export class SharingModule {
       shareAttemptsPerMinute: env.SHARING_RATE_LIMIT_PER_MINUTE,
       webPublicUrl: env.WEB_PUBLIC_URL,
       publicLinkRequestsPerMinute: env.PUBLIC_LINK_RATE_LIMIT_PER_MINUTE,
+      publicLinkLockout: publicLinkLockoutOf(env),
     };
     return {
       module: SharingModule,

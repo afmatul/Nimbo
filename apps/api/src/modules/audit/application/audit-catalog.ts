@@ -34,6 +34,11 @@ const ON_SHARE = {
  */
 const PUBLIC_LINK_PROTECTIONS = ['password', 'none'] as const;
 const PUBLIC_LINK_REVOKE_REASONS = ['revoked', 'replaced'] as const;
+/** Lo que hace un visitante de un enlace (013 CA-18): sobre el archivo y solo con `trigger` (`public_link`). */
+const ON_PUBLIC_LINK_VISIT = {
+  resourceType: 'file',
+  attributes: { trigger: AUDIT_TRIGGERS },
+} as const;
 const NODE_ATTRIBUTES = { nodeType: NODE_TYPES, itemCount: 'number', sizeBytes: 'number' } as const;
 const ON_ACCOUNT = { resourceType: 'account', attributes: {} } as const;
 const ON_PLAN = { resourceType: 'plan', attributes: {} } as const;
@@ -177,10 +182,8 @@ export const AUDIT_CATALOG = {
     resourceType: 'file',
     attributes: { reason: PUBLIC_LINK_REVOKE_REASONS },
   },
-  [AuditAction.PUBLIC_LINK_DOWNLOADED]: {
-    resourceType: 'file',
-    attributes: { trigger: AUDIT_TRIGGERS },
-  },
+  [AuditAction.PUBLIC_LINK_DOWNLOADED]: ON_PUBLIC_LINK_VISIT,
+  [AuditAction.PUBLIC_LINK_LOCKED]: ON_PUBLIC_LINK_VISIT,
 } as const satisfies Record<AuditAction, AuditActionSpec>;
 
 /** Tipos que un atributo (`nodeType`) puede dar: solo nodos y cargas. */

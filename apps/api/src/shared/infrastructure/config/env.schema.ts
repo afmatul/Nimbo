@@ -108,6 +108,13 @@ const DEFAULT_SHARING_RATE_LIMIT_PER_MINUTE = 20;
  * quien abre y descarga a mano y bajo para quien prueba tokens antes de llegar a la base.
  */
 const DEFAULT_PUBLIC_LINK_RATE_LIMIT_PER_MINUTE = 30;
+/**
+ * Bloqueo por contraseñas fallidas de un enlace desde una red (013 CA-13, S-1, RN-7): 5 fallos en 15 minutos y 15
+ * minutos de espera, como el inicio de sesión de 002 (D-5).
+ */
+const DEFAULT_PUBLIC_LINK_MAX_FAILURES = 5;
+const DEFAULT_PUBLIC_LINK_FAILURE_WINDOW_MINUTES = 15;
+const DEFAULT_PUBLIC_LINK_LOCK_MINUTES = 15;
 /** Modelo de embeddings por defecto (ADR-0007): se vectoriza a 768 dimensiones (ADR-0003). */
 const DEFAULT_GEMINI_EMBEDDING_MODEL = 'gemini-embedding-001';
 /** Modelo que redacta las respuestas del agente (020 D-7, RNF-09). */
@@ -322,6 +329,9 @@ const indexingWorkerShape = {
 const sharingApiShape = {
   SHARING_RATE_LIMIT_PER_MINUTE: positiveInt(DEFAULT_SHARING_RATE_LIMIT_PER_MINUTE),
   PUBLIC_LINK_RATE_LIMIT_PER_MINUTE: positiveInt(DEFAULT_PUBLIC_LINK_RATE_LIMIT_PER_MINUTE),
+  PUBLIC_LINK_MAX_FAILURES: positiveInt(DEFAULT_PUBLIC_LINK_MAX_FAILURES),
+  PUBLIC_LINK_FAILURE_WINDOW_MINUTES: positiveInt(DEFAULT_PUBLIC_LINK_FAILURE_WINDOW_MINUTES),
+  PUBLIC_LINK_LOCK_MINUTES: positiveInt(DEFAULT_PUBLIC_LINK_LOCK_MINUTES),
 };
 
 /** Agente con citas en el `api` (020 plan D-7, D-8): modelo, largo máximo de la pregunta (RN-7) y plazos (CA-15). */

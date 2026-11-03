@@ -1,9 +1,12 @@
 import { createHash } from 'node:crypto';
 
 import type {
+  AttemptReservation,
+  IAttemptLockout,
   IPasswordHasher,
   IRateLimiter,
   ITransactionRunner,
+  LockoutPolicy,
   RateLimitDecision,
 } from '../../../shared';
 import { PasswordHash, RateLimitExceededError } from '../../../shared';
@@ -35,6 +38,9 @@ const ISSUED: DownloadUrl = {
   expiresAt: new Date('2026-11-02T10:05:00.000Z'),
 };
 const OWNER = { id: RESOLVED.ownerId, role: 'CLIENT', canReadContent: true };
+const LOCKOUT: LockoutPolicy = { maxFailures: 5, windowSeconds: 900, lockSeconds: 900 };
+const LOCKED_SECONDS = 600;
+const WRONG_PASSWORD = 'otra-clave-1234';
 
 const availableLink = (passwordHash: PasswordHash | null = null): PublicLink =>
   PublicLink.rehydrate({
@@ -54,6 +60,7 @@ interface SetupOptions {
   readonly link?: PublicLink | null;
   readonly file?: LinkedFile | null;
   readonly issued?: DownloadUrl | null;
+  readonly reservation?: AttemptReservation;
 }
 
 const setup = (options: SetupOptions = {}) => {
@@ -103,12 +110,18 @@ const setup = (options: SetupOptions = {}) => {
       return Promise.resolve(plain === PASSWORD);
     }),
   };
+  const lockout: Pick<IAttemptLockout, 'reserveAttempt' | 'clear'> = {
+    reserveAttempt: jest.fn(
+      step('reserveAttempt', options.reservation ?? { allowed: true, engagedLock: false }),
+    ),
+    clear: jest.fn(step('clear', undefined)),
+  };
   const audit: IAuditLogger = {
     record: jest.fn(step('audit', undefined)),
     recordInTransaction: jest.fn(),
   };
   const logger = { info: jest.fn(), warn: jest.fn() };
-  const config = { publicLinkRequestsPerMinute: REQUESTS_PER_MINUTE };
+  const config = { publicLinkRequestsPerMinute: REQUESTS_PER_MINUTE, publicLinkLockout: LOCKOUT };
   const service = new PublicLinkAccessService(
     transactions,
     resolver,
@@ -117,6 +130,7 @@ const setup = (options: SetupOptions = {}) => {
     files,
     rateLimiter,
     hasher,
+    lockout,
     audit,
     config,
     logger,
@@ -130,13 +144,16 @@ const setup = (options: SetupOptions = {}) => {
     links,
     files,
     hasher,
+    lockout,
     audit,
     logger,
   };
 };
 
-const networkKeyOf = (network: string): string =>
-  `sharing:link-ip:${createHash('sha256').update(network).digest('hex')}`;
+const sha256Of = (network: string): string => createHash('sha256').update(network).digest('hex');
+const networkKeyOf = (network: string): string => `sharing:link-ip:${sha256Of(network)}`;
+/** Plan §5: el bloqueo es por enlace y red (RN-7), con el hash de la red, nunca la IP (S-3). */
+const FAILURE_KEY = `sharing:link-fail:${RESOLVED.linkId}:${sha256Of('2001:db8:aa:bb::/64')}`;
 
 describe('PublicLinkAccessService.openLink (013 CA-9, CA-11, CA-14; ADR-0039)', () => {
   it('CA-9: la ficha con nombre, tamaño, quien comparte, vencimiento y si pide contraseña; nada más', async () => {
@@ -239,7 +256,7 @@ describe('PublicLinkAccessService.openLink (013 CA-9, CA-11, CA-14; ADR-0039)', 
   });
 });
 
-describe('PublicLinkAccessService.downloadLink (013 CA-10, CA-11, CA-14, CA-18; ADR-0039)', () => {
+describe('PublicLinkAccessService.downloadLink (013 CA-10 a CA-14, CA-18; ADR-0039)', () => {
   const RESOLVE_STEPS = [
     'rate',
     'tx',
@@ -260,32 +277,142 @@ describe('PublicLinkAccessService.downloadLink (013 CA-10, CA-11, CA-14, CA-18; 
     expect(hasher.verify).not.toHaveBeenCalled();
   });
 
-  it('CA-10: con la contraseña correcta, verifica con el hash del enlace antes de firmar', async () => {
-    const { service, journal, hasher } = setup({ link: availableLink(PASSWORD_HASH) });
+  it('CA-10, CA-13: con la correcta, reserva el intento por enlace + red, verifica, lo libera y firma', async () => {
+    const { service, journal, hasher, lockout } = setup({ link: availableLink(PASSWORD_HASH) });
 
     await expect(
       service.downloadLink({ token: TOKEN, ip: IP, password: PASSWORD }),
     ).resolves.toEqual(ISSUED);
 
-    expect(journal).toEqual([...RESOLVE_STEPS, 'verify', 'issueDownload', 'audit']);
+    expect(journal).toEqual([
+      ...RESOLVE_STEPS,
+      'reserveAttempt',
+      'verify',
+      'clear',
+      'issueDownload',
+      'audit',
+    ]);
+    expect(lockout.reserveAttempt).toHaveBeenCalledWith(FAILURE_KEY, LOCKOUT);
     expect(hasher.verify).toHaveBeenCalledWith(PASSWORD_HASH, PASSWORD);
+    expect(lockout.clear).toHaveBeenCalledWith(FAILURE_KEY);
+  });
+
+  it('CA-10: sin contraseña en el enlace no reserva intento aunque llegue una', async () => {
+    const { service, lockout } = setup();
+
+    await service.downloadLink({ token: TOKEN, ip: IP, password: PASSWORD });
+
+    expect(lockout.reserveAttempt).not.toHaveBeenCalled();
   });
 
   it.each([
-    ['incorrecta', { password: 'otra-clave-1234' }],
     ['ausente', {}],
+    ['vacía', { password: '' }],
   ] as const)(
-    'CA-12 (mínimo de T-07): con contraseña %s, 403 sin URL ni auditoría',
+    'CA-12: con contraseña %s, 403 sin URL; no cuenta para el bloqueo ni se registra',
     async (_, extra) => {
-      const { service, files, audit } = setup({ link: availableLink(PASSWORD_HASH) });
+      const { service, journal, files, audit, logger } = setup({
+        link: availableLink(PASSWORD_HASH),
+      });
 
       await expect(service.downloadLink({ token: TOKEN, ip: IP, ...extra })).rejects.toBeInstanceOf(
         PublicLinkPasswordInvalidError,
       );
+      expect(journal).toEqual(RESOLVE_STEPS);
       expect(files.issueDownload).not.toHaveBeenCalled();
+      expect(audit.record).not.toHaveBeenCalled();
+      expect(logger.info).not.toHaveBeenCalled();
+    },
+  );
+
+  it('CA-12: con una incorrecta, el intento cuenta, `password_failed` solo con el enlace y 403 sin URL ni auditoría', async () => {
+    const { service, journal, files, audit, logger, lockout } = setup({
+      link: availableLink(PASSWORD_HASH),
+    });
+
+    await expect(
+      service.downloadLink({ token: TOKEN, ip: IP, password: WRONG_PASSWORD }),
+    ).rejects.toBeInstanceOf(PublicLinkPasswordInvalidError);
+
+    expect(journal).toEqual([...RESOLVE_STEPS, 'reserveAttempt', 'verify']);
+    expect(lockout.reserveAttempt).toHaveBeenCalledWith(FAILURE_KEY, LOCKOUT);
+    expect(lockout.clear).not.toHaveBeenCalled();
+    expect(files.issueDownload).not.toHaveBeenCalled();
+    expect(audit.record).not.toHaveBeenCalled();
+    expect(logger.info.mock.calls).toEqual([
+      [{ event: 'public_link.password_failed', linkId: RESOLVED.linkId }],
+    ]);
+  });
+
+  it.each([
+    ['correcta', PASSWORD],
+    ['incorrecta', WRONG_PASSWORD],
+  ])(
+    'CA-13: con el bloqueo vigente, 429 con la espera aunque sea %s, sin verificar ni firmar',
+    async (_, password) => {
+      const { service, journal, audit } = setup({
+        link: availableLink(PASSWORD_HASH),
+        reservation: { allowed: false, retryAfterSeconds: LOCKED_SECONDS },
+      });
+
+      const error = await service
+        .downloadLink({ token: TOKEN, ip: IP, password })
+        .catch((e: unknown) => e);
+
+      expect(error).toBeInstanceOf(RateLimitExceededError);
+      expect((error as RateLimitExceededError).retryAfterSeconds).toBe(LOCKED_SECONDS);
+      expect(journal).toEqual([...RESOLVE_STEPS, 'reserveAttempt']);
       expect(audit.record).not.toHaveBeenCalled();
     },
   );
+
+  it('CA-13, CA-18: el fallo que activa el bloqueo audita `public_link.locked` una vez, con el actor derivado y `trigger: public_link`', async () => {
+    const { service, audit, logger } = setup({
+      link: availableLink(PASSWORD_HASH),
+      reservation: { allowed: true, engagedLock: true },
+    });
+
+    await expect(
+      service.downloadLink({ token: TOKEN, ip: IP, password: WRONG_PASSWORD }),
+    ).rejects.toBeInstanceOf(PublicLinkPasswordInvalidError);
+
+    expect(jest.mocked(audit.record).mock.calls).toEqual([
+      [
+        {
+          action: 'public_link.locked',
+          actor: OWNER,
+          targetUserId: RESOLVED.ownerId,
+          resourceId: RESOLVED.fileId,
+          attributes: { trigger: 'public_link' },
+        },
+      ],
+    ]);
+    expect(logger.info).toHaveBeenCalledWith({
+      event: 'public_link.locked',
+      linkId: RESOLVED.linkId,
+      fileId: RESOLVED.fileId,
+    });
+    const logged = JSON.stringify([logger.info.mock.calls, jest.mocked(audit.record).mock.calls]);
+    for (const secret of [TOKEN, '2001:db8', 'Informe', WRONG_PASSWORD, PASSWORD]) {
+      expect(logged).not.toContain(secret);
+    }
+  });
+
+  it('CA-13: si el intento que llena la ventana es el correcto, descarga, libera y no audita bloqueo', async () => {
+    const { service, audit, lockout } = setup({
+      link: availableLink(PASSWORD_HASH),
+      reservation: { allowed: true, engagedLock: true },
+    });
+
+    await expect(
+      service.downloadLink({ token: TOKEN, ip: IP, password: PASSWORD }),
+    ).resolves.toEqual(ISSUED);
+
+    expect(lockout.clear).toHaveBeenCalledWith(FAILURE_KEY);
+    expect(jest.mocked(audit.record).mock.calls.map(([event]) => event.action)).toEqual([
+      'public_link.downloaded',
+    ]);
+  });
 
   it('CA-15, CA-18: `public_link.downloaded` con el actor derivado, el propietario afectado y `trigger: public_link`', async () => {
     const { service, audit, logger } = setup();

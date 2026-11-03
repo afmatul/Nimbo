@@ -40,14 +40,21 @@ export const linkRevokedEvent = (
   };
 };
 
+/** Lo que un visitante provoca en un enlace (CA-18): descargar o quedar bloqueado. */
+type VisitorAction = AuditAction.PUBLIC_LINK_DOWNLOADED | AuditAction.PUBLIC_LINK_LOCKED;
+
 /**
- * CA-10, CA-18 (ADR-0039 regla 5): la descarga de un visitante, con el actor derivado del propietario («en nombre de»)
- * y `trigger: 'public_link'`, que la distingue de una descarga suya en «Mi actividad».
+ * CA-10, CA-13, CA-18 (ADR-0039 regla 5): la descarga o el bloqueo de un visitante, con el actor derivado del
+ * propietario («en nombre de») y `trigger: 'public_link'`, que la distingue de una acción suya en «Mi actividad».
  */
-export const linkDownloadedEvent = (owner: Actor, link: PublicLink): AuditRecord => {
+export const visitorEvent = (
+  action: VisitorAction,
+  owner: Actor,
+  link: PublicLink,
+): AuditRecord => {
   const { ownerId, fileId } = link.toSnapshot();
   return {
-    action: AuditAction.PUBLIC_LINK_DOWNLOADED,
+    action,
     actor: owner,
     targetUserId: ownerId,
     resourceId: fileId,
@@ -57,7 +64,7 @@ export const linkDownloadedEvent = (owner: Actor, link: PublicLink): AuditRecord
 
 /** Eventos de la bitácora técnica de los enlaces (plan §5). */
 export type PublicLinkLogEvent =
-  'public_link.created' | 'public_link.revoked' | 'public_link.downloaded';
+  'public_link.created' | 'public_link.revoked' | 'public_link.downloaded' | 'public_link.locked';
 
 /** Lo único que la bitácora lleva de un enlace (plan §5, CA-15): ids, nunca token, contraseña, IP ni nombre. */
 export const logLink = (
