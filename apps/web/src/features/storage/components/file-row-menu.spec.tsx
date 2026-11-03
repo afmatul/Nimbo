@@ -88,6 +88,7 @@ function renderMenu(overrides: Partial<HarnessProps> = {}): Promise<void> {
     onMove: jest.fn(),
     onMoveToTrash: jest.fn(),
     pin: { pinned: false, onToggle: jest.fn() },
+    sharing: { level: 'OWNER', onShare: jest.fn() },
     ...overrides,
   };
   return mount(<Harness {...props} />);
@@ -189,6 +190,7 @@ describe('FileRowMenu (CA-13, CA-21)', () => {
         onMove={jest.fn()}
         onMoveToTrash={jest.fn()}
         pin={{ pinned: false, onToggle: jest.fn() }}
+        sharing={{ level: 'OWNER', onShare: jest.fn() }}
       />,
     );
     await press('Enter');
@@ -221,6 +223,7 @@ describe('FileRowMenu (CA-13, CA-21)', () => {
       'Mover a…',
       'Fijar en la barra lateral',
       'Editar',
+      'Compartir',
       'Mover a la papelera',
     ]);
     await act(async () => items()[4]?.click());
@@ -379,5 +382,30 @@ describe('FileRowMenu (CA-13, CA-21)', () => {
     expect(alertBox()?.className).toContain('border-destructive/40');
     expect(document.querySelector('[role="menu"]')).not.toBeNull();
     expect(document.body.innerHTML).not.toMatch(RAW_COLOR);
+  });
+
+  it('012b CA-1: como propietario, «Compartir» abre el diálogo', async () => {
+    const onShare = jest.fn();
+    await renderMenu({ sharing: { level: 'OWNER', onShare } });
+    await press('Enter');
+
+    const share = items().find((item) => item.textContent?.trim() === 'Compartir');
+    await act(async () => share?.click());
+
+    expect(onShare).toHaveBeenCalledTimes(1);
+  });
+
+  it('012b CA-6: como Editor de un .docx solo ofrece «Descargar» y «Editar»', async () => {
+    await renderMenu({ sharing: { level: 'EDITOR', onShare: jest.fn() } });
+    await press('Enter');
+
+    expect(items().map((item) => item.textContent?.trim())).toEqual(['Descargar', 'Editar']);
+  });
+
+  it('012b CA-6: como Lector solo ofrece «Descargar»', async () => {
+    await renderMenu({ sharing: { level: 'VIEWER', onShare: jest.fn() } });
+    await press('Enter');
+
+    expect(items().map((item) => item.textContent?.trim())).toEqual(['Descargar']);
   });
 });

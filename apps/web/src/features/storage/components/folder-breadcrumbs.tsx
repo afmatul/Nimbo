@@ -11,6 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../../../components/ui/dropdown-menu';
+import { SHARED_WITH_ME_LABEL, SHARED_WITH_ME_PATH } from '../../sharing';
 import { MY_FILES_LABEL, MY_FILES_PATH, folderPath } from '../routes';
 
 /** Con más migas que estas (raíz incluida) se colapsan las intermedias en «…» (mockup `limite-niveles`). */
@@ -18,12 +19,15 @@ const MAX_VISIBLE_CRUMBS = 4;
 /** Carpetas que quedan a la vista al final cuando se colapsa. */
 const TRAILING_CRUMBS = 2;
 
-interface Crumb {
+export interface Crumb {
   readonly name: string;
   readonly href: string;
 }
 
 const ROOT_CRUMB: Crumb = { name: MY_FILES_LABEL, href: MY_FILES_PATH };
+
+/** En lo compartido conmigo las migas empiezan en la carpeta compartida, bajo «Compartidos conmigo» (012b CA-9). */
+export const SHARED_ROOT_CRUMB: Crumb = { name: SHARED_WITH_ME_LABEL, href: SHARED_WITH_ME_PATH };
 
 function crumbOf(ref: FolderRef): Crumb {
   return { name: ref.name, href: folderPath(ref.id) };
@@ -83,13 +87,18 @@ function CollapsedCrumbs({ hidden }: { readonly hidden: readonly Crumb[] }): Rea
 export interface FolderBreadcrumbsProps {
   /** Desde el primer nivel hasta la carpeta abierta, sin «Mis archivos» (`GET /folders/contents`). */
   readonly breadcrumbs: readonly FolderRef[];
+  /** Primera miga: «Mis archivos» o, en lo compartido conmigo, `SHARED_ROOT_CRUMB`. */
+  readonly root?: Crumb;
 }
 
 /** Migas de la barra superior (escritorio). La carpeta abierta es la página actual y no es enlace. */
-export function FolderBreadcrumbs({ breadcrumbs }: FolderBreadcrumbsProps): React.JSX.Element {
-  const crumbs = [ROOT_CRUMB, ...breadcrumbs.map(crumbOf)];
+export function FolderBreadcrumbs({
+  breadcrumbs,
+  root: rootCrumb = ROOT_CRUMB,
+}: FolderBreadcrumbsProps): React.JSX.Element {
+  const crumbs = [rootCrumb, ...breadcrumbs.map(crumbOf)];
   const collapse = crumbs.length > MAX_VISIBLE_CRUMBS;
-  const shown = collapse ? [ROOT_CRUMB, ...crumbs.slice(-TRAILING_CRUMBS)] : crumbs;
+  const shown = collapse ? [rootCrumb, ...crumbs.slice(-TRAILING_CRUMBS)] : crumbs;
   const hidden = collapse ? crumbs.slice(1, -TRAILING_CRUMBS) : [];
   const [root, ...rest] = shown;
 
@@ -115,9 +124,12 @@ export function FolderBreadcrumbs({ breadcrumbs }: FolderBreadcrumbsProps): Reac
 }
 
 /** En pantallas angostas, en lugar de migas: «‹ {carpeta anterior}» o «‹ Mis archivos» en el primer nivel. */
-export function FolderBackLink({ breadcrumbs }: FolderBreadcrumbsProps): React.JSX.Element {
+export function FolderBackLink({
+  breadcrumbs,
+  root = ROOT_CRUMB,
+}: FolderBreadcrumbsProps): React.JSX.Element {
   const parent = breadcrumbs.at(-2);
-  const target = parent ? crumbOf(parent) : ROOT_CRUMB;
+  const target = parent ? crumbOf(parent) : root;
   return (
     <Link
       href={target.href}

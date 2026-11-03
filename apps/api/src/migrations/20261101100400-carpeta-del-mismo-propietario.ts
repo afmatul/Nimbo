@@ -36,6 +36,29 @@ const FOLDER_REFERENCES: readonly (readonly [string, string, string, string, str
 const onDelete = (column: string, action: string): string =>
   action === 'SET NULL' ? `SET NULL (${column})` : action;
 
+/** Tablas con `FORCE` RLS (005, 006) que lee la validación de las FK. */
+const VALIDATED_TABLES = ['archivo', 'carpeta'] as const;
+
+/**
+ * Corre `work` con `NO FORCE` RLS en `archivo` y `carpeta`, y lo devuelve al terminar, en la misma transacción.
+ * Postgres valida una FK nueva con una consulta (`RI_Initial_Check`) que corre como el rol que migra y **con RLS**:
+ * con un dueño `NOSUPERUSER` (ADR-0021) solo ve las filas de `archivo_mantenimiento`/`carpeta_mantenimiento` (las de
+ * la papelera), así que un archivo en la papelera dentro de una carpeta viva parece huérfano y el `up` o el `down`
+ * fallan con datos. Sin `FORCE`, el dueño de la tabla valida sobre todas las filas (hallazgo del PR #85, 011b).
+ */
+const withoutForcedRls = async (
+  queryRunner: QueryRunner,
+  work: () => Promise<void>,
+): Promise<void> => {
+  for (const table of VALIDATED_TABLES) {
+    await queryRunner.query(`ALTER TABLE ${table} NO FORCE ROW LEVEL SECURITY`);
+  }
+  await work();
+  for (const table of VALIDATED_TABLES) {
+    await queryRunner.query(`ALTER TABLE ${table} FORCE ROW LEVEL SECURITY`);
+  }
+};
+
 /**
  * Un archivo o una carpeta solo cuelga de una carpeta del **mismo** propietario (spec 012 CA-14, CA-21; SEC-1 de
  * `review.md`). Desde 012 el destinatario conoce ids de carpetas ajenas, y los `WITH CHECK` de `archivo_cliente` y
@@ -54,24 +77,28 @@ export class CarpetaDelMismoPropietario20261101100400 implements MigrationInterf
     await queryRunner.query(
       'ALTER TABLE carpeta ADD CONSTRAINT uq_carpeta_id_propietario UNIQUE (id, propietario_id)',
     );
-    for (const [table, column, simple, composite, action] of FOLDER_REFERENCES) {
-      await queryRunner.query(`
-        ALTER TABLE ${table}
-          DROP CONSTRAINT ${simple},
-          ADD CONSTRAINT ${composite} FOREIGN KEY (${column}, propietario_id)
-            REFERENCES carpeta (id, propietario_id) ON DELETE ${onDelete(column, action)}
-      `);
-    }
+    await withoutForcedRls(queryRunner, async () => {
+      for (const [table, column, simple, composite, action] of FOLDER_REFERENCES) {
+        await queryRunner.query(`
+          ALTER TABLE ${table}
+            DROP CONSTRAINT ${simple},
+            ADD CONSTRAINT ${composite} FOREIGN KEY (${column}, propietario_id)
+              REFERENCES carpeta (id, propietario_id) ON DELETE ${onDelete(column, action)}
+        `);
+      }
+    });
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {
-    for (const [table, column, simple, composite, action] of [...FOLDER_REFERENCES].reverse()) {
-      await queryRunner.query(`
-        ALTER TABLE ${table}
-          DROP CONSTRAINT ${composite},
-          ADD CONSTRAINT ${simple} FOREIGN KEY (${column}) REFERENCES carpeta (id) ON DELETE ${action}
-      `);
-    }
+    await withoutForcedRls(queryRunner, async () => {
+      for (const [table, column, simple, composite, action] of [...FOLDER_REFERENCES].reverse()) {
+        await queryRunner.query(`
+          ALTER TABLE ${table}
+            DROP CONSTRAINT ${composite},
+            ADD CONSTRAINT ${simple} FOREIGN KEY (${column}) REFERENCES carpeta (id) ON DELETE ${action}
+        `);
+      }
+    });
     await queryRunner.query('ALTER TABLE carpeta DROP CONSTRAINT uq_carpeta_id_propietario');
   }
 }

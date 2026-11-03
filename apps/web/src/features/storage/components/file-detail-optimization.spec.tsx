@@ -17,6 +17,7 @@ import {
   optimizationStatus,
   OPTIMIZING,
 } from '../../optimizer/test-optimization';
+import { fakeSharingApi } from '../../sharing/test-sharing';
 import type { StorageApi } from '../api';
 import { spaceSummaryWith } from '../test-space-summary';
 import { versionFixture } from '../test-versions';
@@ -70,6 +71,7 @@ async function renderView(api: StorageApi, optimizerApi: OptimizerApi): Promise<
             fileId={IMAGE_FILE_ID}
             indexingApi={fakeIndexingApi()}
             optimizerApi={optimizerApi}
+            sharingApi={fakeSharingApi()}
           />
         </UploadsSpaceProvider>
       </UploadsProvider>

@@ -35,6 +35,7 @@ describe('FolderRowMenu (mockup acciones-carpeta)', () => {
           onMove={onMove}
           onMoveToTrash={onMoveToTrash}
           pin={{ pinned: false, onToggle: jest.fn() }}
+          sharing={{ level: 'OWNER', onShare: jest.fn() }}
         />
       </main>,
     );
@@ -44,6 +45,7 @@ describe('FolderRowMenu (mockup acciones-carpeta)', () => {
       'Renombrar',
       'Mover a…',
       'Fijar en la barra lateral',
+      'Compartir',
       'Mover a la papelera',
     ]);
     const { violations } = await axe(document.body);
@@ -74,6 +76,7 @@ describe('FolderRowMenu (mockup acciones-carpeta)', () => {
           onMove={jest.fn()}
           onMoveToTrash={jest.fn()}
           pin={{ pinned: false, onToggle }}
+          sharing={{ level: 'OWNER', onShare: jest.fn() }}
         />
       </main>,
     );
@@ -89,6 +92,7 @@ describe('FolderRowMenu (mockup acciones-carpeta)', () => {
           onMove={jest.fn()}
           onMoveToTrash={jest.fn()}
           pin={{ pinned: true, onToggle }}
+          sharing={{ level: 'OWNER', onShare: jest.fn() }}
         />
       </main>,
     );
@@ -96,4 +100,45 @@ describe('FolderRowMenu (mockup acciones-carpeta)', () => {
 
     expect(screen.getByRole('menuitem', { name: 'Quitar de la barra lateral' })).toBeTruthy();
   });
+
+  it('012b CA-1: como propietario, «Compartir» abre el diálogo', async () => {
+    const onShare = jest.fn();
+    render(
+      <main>
+        <FolderRowMenu
+          folder={FOLDER}
+          onRename={jest.fn()}
+          onMove={jest.fn()}
+          onMoveToTrash={jest.fn()}
+          pin={{ pinned: false, onToggle: jest.fn() }}
+          sharing={{ level: 'OWNER', onShare }}
+        />
+      </main>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Acciones de Prompts' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: 'Compartir' }));
+
+    expect(onShare).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['EDITOR', 'VIEWER'] as const)(
+    '012b CA-6: como %s no hay menú: ninguna acción de escritura ni «Compartir»',
+    (level) => {
+      render(
+        <main>
+          <FolderRowMenu
+            folder={FOLDER}
+            onRename={jest.fn()}
+            onMove={jest.fn()}
+            onMoveToTrash={jest.fn()}
+            pin={{ pinned: false, onToggle: jest.fn() }}
+            sharing={{ level, onShare: jest.fn() }}
+          />
+        </main>,
+      );
+
+      expect(screen.queryByRole('button', { name: 'Acciones de Prompts' })).toBeNull();
+    },
+  );
 });
