@@ -24,6 +24,8 @@ const PUBLISHED_JWT_SECRET_LENGTH_MESSAGE = `debe tener al menos ${String(PUBLIS
 const LOCAL_JWT_SECRET_MESSAGE = 'no puede ser el valor de desarrollo de .env.example';
 
 const DEFAULT_API_PORT = 3000;
+/** Métricas privadas del `api` (022 ADR-0040): otro puerto, sin publicar; Prometheus lo alcanza por la red interna. */
+const DEFAULT_METRICS_PORT = 9464;
 const DEFAULT_WORKER_PORT = 3001;
 /** Salud interna del proceso `worker-optimizer` (ADR-0038): otro puerto para que los dos convivan en el host en local. */
 const DEFAULT_WORKER_OPTIMIZER_PORT = 3003;
@@ -465,11 +467,13 @@ export const workerEnvObjectSchema = sharedEnvBaseSchema.extend({
  * Forma del entorno del `api`: además el puerto HTTP público, MinIO, la carga de archivos (005), las carpetas y los
  * accesos rápidos (006), el límite de intentos del canal en vivo (015), la edición (016), los intentos y el reintento
  * de la indexación (019), Gemini y el agente (020), los intentos de compartir (012), el optimizador (021), la URL
- * pública de `web`, CORS y la clave que firma los tokens de acceso (002), que se declara **solo** aquí.
+ * pública de `web`, CORS, el puerto privado de métricas (022) y la clave que firma los tokens de acceso (002), que se
+ * declara **solo** aquí.
  */
 export const apiEnvObjectSchema = sharedEnvBaseSchema.extend({
   ...workerPortShape,
   PORT: port(DEFAULT_API_PORT),
+  METRICS_PORT: port(DEFAULT_METRICS_PORT),
   ...minioShape,
   ...uploadApiShape,
   ...foldersApiShape,

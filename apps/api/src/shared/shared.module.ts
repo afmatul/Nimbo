@@ -11,6 +11,7 @@ import { SystemClock } from './infrastructure/clock/system.clock';
 import { ENV } from './infrastructure/config/env.module';
 import type { SharedEnvBase } from './infrastructure/config/env.schema';
 import { createLoggerModule } from './infrastructure/logging/logger.module';
+import { MetricsModule } from './infrastructure/metrics/metrics.module';
 import { buildDataSourceOptions } from './infrastructure/persistence/data-source';
 import { DatabaseRoleCheck } from './infrastructure/persistence/database-role.check';
 import { TransactionContext } from './infrastructure/persistence/transaction-context';
@@ -35,6 +36,7 @@ const DB_RETRY_DELAY_MS = 3000;
 @Module({
   imports: [
     createLoggerModule(),
+    MetricsModule,
     TypeOrmModule.forRootAsync({
       inject: [ENV],
       useFactory: (env: SharedEnvBase): TypeOrmModuleOptions => ({

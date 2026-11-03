@@ -97,6 +97,7 @@ describe('loadEnv(apiEnvSchema)', () => {
         CORS_ORIGIN: ['http://localhost', 'http://localhost:3002'],
         APP_VERSION: 'dev',
         PORT: 3000,
+        METRICS_PORT: 9464,
         WORKER_PORT: 3001,
         MINIO_BUCKET: 'nimbo',
         MINIO_REGION: 'us-east-1',

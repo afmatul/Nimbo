@@ -7,6 +7,7 @@ import request from 'supertest';
 import { configureHttpApp, EnvModule } from '../../../src/shared';
 import type { Env, SharedEnvBase } from '../../../src/shared';
 import { createLoggerModule } from '../../../src/shared/infrastructure/logging/logger.module';
+import { MetricsModule } from '../../../src/shared/infrastructure/metrics/metrics.module';
 import { createLogSinkModule, LogSink } from '../setup/log-sink';
 
 const ALLOWED_ORIGIN = 'https://app.nimbo.test';
@@ -52,6 +53,7 @@ describe('configureHttpApp (001 CA-6, CA-15)', () => {
         createLogSinkModule(new LogSink()),
         EnvModule.forRoot(HTTP_ENV),
         createLoggerModule(),
+        MetricsModule,
       ],
       controllers: [EchoController],
     }).compile();

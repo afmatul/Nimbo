@@ -6,14 +6,17 @@ import type {
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import type { NextFunction, Request, Response } from 'express';
 import { Logger } from 'nestjs-pino';
+import type { Registry } from 'prom-client';
 
 import type { Env } from '../infrastructure/config/env.schema';
 import {
   CORRELATION_ID_HEADER,
   CorrelationIdMiddleware,
 } from '../infrastructure/correlation/correlation-id.middleware';
+import { METRICS_REGISTRY } from '../infrastructure/metrics/metrics.module';
 
 import { DomainExceptionFilter } from './domain-exception.filter';
+import { HttpMetricsMiddleware } from './http-metrics.middleware';
 import { VersionHeaderMiddleware } from './version-header.middleware';
 
 const API_PREFIX = 'api/v1';
@@ -109,13 +112,16 @@ const noStoreForSensitiveRoutes = (
  * Configuración HTTP común de `main.ts` y del arnés de integración (plan 001 §6.7). La app debe crearse con
  * `bodyParser: false`: aquí se instala **solo** el analizador JSON, así un cuerpo `text/plain` o de formulario llega
  * vacío (001 CA-6). El orden importa: correlación, versión y `no-store` antes del analizador, para que sus
- * errores también lleven `x-correlation-id` y `Cache-Control`.
+ * errores también lleven `x-correlation-id` y `Cache-Control`. La medición HTTP (022 T-02) va después de la correlación
+ * y antes del analizador, para contar también sus `4xx`.
  */
 export const configureHttpApp = (app: NestExpressApplication, env: HttpAppEnv): void => {
   const correlation = new CorrelationIdMiddleware();
   const version = new VersionHeaderMiddleware(env.APP_VERSION);
   app.use(correlation.use.bind(correlation));
   app.use(version.use.bind(version));
+  const metrics = new HttpMetricsMiddleware(app.get<Registry>(METRICS_REGISTRY));
+  app.use(metrics.use.bind(metrics));
   app.use(noStoreForSensitiveRoutes);
   app.set('trust proxy', TRUSTED_PROXY_HOPS);
   app.enableCors(corsForOrigins(env.CORS_ORIGIN));

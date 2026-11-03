@@ -6,8 +6,6 @@ import { parseEnv } from 'node:util';
 
 const ROOT = resolve(__dirname, '..');
 const MIB = 1024 * 1024;
-// Puerto fijo de /metrics del `api` (ADR-0040, plan 022 §2); T-02 lo pasa a `METRICS_PORT` del esquema.
-const METRICS_PORT = '9464';
 const OBSERVABILITY = ['prometheus', 'grafana', 'cadvisor'] as const;
 
 interface Port {
@@ -86,6 +84,13 @@ const requireEnv = (env: Fixture['env'], key: string): string => {
 
 const read = (path: string): string => readFileSync(join(ROOT, path), 'utf8');
 
+const dashboardExprs = (): string[] => {
+  const dashboard = JSON.parse(read('infra/grafana/dashboards/operacion.json')) as {
+    panels: { targets?: { expr: string }[] }[];
+  };
+  return dashboard.panels.flatMap((panel) => (panel.targets ?? []).map((target) => target.expr));
+};
+
 const createFixture = (): Fixture => {
   const env = Object.fromEntries(
     Object.entries(parseEnv(read('.env.example'))).filter(
@@ -130,7 +135,7 @@ describe('022 T-01: Compose de observabilidad (CA-2, CA-3, CA-9, CA-10)', () => 
 
     it('CA-2: ningún puerto de métricas de los procesos se publica', () => {
       const internal = new Set([
-        METRICS_PORT,
+        requireEnv(fixture.env, 'METRICS_PORT'),
         requireEnv(fixture.env, 'WORKER_PORT'),
         requireEnv(fixture.env, 'WORKER_OPTIMIZER_PORT'),
       ]);
@@ -256,7 +261,7 @@ describe('022 T-01: Compose de observabilidad (CA-2, CA-3, CA-9, CA-10)', () => 
       expect(scrape).toContain(
         `worker-optimizer:${requireEnv(fixture.env, 'WORKER_OPTIMIZER_PORT')}`,
       );
-      expect(scrape).toContain(`api:${METRICS_PORT}`);
+      expect(scrape).toContain(`api:${requireEnv(fixture.env, 'METRICS_PORT')}`);
     });
 
     it('el tablero de operación muestra CPU y memoria por contenedor', () => {
@@ -273,6 +278,47 @@ describe('022 T-01: Compose de observabilidad (CA-2, CA-3, CA-9, CA-10)', () => 
         exprs.some(
           (expr) => /container_memory_working_set_bytes/.test(expr) && /by \(name\)/.test(expr),
         ),
+      ).toBe(true);
+    });
+  });
+
+  describe('022 T-02: paneles de HTTP y procesos (CA-1, CA-6)', () => {
+    it('CA-6: el tablero muestra la tasa de errores 5xx sobre el total de peticiones', () => {
+      expect(
+        dashboardExprs().some(
+          (expr) =>
+            /nimbo_http_request_duration_seconds_count/.test(expr) &&
+            /status=~"5\.\."/.test(expr) &&
+            expr.includes(' / '),
+        ),
+      ).toBe(true);
+    });
+
+    it('CA-6: el tablero muestra la latencia p50, p95 y p99 de las peticiones HTTP', () => {
+      const exprs = dashboardExprs();
+      for (const quantile of ['0.5', '0.95', '0.99']) {
+        expect(
+          exprs.some(
+            (expr) =>
+              expr.includes(`histogram_quantile(${quantile}`) &&
+              /nimbo_http_request_duration_seconds_bucket/.test(expr),
+          ),
+        ).toBe(true);
+      }
+    });
+
+    it('CA-1: el tablero cuenta las peticiones por plantilla de ruta', () => {
+      expect(
+        dashboardExprs().some(
+          (expr) =>
+            /nimbo_http_request_duration_seconds_count/.test(expr) && /by \(route\)/.test(expr),
+        ),
+      ).toBe(true);
+    });
+
+    it('CA-1: el tablero muestra si cada proceso está arriba, por job', () => {
+      expect(
+        dashboardExprs().some((expr) => /^up\b.*by \(job\)|by \(job\).*\bup\b/.test(expr)),
       ).toBe(true);
     });
   });
