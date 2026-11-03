@@ -11,10 +11,8 @@ import {
   PASSWORD_CHANGE_WINDOW_MINUTES,
 } from '@nimbo/contracts';
 
-import type { RateLimitRule } from '../../../shared';
+import type { RateLimitRule, LockoutPolicy } from '../../../shared';
 import type { EmailAddress } from '../domain/email-address.vo';
-
-import type { LockoutPolicy } from './ports/i-attempt-lockout.port';
 
 const SECONDS_PER_MINUTE = 60;
 const SECONDS_PER_HOUR = 3600;

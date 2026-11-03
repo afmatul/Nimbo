@@ -3,14 +3,15 @@ import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import type { Redis } from 'ioredis';
 
-import { I_CLOCK, REDIS_CLIENT } from '../../../shared';
-import type { IClock } from '../../../shared';
 import type {
   AttemptReservation,
   IAttemptLockout,
   LockoutPolicy,
   LockState,
-} from '../application/ports/i-attempt-lockout.port';
+} from '../../application/rate-limit/i-attempt-lockout.port';
+import { I_CLOCK } from '../../domain/i-clock.port';
+import type { IClock } from '../../domain/i-clock.port';
+import { REDIS_CLIENT } from '../redis/redis-client.provider';
 
 const MS_PER_SECOND = 1000;
 /** Margen del TTL del bloqueo: Redis solo limpia; el vencimiento lo decide el valor frente a `now` (plan §6.4). */

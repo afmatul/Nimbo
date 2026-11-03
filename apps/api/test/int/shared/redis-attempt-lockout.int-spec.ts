@@ -2,9 +2,9 @@ import { createHash, randomUUID } from 'node:crypto';
 
 import { Redis } from 'ioredis';
 
-import type { LockoutPolicy } from '../../../src/modules/identity/application/ports/i-attempt-lockout.port';
-import { RedisAttemptLockout } from '../../../src/modules/identity/infrastructure/redis-attempt-lockout';
 import { FixedClock } from '../../../src/shared';
+import type { LockoutPolicy } from '../../../src/shared/application/rate-limit/i-attempt-lockout.port';
+import { RedisAttemptLockout } from '../../../src/shared/infrastructure/rate-limit/redis-attempt-lockout';
 
 const START = new Date('2026-09-30T10:00:00Z');
 const SECOND_MS = 1000;

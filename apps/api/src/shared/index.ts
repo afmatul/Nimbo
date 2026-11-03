@@ -19,6 +19,7 @@ export { errorName } from './domain/error-name';
 export { FixedClock } from './domain/fixed.clock';
 export { I_CLOCK } from './domain/i-clock.port';
 export type { IClock } from './domain/i-clock.port';
+export { PasswordHash } from './domain/password-hash.vo';
 export { ALL_ROLES, Role } from './domain/role.enum';
 export {
   ACCESS_TOKEN_STRATEGY,
@@ -35,12 +36,21 @@ export { errorClassOf } from './application/error-class';
 export type { IHealthIndicator } from './application/health/i-health-indicator.port';
 export { I_TRANSACTION_RUNNER } from './application/persistence/i-transaction-runner.port';
 export type { ITransactionRunner } from './application/persistence/i-transaction-runner.port';
+export { I_ATTEMPT_LOCKOUT } from './application/rate-limit/i-attempt-lockout.port';
+export type {
+  AttemptReservation,
+  IAttemptLockout,
+  LockoutPolicy,
+  LockState,
+} from './application/rate-limit/i-attempt-lockout.port';
 export { I_RATE_LIMITER } from './application/rate-limit/i-rate-limiter.port';
 export type {
   IRateLimiter,
   RateLimitDecision,
   RateLimitRule,
 } from './application/rate-limit/i-rate-limiter.port';
+export { I_PASSWORD_HASHER } from './application/security/i-password-hasher.port';
+export type { IPasswordHasher } from './application/security/i-password-hasher.port';
 export { attemptEach } from './application/batch/attempt-each';
 export type { BatchFailure } from './application/batch/attempt-each';
 export { IncompleteBatchError } from './application/batch/incomplete-batch.error';

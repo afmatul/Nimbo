@@ -4,8 +4,14 @@ import { Inject, Injectable } from '@nestjs/common';
 import { LEGAL_DOCUMENTS } from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
-import { I_CLOCK, I_RATE_LIMITER, I_TRANSACTION_RUNNER } from '../../../shared';
-import type { IClock, IRateLimiter, ITransactionRunner } from '../../../shared';
+import { I_CLOCK, I_RATE_LIMITER, I_TRANSACTION_RUNNER, I_PASSWORD_HASHER } from '../../../shared';
+import type {
+  IClock,
+  IRateLimiter,
+  ITransactionRunner,
+  PasswordHash,
+  IPasswordHasher,
+} from '../../../shared';
 import { I_MAILER } from '../../notifications';
 import type { IMailer, MailMessage } from '../../notifications';
 import { ClientUser } from '../domain/client-user.entity';
@@ -16,7 +22,6 @@ import {
   VerificationLinkInvalidError,
 } from '../domain/errors';
 import { LegalAcceptance } from '../domain/legal-acceptance.vo';
-import type { PasswordHash } from '../domain/password-hash.vo';
 import type { User } from '../domain/user.entity';
 import type { VerificationToken } from '../domain/verification-token.entity';
 
@@ -25,8 +30,6 @@ import { EMAIL_REQUEST_RULES, emailRequestKey } from './identity-limit-keys';
 import type { IdentityLogger } from './identity-logger';
 import { I_ACCOUNT_EVENTS_PUBLISHER } from './ports/i-account-events-publisher.port';
 import type { IAccountEventsPublisher } from './ports/i-account-events-publisher.port';
-import { I_PASSWORD_HASHER } from './ports/i-password-hasher.port';
-import type { IPasswordHasher } from './ports/i-password-hasher.port';
 import { I_USER_REPOSITORY } from './ports/i-user-repository.port';
 import type { IUserRepository } from './ports/i-user-repository.port';
 import { I_VERIFICATION_TOKEN_REPOSITORY } from './ports/i-verification-token-repository.port';

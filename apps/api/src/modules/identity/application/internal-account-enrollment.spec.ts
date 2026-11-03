@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
-import { createActor, FixedClock, Role } from '../../../shared';
+import { createActor, FixedClock, Role, PasswordHash } from '../../../shared';
+import type { IPasswordHasher } from '../../../shared';
 import type { MailMessage } from '../../notifications';
 import { AccountStatus } from '../domain/account-status.enum';
 import {
@@ -10,12 +11,10 @@ import {
 } from '../domain/errors';
 import { InternalUser } from '../domain/internal-user.entity';
 import { OpaqueToken } from '../domain/opaque-token.vo';
-import { PasswordHash } from '../domain/password-hash.vo';
 
 import { AccountSetupLinkIssuer } from './account-setup-link-issuer';
 import type { EnrollInternalCommand } from './internal-account-enrollment';
 import { InternalAccountEnrollment } from './internal-account-enrollment';
-import type { IPasswordHasher } from './ports/i-password-hasher.port';
 import { aClientUser } from './testing/client-user.builder';
 import { InMemoryUserRepository } from './testing/in-memory-user.repository';
 import { InMemoryVerificationTokenRepository } from './testing/in-memory-verification-token.repository';

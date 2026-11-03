@@ -4,8 +4,22 @@ import { Inject, Injectable } from '@nestjs/common';
 import { RESET_LINK_TTL_MINUTES } from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
-import { I_CLOCK, I_RATE_LIMITER, I_TRANSACTION_RUNNER } from '../../../shared';
-import type { Actor, IClock, IRateLimiter, ITransactionRunner } from '../../../shared';
+import {
+  I_CLOCK,
+  I_RATE_LIMITER,
+  I_TRANSACTION_RUNNER,
+  I_ATTEMPT_LOCKOUT,
+  I_PASSWORD_HASHER,
+} from '../../../shared';
+import type {
+  Actor,
+  IClock,
+  IRateLimiter,
+  ITransactionRunner,
+  PasswordHash,
+  IAttemptLockout,
+  IPasswordHasher,
+} from '../../../shared';
 import { I_MAILER } from '../../notifications';
 import type { IMailer, MailMessage } from '../../notifications';
 import { ClientUser } from '../domain/client-user.entity';
@@ -18,7 +32,6 @@ import {
   ResetLinkInvalidError,
   WrongPasswordError,
 } from '../domain/errors';
-import type { PasswordHash } from '../domain/password-hash.vo';
 import type { User } from '../domain/user.entity';
 import type { VerificationToken } from '../domain/verification-token.entity';
 
@@ -38,10 +51,6 @@ import { passwordChangedMail } from './mail/password-changed-mail.template';
 import { passwordResetMail } from './mail/password-reset-mail.template';
 import { logMassRevocation } from './mass-session-revocation';
 import { weakPasswordIssues } from './password-policy-issues';
-import { I_ATTEMPT_LOCKOUT } from './ports/i-attempt-lockout.port';
-import type { IAttemptLockout } from './ports/i-attempt-lockout.port';
-import { I_PASSWORD_HASHER } from './ports/i-password-hasher.port';
-import type { IPasswordHasher } from './ports/i-password-hasher.port';
 import { I_SESSION_REPOSITORY } from './ports/i-session-repository.port';
 import type { ISessionRepository } from './ports/i-session-repository.port';
 import { I_USER_REPOSITORY } from './ports/i-user-repository.port';
