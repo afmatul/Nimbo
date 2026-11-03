@@ -58,10 +58,16 @@ interface AlertRule {
   readonly condition: string;
   readonly data: readonly AlertQuery[];
 }
+/** Tipos de umbral de Grafana que admite el banco. */
+type ThresholdType = 'gt' | 'lt';
 interface Rule {
   readonly expr: string;
+  readonly type: ThresholdType;
   readonly threshold: number;
 }
+
+const isThresholdType = (type: string | undefined): type is ThresholdType =>
+  type === 'gt' || type === 'lt';
 
 const loadRule = (uid: string): Rule => {
   const file = JSON.parse(readFileSync(ALERTING_FILE, 'utf8')) as {
@@ -73,17 +79,26 @@ const loadRule = (uid: string): Rule => {
   const expr = rule?.data.find((query) => query.datasourceUid === 'prometheus')?.model.expr;
   const evaluator = rule?.data.find((query) => query.refId === rule.condition)?.model
     .conditions?.[0]?.evaluator;
-  if (expr === undefined || evaluator?.type !== 'gt' || evaluator.params[0] === undefined) {
-    throw new Error(`La regla ${uid} no está en alertas.json con una consulta y un umbral «gt».`);
+  const type = evaluator?.type;
+  const threshold = evaluator?.params[0];
+  if (expr === undefined || !isThresholdType(type) || threshold === undefined) {
+    throw new Error(
+      `La regla ${uid} no está en alertas.json con una consulta y un umbral «gt» o «lt».`,
+    );
   }
-  return { expr, threshold: evaluator.params[0] };
+  return { expr, type, threshold };
 };
+
+const breaches = (value: number, { type, threshold }: Rule): boolean =>
+  type === 'gt' ? value > threshold : value < threshold;
 
 const counter = (name: string, labels: Labels, perSecond: number): Series => ({
   name,
   labels,
   perSecond,
 });
+
+const gauge = (name: string, labels: Labels, value: number): Series => ({ name, labels, value });
 
 const HTTP_COUNT = 'nimbo_http_request_duration_seconds_count';
 const HTTP_BUCKET = 'nimbo_http_request_duration_seconds_bucket';
@@ -156,7 +171,40 @@ const RULE_P95_CASES: RuleCase[] = [
   },
 ];
 
-const CASES: readonly RuleCase[] = [...RULE_5XX_CASES, ...RULE_P95_CASES];
+const DEPENDENCY_UP = 'nimbo_dependency_up';
+const dependencyUp = (job: string, dependency: string, value: number): Series =>
+  gauge(DEPENDENCY_UP, { job, dependency }, value);
+
+const RULE_5_CASES: RuleCase[] = [
+  {
+    rule: 'nimbo-dependencia-caida',
+    name: 'Redis caído dispara',
+    series: [dependencyUp('api', 'postgres', 1), dependencyUp('api', 'redis', 0)],
+    fires: true,
+  },
+  {
+    rule: 'nimbo-dependencia-caida',
+    name: 'ONLYOFFICE caído dispara aunque el resto esté arriba (CA-15)',
+    series: [dependencyUp('api', 'minio', 1), dependencyUp('api', 'onlyoffice', 0)],
+    fires: true,
+  },
+  {
+    rule: 'nimbo-dependencia-caida',
+    name: 'Redis caído para un solo proceso dispara (mínimo por dependencia)',
+    series: [dependencyUp('api', 'redis', 1), dependencyUp('worker', 'redis', 0)],
+    fires: true,
+  },
+  {
+    rule: 'nimbo-dependencia-caida',
+    name: 'todas las dependencias arriba no dispara',
+    series: ['postgres', 'redis', 'minio', 'onlyoffice'].map((dependency) =>
+      dependencyUp('api', dependency, 1),
+    ),
+    fires: false,
+  },
+];
+
+const CASES: readonly RuleCase[] = [...RULE_5XX_CASES, ...RULE_P95_CASES, ...RULE_5_CASES];
 
 const windowStart = (index: number): number => EPOCH_SECONDS + index * WINDOW_SECONDS;
 const evaluatedAt = (index: number): number => windowStart(index) + SAMPLED_SECONDS;
@@ -232,13 +280,13 @@ describe('022: banco de reglas de alerta (CA-11, CA-12)', () => {
   it.each(CASES.map((ruleCase, index) => [ruleCase.rule, ruleCase.name, ruleCase, index] as const))(
     '%s: %s',
     async (_rule, _name, ruleCase, index) => {
-      const { expr, threshold } = loadRule(ruleCase.rule);
+      const rule = loadRule(ruleCase.rule);
 
-      const values = await queryAt(prometheus, expr, evaluatedAt(index));
+      const values = await queryAt(prometheus, rule.expr, evaluatedAt(index));
 
       // La expresión ve las series del caso: un «no dispara» nunca pasa por falta de datos.
       expect(values.length).toBeGreaterThan(0);
-      expect(values.some((value) => value > threshold)).toBe(ruleCase.fires);
+      expect(values.some((value) => breaches(value, rule))).toBe(ruleCase.fires);
     },
   );
 });

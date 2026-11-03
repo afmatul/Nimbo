@@ -11,7 +11,14 @@ import request from 'supertest';
 
 import { OnlyOfficeController } from '../../../src/modules/editing/presentation/onlyoffice.controller';
 import { AgentController } from '../../../src/modules/intelligence/presentation/agent.controller';
-import { EnvModule, Public } from '../../../src/shared';
+import {
+  EnvModule,
+  HealthModule,
+  MinioHealthIndicator,
+  PostgresHealthIndicator,
+  Public,
+  RedisHealthIndicator,
+} from '../../../src/shared';
 import type { SharedEnvBase } from '../../../src/shared';
 import { createLoggerModule } from '../../../src/shared/infrastructure/logging/logger.module';
 import {
@@ -197,5 +204,59 @@ describe('022 T-02: /metrics del worker en su puerto interno (CA-2)', () => {
     expect(response.headers['content-type']).toMatch(/^text\/plain/);
     expect(response.text).toContain('process_cpu_user_seconds_total');
     await request(app.getHttpServer()).get('/api/v1/metrics').expect(404);
+  });
+});
+
+/** Un puerto local sin nadie escuchando: ONLYOFFICE configurado pero caído (S-7). */
+const ONLYOFFICE_DOWN_URL = 'http://127.0.0.1:1/docs';
+
+describe('022 T-06: disponibilidad de dependencias (CA-3, CA-15, RN-4)', () => {
+  let testApp: TestApp;
+  let privateServer: Server;
+
+  beforeAll(async () => {
+    testApp = await createTestApp({
+      env: { ONLYOFFICE_INTERNAL_URL: ONLYOFFICE_DOWN_URL },
+      modules: [
+        HealthModule.forRoot({
+          indicators: [PostgresHealthIndicator, RedisHealthIndicator, MinioHealthIndicator],
+        }),
+      ],
+    });
+    privateServer = startMetricsServer(testApp.app, 0);
+    await once(privateServer, 'listening');
+  });
+
+  afterAll(async () => {
+    await closeServer(privateServer);
+    await testApp.close();
+  });
+
+  it('CA-15 y RN-4: con ONLYOFFICE caído, `ready` sigue en 200 sin ONLYOFFICE y su serie queda en 0', async () => {
+    const ready = await request(testApp.app.getHttpServer())
+      .get('/api/v1/health/ready')
+      .expect(200);
+    expect(ready.body).toEqual({
+      status: 'ok',
+      checks: { postgres: 'up', redis: 'up', minio: 'up' },
+    });
+
+    const text = await scrape(privateServer);
+    expect(text).toContain('nimbo_dependency_up{dependency="onlyoffice"} 0');
+    for (const dependency of ['postgres', 'redis', 'minio']) {
+      expect(text).toContain(`nimbo_dependency_up{dependency="${dependency}"} 1`);
+    }
+  });
+
+  it('CA-5: la serie de dependencias no lleva la URL interna de ONLYOFFICE ni otra etiqueta', async () => {
+    const text = await scrape(privateServer);
+
+    expect(text).not.toContain('127.0.0.1');
+    const labelSets = text
+      .split('\n')
+      .filter((line) => line.startsWith('nimbo_dependency_up{'))
+      .map((line) => /\{([^}]*)\}/.exec(line)?.[1]);
+    expect(labelSets).toHaveLength(4);
+    expect(labelSets.every((labels) => /^dependency="\w+"$/.test(labels ?? ''))).toBe(true);
   });
 });

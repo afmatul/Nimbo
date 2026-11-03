@@ -462,4 +462,27 @@ describe('022 T-01: Compose de observabilidad (CA-2, CA-3, CA-9, CA-10)', () => 
       expect(policies.map((policy) => policy.receiver)).toEqual([contact?.name]);
     });
   });
+
+  describe('022 T-06: disponibilidad de dependencias y regla de caída (CA-3, CA-6, CA-15)', () => {
+    it('CA-15: la regla de caída dispara si una dependencia queda en 0 por 1 min (S-3), una alerta por dependencia', () => {
+      const rule = ruleOf('nimbo-dependencia-caida');
+      expect(rule.for).toBe('1m');
+      expect(thresholdOf(rule)).toEqual({ type: 'lt', value: 1 });
+      expect(queryOf(rule)).toBe('min by (dependency) (nimbo_dependency_up)');
+    });
+
+    it('CA-15 y CA-5: la anotación nombra la dependencia solo con {{ .Labels.dependency }}', () => {
+      const summary = ruleOf('nimbo-dependencia-caida').annotations?.summary ?? '';
+      expect(summary).toContain('{{ .Labels.dependency }}');
+      expect(summary).not.toContain('$');
+    });
+
+    it('CA-6 y CA-3: el tablero muestra la disponibilidad de cada dependencia', () => {
+      expect(
+        dashboardExprs().some(
+          (expr) => /nimbo_dependency_up/.test(expr) && /by \(dependency\)/.test(expr),
+        ),
+      ).toBe(true);
+    });
+  });
 });

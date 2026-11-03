@@ -72,6 +72,39 @@
           "annotations": {
             "summary": "El p95 de las consultas de UI del api supera 300 ms desde hace 10 minutos (RNF-01). Revisar el panel de latencia por ruta."
           }
+        },
+        {
+          "uid": "nimbo-dependencia-caida",
+          "title": "Dependencia caída",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": { "from": 600, "to": 0 },
+              "datasourceUid": "prometheus",
+              "model": {
+                "refId": "A",
+                "instant": true,
+                "expr": "min by (dependency) (nimbo_dependency_up)"
+              }
+            },
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [{ "evaluator": { "type": "lt", "params": [1] } }]
+              }
+            }
+          ],
+          "for": "1m",
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "annotations": {
+            "summary": "La dependencia {{ .Labels.dependency }} no responde desde hace 1 minuto. Revisar su contenedor y el panel de disponibilidad del tablero «Operación»."
+          }
         }
       ]
     }
