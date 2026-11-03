@@ -187,6 +187,11 @@ aprobación de otro integrante se sustituye por la verificación automática, `/
 autoaprobación (§7.1). Hasta que el CI esté en `main` (desde el 30/09/2026), «CI verde» se sustituye por las
 verificaciones locales con su resumen en el PR (§7.2). Los PRs del resto del equipo cumplen RNF-19 sin cambios.
 
+**Nota sobre RNF-18 (cambio respecto de la propuesta §4.3, decisión de Adrián del 2026-11-02, PR #78).** Las métricas
+son solo agregados y distribuciones, sin identificadores de cuenta, archivo ni documento (RNF-17): el espacio usado,
+el consumo del agente y los editores concurrentes se miden en total, por plan o como distribución, no «por cuenta» ni
+«por documento». El agente es un grupo del tablero de operación, no un tercer tablero (spec 022, RN-2 y P-8; PD-167).
+
 ### Alertas definidas
 5xx > 2 % por 5 min · p95 > 300 ms por 10 min · > 50 trabajos pendientes o un trabajo reintentado 3 veces ·
 disco > 80 % · caída de Postgres/Redis/MinIO/ONLYOFFICE · fallo del proceso de renovación.
