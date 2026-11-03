@@ -16,6 +16,7 @@ import { Action } from '../../access';
 import { AuditAction } from '../../audit';
 import type { AuditRecord, IAuditLogger } from '../../audit';
 import { NodeNotFoundError } from '../../storage';
+import { PublicLinkNotFoundError } from '../domain/errors';
 import { LinkToken } from '../domain/link-token';
 import { PublicLink } from '../domain/public-link';
 
@@ -35,14 +36,14 @@ const PASSWORD_HASH = PasswordHash.fromPhc('$argon2id$v=19$m=19456,t=2,p=1$c2Fsd
 /** Error que el doble de `WritableAccountPolicy` lanza en solo lectura (el real es de `storage`). */
 class ReadOnlyForTest extends Error {}
 
-const previousLink = (): PublicLink =>
+const previousLink = (expiresAt = new Date(NOW.getTime() + DAY_MS)): PublicLink =>
   PublicLink.rehydrate({
     id: PREVIOUS_ID,
     fileId: FILE_ID,
     ownerId: ANA.id,
     tokenHash: LinkToken.hashOf('anterior'),
     passwordHash: null,
-    expiresAt: new Date(NOW.getTime() + DAY_MS),
+    expiresAt,
     createdAt: new Date(NOW.getTime() - DAY_MS),
   });
 
@@ -59,6 +60,10 @@ interface SetupOptions {
   readonly rate?: RateLimitDecision;
   /** Lo que da `replace`: `null` si el archivo dejó de ser propio y vivo. */
   readonly replaced?: { previous: PublicLink | null } | null;
+  /** Lo que da `findCurrent`: el enlace sin revocar del archivo, o `null`. */
+  readonly current?: PublicLink | null;
+  /** Lo que da `revoke`: el enlace recién revocado, o `null` si es ajeno, inexistente o ya revocado. */
+  readonly revoked?: PublicLink | null;
 }
 
 const setup = (options: SetupOptions = {}) => {
@@ -94,6 +99,10 @@ const setup = (options: SetupOptions = {}) => {
     replace: jest.fn(
       step('replace', options.replaced === undefined ? { previous: null } : options.replaced),
     ),
+    findCurrent: jest.fn(step('findCurrent', options.current ?? null)),
+    revoke: jest.fn(
+      step('revoke', options.revoked === undefined ? previousLink() : options.revoked),
+    ),
   };
   const writable = {
     assertWritable: jest.fn(() => {
@@ -128,7 +137,17 @@ const setup = (options: SetupOptions = {}) => {
     { shareAttemptsPerMinute: RATE_LIMIT_PER_MINUTE, webPublicUrl: 'https://nimbo.test' },
     logger,
   );
-  return { service, journal, recorded, links, rateLimiter, permissions, hasher, logger };
+  return {
+    service,
+    journal,
+    recorded,
+    links,
+    rateLimiter,
+    permissions,
+    hasher,
+    writable,
+    logger,
+  };
 };
 
 describe('PublicLinkService.createLink (plan 013 §2, §5)', () => {
@@ -263,5 +282,94 @@ describe('PublicLinkService.createLink (plan 013 §2, §5)', () => {
       { limit: RATE_LIMIT_PER_MINUTE, windowSeconds: 60 },
     ]);
     expect(logger.warn).toHaveBeenCalledWith({ event: 'sharing.rate_limited', actorId: ANA.id });
+  });
+});
+
+describe('PublicLinkService.currentLink (plan 013 §2)', () => {
+  it('CA-7: con el actor, `can` y archivo propio y vivo antes de leer el enlace sin revocar del archivo', async () => {
+    const { service, journal, permissions, links } = setup({ current: previousLink() });
+
+    await service.currentLink(ANA, FILE_ID);
+
+    expect(journal).toEqual([`tx:${ANA.id}`, 'can', 'findOwnedFile', 'findCurrent', 'commit']);
+    expect(permissions.can).toHaveBeenCalledWith(ANA, FILE_ID, Action.CREATE_PUBLIC_LINK);
+    expect(links.findCurrent).toHaveBeenCalledWith(ANA, FILE_ID);
+  });
+
+  it.each([
+    ['vigente', new Date(NOW.getTime() + DAY_MS), 'active'],
+    ['vencido', NOW, 'expired'],
+  ] as const)(
+    'CA-7: un enlace %s sale con su estado, sin token ni URL',
+    async (_case, expiresAt, status) => {
+      const { service } = setup({ current: previousLink(expiresAt) });
+
+      await expect(service.currentLink(ANA, FILE_ID)).resolves.toEqual({
+        id: PREVIOUS_ID,
+        fileId: FILE_ID,
+        expiresAt,
+        hasPassword: false,
+        status,
+        createdAt: new Date(NOW.getTime() - DAY_MS),
+      });
+    },
+  );
+
+  it('CA-7: sin enlace sin revocar, `null`', async () => {
+    const { service } = setup({ current: null });
+
+    await expect(service.currentLink(ANA, FILE_ID)).resolves.toBeNull();
+  });
+
+  it.each([
+    ['sin `CREATE_PUBLIC_LINK` (ajeno, Editor o Lector)', { allowed: false }],
+    ['una carpeta, en la papelera o inexistente', { file: null }],
+  ])('CA-7: %s es el 404 de lo inexistente y no lee enlaces', async (_case, options) => {
+    const { service, links } = setup(options);
+
+    await expect(service.currentLink(ANA, FILE_ID)).rejects.toBeInstanceOf(NodeNotFoundError);
+    expect(links.findCurrent).not.toHaveBeenCalled();
+  });
+});
+
+describe('PublicLinkService.revokeLink (plan 013 §2)', () => {
+  it('CA-8: revoca con el actor y la hora del reloj, sin pasar por la solo lectura ni por el archivo', async () => {
+    const { service, journal, links, writable, permissions } = setup();
+
+    await service.revokeLink(ANA, PREVIOUS_ID);
+
+    expect(journal).toEqual([`tx:${ANA.id}`, 'revoke', 'audit:public_link.revoked', 'commit']);
+    expect(links.revoke).toHaveBeenCalledWith(ANA, PREVIOUS_ID, NOW);
+    expect(writable.assertWritable).not.toHaveBeenCalled();
+    expect(permissions.can).not.toHaveBeenCalled();
+  });
+
+  it('CA-8, CA-15: `public_link.revoked` con `reason: revoked` en la transacción; la bitácora solo con ids', async () => {
+    const { service, recorded, logger } = setup();
+
+    await service.revokeLink(ANA, PREVIOUS_ID);
+
+    expect(recorded).toEqual([
+      {
+        action: AuditAction.PUBLIC_LINK_REVOKED,
+        actor: ANA,
+        targetUserId: ANA.id,
+        resourceId: FILE_ID,
+        attributes: { reason: 'revoked' },
+      },
+    ]);
+    expect(logger.info.mock.calls).toEqual([
+      [{ event: 'public_link.revoked', linkId: PREVIOUS_ID, fileId: FILE_ID }],
+    ]);
+  });
+
+  it('CA-8: ajeno, inexistente o ya revocado es `SHARING_LINK_NOT_FOUND`, sin auditar ni registrar', async () => {
+    const { service, recorded, logger } = setup({ revoked: null });
+
+    await expect(service.revokeLink(ANA, PREVIOUS_ID)).rejects.toBeInstanceOf(
+      PublicLinkNotFoundError,
+    );
+    expect(recorded).toEqual([]);
+    expect(logger.info).not.toHaveBeenCalled();
   });
 });

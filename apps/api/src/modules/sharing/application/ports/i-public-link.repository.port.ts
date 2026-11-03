@@ -17,6 +17,15 @@ export interface IPublicLinkRepository {
    * archivo ya no es propio y vivo.
    */
   replace(actor: Actor, link: PublicLink): Promise<PublicLinkReplacement | null>;
+
+  /** CA-7: el enlace sin revocar (vigente o vencido) de un archivo en `ownedNodes(actor)`, o `null`. */
+  findCurrent(actor: Actor, fileId: string): Promise<PublicLink | null>;
+
+  /**
+   * CA-8: marca `revocado_en` = `revokedAt` del enlace sin revocar del actor y lo devuelve; `null`, sin escribir, si es
+   * ajeno, inexistente o ya revocado. No exige el archivo vivo: se revoca también con el archivo en la papelera.
+   */
+  revoke(actor: Actor, linkId: string, revokedAt: Date): Promise<PublicLink | null>;
 }
 
 export const I_PUBLIC_LINK_REPOSITORY = Symbol('IPublicLinkRepository');

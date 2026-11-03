@@ -37,6 +37,10 @@ export interface SharesClient {
 export interface PublicLinksClient {
   /** `POST /public-links` (CA-1). */
   create(body: Record<string, unknown>): Promise<Response>;
+  /** `GET /public-links?fileId` (CA-7). */
+  current(query: Record<string, string>): Promise<Response>;
+  /** `DELETE /public-links/:linkId` (CA-8). */
+  revoke(linkId: string): Promise<Response>;
 }
 
 export interface SharingHttpApp {
@@ -91,7 +95,11 @@ export const createSharingHttpApp = async (
   };
   const publicLinksOf = (client: StorageClient): PublicLinksClient => {
     const auth = authOf(client);
-    return { create: (body) => http().post(`${API_PREFIX}/public-links`).set(auth).send(body) };
+    return {
+      create: (body) => http().post(`${API_PREFIX}/public-links`).set(auth).send(body),
+      current: (query) => http().get(`${API_PREFIX}/public-links`).query(query).set(auth),
+      revoke: (linkId) => http().delete(`${API_PREFIX}/public-links/${linkId}`).set(auth),
+    };
   };
   return {
     storage,

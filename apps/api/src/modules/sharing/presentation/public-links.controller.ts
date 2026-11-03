@@ -1,8 +1,22 @@
-import { Body, Controller, Header, Inject, Post } from '@nestjs/common';
-import { createPublicLinkSchema } from '@nimbo/contracts';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Header,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
+import { createPublicLinkSchema, publicLinkQuerySchema } from '@nimbo/contracts';
 import type {
   CreatedPublicLink,
   CreatePublicLinkRequest,
+  CurrentPublicLink,
+  PublicLinkQuery,
   PublicLinkSummary as PublicLinkSummaryResponse,
 } from '@nimbo/contracts';
 
@@ -15,13 +29,13 @@ import type { SharingConfig } from '../application/sharing-config';
 import { SharingInvalidRequestError } from '../domain/errors';
 import type { LinkToken } from '../domain/link-token';
 
-import { NO_STORE } from './sharing-http.constants';
+import { linkIdPipe, NO_STORE } from './sharing-http.constants';
 
 /** Ruta de `web` de la página pública (la construye la 013b); el token va en el fragmento, que no viaja al servidor. */
 const PUBLIC_LINK_WEB_PATH = '/enlace';
 const TRAILING_SLASHES = /\/+$/;
 
-/** CA-2: un vencimiento o una contraseña inválidos son `422` con `fields`. */
+/** CA-2, plan §4: un vencimiento, una contraseña o un `fileId` inválidos son `422` con `fields`. */
 const invalidRequest = (issues: readonly FieldIssue[]): DomainError =>
   new SharingInvalidRequestError(issues);
 
@@ -40,7 +54,8 @@ const linkUrl = (webPublicUrl: string, token: LinkToken): string =>
 
 /**
  * Enlaces públicos del propietario (plan 013 §4). Solo `CLIENT`: un rol interno recibe `403 SHARED_FORBIDDEN` y sin
- * token `401` (CA-16). Mapea y delega; las reglas viven en `PublicLinkService`. La respuesta lleva el token: `no-store`.
+ * token `401` (CA-16). Mapea y delega; las reglas viven en `PublicLinkService`. Todas con `no-store`: la de generar lleva
+ * el token.
  */
 @Roles(Role.CLIENT)
 @Controller('public-links')
@@ -60,5 +75,27 @@ export class PublicLinksController {
   ): Promise<CreatedPublicLink> {
     const { link, token } = await this.links.createLink(actor, body);
     return { link: toSummaryResponse(link), url: linkUrl(this.config.webPublicUrl, token) };
+  }
+
+  /** CA-7: el enlace sin revocar del archivo, vigente o vencido, sin la URL; `null` si no tiene. */
+  @Get()
+  @Header('Cache-Control', NO_STORE)
+  async current(
+    @CurrentActor() actor: Actor,
+    @Query(new ZodValidationPipe(publicLinkQuerySchema, invalidRequest)) query: PublicLinkQuery,
+  ): Promise<CurrentPublicLink> {
+    const link = await this.links.currentLink(actor, query.fileId);
+    return { link: link === null ? null : toSummaryResponse(link) };
+  }
+
+  /** CA-8: `204`; desde la siguiente petición el enlace deja de servir. También en solo lectura y en la papelera. */
+  @Delete(':linkId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Header('Cache-Control', NO_STORE)
+  async revoke(
+    @CurrentActor() actor: Actor,
+    @Param('linkId', linkIdPipe()) linkId: string,
+  ): Promise<void> {
+    await this.links.revokeLink(actor, linkId);
   }
 }

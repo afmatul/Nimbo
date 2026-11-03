@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-import { createdPublicLinkSchema } from '@nimbo/contracts';
+import { createdPublicLinkSchema, currentPublicLinkSchema } from '@nimbo/contracts';
 import type { Response } from 'supertest';
 
 import { Role } from '../../../src/shared';
@@ -49,10 +49,10 @@ const tokenOf = (response: Response): string =>
   createdPublicLinkSchema.parse(response.body).url.slice(LINK_URL_PREFIX.length);
 
 /**
- * `POST /public-links` por HTTP con Postgres, Redis y Argon2 reales (spec 013 CA-1 a CA-5, CA-15, CA-16; plan §6). Ana
- * genera enlaces a sus archivos; Dani es Editora o Lectora de algunos y tiene los suyos.
+ * Rutas del propietario de `/public-links` por HTTP con Postgres, Redis y Argon2 reales (spec 013 CA-1 a CA-8, CA-15,
+ * CA-16; plan §6). Ana genera, ve y revoca enlaces a sus archivos; Dani es Editora o Lectora de algunos y tiene los suyos.
  */
-describe('POST /public-links (013 CA-1 a CA-5, CA-15, CA-16)', () => {
+describe('POST, GET y DELETE /public-links (013 CA-1 a CA-8, CA-15, CA-16)', () => {
   let sharing: SharingHttpApp;
   let ana: StorageClient;
   let dani: StorageClient;
@@ -283,20 +283,203 @@ describe('POST /public-links (013 CA-1 a CA-5, CA-15, CA-16)', () => {
     ]);
   });
 
-  it('CA-16: Administrador, Soporte y Operador reciben 403 `SHARED_FORBIDDEN`; sin token, 401', async () => {
+  it('CA-16: Administrador, Soporte y Operador reciben 403 `SHARED_FORBIDDEN` al generar, ver o revocar; sin token, 401', async () => {
     const fileId = await newFile(ana.id);
+    const { id: linkId } = await insertPublicLink(sharing.storage.owner, {
+      ownerId: ana.id,
+      fileId,
+    });
+    const callsOf = (links: PublicLinksClient): Promise<Response[]> =>
+      Promise.all([links.create({ fileId }), links.current({ fileId }), links.revoke(linkId)]);
 
     for (const role of [Role.ADMIN, Role.SUPPORT, Role.OPERATOR]) {
       const internal = await sharing.storage.newClient(role);
-      const response = await sharing.publicLinksOf(internal).create({ fileId });
-      expect(errorOf(response)).toEqual({ status: 403, code: 'SHARED_FORBIDDEN' });
+      for (const response of await callsOf(sharing.publicLinksOf(internal))) {
+        expect(errorOf(response)).toEqual({ status: 403, code: 'SHARED_FORBIDDEN' });
+      }
     }
     const anonymous = sharing.publicLinksOf(sharing.storage.clientFor(randomUUID()));
-    expect(errorOf(await anonymous.create({ fileId }))).toEqual({
-      status: 401,
-      code: 'SHARED_UNAUTHENTICATED',
+    for (const response of await callsOf(anonymous)) {
+      expect(errorOf(response)).toEqual({ status: 401, code: 'SHARED_UNAUTHENTICATED' });
+    }
+    const rows = await linkRows(fileId);
+    expect(rows.map((row) => [row.id, row.revocado_en])).toEqual([[linkId, null]]);
+  });
+
+  it('CA-7: sin enlace, `{ link: null }`; con uno, su resumen con `no-store` y sin la URL ni el token', async () => {
+    const fileId = await newFile(ana.id);
+    const empty = await anaLinks.current({ fileId });
+    const created = await anaLinks.create({ fileId, password: PASSWORD });
+
+    const response = await anaLinks.current({ fileId });
+
+    expect([empty.status, empty.body]).toEqual([200, { link: null }]);
+    expect(response.status).toBe(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    const { link } = currentPublicLinkSchema.parse(response.body);
+    expect(link).toEqual(createdPublicLinkSchema.parse(created.body).link);
+    expect(link).toMatchObject({ hasPassword: true, status: 'active' });
+    expect(JSON.stringify(response.body)).not.toContain(tokenOf(created));
+  });
+
+  it('CA-7: un enlace vencido sale `expired`; uno revocado no sale', async () => {
+    const [expiredFile, revokedFile] = [await newFile(ana.id), await newFile(ana.id)];
+    const expired = await insertPublicLink(sharing.storage.owner, {
+      ownerId: ana.id,
+      fileId: expiredFile,
+      createdAt: new Date(Date.now() - 2 * DAY_MS),
+      expiresAt: new Date(Date.now() - DAY_MS),
     });
-    await expect(linkRows(fileId)).resolves.toEqual([]);
+    const revoked = await anaLinks.create({ fileId: revokedFile });
+    await anaLinks.revoke(createdPublicLinkSchema.parse(revoked.body).link.id);
+
+    const [expiredResponse, revokedResponse] = [
+      await anaLinks.current({ fileId: expiredFile }),
+      await anaLinks.current({ fileId: revokedFile }),
+    ];
+
+    expect(currentPublicLinkSchema.parse(expiredResponse.body).link).toMatchObject({
+      id: expired.id,
+      fileId: expiredFile,
+      hasPassword: false,
+      status: 'expired',
+    });
+    expect(revokedResponse.body).toEqual({ link: null });
+  });
+
+  it('CA-7: carpeta, ajeno, inexistente, en la papelera o como Editora o Lectora es el 404 de lo inexistente; una consulta inválida, 422', async () => {
+    const folderId = (
+      await sharing.storage.owner.transaction((manager) =>
+        insertFolder(manager, ana.id, { name: `Carpeta-${randomUUID()}` }),
+      )
+    ).id;
+    const [danisFile, trashed, edited, viewed] = [
+      await newFile(dani.id),
+      await newFile(ana.id, new Date()),
+      await newFile(ana.id),
+      await newFile(ana.id),
+    ];
+    await insertPublicLink(sharing.storage.owner, { ownerId: dani.id, fileId: danisFile });
+    for (const fileId of [trashed, edited, viewed]) {
+      await insertPublicLink(sharing.storage.owner, { ownerId: ana.id, fileId });
+    }
+    for (const [fileId, level] of [
+      [edited, 'EDITOR'],
+      [viewed, 'VIEWER'],
+    ] as const) {
+      await insertShare(sharing.storage.owner, {
+        ownerId: ana.id,
+        granteeId: dani.id,
+        node: { fileId },
+        level,
+      });
+    }
+    const daniLinks = sharing.publicLinksOf(dani);
+
+    const responses = [
+      await anaLinks.current({ fileId: folderId }),
+      await anaLinks.current({ fileId: danisFile }),
+      await anaLinks.current({ fileId: randomUUID() }),
+      await anaLinks.current({ fileId: trashed }),
+      await daniLinks.current({ fileId: edited }),
+      await daniLinks.current({ fileId: viewed }),
+    ];
+
+    for (const response of responses) {
+      expect(errorOf(response)).toEqual({ status: 404, code: 'STORAGE_NODE_NOT_FOUND' });
+    }
+    const invalid = await anaLinks.current({ fileId: 'no-es-un-uuid' });
+    expect(errorOf(invalid)).toEqual({ status: 422, code: 'SHARING_INVALID_REQUEST' });
+    expect((invalid.body as ErrorBody).fields?.map((field) => field.field)).toEqual(['fileId']);
+  });
+
+  it('CA-8, CA-15: revocar da 204 con `no-store`, deja de servir y `public_link.revoked` (`revoked`) sin token, contraseña ni nombre', async () => {
+    const fileId = await newFile(ana.id);
+    const created = await anaLinks.create({ fileId, password: PASSWORD });
+    const { id: linkId } = createdPublicLinkSchema.parse(created.body).link;
+    const token = tokenOf(created);
+
+    const response = await anaLinks.revoke(linkId);
+
+    expect(response.status).toBe(204);
+    expect(response.headers['cache-control']).toBe('no-store');
+    const [row] = await linkRows(fileId);
+    expect(row?.revocado_en).toBeInstanceOf(Date);
+    await expect(servedLinkOf(token)).resolves.toEqual([]);
+    const events = await linkEventsOf(fileId);
+    expect(events.slice(1)).toEqual([
+      {
+        accion: 'public_link.revoked',
+        actor_id: ana.id,
+        tipo_recurso: 'file',
+        recurso_id: fileId,
+        atributos: { reason: 'revoked' },
+        correlation_id: response.headers[CORRELATION_HEADER] as string,
+      },
+    ]);
+    const logs = JSON.stringify(sharing.storage.testApp.logs.lines());
+    expect(logs).toContain('public_link.revoked');
+    for (const written of [logs, JSON.stringify(events)]) {
+      expect(written).not.toContain(token);
+      expect(written).not.toContain(PASSWORD);
+      expect(written).not.toContain(FILE_PREFIX);
+    }
+  });
+
+  it('CA-8, CA-5: se revoca con la cuenta en solo lectura y con el archivo en la papelera', async () => {
+    const [readOnlyFile, trashedFile] = [await newFile(ana.id), await newFile(ana.id, new Date())];
+    const readOnlyLink = createdPublicLinkSchema.parse(
+      (await anaLinks.create({ fileId: readOnlyFile })).body,
+    ).link.id;
+    const trashedLink = (
+      await insertPublicLink(sharing.storage.owner, { ownerId: ana.id, fileId: trashedFile })
+    ).id;
+    sharing.storage.limits.setReadOnly(true);
+
+    const responses = [await anaLinks.revoke(readOnlyLink), await anaLinks.revoke(trashedLink)];
+
+    expect(responses.map((response) => response.status)).toEqual([204, 204]);
+    for (const fileId of [readOnlyFile, trashedFile]) {
+      const [row] = await linkRows(fileId);
+      expect(row?.revocado_en).toBeInstanceOf(Date);
+      const events = await linkEventsOf(fileId);
+      expect(events.at(-1)).toMatchObject({
+        accion: 'public_link.revoked',
+        atributos: { reason: 'revoked' },
+      });
+    }
+  });
+
+  it('CA-8: ajeno, inexistente, ya revocado o un id que no es UUID es 404 `SHARING_LINK_NOT_FOUND` y nada cambia', async () => {
+    const [danisFile, anasFile] = [await newFile(dani.id), await newFile(ana.id)];
+    const danisLink = await insertPublicLink(sharing.storage.owner, {
+      ownerId: dani.id,
+      fileId: danisFile,
+    });
+    const anasLink = createdPublicLinkSchema.parse(
+      (await anaLinks.create({ fileId: anasFile })).body,
+    ).link.id;
+    await anaLinks.revoke(anasLink);
+    const before = await linkRows(anasFile);
+
+    const responses = [
+      await anaLinks.revoke(danisLink.id),
+      await anaLinks.revoke(randomUUID()),
+      await anaLinks.revoke(anasLink),
+      await anaLinks.revoke('no-es-un-uuid'),
+    ];
+
+    for (const response of responses) {
+      expect(errorOf(response)).toEqual({ status: 404, code: 'SHARING_LINK_NOT_FOUND' });
+    }
+    const [danisRow] = await linkRows(danisFile);
+    expect(danisRow?.revocado_en).toBeNull();
+    await expect(linkRows(anasFile)).resolves.toEqual(before);
+    const revocations = (await linkEventsOf(anasFile)).filter(
+      (event) => event.accion === 'public_link.revoked',
+    );
+    expect(revocations).toHaveLength(1);
+    await expect(sharing.eventsOf(dani.id)).resolves.toEqual([]);
   });
 });
 

@@ -23,17 +23,31 @@ const LOCK_FILE_SQL =
 const ownedFileSql = (ownedSql: string): string =>
   `:file_id::uuid IN (SELECT o.nodo_id FROM (${ownedSql}) o WHERE o.tipo_nodo = 'archivo')`;
 
+const LINK_COLUMNS = 'id, archivo_id, propietario_id, token_hash, clave_hash, vence_en, creado_en';
+
 /**
- * RN-3: revoca el enlace sin revocar del archivo (vigente o vencido). En un CTE para que el driver devuelva las filas
+ * Revoca el enlace sin revocar del propietario que cumple `condition`. En un CTE para que el driver devuelva las filas
  * como en un `SELECT`. `nimbo_app` solo puede actualizar `revocado_en` (plan §3).
  */
-const revokeCurrentSql = (ownedSql: string): string => `
+const revokeWhereSql = (condition: string): string => `
   WITH revocado AS (
     UPDATE enlace_publico SET revocado_en = :now::timestamptz
-     WHERE archivo_id = :file_id::uuid AND propietario_id = :owner_id::uuid AND revocado_en IS NULL
-       AND ${ownedFileSql(ownedSql)}
-    RETURNING id, archivo_id, propietario_id, token_hash, clave_hash, vence_en, creado_en)
+     WHERE propietario_id = :owner_id::uuid AND revocado_en IS NULL AND ${condition}
+    RETURNING ${LINK_COLUMNS})
   SELECT * FROM revocado`;
+
+/** RN-3: el enlace sin revocar del archivo (vigente o vencido), si el archivo sigue propio y vivo. */
+const revokeCurrentSql = (ownedSql: string): string =>
+  revokeWhereSql(`archivo_id = :file_id::uuid AND ${ownedFileSql(ownedSql)}`);
+
+/** CA-8: por su id, sin exigir el archivo vivo (se revoca también en la papelera, plan §3). */
+const REVOKE_BY_ID_SQL = revokeWhereSql('id = :link_id::uuid');
+
+/** CA-7: el enlace sin revocar de un archivo propio y vivo (a lo sumo uno, RN-3). */
+const findCurrentSql = (ownedSql: string): string => `
+  SELECT ${LINK_COLUMNS} FROM enlace_publico
+   WHERE archivo_id = :file_id::uuid AND propietario_id = :owner_id::uuid AND revocado_en IS NULL
+     AND ${ownedFileSql(ownedSql)}`;
 
 const insertSql = (ownedSql: string): string => `
   INSERT INTO enlace_publico (id, archivo_id, propietario_id, token_hash, clave_hash, vence_en, creado_en)
@@ -86,6 +100,25 @@ export class TypeOrmPublicLinkRepository implements IPublicLinkRepository {
     const inserted = await this.insert(manager, link, { sql: owned.sql, scope });
     if (!inserted) return null;
     return { previous: previous === undefined ? null : toLink(previous) };
+  }
+
+  async findCurrent(actor: Actor, fileId: string): Promise<PublicLink | null> {
+    const owned = ownedNodes(actor);
+    const [row] = await queryNamed<LinkRow>(
+      this.context.requireActorScope(actor),
+      findCurrentSql(owned.sql),
+      { ...owned.parameters, file_id: fileId, owner_id: actor.id },
+    );
+    return row === undefined ? null : toLink(row);
+  }
+
+  async revoke(actor: Actor, linkId: string, revokedAt: Date): Promise<PublicLink | null> {
+    const [row] = await queryNamed<LinkRow>(
+      this.context.requireActorScope(actor),
+      REVOKE_BY_ID_SQL,
+      { link_id: linkId, owner_id: actor.id, now: revokedAt },
+    );
+    return row === undefined ? null : toLink(row);
   }
 
   /** `false`, sin escribir, si el archivo dejó de ser propio y vivo (la transacción del servicio revierte). */

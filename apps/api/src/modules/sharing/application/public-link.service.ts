@@ -22,6 +22,7 @@ import { Action, PermissionResolver } from '../../access';
 import { I_AUDIT_LOGGER } from '../../audit';
 import type { IAuditLogger } from '../../audit';
 import { LinkedFileGateway, NodeNotFoundError, WritableAccountPolicy } from '../../storage';
+import { PublicLinkNotFoundError } from '../domain/errors';
 import type { LinkToken } from '../domain/link-token';
 import { PublicLink } from '../domain/public-link';
 import type { PublicLinkExpiryDays, PublicLinkStatus } from '../domain/public-link';
@@ -120,6 +121,30 @@ export class PublicLinkService {
     return { link: summaryOf(link, now), token };
   }
 
+  /** CA-7: el enlace sin revocar del archivo con su estado, sin token ni URL; `null` si no tiene. */
+  currentLink(actor: Actor, fileId: string): Promise<PublicLinkSummary | null> {
+    return this.transactions.withActor(actor, async () => {
+      await this.assertOwnedFile(actor, fileId);
+      const link = await this.links.findCurrent(actor, fileId);
+      return link === null ? null : summaryOf(link, this.clock.now());
+    });
+  }
+
+  /**
+   * CA-8, CA-15: solo el propietario (la consulta revoca con `propietario_id` = actor); ajeno, inexistente o ya revocado
+   * es el mismo 404. Sin `WritableAccountPolicy` (RN-6) ni archivo vivo: se revoca en solo lectura y con el archivo en
+   * la papelera. `public_link.revoked` (`revoked`) en la misma transacción; la bitácora tras el commit.
+   */
+  async revokeLink(actor: Actor, linkId: string): Promise<void> {
+    const revoked = await this.transactions.withActor(actor, async () => {
+      const link = await this.links.revoke(actor, linkId, this.clock.now());
+      if (link === null) throw new PublicLinkNotFoundError();
+      await this.audit.recordInTransaction(linkRevokedEvent(actor, link, 'revoked'));
+      return link;
+    });
+    logLink(this.logger, 'public_link.revoked', revoked);
+  }
+
   /** CA-4, CA-15: el anterior se revoca y se audita antes de auditar el nuevo; si el archivo ya no es propio, 404. */
   private async replaceInScope(
     actor: Actor,
@@ -136,14 +161,16 @@ export class PublicLinkService {
     return previous;
   }
 
-  /** RN-1, RN-2, CA-3: carpeta, ajeno, inexistente, en la papelera, Editor o Lector son el mismo 404. */
-  private async requireOwnedFile(actor: Actor, fileId: string): Promise<void> {
-    await this.transactions.withActor(actor, async () => {
-      const allowed = await this.permissions.can(actor, fileId, Action.CREATE_PUBLIC_LINK);
-      if (!allowed || (await this.files.findOwnedFile(actor, fileId)) === null) {
-        throw new NodeNotFoundError();
-      }
-    });
+  private requireOwnedFile(actor: Actor, fileId: string): Promise<void> {
+    return this.transactions.withActor(actor, () => this.assertOwnedFile(actor, fileId));
+  }
+
+  /** RN-1, RN-2, CA-3, CA-7: carpeta, ajeno, inexistente, en la papelera, Editor o Lector son el mismo 404. */
+  private async assertOwnedFile(actor: Actor, fileId: string): Promise<void> {
+    const allowed = await this.permissions.can(actor, fileId, Action.CREATE_PUBLIC_LINK);
+    if (!allowed || (await this.files.findOwnedFile(actor, fileId)) === null) {
+      throw new NodeNotFoundError();
+    }
   }
 
   /** RN-8: la contraseña solo se guarda como hash Argon2id; sin contraseña, `null`. */
