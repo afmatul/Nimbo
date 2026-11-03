@@ -91,6 +91,77 @@ const dashboardExprs = (): string[] => {
   return dashboard.panels.flatMap((panel) => (panel.targets ?? []).map((target) => target.expr));
 };
 
+interface AlertQuery {
+  readonly refId: string;
+  readonly datasourceUid: string;
+  readonly model: {
+    readonly expr?: string;
+    readonly type?: string;
+    readonly expression?: string;
+    readonly conditions?: readonly { evaluator: { type: string; params: number[] } }[];
+  };
+}
+interface AlertRule {
+  readonly uid: string;
+  readonly title: string;
+  readonly condition: string;
+  readonly for: string;
+  readonly noDataState: string;
+  readonly execErrState: string;
+  readonly data: readonly AlertQuery[];
+  readonly annotations?: Readonly<Record<string, string>>;
+  readonly labels?: Readonly<Record<string, string>>;
+}
+interface AlertProvisioning {
+  readonly apiVersion: number;
+  readonly groups: readonly {
+    name: string;
+    folder: string;
+    interval: string;
+    rules: AlertRule[];
+  }[];
+  readonly contactPoints: readonly {
+    name: string;
+    receivers: readonly { type: string; settings: Readonly<Record<string, string>> }[];
+  }[];
+  readonly policies: readonly { receiver: string }[];
+}
+
+/** Las seis reglas de `product-context.md` §7 (RN-1), por su `uid` estable. */
+const SIX_RULES = [
+  'nimbo-5xx',
+  'nimbo-latencia-p95',
+  'nimbo-colas',
+  'nimbo-disco',
+  'nimbo-dependencia-caida',
+  'nimbo-renovacion',
+] as const;
+/** Únicas etiquetas que una anotación puede usar (plan §2, CA-5). */
+const ANNOTATION_LABELS = new Set(['queue', 'dependency']);
+
+const alerting = (): AlertProvisioning =>
+  JSON.parse(read('infra/grafana/provisioning/alerting/alertas.json')) as AlertProvisioning;
+
+const rules = (): AlertRule[] => alerting().groups.flatMap((group) => group.rules);
+
+const ruleOf = (uid: string): AlertRule => {
+  const rule = rules().find((candidate) => candidate.uid === uid);
+  if (rule === undefined) throw new Error(`Falta la regla ${uid} en alertas.json.`);
+  return rule;
+};
+
+const queryOf = (rule: AlertRule): string => {
+  const expr = rule.data.find((query) => query.datasourceUid === 'prometheus')?.model.expr;
+  if (expr === undefined) throw new Error(`La regla ${rule.uid} no consulta Prometheus.`);
+  return expr;
+};
+
+const thresholdOf = (rule: AlertRule): { type: string; value: number | undefined } => {
+  const condition = rule.data.find((query) => query.refId === rule.condition);
+  const evaluator = condition?.model.conditions?.[0]?.evaluator;
+  return { type: evaluator?.type ?? '', value: evaluator?.params[0] };
+};
+
 const createFixture = (): Fixture => {
   const env = Object.fromEntries(
     Object.entries(parseEnv(read('.env.example'))).filter(
@@ -211,6 +282,12 @@ describe('022 T-01: Compose de observabilidad (CA-2, CA-3, CA-9, CA-10)', () => 
       );
     });
 
+    it('CA-11: Grafana recibe el destinatario de las alertas de ALERT_EMAIL_TO', () => {
+      expect(serviceOf(config, 'grafana').environment?.ALERT_EMAIL_TO).toBe(
+        requireEnv(fixture.env, 'ALERT_EMAIL_TO'),
+      );
+    });
+
     it('Prometheus lee su configuración de infra/ y guarda sus datos en un volumen propio', () => {
       const volumes = serviceOf(config, 'prometheus').volumes ?? [];
       expect(
@@ -320,6 +397,69 @@ describe('022 T-01: Compose de observabilidad (CA-2, CA-3, CA-9, CA-10)', () => 
       expect(
         dashboardExprs().some((expr) => /^up\b.*by \(job\)|by \(job\).*\bup\b/.test(expr)),
       ).toBe(true);
+    });
+  });
+
+  describe('022 T-03: reglas de alerta, punto de contacto y política (CA-11, CA-12, RN-1, CA-5)', () => {
+    it('RN-1: un solo grupo evaluado cada minuto, con reglas solo de las seis definidas', () => {
+      const { groups, apiVersion } = alerting();
+      expect(apiVersion).toBe(1);
+      expect(groups.map((group) => group.interval)).toEqual(['1m']);
+      const uids = rules().map((rule) => rule.uid);
+      expect(new Set(uids).size).toBe(uids.length);
+      expect(uids.every((uid) => (SIX_RULES as readonly string[]).includes(uid))).toBe(true);
+    });
+
+    it('RN-1: sin datos no avisa (sin séptima alerta) y un error de evaluación queda como error', () => {
+      for (const rule of rules()) {
+        expect([rule.uid, rule.noDataState, rule.execErrState]).toEqual([rule.uid, 'OK', 'Error']);
+      }
+    });
+
+    it('CA-11: la regla de 5xx dispara con más del 2 % de respuestas 5xx del api sostenido 5 min', () => {
+      const rule = ruleOf('nimbo-5xx');
+      expect(rule.for).toBe('5m');
+      expect(thresholdOf(rule)).toEqual({ type: 'gt', value: 0.02 });
+      const expr = queryOf(rule);
+      expect(expr).toContain('status=~"5.."');
+      expect(expr).toContain('job="api"');
+      expect(expr).toContain('[1m]');
+    });
+
+    it('CA-12: la regla de latencia mide el p95 del api, > 300 ms por 10 min, sin las rutas de RNF-01 (S-5)', () => {
+      const rule = ruleOf('nimbo-latencia-p95');
+      expect(rule.for).toBe('10m');
+      expect(thresholdOf(rule)).toEqual({ type: 'gt', value: 0.3 });
+      const expr = queryOf(rule);
+      expect(expr).toContain('histogram_quantile(0.95');
+      expect(expr).toContain('job="api"');
+      expect(expr).toContain('route!~"POST /api/v1/agent/ask|GET /api/v1/editing/content/:token"');
+    });
+
+    it('CA-5: títulos, etiquetas y anotaciones solo usan las etiquetas queue y dependency', () => {
+      for (const rule of rules()) {
+        const texts = [
+          rule.title,
+          ...Object.values(rule.annotations ?? {}),
+          ...Object.values(rule.labels ?? {}),
+        ];
+        const used = texts.flatMap((text) =>
+          [...text.matchAll(/\.Labels\.(\w+)|\$labels\.(\w+)|index \.Labels "(\w+)"/g)].map(
+            (match) => match[1] ?? match[2] ?? match[3] ?? '',
+          ),
+        );
+        expect(used.filter((label) => !ANNOTATION_LABELS.has(label))).toEqual([]);
+        expect(texts.join(' ')).not.toMatch(/\$labels|\{\{\s*\.Labels\s*\}\}/);
+      }
+    });
+
+    it('CA-11: el punto de contacto es el correo de ALERT_EMAIL_TO y la política le envía todas las alertas', () => {
+      const { contactPoints, policies } = alerting();
+      expect(contactPoints).toHaveLength(1);
+      const [contact] = contactPoints;
+      expect(contact?.receivers.map((receiver) => receiver.type)).toEqual(['email']);
+      expect(contact?.receivers[0]?.settings.addresses).toBe('$ALERT_EMAIL_TO');
+      expect(policies.map((policy) => policy.receiver)).toEqual([contact?.name]);
     });
   });
 });

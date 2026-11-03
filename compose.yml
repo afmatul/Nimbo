@@ -199,6 +199,8 @@ services:
       GF_SMTP_USER: ${GRAFANA_SMTP_USER}
       GF_SMTP_PASSWORD: ${GRAFANA_SMTP_PASSWORD}
       GF_SMTP_FROM_ADDRESS: ${GRAFANA_SMTP_FROM}
+      # Destinatario de las alertas; `provisioning/alerting/alertas.json` lo lee como `$ALERT_EMAIL_TO` (P-3)
+      ALERT_EMAIL_TO: ${ALERT_EMAIL_TO}
     volumes:
       - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro

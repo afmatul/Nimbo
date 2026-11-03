@@ -1,5 +1,7 @@
 import { once } from 'node:events';
+import { readFileSync } from 'node:fs';
 import type { Server } from 'node:http';
+import { resolve } from 'node:path';
 
 import { Controller, Get, Post, RequestMethod } from '@nestjs/common';
 import type { INestApplication, Type } from '@nestjs/common';
@@ -24,8 +26,24 @@ import type { TestApp } from '../setup/test-app';
 const FILE_ID = '3f8c2a4e-9d1b-4c7a-8e2f-1a2b3c4d5e6f';
 const EMAIL = 'ana@cliente.test';
 const DURATION_SERIES = 'nimbo_http_request_duration_seconds';
-/** Las dos plantillas que excluye la regla 2 de latencia (RNF-01, plan 022 S-5). */
-const RULE2_EXCLUDED_ROUTES = ['POST /api/v1/agent/ask', 'GET /api/v1/editing/content/:token'];
+const ALERTING_FILE = resolve(
+  __dirname,
+  '../../../../../infra/grafana/provisioning/alerting/alertas.json',
+);
+
+/** Plantillas que excluye la regla 2 de latencia (RNF-01, plan 022 S-5), leídas de `alertas.json` (R-8). */
+const rule2ExcludedRoutes = (): string[] => {
+  const file = JSON.parse(readFileSync(ALERTING_FILE, 'utf8')) as {
+    groups: { rules: { uid: string; data: { model: { expr?: string } }[] }[] }[];
+  };
+  const rule = file.groups
+    .flatMap((group) => group.rules)
+    .find((r) => r.uid === 'nimbo-latencia-p95');
+  const expr = rule?.data.map((query) => query.model.expr ?? '').join(' ') ?? '';
+  const routes = /route!~"([^"]+)"/.exec(expr)?.[1];
+  if (routes === undefined) throw new Error('La regla 2 no excluye rutas en alertas.json.');
+  return routes.split('|');
+};
 
 /** Rutas de prueba con la forma de las reales: nunca responden contenido. */
 @Public()
@@ -120,8 +138,9 @@ describe('022 T-02: métricas HTTP y servidor privado del api (CA-1, CA-2, CA-5,
   });
 
   it('CA-12: las dos plantillas que excluye la regla 2 coinciden con las que emite el middleware y con los controladores reales', async () => {
+    const excluded = rule2ExcludedRoutes();
     expect([routeOf(AgentController, 'ask'), routeOf(OnlyOfficeController, 'content')]).toEqual(
-      RULE2_EXCLUDED_ROUTES,
+      excluded,
     );
 
     await request(testApp.app.getHttpServer()).post('/api/v1/agent/ask').expect(201);
@@ -130,7 +149,7 @@ describe('022 T-02: métricas HTTP y servidor privado del api (CA-1, CA-2, CA-5,
       .expect(200);
 
     const text = await scrape(privateServer);
-    for (const route of RULE2_EXCLUDED_ROUTES) {
+    for (const route of excluded) {
       expect(text).toContain(`route="${route}"`);
     }
   });
