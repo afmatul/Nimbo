@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Lista |
+| Estado | En curso |
 | Dueño | Abel (3) |
 | Fase prevista | 3 (asignación original; calendario pendiente de reprogramación) |
 | Requisitos | RNF-18 (métricas, tableros y alertas; la salud ya la entregó 000); aplican RF-05, RF-22, RNF-01, RNF-09, RNF-12, RNF-16, RNF-17 |
