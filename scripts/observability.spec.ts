@@ -518,4 +518,60 @@ describe('022 T-01: Compose de observabilidad (CA-2, CA-3, CA-9, CA-10)', () => 
       ).toEqual([...SIX_RULES].sort());
     });
   });
+
+  describe('022 T-04: paneles y regla de colas (CA-1, CA-6, CA-13)', () => {
+    it('CA-6: el tablero muestra la profundidad de cada cola por estado', () => {
+      expect(
+        dashboardExprs().some(
+          (expr) => /nimbo_queue_jobs\b/.test(expr) && /by \(queue, state\)/.test(expr),
+        ),
+      ).toBe(true);
+    });
+
+    it('CA-1: el tablero muestra la espera y la ejecución de los trabajos por cola', () => {
+      for (const series of ['nimbo_queue_job_wait_seconds', 'nimbo_queue_job_run_seconds']) {
+        expect(
+          dashboardExprs().some(
+            (expr) =>
+              expr.includes(`${series}_bucket`) &&
+              expr.includes('histogram_quantile(0.95') &&
+              /by \(queue, le\)/.test(expr),
+          ),
+        ).toBe(true);
+      }
+    });
+
+    it('CA-1: el tablero muestra los completados por cola y los fallidos por cola e intentos', () => {
+      const exprs = dashboardExprs();
+      expect(
+        exprs.some(
+          (expr) => expr.includes('nimbo_queue_jobs_completed_total') && /by \(queue\)/.test(expr),
+        ),
+      ).toBe(true);
+      expect(
+        exprs.some(
+          (expr) =>
+            expr.includes('nimbo_queue_job_failures_total') &&
+            /by \(queue, attempts_made\)/.test(expr),
+        ),
+      ).toBe(true);
+    });
+
+    it('CA-13: la regla de colas dispara por cola con más de 50 pendientes o un tercer intento fallido en 5 min, sostenido 1 min (S-1, S-2, S-3)', () => {
+      const rule = ruleOf('nimbo-colas');
+      expect(rule.for).toBe('1m');
+      expect(thresholdOf(rule)).toEqual({ type: 'gt', value: 0 });
+      const expr = queryOf(rule);
+      expect(expr).toContain('nimbo_queue_jobs{state=~"waiting|prioritized"}');
+      expect(expr).toContain('> bool 50');
+      expect(expr).toContain(
+        'increase(nimbo_queue_job_failures_total{attempts_made="3+"}[5m])) > bool 0',
+      );
+      expect(expr).toMatch(/^max by \(queue\)/);
+    });
+
+    it('CA-5: la anotación de la regla de colas nombra la cola y nada más', () => {
+      expect(ruleOf('nimbo-colas').annotations?.summary).toContain('{{ .Labels.queue }}');
+    });
+  });
 });

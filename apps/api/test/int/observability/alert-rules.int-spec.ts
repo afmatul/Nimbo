@@ -255,11 +255,81 @@ const RULE_DISK_CASES: RuleCase[] = [
   },
 ];
 
+const QUEUE_JOBS = 'nimbo_queue_jobs';
+const QUEUE_FAILURES = 'nimbo_queue_job_failures_total';
+const MAIL = { job: 'worker', queue: 'mail' };
+const INDEXING = { job: 'worker', queue: 'indexing' };
+
+/** Trabajos de `queue` en `state`, constantes durante la ventana. */
+const queueJobs = (queue: Labels, state: string, count: number): Series =>
+  gauge(QUEUE_JOBS, { ...queue, state }, count);
+
+/** Fallos con `attempts_made`: crecen `perSecond` o, con 0, quedan quietos en su valor de arranque. */
+const queueFailures = (queue: Labels, attemptsMade: string, perSecond: number): Series =>
+  perSecond === 0
+    ? gauge(QUEUE_FAILURES, { ...queue, attempts_made: attemptsMade }, 1)
+    : counter(QUEUE_FAILURES, { ...queue, attempts_made: attemptsMade }, perSecond);
+
+/** Una cola sin pendientes ni fallos agotados: la regla ve datos y no dispara. */
+const QUIET_QUEUE: Series[] = [
+  queueJobs(INDEXING, 'waiting', 0),
+  queueJobs(INDEXING, 'prioritized', 0),
+  queueFailures(INDEXING, '3+', 0),
+];
+
+const RULE_3_CASES: RuleCase[] = [
+  {
+    rule: 'nimbo-colas',
+    name: '51 pendientes (40 en espera y 11 priorizados) en una cola disparan',
+    series: [...QUIET_QUEUE, queueJobs(MAIL, 'waiting', 40), queueJobs(MAIL, 'prioritized', 11)],
+    fires: true,
+  },
+  {
+    rule: 'nimbo-colas',
+    name: '50 pendientes no disparan, aunque haya 500 diferidos (S-2)',
+    series: [
+      ...QUIET_QUEUE,
+      queueJobs(MAIL, 'waiting', 50),
+      queueJobs(MAIL, 'prioritized', 0),
+      queueJobs(MAIL, 'delayed', 500),
+    ],
+    fires: false,
+  },
+  {
+    rule: 'nimbo-colas',
+    name: 'los pendientes de dos colas no se suman',
+    series: [queueJobs(MAIL, 'waiting', 30), queueJobs(INDEXING, 'waiting', 30)],
+    fires: false,
+  },
+  {
+    rule: 'nimbo-colas',
+    name: 'un trabajo con su tercer intento fallido en 5 min dispara, sin pendientes en su cola (S-1)',
+    series: [
+      ...QUIET_QUEUE,
+      queueJobs(MAIL, 'waiting', 0),
+      counter(QUEUE_FAILURES, { ...MAIL, attempts_made: '3+' }, 0.002),
+    ],
+    fires: true,
+  },
+  {
+    rule: 'nimbo-colas',
+    name: 'fallos de primer y segundo intento no disparan',
+    series: [
+      ...QUIET_QUEUE,
+      queueFailures(MAIL, '1', 0.1),
+      queueFailures(MAIL, '2', 0.1),
+      queueFailures(MAIL, '3+', 0),
+    ],
+    fires: false,
+  },
+];
+
 const CASES: readonly RuleCase[] = [
   ...RULE_5XX_CASES,
   ...RULE_P95_CASES,
   ...RULE_5_CASES,
   ...RULE_DISK_CASES,
+  ...RULE_3_CASES,
 ];
 
 const windowStart = (index: number): number => EPOCH_SECONDS + index * WINDOW_SECONDS;

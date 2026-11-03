@@ -138,6 +138,39 @@
           "annotations": {
             "summary": "Un disco del anfitrión supera el 80 % de uso. Revisar el panel de disco y liberar espacio (imágenes y volúmenes de Docker o la retención de Prometheus)."
           }
+        },
+        {
+          "uid": "nimbo-colas",
+          "title": "Cola con trabajos pendientes o reintentados",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": { "from": 600, "to": 0 },
+              "datasourceUid": "prometheus",
+              "model": {
+                "refId": "A",
+                "instant": true,
+                "expr": "max by (queue) ((sum by (queue) (nimbo_queue_jobs{state=~\"waiting|prioritized\"}) > bool 50) or (sum by (queue, attempts_made) (increase(nimbo_queue_job_failures_total{attempts_made=\"3+\"}[5m])) > bool 0))"
+              }
+            },
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [{ "evaluator": { "type": "gt", "params": [0] } }]
+              }
+            }
+          ],
+          "for": "1m",
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "annotations": {
+            "summary": "La cola {{ .Labels.queue }} tiene más de 50 trabajos pendientes o un trabajo con tres intentos fallidos en los últimos 5 minutos. Revisar los paneles de colas del tablero «Operación» y las bitácoras del proceso que la consume."
+          }
         }
       ]
     }

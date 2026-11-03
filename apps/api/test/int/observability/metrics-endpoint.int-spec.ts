@@ -3,10 +3,12 @@ import { readFileSync } from 'node:fs';
 import type { Server } from 'node:http';
 import { resolve } from 'node:path';
 
-import { Controller, Get, Post, RequestMethod } from '@nestjs/common';
+import { BullModule, getQueueToken, Processor, WorkerHost } from '@nestjs/bullmq';
+import { Controller, Get, Module, Post, RequestMethod } from '@nestjs/common';
 import type { INestApplication, Type } from '@nestjs/common';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { Test } from '@nestjs/testing';
+import type { Queue } from 'bullmq';
 import request from 'supertest';
 
 import { OnlyOfficeController } from '../../../src/modules/editing/presentation/onlyoffice.controller';
@@ -258,5 +260,171 @@ describe('022 T-06: disponibilidad de dependencias (CA-3, CA-15, RN-4)', () => {
       .map((line) => /\{([^}]*)\}/.exec(line)?.[1]);
     expect(labelSets).toHaveLength(4);
     expect(labelSets.every((labels) => /^dependency="\w+"$/.test(labels ?? ''))).toBe(true);
+  });
+});
+
+/** Colas de prueba: el recolector las descubre por sus `WorkerHost`, sin ninguna lista fija (CA-1). */
+const OK_QUEUE = 'prueba-metricas-ok';
+const FAILING_QUEUE = 'prueba-metricas-falla';
+const BUSY_QUEUE = 'prueba-metricas-ocupada';
+/** Solo se produce aquí (como `index-status` en el `worker`): no se cuenta en este proceso. */
+const PRODUCED_ONLY_QUEUE = 'prueba-metricas-solo-productor';
+const FILE_NAME = 'informe-confidencial.docx';
+const JOB_DATA = { email: EMAIL, fileName: FILE_NAME, fileId: FILE_ID };
+const FAILING_ATTEMPTS = 3;
+const SCRAPE_STEP_MS = 100;
+const SCRAPE_LIMIT_MS = 15_000;
+
+@Processor(OK_QUEUE)
+class OkProbeProcessor extends WorkerHost {
+  process(): Promise<{ ok: true }> {
+    return Promise.resolve({ ok: true });
+  }
+}
+
+/** Falla siempre con un mensaje que trae datos de cliente: el mensaje nunca llega a una serie (CA-5). */
+@Processor(FAILING_QUEUE)
+class FailingProbeProcessor extends WorkerHost {
+  process(): Promise<never> {
+    return Promise.reject(new Error(`No se pudo procesar ${FILE_NAME} de ${EMAIL}`));
+  }
+}
+
+/** Retiene su trabajo hasta `release()`: deja uno activo y el resto en espera. */
+@Processor(BUSY_QUEUE)
+class BusyProbeProcessor extends WorkerHost {
+  private releaseAll: () => void = () => undefined;
+  private readonly released = new Promise<void>((resolve) => {
+    this.releaseAll = resolve;
+  });
+
+  process(): Promise<void> {
+    return this.released;
+  }
+
+  release(): void {
+    this.releaseAll();
+  }
+}
+
+@Module({
+  imports: [
+    BullModule.registerQueue(
+      { name: OK_QUEUE },
+      { name: FAILING_QUEUE },
+      { name: BUSY_QUEUE },
+      { name: PRODUCED_ONLY_QUEUE },
+    ),
+  ],
+  providers: [OkProbeProcessor, FailingProbeProcessor, BusyProbeProcessor],
+})
+class QueueProbeModule {}
+
+/** Recolecta hasta que `pattern` aparece (los trabajos terminan en segundo plano). */
+const scrapeUntil = async (server: Server, pattern: RegExp): Promise<string> => {
+  const deadline = Date.now() + SCRAPE_LIMIT_MS;
+  let text = await scrape(server);
+  while (!pattern.test(text) && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, SCRAPE_STEP_MS));
+    text = await scrape(server);
+  }
+  return text;
+};
+
+const queueSeries = (name: string, labels: string, value: number): RegExp =>
+  new RegExp(`${name}\\{${labels}\\} ${String(value)}(\\n|$)`);
+
+describe('022 T-04: métricas de las colas que consume el proceso (CA-1, CA-5)', () => {
+  let testApp: TestApp;
+  let privateServer: Server;
+  let text: string;
+
+  const queueOf = (name: string): Queue => testApp.app.get<Queue>(getQueueToken(name));
+
+  beforeAll(async () => {
+    testApp = await createTestApp({ modules: [QueueProbeModule] });
+    privateServer = startMetricsServer(testApp.app, 0);
+    await once(privateServer, 'listening');
+    await Promise.all(
+      [OK_QUEUE, FAILING_QUEUE, BUSY_QUEUE, PRODUCED_ONLY_QUEUE].map((name) =>
+        queueOf(name).obliterate({ force: true }),
+      ),
+    );
+
+    await queueOf(OK_QUEUE).addBulk([1, 2].map(() => ({ name: 'ok', data: JOB_DATA })));
+    await queueOf(FAILING_QUEUE).add('falla', JOB_DATA, { attempts: FAILING_ATTEMPTS });
+    await queueOf(BUSY_QUEUE).addBulk([1, 2, 3].map(() => ({ name: 'ocupada', data: JOB_DATA })));
+    await queueOf(PRODUCED_ONLY_QUEUE).add('solo-productor', JOB_DATA);
+
+    text = await scrapeUntil(
+      privateServer,
+      /nimbo_queue_job_failures_total\{queue="prueba-metricas-falla",attempts_made="3\+"\} 1/,
+    );
+    text = await scrapeUntil(
+      privateServer,
+      queueSeries('nimbo_queue_jobs_completed_total', `queue="${OK_QUEUE}"`, 2),
+    );
+  });
+
+  afterAll(async () => {
+    testApp.app.get(BusyProbeProcessor).release();
+    await closeServer(privateServer);
+    await testApp.close();
+  });
+
+  it('CA-1: cuenta por cola los trabajos en espera, activos, completados y fallidos (por intentos)', () => {
+    expect(text).toMatch(
+      queueSeries('nimbo_queue_jobs', `queue="${BUSY_QUEUE}",state="active"`, 1),
+    );
+    expect(text).toMatch(
+      queueSeries('nimbo_queue_jobs', `queue="${BUSY_QUEUE}",state="waiting"`, 2),
+    );
+    expect(text).toMatch(
+      queueSeries('nimbo_queue_jobs', `queue="${OK_QUEUE}",state="prioritized"`, 0),
+    );
+    expect(text).toMatch(queueSeries('nimbo_queue_jobs', `queue="${OK_QUEUE}",state="delayed"`, 0));
+    expect(text).toMatch(queueSeries('nimbo_queue_jobs_completed_total', `queue="${OK_QUEUE}"`, 2));
+    for (const attempts of ['1', '2', '3+']) {
+      expect(text).toMatch(
+        queueSeries(
+          'nimbo_queue_job_failures_total',
+          `queue="${FAILING_QUEUE}",attempts_made="${attempts.replace('+', '\\+')}"`,
+          1,
+        ),
+      );
+    }
+  });
+
+  it('CA-1: mide la espera y la ejecución por cola, también de los intentos fallidos', () => {
+    expect(text).toMatch(
+      queueSeries('nimbo_queue_job_wait_seconds_count', `queue="${OK_QUEUE}"`, 2),
+    );
+    expect(text).toMatch(
+      queueSeries('nimbo_queue_job_run_seconds_count', `queue="${OK_QUEUE}"`, 2),
+    );
+    expect(text).toMatch(
+      queueSeries('nimbo_queue_job_wait_seconds_count', `queue="${FAILING_QUEUE}"`, 1),
+    );
+    expect(text).toMatch(
+      queueSeries(
+        'nimbo_queue_job_run_seconds_count',
+        `queue="${FAILING_QUEUE}"`,
+        FAILING_ATTEMPTS,
+      ),
+    );
+  });
+
+  it('CA-1: cubre todas las colas que el proceso consume y ninguna que solo produce', () => {
+    const queues = new Set(
+      [...text.matchAll(/^nimbo_queue_jobs\{queue="([^"]+)"/gm)].map((match) => match[1]),
+    );
+    expect([...queues].sort()).toEqual([FAILING_QUEUE, OK_QUEUE, BUSY_QUEUE].sort());
+  });
+
+  it('CA-5: ni los datos de los trabajos ni el mensaje de su error aparecen en ninguna serie', () => {
+    expect(text).not.toContain(EMAIL);
+    expect(text).not.toContain(FILE_NAME);
+    expect(text).not.toContain(FILE_ID);
+    expect(text).not.toContain('No se pudo procesar');
   });
 });
