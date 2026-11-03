@@ -304,6 +304,21 @@ describe('contratos de enlaces públicos (plan 013 §4)', () => {
     expect(publicLinkDownloadSchema.safeParse({ token: TOKEN, ...extra }).success).toBe(false);
   });
 
+  it('CA-12, D-4: descargar acepta `""` (ausente para CA-12) y hasta 128 caracteres; con más se rechaza', () => {
+    const longest = 'x'.repeat(PUBLIC_LINK_PASSWORD_MAX_LENGTH);
+
+    expect(publicLinkDownloadSchema.parse({ token: TOKEN, password: '' })).toEqual({
+      token: TOKEN,
+      password: '',
+    });
+    expect(publicLinkDownloadSchema.parse({ token: TOKEN, password: longest }).password).toBe(
+      longest,
+    );
+    expect(
+      publicLinkDownloadSchema.safeParse({ token: TOKEN, password: `${longest}x` }).success,
+    ).toBe(false);
+  });
+
   it('CA-17, D-4: abrir no acepta contraseña', () => {
     expect(publicLinkOpenSchema.safeParse({ token: TOKEN, password: 'secreta1' }).success).toBe(
       false,

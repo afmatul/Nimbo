@@ -1,4 +1,5 @@
 import { AUDIT_TRIGGERS, INDEXING_REASONS, INTERNAL_ROLES } from '@nimbo/contracts';
+import type { AuditTrigger } from '@nimbo/contracts';
 
 import type { AttributeRules } from '../domain/attribute-sanitizer';
 import type { AuditAttributes, AuditResourceType } from '../domain/audit-entry';
@@ -34,10 +35,11 @@ const ON_SHARE = {
  */
 const PUBLIC_LINK_PROTECTIONS = ['password', 'none'] as const;
 const PUBLIC_LINK_REVOKE_REASONS = ['revoked', 'replaced'] as const;
-/** Lo que hace un visitante de un enlace (013 CA-18): sobre el archivo y solo con `trigger` (`public_link`). */
+/** Lo que hace un visitante de un enlace (013 CA-18): sobre el archivo y solo con `trigger`, siempre `public_link`. */
+const PUBLIC_LINK_TRIGGERS = ['public_link'] as const satisfies readonly AuditTrigger[];
 const ON_PUBLIC_LINK_VISIT = {
   resourceType: 'file',
-  attributes: { trigger: AUDIT_TRIGGERS },
+  attributes: { trigger: PUBLIC_LINK_TRIGGERS },
 } as const;
 const NODE_ATTRIBUTES = { nodeType: NODE_TYPES, itemCount: 'number', sizeBytes: 'number' } as const;
 const ON_ACCOUNT = { resourceType: 'account', attributes: {} } as const;

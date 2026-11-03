@@ -244,9 +244,11 @@ describe('AUDIT_CATALOG', () => {
       });
 
       expect(result.attributes).toEqual({ trigger: 'public_link' });
-      expect(
-        sanitizeAttributes(AUDIT_CATALOG[action].attributes, { trigger: 'visitante' }).attributes,
-      ).toEqual({});
+      for (const trigger of ['visitante', 'manual', 'scheduled']) {
+        expect(
+          sanitizeAttributes(AUDIT_CATALOG[action].attributes, { trigger }).attributes,
+        ).toEqual({});
+      }
     },
   );
 

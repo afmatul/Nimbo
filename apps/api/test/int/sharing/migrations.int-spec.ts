@@ -390,7 +390,9 @@ describe('migraciones de `sharing` con dueño NOSUPERUSER (planes 012 §3 y 013 
       checks: ['ck_enlace_publico_token_hash', 'ck_enlace_publico_vencimiento'],
       politicas: [
         ['enlace_publico_por_token', 'SELECT', `{${RESTRICTED_OWNER_ROLE}}`],
-        ['enlace_publico_propietario', 'ALL', '{nimbo_app}'],
+        ['enlace_publico_propietario', 'SELECT', '{nimbo_app}'],
+        ['enlace_publico_propietario_crear', 'INSERT', '{nimbo_app}'],
+        ['enlace_publico_propietario_revocar', 'UPDATE', '{nimbo_app}'],
       ],
       rls: [true, true],
       funcion: PUBLIC_LINK_FUNCTION,

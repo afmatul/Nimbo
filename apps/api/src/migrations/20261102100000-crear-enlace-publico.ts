@@ -13,6 +13,9 @@ const OWNER_OF_ROW = "nimbo_actor_role() = 'CLIENT' AND propietario_id = nimbo_a
 const FILE_OWNED_BY_ACTOR =
   'EXISTS (SELECT 1 FROM archivo a WHERE a.id = archivo_id AND a.propietario_id = nimbo_actor_id())';
 
+/** Revocar es irreversible (CA-8, RN-3): un `UPDATE` nunca deja `revocado_en` en `NULL`. */
+const REVOKED = 'revocado_en IS NOT NULL';
+
 /** Un enlace que todavía sirve: ni revocado ni vencido, con el reloj de la base (el llamador no lo controla). */
 const AVAILABLE_LINK = 'revocado_en IS NULL AND vence_en > now()';
 
@@ -35,8 +38,9 @@ const LINK_BY_TOKEN_BODY = `
  *   sin revocar por archivo (RN-3). Revocar marca `revocado_en`; la purga del archivo lo borra en cascada (RN-5).
  *   Sin `intento_acceso` (plan D-5): el bloqueo vive en Redis.
  * - Permisos: `nimbo_app` no borra ni vacía la tabla y solo actualiza `revocado_en`.
- * - RLS: el propietario (cliente) lee, crea y revoca los suyos; los roles internos no tienen política. Como `FORCE`
- *   también somete al dueño, `enlace_publico_por_token` (`TO CURRENT_USER`, solo `SELECT` de enlaces disponibles) es
+ * - RLS: el propietario (cliente) lee, crea y revoca los suyos, una política por orden como en `comparticion`; la de
+ *   `UPDATE` exige `revocado_en IS NOT NULL`, así revocar no se deshace. Los roles internos no tienen política.
+ *   Como `FORCE` también somete al dueño, `enlace_publico_por_token` (`TO CURRENT_USER`, solo `SELECT` de enlaces disponibles) es
  *   lo único que ve `enlace_por_token()`, que ejecuta como el dueño: la segunda barrera del filtro de su cuerpo.
  * - `enlace_por_token(char(64))`: `char(64)` como la columna, para que `uq_enlace_publico_token_hash` sirva la búsqueda.
  */
@@ -96,10 +100,17 @@ export class CrearEnlacePublico20261102100000 implements MigrationInterface {
   private async createPolicies(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query('ALTER TABLE enlace_publico ENABLE ROW LEVEL SECURITY');
     await queryRunner.query('ALTER TABLE enlace_publico FORCE ROW LEVEL SECURITY');
+    await queryRunner.query(
+      `CREATE POLICY enlace_publico_propietario ON enlace_publico FOR SELECT TO nimbo_app USING (${OWNER_OF_ROW})`,
+    );
     await queryRunner.query(`
-      CREATE POLICY enlace_publico_propietario ON enlace_publico TO nimbo_app
-        USING      (${OWNER_OF_ROW})
+      CREATE POLICY enlace_publico_propietario_crear ON enlace_publico FOR INSERT TO nimbo_app
         WITH CHECK (${OWNER_OF_ROW} AND ${FILE_OWNED_BY_ACTOR})
+    `);
+    await queryRunner.query(`
+      CREATE POLICY enlace_publico_propietario_revocar ON enlace_publico FOR UPDATE TO nimbo_app
+        USING      (${OWNER_OF_ROW})
+        WITH CHECK (${OWNER_OF_ROW} AND ${FILE_OWNED_BY_ACTOR} AND ${REVOKED})
     `);
     await queryRunner.query(
       `CREATE POLICY enlace_publico_por_token ON enlace_publico FOR SELECT TO CURRENT_USER USING (${AVAILABLE_LINK})`,

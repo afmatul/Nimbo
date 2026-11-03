@@ -207,11 +207,15 @@ export const createdPublicLinkSchema = z
 
 /**
  * Cuerpos de las rutas del visitante (013 CA-17, plan D-4): solo el token y la contraseña, nunca un id. Todo cuerpo que
- * no los cumple, también uno con un campo de más, se responde con el `404` de CA-11.
+ * no los cumple, también uno con un campo de más o una contraseña de más de 128, se responde con el `404` de CA-11. Sin
+ * mínimo: `""` cuenta como ausente y es el `403` de CA-12.
  */
 export const publicLinkOpenSchema = z.object({ token: z.string() }).strict();
 export const publicLinkDownloadSchema = z
-  .object({ token: z.string(), password: z.string().optional() })
+  .object({
+    token: z.string(),
+    password: z.string().max(PUBLIC_LINK_PASSWORD_MAX_LENGTH).optional(),
+  })
   .strict();
 
 /** Ficha que ve el visitante (013 CA-9): sin ids, carpeta ni correo de quien comparte. */

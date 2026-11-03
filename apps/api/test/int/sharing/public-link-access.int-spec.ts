@@ -6,6 +6,7 @@ import {
   DOWNLOAD_URL_TTL_SECONDS,
   downloadUrlSchema,
   listAuditEventsResponseSchema,
+  PUBLIC_LINK_PASSWORD_MAX_LENGTH,
   publicLinkDetailsSchema,
 } from '@nimbo/contracts';
 import type { Response } from 'supertest';
@@ -552,6 +553,26 @@ describe('POST /public-links/download: contraseña y bloqueo por enlace + red (0
           'public_link.password_failed',
         );
       }
+    }
+
+    expect((await downloadFrom(`${network}::9`, { token, password: PASSWORD })).status).toBe(200);
+  });
+
+  it('plan D-4: una contraseña de más de 128 caracteres es el 404 de CA-11, sin verificarla ni contar para el bloqueo', async () => {
+    const { token } = await protectedLink();
+    const network = randomNetwork();
+    const tooLong = 'x'.repeat(PUBLIC_LINK_PASSWORD_MAX_LENGTH + 1);
+
+    for (let attempt = 0; attempt <= MAX_FAILURES; attempt += 1) {
+      const response = await downloadFrom(`${network}::${attempt + 1}`, {
+        token,
+        password: tooLong,
+      });
+      expect(response.status).toBe(404);
+      expect((response.body as ErrorBody).code).toBe(UNAVAILABLE);
+      expect(businessLinesOf(response).map((line) => line.event)).not.toContain(
+        'public_link.password_failed',
+      );
     }
 
     expect((await downloadFrom(`${network}::9`, { token, password: PASSWORD })).status).toBe(200);
