@@ -106,7 +106,11 @@ flags de arriba? ¿Prometheus alcanza `host.docker.internal` (`host-gateway`) cu
 - **No:** CA-3 (contenedores) y CA-14 se demuestran con Docker Engine en WSL2 o en el runner Linux de CI, y la
   limitación va al runbook. **No** se agrega node_exporter ni otro componente sin volver a Adrián (plan R-1).
 
-Resultado del spike: *pendiente (T-01)*.
+Resultado del spike (T-01, 2026-11-03): **parcial, no verificado en Docker Desktop/WSL2.** Esta sesión no tiene Docker Desktop ni WSL2; el motor es Docker Engine 29.9.2 nativo en Ubuntu 24.04 (kernel 6.18), con containerd. Sobre él:
+- cAdvisor v0.55.1 (`gcr.io/cadvisor/cadvisor`; **v0.60.6 no se pudo descargar**: `ghcr.io` devolvió 403 en el blob desde el proxy de la sesión) con los flags y montajes de compose: `container_memory_working_set_bytes{name=…}` y `container_cpu_usage_seconds_total{name=…}` salen por contenedor. Solo con containerd conectado: sin `/run/containerd/containerd.sock` la fábrica Docker de cAdvisor no se registra y no hay series por `name`.
+- `container_fs_usage_bytes` y `container_fs_limit_bytes` con `id="/"` salen **por dispositivo** (`/dev/vda`, `/dev/vdb`, `/dev`, `overlay`, rutas bind de contenedores…). La regla de disco no puede sumarlos: debe elegir el dispositivo raíz (PD-170, T-07).
+- Prometheus 3.15.0 de compose recolecta cAdvisor (`up`), y `api`, `worker` y `worker-optimizer` por `extra_hosts` resuelven a la pasarela del anfitrión (172.17.0.1). Un proceso que escucha en `127.0.0.1` del anfitrión **no** es alcanzable (conexión rechazada); uno en `0.0.0.0` sí. Los `app.listen(puerto)` actuales escuchan en todas las interfaces; el servidor de métricas de T-02 también debe hacerlo.
+- **Pendiente:** repetir el spike en Docker Desktop/WSL2 (la máquina del equipo) y confirmar las mismas series y el `host-gateway` con las apps en `pnpm dev`. Hasta entonces, CA-3 (contenedores) y CA-14 no están demostrados en el entorno de desarrollo del equipo.
 
 ## Consecuencias
 - Positivas: un solo stack para 022 y 022d. Sin puertos públicos nuevos. CA-10 queda cubierto por aprovisionamiento.

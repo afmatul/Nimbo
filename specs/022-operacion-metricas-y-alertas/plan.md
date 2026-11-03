@@ -187,6 +187,7 @@ por instante.
   tiene una pregunta concreta: ¿salen `container_memory_working_set_bytes` por contenedor y `container_fs_*{id="/"}` en Windows?
   Alternativa si no: la demo de CA-3 y CA-14 se hace con Docker Engine en WSL2 o en el runner Linux de CI, y la
   limitación queda en el runbook. No se agrega otro componente (node_exporter) sin volver a Adrián. El resultado va al ADR-0040.
+  **Resultado (T-01, 2026-11-03): parcial.** En Linux nativo (no Docker Desktop/WSL2) cAdvisor da memoria y CPU por `name` y `container_fs_*{id="/"}` por dispositivo (regla de disco pendiente de PD-170). `host-gateway` alcanza solo procesos en `0.0.0.0`, no en `127.0.0.1`. Docker Desktop/WSL2 sigue **sin verificar** (ver ADR-0040).
 - **R-2 cAdvisor monta `docker.sock` y `/` con `:ro`.** El `:ro` del socket no limita la API de Docker: el privilegio es
   alto, como el de Traefik. Queda en la red interna, sin `privileged`, con imagen fijada y sin etiquetas de contenedor (no
   exporta rutas del anfitrión). Un proxy del socket necesitaría otro ADR (ADR-0040).
