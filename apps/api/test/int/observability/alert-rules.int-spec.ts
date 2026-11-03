@@ -204,7 +204,63 @@ const RULE_5_CASES: RuleCase[] = [
   },
 ];
 
-const CASES: readonly RuleCase[] = [...RULE_5XX_CASES, ...RULE_P95_CASES, ...RULE_5_CASES];
+const FS_USAGE = 'container_fs_usage_bytes';
+const FS_LIMIT = 'container_fs_limit_bytes';
+const FS_LIMIT_BYTES = 100 * 1024 ** 3;
+
+/** Uso y límite de un sistema de archivos visto por cAdvisor, al `fraction` de su capacidad. */
+const filesystem = (device: string, fraction: number, id = '/'): Series[] => {
+  const labels = { id, device };
+  return [
+    gauge(FS_USAGE, labels, fraction * FS_LIMIT_BYTES),
+    gauge(FS_LIMIT, labels, FS_LIMIT_BYTES),
+  ];
+};
+
+const RULE_DISK_CASES: RuleCase[] = [
+  {
+    rule: 'nimbo-disco',
+    name: 'un disco del anfitrión al 85 % dispara',
+    series: filesystem('/dev/vda', 0.85),
+    fires: true,
+  },
+  {
+    rule: 'nimbo-disco',
+    name: 'un disco del anfitrión al 50 % no dispara',
+    series: filesystem('/dev/vda', 0.5),
+    fires: false,
+  },
+  {
+    rule: 'nimbo-disco',
+    name: 'el segundo disco de bloque al 85 % dispara aunque el primero esté al 50 % (PD-170)',
+    series: [...filesystem('/dev/vda', 0.5), ...filesystem('/dev/sdc', 0.85)],
+    fires: true,
+  },
+  {
+    rule: 'nimbo-disco',
+    name: 'tmpfs, overlay y /dev al 95 % no disparan (PD-170)',
+    series: [
+      ...filesystem('/dev/vda', 0.5),
+      ...filesystem('tmpfs', 0.95),
+      ...filesystem('overlay', 0.95),
+      ...filesystem('/dev', 0.95),
+    ],
+    fires: false,
+  },
+  {
+    rule: 'nimbo-disco',
+    name: 'un contenedor al 95 % no cuenta como disco del anfitrión',
+    series: [...filesystem('/dev/vda', 0.5), ...filesystem('/dev/vda', 0.95, '/docker/abc')],
+    fires: false,
+  },
+];
+
+const CASES: readonly RuleCase[] = [
+  ...RULE_5XX_CASES,
+  ...RULE_P95_CASES,
+  ...RULE_5_CASES,
+  ...RULE_DISK_CASES,
+];
 
 const windowStart = (index: number): number => EPOCH_SECONDS + index * WINDOW_SECONDS;
 const evaluatedAt = (index: number): number => windowStart(index) + SAMPLED_SECONDS;

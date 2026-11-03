@@ -485,4 +485,37 @@ describe('022 T-01: Compose de observabilidad (CA-2, CA-3, CA-9, CA-10)', () => 
       ).toBe(true);
     });
   });
+
+  describe('022 T-07: disco del anfitrión y las seis reglas (CA-3, CA-14, RN-1)', () => {
+    const BLOCK_DEVICES = 'id="/",device=~"/dev/.+"';
+
+    it('CA-14: la regla de disco toma el máximo de los dispositivos de bloque del anfitrión, > 80 % por 1 min (S-3, PD-170)', () => {
+      const rule = ruleOf('nimbo-disco');
+      expect(rule.for).toBe('1m');
+      expect(thresholdOf(rule)).toEqual({ type: 'gt', value: 0.8 });
+      const expr = queryOf(rule);
+      expect(expr).toMatch(/^max\(/);
+      expect(expr).toContain(`container_fs_usage_bytes{${BLOCK_DEVICES}}`);
+      expect(expr).toContain(`container_fs_limit_bytes{${BLOCK_DEVICES}}`);
+    });
+
+    it('CA-3: el tablero muestra el uso de los discos del anfitrión por dispositivo', () => {
+      expect(
+        dashboardExprs().some(
+          (expr) =>
+            expr.includes(`container_fs_usage_bytes{${BLOCK_DEVICES}}`) &&
+            expr.includes(`container_fs_limit_bytes{${BLOCK_DEVICES}}`) &&
+            /by \(device\)/.test(expr),
+        ),
+      ).toBe(true);
+    });
+
+    it('RN-1: alertas.json tiene exactamente las seis reglas de product-context.md §7', () => {
+      expect(
+        rules()
+          .map((rule) => rule.uid)
+          .sort(),
+      ).toEqual([...SIX_RULES].sort());
+    });
+  });
 });

@@ -105,6 +105,39 @@
           "annotations": {
             "summary": "La dependencia {{ .Labels.dependency }} no responde desde hace 1 minuto. Revisar su contenedor y el panel de disponibilidad del tablero «Operación»."
           }
+        },
+        {
+          "uid": "nimbo-disco",
+          "title": "Uso del disco del anfitrión",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": { "from": 600, "to": 0 },
+              "datasourceUid": "prometheus",
+              "model": {
+                "refId": "A",
+                "instant": true,
+                "expr": "max(container_fs_usage_bytes{id=\"/\",device=~\"/dev/.+\"} / container_fs_limit_bytes{id=\"/\",device=~\"/dev/.+\"})"
+              }
+            },
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [{ "evaluator": { "type": "gt", "params": [0.8] } }]
+              }
+            }
+          ],
+          "for": "1m",
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "annotations": {
+            "summary": "Un disco del anfitrión supera el 80 % de uso. Revisar el panel de disco y liberar espacio (imágenes y volúmenes de Docker o la retención de Prometheus)."
+          }
         }
       ]
     }
