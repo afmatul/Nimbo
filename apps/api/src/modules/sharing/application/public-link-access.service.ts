@@ -5,15 +5,18 @@ import { PinoLogger } from 'nestjs-pino';
 
 import {
   createActor,
+  I_PASSWORD_HASHER,
   I_RATE_LIMITER,
   I_TRANSACTION_RUNNER,
   RateLimitExceededError,
   Role,
 } from '../../../shared';
-import type { Actor, IRateLimiter, ITransactionRunner } from '../../../shared';
+import type { Actor, IPasswordHasher, IRateLimiter, ITransactionRunner } from '../../../shared';
+import { I_AUDIT_LOGGER } from '../../audit';
+import type { IAuditLogger } from '../../audit';
 import { LinkedFileGateway } from '../../storage';
-import type { LinkedFile } from '../../storage';
-import { PublicLinkUnavailableError } from '../domain/errors';
+import type { DownloadUrl, LinkedFile } from '../../storage';
+import { PublicLinkPasswordInvalidError, PublicLinkUnavailableError } from '../domain/errors';
 import { limitNetworkOf } from '../domain/limit-network';
 import { LinkToken } from '../domain/link-token';
 import type { PublicLink } from '../domain/public-link';
@@ -24,6 +27,7 @@ import { I_PUBLIC_LINK_REPOSITORY } from './ports/i-public-link.repository.port'
 import type { IPublicLinkRepository } from './ports/i-public-link.repository.port';
 import { I_SHAREE_DIRECTORY } from './ports/i-sharee-directory.port';
 import type { IShareeDirectory } from './ports/i-sharee-directory.port';
+import { linkDownloadedEvent, logLink } from './public-link-records';
 import { SHARING_CONFIG } from './sharing-config';
 import type { SharingConfig } from './sharing-config';
 import type { SharingLogger } from './sharing-logger';
@@ -39,6 +43,11 @@ export interface OpenPublicLinkCommand {
   readonly ip: string;
 }
 
+/** Descargar (CA-10): además del token, la contraseña si el enlace la pide; tampoco ningún id. */
+export interface DownloadPublicLinkCommand extends OpenPublicLinkCommand {
+  readonly password?: string | undefined;
+}
+
 /** Ficha del archivo de un enlace (CA-9): sin ids, carpeta ni correo. */
 export interface PublicLinkDetails {
   readonly name: string;
@@ -48,12 +57,19 @@ export interface PublicLinkDetails {
   readonly requiresPassword: boolean;
 }
 
-/** El enlace disponible releído como el propietario, con su archivo y quien lo comparte. */
+/**
+ * El enlace disponible releído como el propietario, con su archivo y quien lo comparte. `owner` es el actor derivado:
+ * no sale de este archivo (condición de Adrián, PR #87); ni la ficha ni la URL lo llevan.
+ */
 interface AvailableLink {
+  readonly owner: Actor;
   readonly link: PublicLink;
   readonly file: LinkedFile;
   readonly sharedBy: string;
 }
+
+/** Los ids que la bitácora de no disponible puede llevar (CA-15). */
+type LinkLogIds = Pick<ResolvedPublicLink, 'linkId' | 'fileId'>;
 
 /** Lo que se resuelve sin actor: sin fila, el token no sirve; sin nombre, el propietario no está activo. */
 type ResolvedOwner =
@@ -86,8 +102,11 @@ export class PublicLinkAccessService {
     private readonly directory: Pick<IShareeDirectory, 'activeDisplayName'>,
     @Inject(I_PUBLIC_LINK_REPOSITORY)
     private readonly links: Pick<IPublicLinkRepository, 'findAvailable'>,
-    @Inject(LinkedFileGateway) private readonly files: Pick<LinkedFileGateway, 'findOwnedFile'>,
+    @Inject(LinkedFileGateway)
+    private readonly files: Pick<LinkedFileGateway, 'findOwnedFile' | 'issueDownload'>,
     @Inject(I_RATE_LIMITER) private readonly rateLimiter: IRateLimiter,
+    @Inject(I_PASSWORD_HASHER) private readonly hasher: Pick<IPasswordHasher, 'verify'>,
+    @Inject(I_AUDIT_LOGGER) private readonly audit: Pick<IAuditLogger, 'record'>,
     @Inject(SHARING_CONFIG)
     private readonly config: Pick<SharingConfig, 'publicLinkRequestsPerMinute'>,
     @Inject(PinoLogger) private readonly logger: SharingLogger,
@@ -96,6 +115,21 @@ export class PublicLinkAccessService {
   /** CA-9, CA-11, CA-14: la ficha del archivo del enlace; con el propietario en solo lectura sigue sirviendo. */
   async openLink(command: OpenPublicLinkCommand): Promise<PublicLinkDetails> {
     return detailsOf(await this.resolveAvailable(command));
+  }
+
+  /**
+   * CA-10, CA-14, CA-18: la URL de 5 minutos a la versión vigente, sin contraseña o con la correcta. La firma la hace
+   * `LinkedFileGateway` con el actor derivado (sin la auditoría ni el límite de descargas del propietario); la
+   * auditoría es de mejor esfuerzo (`record` nunca lanza), como `FileService`. Devuelve solo `{ url, expiresAt }`.
+   */
+  async downloadLink(command: DownloadPublicLinkCommand): Promise<DownloadUrl> {
+    const { owner, link, file } = await this.resolveAvailable(command);
+    await this.assertPassword(link, command.password);
+    const issued = await this.files.issueDownload(owner, file.id);
+    if (issued === null) throw this.unavailable({ linkId: link.id, fileId: file.id });
+    await this.audit.record(linkDownloadedEvent(owner, link));
+    logLink(this.logger, 'public_link.downloaded', link);
+    return issued;
   }
 
   /**
@@ -111,7 +145,7 @@ export class PublicLinkAccessService {
     const owner = createActor(row.ownerId, Role.CLIENT);
     const found = await this.transactions.withActor(owner, () => this.readAsOwner(owner, row));
     if (found === null) throw this.unavailable(row);
-    return { ...found, sharedBy };
+    return { ...found, owner, sharedBy };
   }
 
   /** Lo único sin actor (ADR-0039 reglas 1 y 2): la fila de la función y el nombre del propietario si está activo. */
@@ -125,11 +159,23 @@ export class PublicLinkAccessService {
   private async readAsOwner(
     owner: Actor,
     row: ResolvedPublicLink,
-  ): Promise<Omit<AvailableLink, 'sharedBy'> | null> {
+  ): Promise<Pick<AvailableLink, 'link' | 'file'> | null> {
     const link = await this.links.findAvailable(owner, row.linkId);
     if (link === null) return null;
     const file = await this.files.findOwnedFile(owner, row.fileId);
     return file === null ? null : { link, file };
+  }
+
+  /**
+   * CA-10, CA-12 (T-07): sin contraseña en el enlace no se verifica nada; si la pide, Argon2id fuera de toda
+   * transacción. Falta (ausente o `""`) o no coincide: `403`. El bloqueo por enlace + red y `password_failed` son de T-08.
+   */
+  private async assertPassword(link: PublicLink, password: string | undefined): Promise<void> {
+    const { passwordHash } = link.toSnapshot();
+    if (passwordHash === null) return;
+    if (password === undefined || password === '') throw new PublicLinkPasswordInvalidError();
+    if (!(await this.hasher.verify(passwordHash, password)))
+      throw new PublicLinkPasswordInvalidError();
   }
 
   /** CA-14: antes de mirar el token, así el `429` no revela nada; nunca dice cuántos quedan. */
@@ -143,7 +189,7 @@ export class PublicLinkAccessService {
   }
 
   /** CA-11: el mismo error para todos los motivos; la bitácora solo lleva los ids si hubo fila (CA-15). */
-  private unavailable(row?: ResolvedPublicLink): PublicLinkUnavailableError {
+  private unavailable(row?: LinkLogIds): PublicLinkUnavailableError {
     const ids = row === undefined ? {} : { linkId: row.linkId, fileId: row.fileId };
     this.logger.info({ event: 'public_link.unavailable', ...ids });
     return new PublicLinkUnavailableError();

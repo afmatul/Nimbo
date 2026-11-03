@@ -84,6 +84,7 @@ const REAL_ATTRIBUTES: Readonly<Record<AuditAction, Record<string, string | numb
   [AuditAction.SHARE_REVOKED]: { nodeType: 'file', level: 'EDITOR' },
   [AuditAction.PUBLIC_LINK_CREATED]: { expiresInDays: 7, protection: 'password' },
   [AuditAction.PUBLIC_LINK_REVOKED]: { reason: 'replaced' },
+  [AuditAction.PUBLIC_LINK_DOWNLOADED]: { trigger: 'public_link' },
 };
 
 describe('AUDIT_CATALOG', () => {
@@ -230,6 +231,25 @@ describe('AUDIT_CATALOG', () => {
     );
   });
 
+  it('013 CA-18: una descarga por enlace guarda solo `trigger` del catálogo cerrado; descarta token, IP y nombre', () => {
+    const result = sanitizeAttributes(
+      AUDIT_CATALOG[AuditAction.PUBLIC_LINK_DOWNLOADED].attributes,
+      {
+        trigger: 'public_link',
+        token: 'q3Zx',
+        ip: '203.0.113.7',
+        fileName: 'informe.pdf',
+      },
+    );
+
+    expect(result.attributes).toEqual({ trigger: 'public_link' });
+    expect(
+      sanitizeAttributes(AUDIT_CATALOG[AuditAction.PUBLIC_LINK_DOWNLOADED].attributes, {
+        trigger: 'visitante',
+      }).attributes,
+    ).toEqual({});
+  });
+
   it('011b RN-4: solo `node.restored` admite el motivo escrito de Soporte (`note`)', () => {
     const withNote = Object.values(AuditAction).filter((action) =>
       Object.hasOwn(AUDIT_CATALOG[action].attributes, 'note'),
@@ -270,6 +290,7 @@ describe('resourceTypeOf', () => {
     [AuditAction.SHARE_REVOKED, { nodeType: 'folder' }, 'folder'],
     [AuditAction.PUBLIC_LINK_CREATED, {}, 'file'],
     [AuditAction.PUBLIC_LINK_REVOKED, {}, 'file'],
+    [AuditAction.PUBLIC_LINK_DOWNLOADED, {}, 'file'],
   ] as const)('D-3: `%s` con %p es de tipo %p', (action, attributes, expected) => {
     expect(resourceTypeOf(action, attributes)).toBe(expected);
   });

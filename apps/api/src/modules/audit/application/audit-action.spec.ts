@@ -43,6 +43,7 @@ describe('AuditAction', () => {
         'share.revoked',
         'public_link.created',
         'public_link.revoked',
+        'public_link.downloaded',
       ].sort(),
     );
   });

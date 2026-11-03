@@ -42,7 +42,10 @@ tipos, `IExpiredUploadScanner`, el adaptador de auditoría ni los repositorios. 
 rechaza compartir desde una cuenta en solo lectura con la misma regla. Desde 013 (plan §2), exportan también la fachada
 `LinkedFileGateway` (y el tipo `LinkedFile`, `{ id, name, sizeBytes }`): `findOwnedFile(actor, fileId)` resuelve con
 `findOwnedLiveFile` (`ownedNodes`) el archivo propio y vivo de un enlace público de `sharing`; una carpeta, un archivo
-ajeno, en la papelera o inexistente es `null`.
+ajeno, en la papelera o inexistente es `null`. `issueDownload(actor, fileId)` (013 CA-10, tipo `DownloadUrl`) firma la
+versión vigente del mismo archivo con la regla de `current-version-download.ts`, la misma de `FileService` (5 minutos,
+un solo objeto, descarga forzada; RNF-06), sin auditar ni gastar el límite de descargas del propietario: los pone
+`sharing`; si el archivo ya no es propio y vivo, `null`.
 
 ## Persistencia (005, PR-C)
 

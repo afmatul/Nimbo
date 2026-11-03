@@ -177,6 +177,10 @@ export const AUDIT_CATALOG = {
     resourceType: 'file',
     attributes: { reason: PUBLIC_LINK_REVOKE_REASONS },
   },
+  [AuditAction.PUBLIC_LINK_DOWNLOADED]: {
+    resourceType: 'file',
+    attributes: { trigger: AUDIT_TRIGGERS },
+  },
 } as const satisfies Record<AuditAction, AuditActionSpec>;
 
 /** Tipos que un atributo (`nodeType`) puede dar: solo nodos y cargas. */

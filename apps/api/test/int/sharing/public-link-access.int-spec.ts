@@ -1,11 +1,18 @@
 import { randomUUID } from 'node:crypto';
 
-import { createdPublicLinkSchema, publicLinkDetailsSchema } from '@nimbo/contracts';
+import {
+  completeUploadResponseSchema,
+  createdPublicLinkSchema,
+  DOWNLOAD_URL_TTL_SECONDS,
+  downloadUrlSchema,
+  listAuditEventsResponseSchema,
+  publicLinkDetailsSchema,
+} from '@nimbo/contracts';
 import type { Response } from 'supertest';
 
 import { LinkToken } from '../../../src/modules/sharing/domain/link-token';
 import { Role } from '../../../src/shared';
-import { insertCommittedFile } from '../storage/storage-http';
+import { insertCommittedFile, otherBytes } from '../storage/storage-http';
 import type { StorageClient } from '../storage/storage-http';
 
 import { createSharingHttpApp } from './sharing-http';
@@ -20,6 +27,10 @@ const OWNER_NAME = 'Ana Ruiz';
 const PASSWORD = 'clave-del-enlace-9c2e';
 const UNAVAILABLE = 'SHARING_LINK_UNAVAILABLE';
 const DAY_MS = 24 * 60 * 60 * 1000;
+const DOWNLOAD_BYTES = 3000;
+const MS_PER_SECOND = 1000;
+/** Holgura entre el reloj de la prueba y el de la API al comparar `expiresAt`. */
+const CLOCK_SLACK_MS = 30_000;
 /** Ni el límite por propietario ni el de red interfieren con los demás casos; CA-14 tiene su propia app. */
 const ROOMY_RATE_LIMIT = '1000';
 
@@ -40,10 +51,10 @@ const tokenOf = (response: Response): string =>
   createdPublicLinkSchema.parse(response.body).url.slice(LINK_URL_PREFIX.length);
 
 /**
- * `POST /public-links/open` por HTTP con Postgres, Redis y la función `enlace_por_token()` reales (spec 013 CA-9,
- * CA-11, CA-14, CA-16; plan §6, ADR-0039). Ana comparte; el visitante no tiene sesión.
+ * `POST /public-links/open` y `/download` por HTTP con Postgres, Redis, MinIO y la función `enlace_por_token()` reales
+ * (spec 013 CA-9 a CA-11, CA-14 a CA-16, CA-18; plan §6, ADR-0039). Ana comparte; el visitante no tiene sesión.
  */
-describe('POST /public-links/open (013 CA-9, CA-11, CA-14, CA-16)', () => {
+describe('POST /public-links/open y /download (013 CA-9 a CA-11, CA-14 a CA-16, CA-18)', () => {
   let sharing: SharingHttpApp;
   let ana: StorageClient;
   let anonymous: PublicLinkVisitor;
@@ -271,10 +282,156 @@ describe('POST /public-links/open (013 CA-9, CA-11, CA-14, CA-16)', () => {
       expect.objectContaining({ event: 'public_link.unavailable', linkId: link.id, fileId }),
     );
   });
+  describe('POST /public-links/download (013 CA-10, CA-11, CA-14, CA-15, CA-18)', () => {
+    /** Sube una versión y la reemplaza, así la vigente (la segunda) se distingue de la anterior por sus bytes. */
+    const uploadTwoVersions = async (): Promise<{ fileId: string; current: Buffer }> => {
+      const name = `${FILE_PREFIX}-${randomUUID()}.bin`;
+      const first = await ana.upload(name, otherBytes(DOWNLOAD_BYTES));
+      const current = otherBytes(DOWNLOAD_BYTES);
+      const second = await ana.upload(name, current, 'replace');
+      const fileId = completeUploadResponseSchema.parse(first.body).file.id;
+      expect(completeUploadResponseSchema.parse(second.body).file.id).toBe(fileId);
+      return { fileId, current };
+    };
+
+    const downloadOk = async (body: Record<string, unknown>) => {
+      const response = await anonymous.download(body);
+      expect(response.status).toBe(200);
+      return { response, issued: downloadUrlSchema.parse(response.body) };
+    };
+
+    it('CA-10: sin contraseña, URL de 5 minutos a la versión vigente con descarga forzada; nada más', async () => {
+      const { fileId, current } = await uploadTwoVersions();
+      const created = await sharing.publicLinksOf(ana).create({ fileId });
+      const before = Date.now();
+
+      const { response, issued } = await downloadOk({ token: tokenOf(created) });
+
+      expect(response.headers['cache-control']).toBe('no-store');
+      expect(response.headers['referrer-policy']).toBe('no-referrer');
+      expect(Object.keys(response.body as object).sort()).toEqual(['expiresAt', 'url']);
+      const signed = new URL(issued.url);
+      expect(signed.searchParams.get('X-Amz-Expires')).toBe(String(DOWNLOAD_URL_TTL_SECONDS));
+      expect(signed.host).toBe(sharing.storage.publicHost);
+      const expected = before + DOWNLOAD_URL_TTL_SECONDS * MS_PER_SECOND;
+      expect(Math.abs(new Date(issued.expiresAt).getTime() - expected)).toBeLessThan(
+        CLOCK_SLACK_MS,
+      );
+      const object = await fetch(issued.url);
+      expect(object.headers.get('content-disposition')).toMatch(/^attachment;/);
+      expect(Buffer.from(await object.arrayBuffer())).toEqual(current);
+    });
+
+    it('CA-10: con la contraseña correcta, la URL', async () => {
+      const { token } = await newLink({ password: PASSWORD });
+
+      await downloadOk({ token, password: PASSWORD });
+    });
+
+    it('CA-12 (mínimo de T-07): con contraseña incorrecta o sin ella, 403 sin URL', async () => {
+      const { token } = await newLink({ password: PASSWORD });
+
+      for (const body of [{ token, password: 'otra-clave-1234' }, { token }]) {
+        const response = await anonymous.download(body);
+        expect(response.status).toBe(403);
+        expect((response.body as ErrorBody).code).toBe('SHARING_LINK_PASSWORD_INVALID');
+        expect(JSON.stringify(response.body)).not.toContain('X-Amz');
+      }
+    });
+
+    it('CA-14: con la cuenta propietaria en solo lectura sigue descargando', async () => {
+      const { token } = await newLink();
+      sharing.storage.limits.setReadOnly(true);
+
+      await downloadOk({ token });
+    });
+
+    describe('CA-11: el mismo 404 que `open`', () => {
+      it.each([
+        ['un token mal formado', { token: 'no-es-un-token' }],
+        ['un cuerpo sin token', {}],
+        ['una contraseña que no es texto', { token: LinkToken.generate().toString(), password: 7 }],
+      ])('plan D-4: %s', async (_, body) => {
+        expectUnavailable(await anonymous.download(body));
+      });
+
+      it('CA-17, plan D-4: un campo de más (`fileId`, `ownerId`) con un token válido', async () => {
+        const { fileId, token } = await newLink();
+
+        for (const extra of [{ fileId }, { ownerId: ana.id }]) {
+          expectUnavailable(await anonymous.download({ token, ...extra }));
+        }
+        await downloadOk({ token });
+      });
+
+      it('archivo en la papelera; al restaurarlo vuelve a servir', async () => {
+        const { fileId, token } = await newLink();
+        await setTrashed(fileId, true);
+
+        expectUnavailable(await anonymous.download({ token }));
+
+        await setTrashed(fileId, false);
+        await downloadOk({ token });
+      });
+
+      it('propietario suspendido', async () => {
+        const { token } = await newLink();
+        await setOwnerStatus('suspendida');
+
+        expectUnavailable(await anonymous.download({ token }));
+      });
+
+      it('archivo purgado', async () => {
+        const { fileId, token } = await newLink();
+        await sharing.storage.owner.query('DELETE FROM archivo WHERE id = $1', [fileId]);
+
+        expectUnavailable(await anonymous.download({ token }));
+      });
+    });
+
+    it('CA-15, CA-18: `public_link.downloaded` con `trigger: public_link` en «Mi actividad» del propietario; no como descarga suya', async () => {
+      const { fileId, token, link } = await newLink();
+
+      const { response } = await downloadOk({ token });
+
+      const correlationId = response.headers['x-correlation-id'] as string;
+      const events = (await sharing.eventsOf(ana.id)).filter(
+        (event) => event.recurso_id === fileId,
+      );
+      expect(events.map((event) => event.accion)).toEqual([
+        'public_link.created',
+        'public_link.downloaded',
+      ]);
+      expect(events[1]).toEqual({
+        accion: 'public_link.downloaded',
+        actor_id: ana.id,
+        tipo_recurso: 'file',
+        recurso_id: fileId,
+        atributos: { trigger: 'public_link' },
+        correlation_id: correlationId,
+      });
+      const activity = listAuditEventsResponseSchema.parse((await sharing.myEvents(ana)).body);
+      expect(activity.items.find((item) => item.action === 'public_link.downloaded')).toMatchObject(
+        {
+          origin: 'self',
+          resourceType: 'file',
+          trigger: 'public_link',
+        },
+      );
+      const lines = sharing.storage.testApp.logs.withCorrelationId(correlationId);
+      expect(lines).toContainEqual(
+        expect.objectContaining({ event: 'public_link.downloaded', linkId: link.id, fileId }),
+      );
+      const business = JSON.stringify(lines.filter((line) => line.event !== 'http.request'));
+      for (const secret of [token, FILE_PREFIX, '127.0.0.1', '::1']) {
+        expect(business).not.toContain(secret);
+      }
+    });
+  });
 });
 
 /** CA-14, RN-7: el límite general de las rutas públicas, por red (IPv4 /32, IPv6 /64) con `X-Forwarded-For`. */
-describe('POST /public-links/open: límite por red (013 CA-13, CA-14, RN-7)', () => {
+describe('POST /public-links/open y /download: límite por red (013 CA-13, CA-14, RN-7)', () => {
   const LIMIT = 2;
   let sharing: SharingHttpApp;
 
@@ -290,9 +447,13 @@ describe('POST /public-links/open: límite por red (013 CA-13, CA-14, RN-7)', ()
 
   const openFrom = (ip: string): Promise<Response> =>
     sharing.visitor({ 'X-Forwarded-For': ip }).open({ token: LinkToken.generate().toString() });
+  const downloadFrom = (ip: string): Promise<Response> =>
+    sharing.visitor({ 'X-Forwarded-For': ip }).download({ token: LinkToken.generate().toString() });
+  const randomNetwork = (): string =>
+    `2001:db8:${Math.floor(Math.random() * 0xffff).toString(16)}:1`;
 
   it('CA-14: dos IPv6 del mismo /64 comparten el límite (429 con la espera); otra red no', async () => {
-    const network = `2001:db8:${Math.floor(Math.random() * 0xffff).toString(16)}:1`;
+    const network = randomNetwork();
     for (let attempt = 0; attempt < LIMIT; attempt += 1) {
       expect((await openFrom(`${network}::${attempt + 1}`)).status).toBe(404);
     }
@@ -304,5 +465,14 @@ describe('POST /public-links/open: límite por red (013 CA-13, CA-14, RN-7)', ()
     expect(Number(blocked.headers['retry-after'])).toBeGreaterThan(0);
     expect(JSON.stringify(blocked.body)).not.toMatch(/\d+ intentos?/);
     expect((await openFrom(`${network.replace(/:1$/, ':2')}::1`)).status).toBe(404);
+  });
+
+  it('CA-14: abrir y descargar comparten el mismo límite por red', async () => {
+    const network = randomNetwork();
+    expect((await openFrom(`${network}::1`)).status).toBe(404);
+    expect((await downloadFrom(`${network}::2`)).status).toBe(404);
+
+    expect((await downloadFrom(`${network}::3`)).status).toBe(429);
+    expect((await openFrom(`${network}::4`)).status).toBe(429);
   });
 });

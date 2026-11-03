@@ -38,6 +38,7 @@ const EXPECTED_PUBLIC_ROUTES = [
   'POST /api/v1/editing/callback',
   // 013 plan §4: el visitante de un enlace público no tiene cuenta; lo autoriza el token del cuerpo (ADR-0039).
   'POST /api/v1/public-links/open',
+  'POST /api/v1/public-links/download',
 ];
 
 /**

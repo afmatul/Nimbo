@@ -68,6 +68,11 @@ export enum AuditAction {
    */
   PUBLIC_LINK_CREATED = 'public_link.created',
   PUBLIC_LINK_REVOKED = 'public_link.revoked',
+  /**
+   * Descarga de un visitante (013 CA-10, CA-18, ADR-0039 regla 5): con el actor derivado del propietario («en nombre
+   * de») y `attributes { trigger: 'public_link' }`, que la distingue de una descarga suya.
+   */
+  PUBLIC_LINK_DOWNLOADED = 'public_link.downloaded',
 }
 
 const AUDIT_ACTIONS: ReadonlySet<string> = new Set(Object.values(AuditAction));

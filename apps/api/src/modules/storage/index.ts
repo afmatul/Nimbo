@@ -35,6 +35,7 @@ export { WritableAccountPolicy } from './application/writable-account.policy';
 // 013 (plan §2): la fachada con que `sharing` resuelve el archivo propio y vivo de un enlace público.
 export { LinkedFileGateway } from './application/linked-file.gateway';
 export type { LinkedFile } from './application/linked-file.gateway';
+export type { DownloadUrl } from './application/current-version-download';
 // 011b (plan §2, ADR-0035): la fachada con que Soporte lista y restaura la papelera de un cliente desde `backoffice`,
 // con vistas de lectura (las de 006 en contracts), no entidades de `storage` (M-2 del PR #85).
 export { SupportTrashService } from './application/support-trash.service';

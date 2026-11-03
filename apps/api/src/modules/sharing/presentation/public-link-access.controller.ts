@@ -1,7 +1,9 @@
 import { Body, Controller, Header, HttpCode, HttpStatus, Post, Req } from '@nestjs/common';
-import { publicLinkOpenSchema } from '@nimbo/contracts';
+import { publicLinkDownloadSchema, publicLinkOpenSchema } from '@nimbo/contracts';
 import type {
+  DownloadUrlResponse,
   PublicLinkDetails as PublicLinkDetailsResponse,
+  PublicLinkDownloadRequest,
   PublicLinkOpenRequest,
 } from '@nimbo/contracts';
 
@@ -36,7 +38,8 @@ const toDetailsResponse = (details: PublicLinkDetails): PublicLinkDetailsRespons
 
 /**
  * Rutas del visitante de un enlace público (plan 013 §4): `@Public()`, no leen la sesión y responden igual con o sin
- * ella (CA-16). Mapean y delegan en `PublicLinkAccessService`; solo pasan el token y la IP, ningún id (ADR-0039).
+ * ella (CA-16). Mapean y delegan en `PublicLinkAccessService`; solo pasan el token, la contraseña y la IP, ningún id
+ * (ADR-0039).
  */
 @Public()
 @Controller('public-links')
@@ -54,5 +57,24 @@ export class PublicLinkAccessController {
   ): Promise<PublicLinkDetailsResponse> {
     const details = await this.access.openLink({ token: body.token, ip: req.ip ?? UNKNOWN_IP });
     return toDetailsResponse(details);
+  }
+
+  /** CA-10, CA-11, CA-14: `200 { url, expiresAt }` de 5 minutos a la versión vigente; mismo `404` que `open`. */
+  @Post('download')
+  @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', NO_STORE)
+  @Header('Referrer-Policy', NO_REFERRER)
+  async download(
+    @Req() req: VisitorRequest,
+    @Body(new ZodValidationPipe(publicLinkDownloadSchema, unavailableBody))
+    body: PublicLinkDownloadRequest,
+  ): Promise<DownloadUrlResponse> {
+    const { token, password } = body;
+    const { url, expiresAt } = await this.access.downloadLink({
+      token,
+      password,
+      ip: req.ip ?? UNKNOWN_IP,
+    });
+    return { url, expiresAt: expiresAt.toISOString() };
   }
 }

@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import request from 'supertest';
 import type { Response } from 'supertest';
 
+import { AuditHttpModule } from '../../../src/modules/audit';
 import { ShareeDirectoryAdapter, UserDirectoryAdapter } from '../../../src/modules/identity';
 import { I_SHAREE_DIRECTORY, SharingModule } from '../../../src/modules/sharing';
 import { createStorageHttpApp } from '../storage/storage-http';
@@ -47,6 +48,8 @@ export interface PublicLinksClient {
 export interface PublicLinkVisitor {
   /** `POST /public-links/open` (CA-9); el cuerpo va tal cual, también inválido (plan D-4). */
   open(body: unknown): Promise<Response>;
+  /** `POST /public-links/download` (CA-10); el cuerpo va tal cual, también inválido (plan D-4). */
+  download(body: unknown): Promise<Response>;
 }
 
 export interface SharingHttpApp {
@@ -59,6 +62,8 @@ export interface SharingHttpApp {
   emailOf(userId: string): Promise<string>;
   /** Cambia el nombre de una cuenta (las *fixtures* las crean todas con el mismo), para distinguir a las personas. */
   rename(userId: string, name: string): Promise<void>;
+  /** `GET /audit/my-events` con el token de un cliente: «Mi actividad» (004 CA-7, 013 CA-18). */
+  myEvents(client: StorageClient): Promise<Response>;
   /** Eventos de auditoría cuyo afectado es `userId`, en orden. */
   eventsOf(userId: string): Promise<AuditEventRow[]>;
   close(): Promise<void>;
@@ -76,14 +81,14 @@ export interface AuditEventRow {
 /**
  * App HTTP de `sharing` para las suites de 012 y 013: la de `storage` (Postgres como `nimbo_app`, Redis real para la tasa,
  * doble de límites del plan para la solo lectura) con `SharingModule.forRoot(env, storage)` sobre **la misma**
- * instancia de `StorageModule` y el directorio real de destinatarios.
+ * instancia de `StorageModule`, el directorio real de destinatarios y la ruta de «Mi actividad» (`AuditHttpModule`).
  */
 export const createSharingHttpApp = async (
   options: Pick<StorageHttpOptions, 'env'> = {},
 ): Promise<SharingHttpApp> => {
   const storage = await createStorageHttpApp({
     ...options,
-    modules: [TestShareeDirectoryModule],
+    modules: [TestShareeDirectoryModule, AuditHttpModule],
     withStorage: (storageModule, env) => [SharingModule.forRoot(env, storageModule)],
   });
   const http = () => request(storage.testApp.app.getHttpServer());
@@ -109,18 +114,23 @@ export const createSharingHttpApp = async (
       revoke: (linkId) => http().delete(`${API_PREFIX}/public-links/${linkId}`).set(auth),
     };
   };
-  const visitor = (headers: Record<string, string> = {}): PublicLinkVisitor => ({
-    open: (body) =>
+  const visitor = (headers: Record<string, string> = {}): PublicLinkVisitor => {
+    const post = (route: string, body: unknown) =>
       http()
-        .post(`${API_PREFIX}/public-links/open`)
+        .post(`${API_PREFIX}/public-links/${route}`)
         .set(headers)
-        .send(body as object),
-  });
+        .send(body as object);
+    return {
+      open: (body) => post('open', body),
+      download: (body) => post('download', body),
+    };
+  };
   return {
     storage,
     sharesOf,
     publicLinksOf,
     visitor,
+    myEvents: (client) => http().get(`${API_PREFIX}/audit/my-events`).set(authOf(client)),
     emailOf: async (userId) => {
       const rows = (await storage.owner.query('SELECT correo FROM usuario WHERE id = $1', [
         userId,
