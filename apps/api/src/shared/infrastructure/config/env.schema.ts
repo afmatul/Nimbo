@@ -205,6 +205,18 @@ const optionalText = () =>
 const optionalUrl = () =>
   z.preprocess((value) => (value === '' ? undefined : value), url().optional());
 
+/** Entero opcional dentro de `[min, max]`: vacío o ausente cuenta como ausente (sin valor por defecto). */
+const optionalIntBetween = (min: number, max: number) =>
+  z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.coerce
+      .number({ invalid_type_error: `debe ser un entero entre ${String(min)} y ${String(max)}` })
+      .int(`debe ser un entero entre ${String(min)} y ${String(max)}`)
+      .min(min, `debe ser un entero entre ${String(min)} y ${String(max)}`)
+      .max(max, `debe ser un entero entre ${String(min)} y ${String(max)}`)
+      .optional(),
+  );
+
 const isPublished = (appEnv: string): boolean => PUBLISHED_ENVIRONMENTS.includes(appEnv);
 
 /** Contrato común a todo proceso Nimbo (plan 000 §6.2): lo único de lo que depende `SharedModule`. */
@@ -214,6 +226,8 @@ const sharedEnvBaseSchema = z.object({
   APP_VERSION: nonEmpty().default(DEFAULT_APP_VERSION),
   LOG_LEVEL: oneOf(['trace', 'debug', 'info', 'warn', 'error', 'fatal']),
   DATABASE_URL: url(),
+  /** Espera entre reintentos de la conexión inicial a Postgres; sin valor, 3000 ms. Las pruebas la acortan. */
+  DATABASE_RETRY_DELAY_MS: optionalIntBetween(100, 60_000),
   REDIS_URL: url(),
 });
 

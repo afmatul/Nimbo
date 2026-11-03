@@ -497,6 +497,7 @@ describe('worker del optimizador (ADR-0038)', () => {
         'APP_VERSION',
         'LOG_LEVEL',
         'DATABASE_URL',
+        'DATABASE_RETRY_DELAY_MS',
         'REDIS_URL',
         'MINIO_ENDPOINT',
         'MINIO_ACCESS_KEY',
@@ -551,5 +552,27 @@ describe('worker del optimizador (ADR-0038)', () => {
     expect(declaredIn('WORKER_OPTIMIZER_PORT')).toEqual(['worker-optimizer']);
     expect(port.parse(undefined)).toBe(3003);
     expect(port.safeParse('70000').success).toBe(false);
+  });
+});
+
+describe('DATABASE_RETRY_DELAY_MS (espera entre reintentos de la conexión a Postgres)', () => {
+  it('sin valor o vacía queda ausente, para que rija el valor por omisión del módulo', () => {
+    const missing = loadEnv(apiEnvSchema, API_ENV);
+    const empty = loadEnv(apiEnvSchema, { ...API_ENV, DATABASE_RETRY_DELAY_MS: '' });
+
+    expect(missing.ok && missing.env.DATABASE_RETRY_DELAY_MS).toBeUndefined();
+    expect(empty.ok && empty.env.DATABASE_RETRY_DELAY_MS).toBeUndefined();
+  });
+
+  it('acepta un entero entre 100 y 60000 ms', () => {
+    const result = loadEnv(apiEnvSchema, { ...API_ENV, DATABASE_RETRY_DELAY_MS: '100' });
+
+    expect(result.ok && result.env.DATABASE_RETRY_DELAY_MS).toBe(100);
+  });
+
+  it.each(['0', '99', '60001', 'abc', '1.5'])('rechaza %s', (value) => {
+    const result = loadEnv(apiEnvSchema, { ...API_ENV, DATABASE_RETRY_DELAY_MS: value });
+
+    expect(result.ok).toBe(false);
   });
 });
