@@ -26,6 +26,13 @@ export interface IPublicLinkRepository {
    * ajeno, inexistente o ya revocado. No exige el archivo vivo: se revoca también con el archivo en la papelera.
    */
   revoke(actor: Actor, linkId: string, revokedAt: Date): Promise<PublicLink | null>;
+
+  /**
+   * 013 CA-9, ADR-0039 regla 3: el enlace `linkId` del actor si no está revocado ni vencido (`vence_en > now()` de la
+   * base, el mismo filtro de `enlace_por_token()`), con la clave y el vencimiento; `null` en otro caso. Solo lo llama
+   * `PublicLinkAccessService` con el actor derivado del propietario y el id de la fila de la función.
+   */
+  findAvailable(actor: Actor, linkId: string): Promise<PublicLink | null>;
 }
 
 export const I_PUBLIC_LINK_REPOSITORY = Symbol('IPublicLinkRepository');

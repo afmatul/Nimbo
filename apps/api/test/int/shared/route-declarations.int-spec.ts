@@ -36,6 +36,8 @@ const EXPECTED_PUBLIC_ROUTES = [
   'POST /api/v1/auth/verify-email',
   // 016 plan §4: aviso de guardado de ONLYOFFICE, autenticado por su JWT y el enlace firmado de `callbackUrl`.
   'POST /api/v1/editing/callback',
+  // 013 plan §4: el visitante de un enlace público no tiene cuenta; lo autoriza el token del cuerpo (ADR-0039).
+  'POST /api/v1/public-links/open',
 ];
 
 /**

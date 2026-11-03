@@ -104,6 +104,7 @@ const setup = (options: SetupOptions = {}) => {
     ),
     profiles: jest.fn(step('profiles', options.profiles ?? new Map([[BRUNO.id, BRUNO]]))),
     displayNames: jest.fn(),
+    activeDisplayName: jest.fn(),
   };
   const shares: IShareRepository = {
     findDirect: jest.fn(step('findDirect', options.existing ?? null)),
@@ -142,7 +143,11 @@ const setup = (options: SetupOptions = {}) => {
     rateLimiter,
     audit,
     new FixedClock(NOW),
-    { shareAttemptsPerMinute: RATE_LIMIT_PER_MINUTE, webPublicUrl: 'https://nimbo.test' },
+    {
+      shareAttemptsPerMinute: RATE_LIMIT_PER_MINUTE,
+      webPublicUrl: 'https://nimbo.test',
+      publicLinkRequestsPerMinute: RATE_LIMIT_PER_MINUTE,
+    },
     logger,
   );
   return { service, journal, recorded, shares, rateLimiter, permissions, logger };

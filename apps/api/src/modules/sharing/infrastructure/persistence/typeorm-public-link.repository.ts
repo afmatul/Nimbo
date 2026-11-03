@@ -49,6 +49,11 @@ const findCurrentSql = (ownedSql: string): string => `
    WHERE archivo_id = :file_id::uuid AND propietario_id = :owner_id::uuid AND revocado_en IS NULL
      AND ${ownedFileSql(ownedSql)}`;
 
+/** ADR-0039 regla 3: el mismo filtro de disponibilidad que `enlace_por_token()`, con el reloj de la base. */
+const FIND_AVAILABLE_SQL = `
+  SELECT ${LINK_COLUMNS} FROM enlace_publico
+   WHERE id = :link_id::uuid AND propietario_id = :owner_id::uuid AND revocado_en IS NULL AND vence_en > now()`;
+
 const insertSql = (ownedSql: string): string => `
   INSERT INTO enlace_publico (id, archivo_id, propietario_id, token_hash, clave_hash, vence_en, creado_en)
   SELECT :id::uuid, :file_id::uuid, :owner_id::uuid, :token_hash, :password_hash::text, :expires_at::timestamptz,
@@ -117,6 +122,15 @@ export class TypeOrmPublicLinkRepository implements IPublicLinkRepository {
       this.context.requireActorScope(actor),
       REVOKE_BY_ID_SQL,
       { link_id: linkId, owner_id: actor.id, now: revokedAt },
+    );
+    return row === undefined ? null : toLink(row);
+  }
+
+  async findAvailable(actor: Actor, linkId: string): Promise<PublicLink | null> {
+    const [row] = await queryNamed<LinkRow>(
+      this.context.requireActorScope(actor),
+      FIND_AVAILABLE_SQL,
+      { link_id: linkId, owner_id: actor.id },
     );
     return row === undefined ? null : toLink(row);
   }

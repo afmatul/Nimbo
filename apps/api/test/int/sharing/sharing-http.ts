@@ -43,10 +43,18 @@ export interface PublicLinksClient {
   revoke(linkId: string): Promise<Response>;
 }
 
+/** Las rutas del visitante de `/public-links` (013): sin `Authorization` salvo que `headers` la traiga (CA-16). */
+export interface PublicLinkVisitor {
+  /** `POST /public-links/open` (CA-9); el cuerpo va tal cual, también inválido (plan D-4). */
+  open(body: unknown): Promise<Response>;
+}
+
 export interface SharingHttpApp {
   readonly storage: StorageHttpApp;
   sharesOf(client: StorageClient): SharesClient;
   publicLinksOf(client: StorageClient): PublicLinksClient;
+  /** Un visitante con cabeceras propias (p. ej. `X-Forwarded-For` o la sesión de alguien). */
+  visitor(headers?: Record<string, string>): PublicLinkVisitor;
   /** Correo de una cuenta, leído como el dueño (las *fixtures* lo derivan del id). */
   emailOf(userId: string): Promise<string>;
   /** Cambia el nombre de una cuenta (las *fixtures* las crean todas con el mismo), para distinguir a las personas. */
@@ -101,10 +109,18 @@ export const createSharingHttpApp = async (
       revoke: (linkId) => http().delete(`${API_PREFIX}/public-links/${linkId}`).set(auth),
     };
   };
+  const visitor = (headers: Record<string, string> = {}): PublicLinkVisitor => ({
+    open: (body) =>
+      http()
+        .post(`${API_PREFIX}/public-links/open`)
+        .set(headers)
+        .send(body as object),
+  });
   return {
     storage,
     sharesOf,
     publicLinksOf,
+    visitor,
     emailOf: async (userId) => {
       const rows = (await storage.owner.query('SELECT correo FROM usuario WHERE id = $1', [
         userId,

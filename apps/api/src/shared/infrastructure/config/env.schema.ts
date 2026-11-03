@@ -103,6 +103,11 @@ const DEFAULT_RATE_LIMIT_INDEX_RETRY_PER_MINUTE = 10;
  * para quien prueba correos (la respuesta de CA-3 dice si un correo tiene cuenta, §5).
  */
 const DEFAULT_SHARING_RATE_LIMIT_PER_MINUTE = 20;
+/**
+ * Peticiones por red y minuto a las rutas del visitante de un enlace público (013 CA-13, CA-14, RNF-07): holgado para
+ * quien abre y descarga a mano y bajo para quien prueba tokens antes de llegar a la base.
+ */
+const DEFAULT_PUBLIC_LINK_RATE_LIMIT_PER_MINUTE = 30;
 /** Modelo de embeddings por defecto (ADR-0007): se vectoriza a 768 dimensiones (ADR-0003). */
 const DEFAULT_GEMINI_EMBEDDING_MODEL = 'gemini-embedding-001';
 /** Modelo que redacta las respuestas del agente (020 D-7, RNF-09). */
@@ -313,9 +318,10 @@ const indexingWorkerShape = {
   GHOSTSCRIPT_BIN: nonEmpty().default(DEFAULT_GHOSTSCRIPT_BIN),
 };
 
-/** Compartir con otro cliente en el `api` (012 plan §2, CA-7). */
+/** Compartir con otro cliente y enlaces públicos en el `api` (012 plan §2, CA-7; 013 plan §5). */
 const sharingApiShape = {
   SHARING_RATE_LIMIT_PER_MINUTE: positiveInt(DEFAULT_SHARING_RATE_LIMIT_PER_MINUTE),
+  PUBLIC_LINK_RATE_LIMIT_PER_MINUTE: positiveInt(DEFAULT_PUBLIC_LINK_RATE_LIMIT_PER_MINUTE),
 };
 
 /** Agente con citas en el `api` (020 plan D-7, D-8): modelo, largo máximo de la pregunta (RN-7) y plazos (CA-15). */

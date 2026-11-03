@@ -7,6 +7,11 @@ export interface SharingConfig {
   readonly shareAttemptsPerMinute: number;
   /** `WEB_PUBLIC_URL`: base de la URL del enlace público que se entrega al generarlo (013 CA-1). */
   readonly webPublicUrl: string;
+  /**
+   * `PUBLIC_LINK_RATE_LIMIT_PER_MINUTE`: peticiones por red (`limitNetworkOf`) en una ventana de 60 s a las rutas del
+   * visitante, antes de resolver el token (013 CA-14, plan §5).
+   */
+  readonly publicLinkRequestsPerMinute: number;
 }
 
 export const SHARING_CONFIG: unique symbol = Symbol('SharingConfig');

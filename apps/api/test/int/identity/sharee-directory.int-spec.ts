@@ -13,7 +13,7 @@ import { connectAsAppDatabase, insertAccount, removeAccounts } from '../storage/
  * `IShareeDirectory` de `sharing` implementado por `identity` (012 CA-3, RN-3, RN-8, DF-84): solo un cliente
  * verificado y activo es destinatario; los demás motivos dan `null`, sin distinguirse.
  */
-describe('ShareeDirectoryAdapter (spec 012 CA-3, CA-8, CA-22)', () => {
+describe('ShareeDirectoryAdapter (spec 012 CA-3, CA-8, CA-22; 013 CA-9, CA-11)', () => {
   let owner: DataSource;
   let app: AppDatabase;
   let directory: ShareeDirectoryAdapter;
@@ -81,5 +81,25 @@ describe('ShareeDirectoryAdapter (spec 012 CA-3, CA-8, CA-22)', () => {
     const names = await app.runner.run(() => directory.displayNames([id, randomUUID()]));
 
     expect([...names.entries()]).toEqual([[id, 'Ciro Paz']]);
+  });
+
+  it('013 CA-9: da el nombre visible de quien comparte si es un cliente verificado y activo', async () => {
+    const id = await account(Role.CLIENT, "nombre = 'Eva Sol'");
+
+    expect(await app.runner.run(() => directory.activeDisplayName(id))).toBe('Eva Sol');
+  });
+
+  it.each([
+    ['una cuenta interna', Role.ADMIN, undefined],
+    ['un cliente sin verificar', Role.CLIENT, 'correo_verificado = false'],
+    ['un cliente suspendido', Role.CLIENT, "estado = 'suspendida'"],
+  ])('013 CA-11: %s no comparte enlaces (null)', async (_, role, change) => {
+    const id = await account(role, change);
+
+    expect(await app.runner.run(() => directory.activeDisplayName(id))).toBeNull();
+  });
+
+  it('013 CA-11: un id sin cuenta da null', async () => {
+    expect(await app.runner.run(() => directory.activeDisplayName(randomUUID()))).toBeNull();
   });
 });

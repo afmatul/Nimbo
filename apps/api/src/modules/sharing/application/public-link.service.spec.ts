@@ -103,6 +103,7 @@ const setup = (options: SetupOptions = {}) => {
     revoke: jest.fn(
       step('revoke', options.revoked === undefined ? previousLink() : options.revoked),
     ),
+    findAvailable: jest.fn(),
   };
   const writable = {
     assertWritable: jest.fn(() => {
@@ -134,7 +135,11 @@ const setup = (options: SetupOptions = {}) => {
     rateLimiter,
     audit,
     new FixedClock(NOW),
-    { shareAttemptsPerMinute: RATE_LIMIT_PER_MINUTE, webPublicUrl: 'https://nimbo.test' },
+    {
+      shareAttemptsPerMinute: RATE_LIMIT_PER_MINUTE,
+      webPublicUrl: 'https://nimbo.test',
+      publicLinkRequestsPerMinute: RATE_LIMIT_PER_MINUTE,
+    },
     logger,
   );
   return {
