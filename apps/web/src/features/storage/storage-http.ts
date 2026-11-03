@@ -3,7 +3,7 @@ import type { ZodType } from 'zod';
 import { ApiClientError } from '../../lib/api-error';
 import type { AuthFetch } from '../identity/session/auth-fetch';
 
-import { StorageRequestError } from './storage-request-error';
+import { StorageRequestError, type StorageErrorDetails } from './storage-request-error';
 
 /** Peticiones a la API de `storage` por `auth-fetch`; devuelven el cuerpo sin validar. */
 export interface StorageHttp {
@@ -19,13 +19,19 @@ export interface StorageHttp {
 const UNEXPECTED_RESPONSE_STATUS = 500;
 const UNEXPECTED_RESPONSE_CODE = 'INTERNAL_ERROR';
 
+/** `Retry-After` de un `429` viaja en `details.retryAfterSeconds`: el mensaje dice cuánto esperar (012b CA-3). */
+function detailsOf(caught: ApiClientError): StorageErrorDetails {
+  const { details, retryAfterSeconds } = caught;
+  return retryAfterSeconds === undefined ? details : { ...details, retryAfterSeconds };
+}
+
 /**
  * Error HTTP → `StorageRequestError` con `status`, `code`, `details` y `fields`. Sin respuesta (red caída) se deja pasar
  * tal cual para que el manager lo trate como corte (005 CA-8).
  */
 function toStorageError(caught: unknown): unknown {
   if (caught instanceof ApiClientError && caught.status !== undefined) {
-    return new StorageRequestError(caught.status, caught.code, caught.details, caught.fields);
+    return new StorageRequestError(caught.status, caught.code, detailsOf(caught), caught.fields);
   }
   return caught;
 }

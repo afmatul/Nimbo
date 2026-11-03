@@ -45,6 +45,26 @@ const importOf = (specifier: string, name = 'Algo'): string =>
   `export { ${name} } from '${specifier}';\n`;
 
 describe('lint boundaries.js: fronteras de storage, access, audit, billing y backoffice (Art. VIII, PD-47, PD-82)', () => {
+  it('021 T-05: optimizer importa audit solo por su fachada', async () => {
+    const file = 'apps/api/src/modules/optimizer/application/optimization-runner.ts';
+    expect(boundaryErrors(await lint(importOf('../../audit'), file))).toEqual([]);
+    expect(
+      boundaryErrors(await lint(importOf('../../audit/application/audit.service'), file)),
+    ).toHaveLength(1);
+  });
+
+  it.each([
+    ['audit', AUDIT_FILE, '../../optimizer'],
+    ['storage', STORAGE_REPOSITORY, '../../../optimizer'],
+    [
+      'optimizer',
+      'apps/api/src/modules/optimizer/application/optimization-runner.ts',
+      '../../billing',
+    ],
+  ])('021 T-05: sigue prohibida la arista %s → %s (%s)', async (_, file, specifier) => {
+    expect(boundaryErrors(await lint(importOf(specifier), file))).toHaveLength(1);
+  });
+
   it('Art. VIII: el fixture `storage-imports-identity.ts` es error (DF-59 no es una arista)', async () => {
     const errors = boundaryErrors(await lint(fixture('storage-imports-identity.ts'), STORAGE_PORT));
 
@@ -148,5 +168,21 @@ describe('lint boundaries.js: fronteras de storage, access, audit, billing y bac
     expect(boundaryErrors(allowed)).toEqual([]);
     expect(boundaryErrors(otherName)).toHaveLength(1);
     expect(boundaryErrors(deep)).toHaveLength(1);
+  });
+
+  it('ADR-0038: el `worker-optimizer` importa de `storage` solo `StorageFacadesWorkerModule`, y el general no', async () => {
+    const optimizerRoot = 'apps/api/src/worker-optimizer.module.ts';
+    const facades = importOf('./modules/storage', 'StorageFacadesWorkerModule');
+
+    expect(boundaryErrors(await lint(facades, optimizerRoot))).toEqual([]);
+    expect(
+      boundaryErrors(
+        await lint(importOf('./modules/storage', 'StorageWorkerModule'), optimizerRoot),
+      ),
+    ).toHaveLength(1);
+    expect(
+      boundaryErrors(await lint(importOf('./modules/storage/infrastructure/x'), optimizerRoot)),
+    ).toHaveLength(1);
+    expect(boundaryErrors(await lint(facades, WORKER_MODULE))).toHaveLength(1);
   });
 });

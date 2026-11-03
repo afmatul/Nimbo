@@ -11,6 +11,7 @@ import { FOLDER_CONFIG } from './application/folder-config';
 import { FolderService } from './application/folder.service';
 import { IndexableFileGateway } from './application/indexable-file.gateway';
 import { LinkedFileGateway } from './application/linked-file.gateway';
+import { OptimizableFileGateway } from './application/optimizable-file.gateway';
 import { I_PLAN_LIMITS_PROVIDER } from './application/plan-limits';
 import { I_NODE_METADATA_READER } from './application/ports/i-node-metadata-reader.port';
 import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
@@ -158,7 +159,7 @@ describe('StorageModule', () => {
     expect(providers).toEqual(expect.arrayContaining([SpaceMeasurer, SpaceSummaryService]));
   });
 
-  it('011 PD-31: provee el lector de metadatos con su adaptador SQL y exporta su token, el de objetos (009), las fachadas de edición (016), de indexación (019) y de enlaces públicos (013) y la política de solo lectura (012 PD-121)', () => {
+  it('011 PD-31: provee el lector de metadatos con su adaptador SQL y exporta su token, el de objetos (009) y las fachadas de edición (016), de indexación (019), de optimización (021) y de enlaces públicos (013), la política de solo lectura (012 PD-121) y la papelera de Soporte (011b)', () => {
     const reader = providers.find((provider) => tokenOf(provider) === I_NODE_METADATA_READER);
 
     expect(reader).toEqual({ provide: I_NODE_METADATA_READER, useClass: SqlNodeMetadataReader });
@@ -170,6 +171,7 @@ describe('StorageModule', () => {
       WritableAccountPolicy,
       SupportTrashService,
       LinkedFileGateway,
+      OptimizableFileGateway,
     ]);
     expect(providers).toContain(LinkedFileGateway);
   });

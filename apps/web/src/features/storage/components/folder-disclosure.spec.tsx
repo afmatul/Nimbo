@@ -61,6 +61,7 @@ function Harness({
     <main>
       <FileExplorer
         status="ready"
+        accessLevel="OWNER"
         folderId={null}
         breadcrumbs={[]}
         nodes={ROOT_NODES}

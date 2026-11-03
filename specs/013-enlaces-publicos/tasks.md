@@ -4,7 +4,7 @@
 > T-01 es el **PR previo** `refactor(shared): …` desde `main` (plan §7 D-3); T-02 a T-10 van en `feat/013-enlaces-publicos`, un PR, rebasada tras integrar el previo.
 > Una línea por tarea: criterio, CA, prueba y dependencia; el detalle vive en el plan. La prueba va primero (roja). Commits `feat(sharing): … [013 T-xx]`.
 
-- [ ] **T-01** (PR previo) Hasher y bloqueo de `identity` a `shared` sin cambiar comportamiento, con README de ambos (plan §2, D-2) — CA: RN-8 — Prueba: suites movidas y de `identity` en verde
+- [x] **T-01** (PR previo, integrado en el PR #89) Hasher y bloqueo de `identity` a `shared` sin cambiar comportamiento, con README de ambos (plan §2, D-2) — CA: RN-8 — Prueba: suites movidas y de `identity` en verde
 - [x] **T-02** Contratos `.strict()`, `AUDIT_TRIGGERS` con `public_link` y migración (plan §3, §4) — CA: CA-2, CA-17 — Prueba: esquemas, permisos, `up → down → up`
 - [x] **T-03** Dominio `PublicLink`, `LinkToken`, `limitNetworkOf` y errores `SHARING_LINK_*` — CA: CA-2, CA-4, CA-7, RN-7 — Prueba: unitarias de dominio — Depende: T-02
 - [x] **T-04** `POST /public-links` con reemplazo serializado y su auditoría — CA: CA-1, CA-3 a CA-6, CA-15, CA-16 — Prueba: int, un caso por CA de error (plan §6) — Depende: T-01, T-03

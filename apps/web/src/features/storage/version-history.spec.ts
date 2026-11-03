@@ -1,7 +1,12 @@
 import type { FileVersionSummary } from '@nimbo/contracts';
 
 import { versionFixture } from './test-versions';
-import { historySummary, totalVersionBytes, versionToPrune } from './version-history';
+import {
+  currentVersionOf,
+  historySummary,
+  totalVersionBytes,
+  versionToPrune,
+} from './version-history';
 
 function version(number: number, sizeBytes = 1_000): FileVersionSummary {
   return versionFixture({ number, sizeBytes, isCurrent: number === 5 });
@@ -10,6 +15,12 @@ function version(number: number, sizeBytes = 1_000): FileVersionSummary {
 const AT_LIMIT = [version(5), version(4), version(3)];
 
 describe('historial de versiones (014)', () => {
+  it('021 CA-15 / 014b: el original conservado ocupa lugar pero no cuenta en el espacio', () => {
+    const kept = { ...version(4, 4_800_000), keptUntil: '2027-01-15T16:00:00.000Z' };
+    const versions = [version(5, 2_900_000), kept, version(3, 1_000_000)];
+    expect(totalVersionBytes(versions)).toBe(3_900_000);
+    expect(versionToPrune(versions, 3)).toBe(3);
+  });
   it('CA-15: en el límite del plan, restaurar elimina la más antigua retenida', () => {
     expect(versionToPrune(AT_LIMIT, 3)).toBe(3);
   });
@@ -27,5 +38,10 @@ describe('historial de versiones (014)', () => {
       '3 versiones · tu plan Personal conserva 3, contando la actual',
     );
     expect(historySummary(1, 30, null)).toBe('1 versión · tu plan conserva 30, contando la actual');
+  });
+
+  it('CA-20: la versión actual es la marcada, no la primera de la lista', () => {
+    expect(currentVersionOf([version(4), version(5), version(3)])?.number).toBe(5);
+    expect(currentVersionOf([version(4)])).toBeUndefined();
   });
 });

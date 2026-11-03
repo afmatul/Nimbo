@@ -10,8 +10,9 @@ import { ObjectKey } from '../domain/object-key';
 
 import { FileVersionService } from './file-version.service';
 import type { RegisteredVersion } from './file-version.service';
+import { objectByteReader } from './object-byte-reader';
 import { I_FILE_TYPE_DETECTOR } from './ports/i-file-type-detector.port';
-import type { ByteReader, IFileTypeDetector } from './ports/i-file-type-detector.port';
+import type { IFileTypeDetector } from './ports/i-file-type-detector.port';
 import { I_NODE_REPOSITORY } from './ports/i-node.repository.port';
 import type { INodeRepository } from './ports/i-node.repository.port';
 import { I_OBJECT_STORAGE } from './ports/i-object-storage.port';
@@ -159,20 +160,10 @@ export class EditedVersionRegistrar {
   }
 
   private async isIntactDocument(key: ObjectKey, sizeBytes: bigint): Promise<boolean> {
-    const result = await this.detector.detect(this.readerFor(key, sizeBytes), EDITED_EXTENSION);
+    const result = await this.detector.detect(
+      objectByteReader(this.objects, key.value, sizeBytes),
+      EDITED_EXTENSION,
+    );
     return result.ok && result.kind === EDITED_EXTENSION;
-  }
-
-  private readerFor(key: ObjectKey, sizeBytes: bigint): ByteReader {
-    const size = Number(sizeBytes);
-    return {
-      size,
-      read: (offset, length) => {
-        const end = Math.min(offset + length, size);
-        return end <= offset
-          ? Promise.resolve(Buffer.alloc(0))
-          : this.objects.getRange(key.value, offset, end - 1);
-      },
-    };
   }
 }

@@ -5,7 +5,7 @@
 | Estado | Aceptado |
 | Fecha | 2026-10-21 |
 | Decisores | Adrián (architect), equipo Nimbo |
-| Specs relacionadas | 019 (plan §1, §2, §7; D-1, D-2), 020, 021 (reutiliza Ghostscript), ADR-0001, ADR-0003, ADR-0007, ADR-0015, ADR-0029, ADR-0030, DF-78, PD-106 |
+| Specs relacionadas | 019 (plan §1, §2, §7; D-1, D-2), 020, 021b (reutilizará Ghostscript; 021 JPEG/PNG no lo usa), ADR-0001, ADR-0003, ADR-0007, ADR-0015, ADR-0029, ADR-0030, DF-78, PD-106 |
 
 ## Contexto
 

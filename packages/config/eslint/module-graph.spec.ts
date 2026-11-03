@@ -22,7 +22,7 @@ const ALLOWED: Readonly<Record<string, readonly string[]>> = {
   sharing: ['access', 'storage', 'audit'],
   editing: ['storage', 'access', 'realtime', 'audit'],
   intelligence: ['storage', 'access', 'billing', 'realtime', 'audit'],
-  optimizer: ['storage', 'access'],
+  optimizer: ['storage', 'access', 'audit'],
   backoffice: ['audit', 'identity', 'billing', 'storage'],
 };
 

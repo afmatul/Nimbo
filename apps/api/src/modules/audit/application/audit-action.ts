@@ -78,6 +78,10 @@ export enum AuditAction {
    * derivado del propietario y `attributes { trigger: 'public_link' }`. Los fallos sueltos no se auditan; nunca IP.
    */
   PUBLIC_LINK_LOCKED = 'public_link.locked',
+  /** Optimización (021 §5, CA-21): solo resultados terminales; estimar no se audita. */
+  FILE_OPTIMIZED = 'file.optimized',
+  FILE_OPTIMIZATION_DISCARDED = 'file.optimization_discarded',
+  FILE_OPTIMIZATION_FAILED = 'file.optimization_failed',
 }
 
 const AUDIT_ACTIONS: ReadonlySet<string> = new Set(Object.values(AuditAction));

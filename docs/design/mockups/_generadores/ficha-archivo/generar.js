@@ -1,6 +1,9 @@
 // Genera los estados de storage/ficha-archivo para la spec 014 (versiones y restauración): historial de versiones
 // (VersionTimeline), confirmar restauración con el espacio que usará y el aviso de poda (CA-15), restaurando, éxito,
 // errores (cuota, versión no encontrada, archivo no encontrado, historial que no carga) y descarga de una versión.
+// Spec 019: estado de indexación (chip y aviso). Spec 021: tarjeta «Optimizar espacio» para imágenes (estimar,
+// confirmar, optimizar y resultado) y el original conservado de 014b en el historial. Los estados de 014 y 019 no
+// cambian: el CSS, el diálogo y los datos de 021 solo se aplican a los estados con spec '021'.
 // Uso: node generar.js <ruta-del-worktree>
 // Marco: marco/marco.js; barra lateral y cuota del plan Personal: espacio/espacio.js; logo, toast y CSS de 006:
 // carpetas/carpetas.js; esqueleto, error y Alert: mis-archivos/estados.js.
@@ -27,6 +30,7 @@ const icon = S.crearIcon({
   sparkles: M.P.sparkles,
   retry: M.P.retry,
   ban: '<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>',
+  archive: '<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
 });
 
 // ---------- CSS ----------
@@ -180,6 +184,8 @@ let RETENIDAS = 3;
 let ARCHIVO = 'Informe_avance_sep.docx';
 let TIPO = 'Documento de Word (.docx)';
 let TILE = 'docx';
+// 021: con la cuenta en solo lectura (010 CA-13) no se ofrece «Restaurar»; 014 y 019 nunca lo activan
+let SOLO_LECTURA = false;
 const CARPETA = 'Proyecto Alpha';
 
 // Una versión: [número, cuándo, origen, de (restauración), tamaño, cambio frente a la anterior retenida]
@@ -236,15 +242,18 @@ function item(v, { preparando = false } = {}) {
     ? `<button class="btn btn-outline btn-sm" type="button" aria-disabled="true">${icon('loader', 14, 'spin')}<span>Preparando…</span></button>`
     : `<button class="btn btn-outline btn-sm" type="button" aria-label="Descargar la versión ${v.numero}">${icon('download', 14)}<span>Descargar</span></button>`;
   // La versión actual no se restaura (sería 409 STORAGE_VERSION_ALREADY_CURRENT): no se ofrece el botón
-  const restaurar = actual ? '' : `<button class="btn btn-outline btn-sm" type="button" aria-label="Restaurar la versión ${v.numero}">${icon('undo', 14)}<span>Restaurar</span></button>`;
+  const restaurar = actual || SOLO_LECTURA ? '' : `<button class="btn btn-outline btn-sm" type="button" aria-label="Restaurar la versión ${v.numero}">${icon('undo', 14)}<span>Restaurar</span></button>`;
   const anuncio = preparando ? `<p class="sr-only" role="status">Preparando la descarga de la versión ${v.numero}…</p>` : '';
+  // 021 (014b): la versión anterior a una optimización queda como original conservado, fuera de la cuota
+  const conservado = v.conservado ? `
+              <p class="vt-kept">${icon('archive', 14)}<span>Original conservado hasta ${v.conservado} · no ocupa tu espacio</span></p>` : '';
   return `
             <li class="vt-item${v.nueva ? ' is-new' : ''}">
               <p class="vt-num">Versión ${v.numero}${badge}${nueva}</p>
               <p class="vt-when">${v.cuando}<span aria-hidden="true"> · </span><span class="vt-who">${icon('user', 13)}<span class="sr-only">, por </span>Tú</span></p>
               <p class="vt-origin">${icon(ic, 14)}<span><span class="vt-label">Origen: </span>${origen}${de}</span></p>
               <p class="vt-size"><span class="vt-label">Tamaño: </span>${v.tam} ${cambio(v)}</p>
-              <div class="vt-actions">${descargar}${restaurar}</div>${anuncio}
+              <div class="vt-actions">${descargar}${restaurar}</div>${conservado}${anuncio}
             </li>`;
 }
 
@@ -273,8 +282,8 @@ function historial(versiones, { preparando = 0, unaSola = false, alerta = '' } =
 
 function detalles(versiones, { filas = '', lector = false } = {}) {
   const actual = versiones[0];
-  // Todas las versiones cuentan en la cuota (D-1): suma de los tamaños del historial
-  const total = `${Math.round(versiones.reduce((t, v) => t + parseFloat(v.tam), 0) * 10) / 10} MB`;
+  // Todas las versiones cuentan en la cuota (D-1): suma de los tamaños del historial (salvo el original conservado, 014b)
+  const total = `${Math.round(versiones.filter((v) => !v.conservado).reduce((t, v) => t + parseFloat(v.tam), 0) * 10) / 10} MB`;
   return `
         <section class="card" aria-labelledby="det-t">
           <div class="card-head"><h2 id="det-t">Detalles</h2></div>
@@ -298,7 +307,7 @@ function encabezado(versiones, { linea = '', lector = false } = {}) {
   return `
         <a class="back-link" href="#" aria-label="Volver a ${donde}">${icon('chevronLeft', 18)}<span>${donde}</span></a>
         <div class="file-head">
-          <span class="ftile ftile-${TILE}">${icon('fileText', 20)}</span>
+          <span class="ftile ftile-${TILE}">${icon(TILE === 'img' ? 'image' : 'fileText', 20)}</span>
           <div class="file-head-text">
             <h1>${ARCHIVO}</h1>
             <p class="page-sub">${sub}</p>${linea}
@@ -346,31 +355,42 @@ function dialogoRestaurar(d) {
 }
 
 // ---------- Página ----------
+const SPEC_TXT = {
+  '019': '019: estado de indexación sobre la ficha de 014',
+  '021': '021: optimizar una imagen desde la ficha, sobre 014 y 014b',
+};
+// 021 (P-3, decisión de Adrián): la optimización vive en la ficha; no hay pantalla global ni ítem «Optimizador» en la
+// navegación. Se quita solo en los estados de 021 para no cambiar los de 014 y 019 (el ítem viene de marco/marco.js).
+const ITEM_OPTIMIZADOR = /\n\s*<li><a href="#"><svg[^>]*>(?:(?!<li>)[\s\S])*?<\/svg><span>Optimizador<\/span><\/a><\/li>/;
+function barra(v, q) {
+  const html = Q.sidebar({ q, activo: v.activo || 'Mis archivos' });
+  return v.spec === '021' ? html.replace(ITEM_OPTIMIZADOR, '') : html;
+}
 function page(v) {
   const file = v.estado === 'default' ? 'ficha-archivo.html' : `ficha-archivo--${v.estado}.html`;
   const q = v.cuota || Q.CUOTAS.ok;
   return C.conLogo(`${M.cabecera({
     titulo: `Ficha de archivo · Nimbo — ${v.titulo}`,
     comentarios: [
-      `Mockup de referencia (spec ${v.spec ? '019: estado de indexación sobre la ficha de 014' : '014: versiones y restauración'}). Estado: ${v.estado}.`,
+      `Mockup de referencia (spec ${v.spec ? SPEC_TXT[v.spec] : '014: versiones y restauración'}). Estado: ${v.estado}.`,
       'Colores: valores de ui-guidelines.md §3 (tonos AA). La implementación usa tokens, components/ui y components/nimbo (VersionTimeline).',
       'Generado con _generadores/ficha-archivo/generar.js (marco, espacio, carpetas y estados). No editar a mano.',
     ],
-    css: CSS,
+    css: v.spec === '021' ? CSS + CSS_021 : CSS,
   })}
 <body>
 
 <aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">${v.spec || '014'}</span> <strong>Ficha de archivo</strong> <span class="file">${file}</span> <span>plan ${PLAN} (conserva ${RETENIDAS} versiones) · estado: ${v.titulo}</span></aside>
 
 <div class="canvas">
-  <div class="app"${v.dialogo ? ' inert' : ''}>
-    ${Q.sidebar({ q, activo: v.activo || 'Mis archivos' })}
+  <div class="app"${v.dialogo || v.dialogoOpt ? ' inert' : ''}>
+    ${barra(v, q)}
     <div class="main">
       ${M.topbar({ crumbs: v.crumbs || ['Mis archivos', CARPETA, ARCHIVO] })}
       <main class="content" id="contenido">${v.cuerpo()}
       </main>
     </div>
-  </div>${v.dialogo ? dialogoRestaurar(v.dialogo) : ''}${v.toast || ''}
+  </div>${v.dialogo ? dialogoRestaurar(v.dialogo) : ''}${v.dialogoOpt ? dialogoOptimizar(v.dialogoOpt) : ''}${v.toast || ''}
 </div>${v.cuerpo().includes('data-foco') ? `
 <script>document.querySelector('[data-foco]').focus();</script>` : ''}
 
@@ -569,11 +589,217 @@ ESTADOS.push(
   }),
 );
 
+// ---------- Spec 021: optimizar una imagen desde la ficha (tarjeta «Optimizar espacio») ----------
+// Solo imágenes (png, jpg/jpeg, gif estático, webp; RN-1). Para un PDF, un .docx u otro tipo la tarjeta no se dibuja.
+// El estado se consulta periódicamente (sin tiempo real): el contenedor role="status" existe siempre y su contenido cambia.
+// Umbral marginal (P-2) y límites de tamaño y resolución (P-11) aún sin medir: la UI no muestra cifras de límite.
+const CSS_021 = `
+  /* Propio de la spec 021: tarjeta «Optimizar espacio», original conservado en el historial y diálogo de optimizar */
+  :root { --file-img: #276B7A; --file-img-bg: #7EC8D820; }
+  .ftile-img { color: var(--file-img); background: var(--file-img-bg); }
+  .opt-body { padding: 16px 20px 18px; }
+  .opt-body > p { margin: 0; max-width: 68ch; font-size: 13.5px; color: var(--secondary-foreground); }
+  .opt-body .alert { margin: 0; }
+  .opt-body .alert + .opt-actions, .opt-saving + .alert { margin-top: 14px; }
+  .opt-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .opt-actions .btn-primary { min-height: 36px; padding: 6px 14px; font-size: 13px; }
+
+  /* Cifras de la estimación: tamaño actual y estimado, barra comparativa (decorativa) y ahorro en texto */
+  .opt-figs { display: flex; flex-wrap: wrap; gap: 6px 40px; margin: 0; }
+  .opt-figs dt { font-size: 12.5px; color: var(--muted-foreground); }
+  .opt-figs dd { margin: 0; font-size: 18px; line-height: 1.4; font-weight: 600; color: var(--foreground); font-variant-numeric: tabular-nums; }
+  .opt-bar { display: block; max-width: 360px; height: 8px; margin-top: 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--muted); overflow: hidden; }
+  .opt-bar span { display: block; height: 100%; border-radius: 999px; background: var(--primary); }
+  .opt-saving { display: flex; align-items: center; gap: 6px; margin: 12px 0 0; font-size: 14px; font-weight: 600; color: var(--success-foreground); font-variant-numeric: tabular-nums; }
+  .opt-saving.is-min { color: var(--secondary-foreground); }
+  .opt-note { display: flex; gap: 8px; align-items: flex-start; margin: 8px 0 0; font-size: 13px; color: var(--secondary-foreground); }
+  .opt-note .ico { margin-top: 2px; color: var(--primary); flex: none; }
+
+  /* En curso (estimando u optimizando, > 2 s, RNF-14): texto, indicador indeterminado y botón ocupado (el foco no se pierde) */
+  .opt-busy { display: flex; gap: 10px; align-items: flex-start; }
+  .opt-busy > .ico { margin-top: 2px; color: var(--primary); flex: none; }
+  .opt-busy p { margin: 0; font-size: 13.5px; color: var(--secondary-foreground); }
+  .opt-busy strong { display: block; color: var(--foreground); font-weight: 600; }
+  .opt-progress { position: relative; max-width: 360px; height: 6px; margin-top: 12px; border-radius: 999px; background: var(--muted); overflow: hidden; }
+  .opt-progress span { position: absolute; top: 0; bottom: 0; left: 0; width: 35%; border-radius: 999px; background: var(--primary); animation: opt-indet 1.6s ease-in-out infinite; }
+  @keyframes opt-indet { from { left: -35%; } to { left: 100%; } }
+  @media (prefers-reduced-motion: reduce) { .opt-progress span { animation: none; width: 100%; background: color-mix(in srgb, var(--primary) 35%, var(--muted)); } }
+
+  /* Resultado: texto de la tarjeta, con los estilos del ahorro y de la nota (sin variante de Alert nueva) */
+  .opt-body > .opt-saving:first-child { margin-top: 0; }
+
+  /* Solo lectura (010): «Optimizar» deshabilitado (aria-disabled, sigue enfocable), descrito por el ReadOnlyBanner de la vista */
+  .opt-actions .btn-primary[aria-disabled="true"] { opacity: .45; cursor: not-allowed; color: var(--primary-foreground); box-shadow: none; }
+  .opt-actions .btn-primary[aria-disabled="true"] .ico { color: var(--primary-foreground); }
+
+  /* Original conservado (014b): marca de texto con ícono a lo ancho de la fila del historial */
+  .vt-item > .vt-kept { grid-column: 1 / -1; justify-self: start; display: inline-flex; align-items: flex-start; gap: 6px; margin: 8px 0 0; padding: 3px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--muted); font-size: 12.5px; font-weight: 600; color: var(--secondary-foreground); }
+  .vt-kept .ico { flex: none; margin-top: 2px; color: var(--primary); }
+
+  @media (max-width: 600px) {
+    .opt-body { padding: 14px; }
+    .opt-body .alert { padding: 12px; }
+    .opt-actions .btn, .opt-actions .btn-primary { flex: 1; min-height: 44px; }
+    .opt-figs { gap: 6px 28px; }
+    .vt-item > .vt-kept { margin-top: 6px; }
+  }
+`;
+
+// Datos de ejemplo: JPEG del plan Personal con 3 de 3 versiones; la optimización se registra hoy (25 oct 2026) y el
+// original se conserva 7 días (retención en papelera del plan Personal): hasta el 1 nov 2026.
+const OPT = { actual: '4.8 MB', estimado: '2.9 MB', ahorro: '1.9 MB', pct: '40 %', resto: 60, hasta: '1 nov 2026', poda: 1 };
+const OPT_MIN = { actual: '4.8 MB', estimado: '4.7 MB', ahorro: '100 KB', pct: '2 %', resto: 98 };
+const IMG = [
+  V(3, 'hoy, 09:30', 'carga', '4.8 MB', MAS('300 KB', 2)),
+  V(2, '12 oct 2026, 11:05', 'carga', '4.5 MB', MENOS('100 KB', 1)),
+  V(1, '28 sep 2026, 16:20', 'carga', '4.6 MB', null, { primera: true }),
+];
+// Después de optimizar: nace la 4 (optimización, actual); la 3 queda como original conservado y se poda la 1
+const IMG_OPT = [
+  V(4, 'ahora', 'optimizacion', '2.9 MB', MENOS('1.9 MB', 3), { nueva: true }),
+  V(3, 'hoy, 09:30', 'carga', '4.8 MB', MAS('300 KB', 2), { conservado: OPT.hasta }),
+  V(2, '12 oct 2026, 11:05', 'carga', '4.5 MB', null),
+];
+Object.assign(ARCH, {
+  img: ['Foto_inventario.jpg', 'Imagen JPEG (.jpg)', 'img', '4.8 MB'],
+  'img-grande': ['Plano_bodega_alta_resolucion.png', 'Imagen PNG (.png)', 'img', '32 MB'],
+  'img-mpx': ['Panoramica_bodega.jpg', 'Imagen JPEG (.jpg)', 'img', '18.4 MB'],
+  gif: ['Demo_etiquetado.gif', 'Imagen GIF (.gif)', 'img', '6.2 MB'],
+});
+// Cuota antes y después: la bajada de 1.9 MB cruza el redondeo a un decimal (4.85 GB → 4.9 GB; después, 4.8 GB)
+const CUOTA_ANTES = { usado: '4.9 GB', total: Q.CUOTA_TOTAL, pct: 32 };
+
+const btnCalcular = () => `<button class="btn btn-outline btn-sm" type="button">${icon('sparkles', 14)}<span>Calcular ahorro</span></button>`;
+const btnOcupado = (t) => `<button class="btn btn-outline btn-sm" type="button" aria-disabled="true">${icon('loader', 14, 'spin')}<span>${t}</span></button>`;
+const acciones = (b) => `
+            <div class="opt-actions">${b}</div>`;
+
+function cifras(c, { minimo = false } = {}) {
+  return `
+            <dl class="opt-figs">
+              <div><dt>Tamaño actual</dt><dd>${c.actual}</dd></div>
+              <div><dt>Tamaño estimado</dt><dd>${c.estimado}</dd></div>
+            </dl>
+            <span class="opt-bar" aria-hidden="true"><span style="width: ${c.resto}%"></span></span>
+            <p class="opt-saving${minimo ? ' is-min' : ''}">${icon('arrowDown', 16)}<span>Ahorrarías ${c.ahorro} (${c.pct})</span></p>`;
+}
+
+function optAviso(tono, ic, titulo, texto = '') {
+  return `
+            <div class="alert alert-${tono}">
+              ${icon(ic, 18)}
+              <div class="alert-body">
+                <p class="alert-title">${titulo}</p>${texto ? `
+                <p class="alert-text">${texto}</p>` : ''}
+              </div>
+            </div>`;
+}
+
+const enCurso = (titulo, texto) => `
+            <div class="opt-busy">${icon('loader', 18, 'spin')}<p><strong>${titulo}</strong> ${texto}</p></div>
+            <div class="opt-progress" role="progressbar" aria-label="${titulo.replace('…', '')}"><span></span></div>`;
+
+const NO_DISPONIBLE = {
+  grande: 'Esta imagen supera el tamaño máximo permitido para optimizarla.',
+  mpx: 'Esta imagen supera la resolución máxima permitida para optimizarla.',
+  animado: 'La optimización no está disponible para GIF animados.',
+};
+
+const CUERPO_OPT = {
+  sin: () => `
+            <p>Calcula cuánto espacio recuperarías al optimizar esta imagen sin cambiar su formato ni sus dimensiones.</p>${acciones(btnCalcular())}`,
+  estimando: () => `${enCurso('Calculando el ahorro…', 'Puedes seguir usando la ficha mientras tanto.')}${acciones(btnOcupado('Calculando…'))}`,
+  conviene: (o) => `${cifras(OPT)}
+            <p class="opt-note">${icon('info', 14)}<span>Se creará una versión optimizada. El original se conserva 7 días y no ocupa tu espacio.</span></p>${acciones(`<button class="btn btn-primary" type="button"${o.soloLectura ? ' aria-disabled="true" aria-describedby="ro-t"' : ''}>${icon('sparkles', 14)}<span>Optimizar</span></button>`)}`,
+  'no-conviene': () => `${cifras(OPT_MIN, { minimo: true })}${optAviso('info', 'info', 'El ahorro sería mínimo; no vale la pena optimizar esta imagen.')}`,
+  'no-disponible': (o) => optAviso('info', 'info', NO_DISPONIBLE[o.motivo]),
+  optimizando: () => `${enCurso('Optimizando…', 'Puedes seguir usando Nimbo; te mostramos el resultado aquí.')}${acciones(btnOcupado('Optimizando…'))}`,
+  completada: () => `
+            <p class="opt-saving">${icon('check', 16)}<span>Optimizamos tu imagen: ahorraste ${OPT.ahorro} (${OPT.pct}).</span></p>
+            <p class="opt-note">${icon('info', 14)}<span>El original se conserva hasta el ${OPT.hasta} y no ocupa tu espacio. Si lo necesitas, restáuralo desde el historial.</span></p>`,
+  descartada: () => optAviso('info', 'info', 'El ahorro real fue mínimo. Tu archivo no cambió.'),
+  'error-integridad': () => optAviso('fail', 'alert', 'No pudimos optimizar este archivo sin dañarlo.', 'Tu archivo no cambió y puedes seguir usándolo como está.'),
+  'error-servicio': () => `${optAviso('fail', 'alert', 'El optimizador no está disponible ahora.', 'Tu archivo no cambió; vuelve a intentarlo más tarde.')}${acciones(btnCalcular())}`,
+};
+
+function tarjetaOpt(o) {
+  return `
+        <section class="card" aria-labelledby="opt-t">
+          <div class="card-head"><h2 id="opt-t">Optimizar espacio</h2></div>
+          <div class="opt-body" role="status">${CUERPO_OPT[o.e](o)}
+          </div>
+        </section>`;
+}
+
+// Solo lectura (010 CA-13): el ReadOnlyBanner del marco, una sola vez, arriba de la vista (como layout--solo-lectura)
+const BANNER_SOLO_LECTURA = {
+  titulo: 'Tu suscripción venció y tu cuenta está en solo lectura.',
+  cuerpo: 'Renueva tu plan para volver a subir, editar y compartir.',
+};
+function fichaOpt(versiones, o, { filas = '' } = {}) {
+  const hist = historial(versiones, versiones.length === 1 ? { unaSola: true } : {});
+  return `${o.soloLectura ? M.avisoSoloLectura(BANNER_SOLO_LECTURA) : ''}${encabezado(versiones)}
+        <div class="ficha-grid">${tarjetaOpt(o)}${hist}${detalles(versiones, { filas })}
+        </div>`;
+}
+
+// Diálogo de optimizar (AlertDialog): mismo patrón que restaurar; en 3 de 3 avisa qué versión se eliminará (CA-12)
+function dialogoOptimizar(d) {
+  const poda = d.poda ? `
+    <div id="dlg-p" class="dlg-warn" role="status">${icon('warn', 18)}<p><strong>Se eliminará la versión ${d.poda}.</strong>Tu plan conserva ${RETENIDAS} versiones. Al continuar se eliminará la versión ${d.poda}, la más antigua.</p></div>` : '';
+  const ids = ['dlg-d', 'dlg-n', d.poda ? 'dlg-p' : ''].filter(Boolean).join(' ');
+  return `
+  <div class="overlay" aria-hidden="true"></div>
+  <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlg-t" aria-describedby="${ids}">
+    <h2 id="dlg-t">¿Optimizar esta imagen?</h2>
+    <p id="dlg-d">Se creará una versión optimizada. El original se conserva hasta el ${OPT.hasta} y no ocupa tu espacio.</p>
+    <dl id="dlg-n" class="dialog-summary">
+      <div><dt>Tamaño actual</dt><dd>${OPT.actual} · versión 3</dd></div>
+      <div><dt>Tamaño estimado</dt><dd>${OPT.estimado} · ahorras ${OPT.ahorro} (${OPT.pct})</dd></div>
+    </dl>${poda}
+    <div class="dialog-actions">
+      <button class="btn btn-outline" type="button"${d.poda ? ' autofocus' : ''}>Cancelar</button>
+      <button class="btn btn-primary" type="button"${d.poda ? '' : ' autofocus'}>Optimizar</button>
+    </div>
+  </div>`;
+}
+
+const E21 = (estado, titulo, o, extra = {}) => {
+  const arch = extra.arch || 'img';
+  const versiones = extra.versiones || (arch === 'img' ? IMG : UNICA(ARCH[arch][3]));
+  return {
+    estado: `optimizar-${estado}`, titulo, spec: '021', arch, cuota: CUOTA_ANTES, ...extra,
+    crumbs: ['Mis archivos', CARPETA, ARCH[arch][0]],
+    cuerpo: () => fichaOpt(versiones, o, extra),
+  };
+};
+
+ESTADOS.push(
+  E21('sin-estimacion', 'imagen sin estimación: «Calcular ahorro» (CA-1)', { e: 'sin' }),
+  E21('estimando', 'calculando el ahorro (> 2 s): progreso indeterminado y anuncio; la ficha sigue usable (CA-1, RNF-14)', { e: 'estimando' }),
+  E21('conviene', 'el ahorro conviene: tamaño actual, estimado, ahorro en bytes y % y «Optimizar» (CA-1)', { e: 'conviene' }),
+  E21('confirmar', 'confirmar optimizar en 3 de 3: avisa qué versión se eliminará (CA-6, CA-13)', { e: 'conviene' }, { dialogoOpt: { poda: OPT.poda } }),
+  E21('no-conviene', 'ahorro mínimo: se explica y no aparece «Optimizar» (CA-2)', { e: 'no-conviene' }),
+  E21('no-disponible', 'no disponible por tamaño: supera el máximo permitido, sin cifra en la UI (CA-5)', { e: 'no-disponible', motivo: 'grande' }, { arch: 'img-grande' }),
+  E21('no-disponible-megapixeles', 'no disponible por resolución: supera el máximo permitido, sin cifra en la UI (CA-5)', { e: 'no-disponible', motivo: 'mpx' }, { arch: 'img-mpx' }),
+  E21('no-disponible-animado', 'no disponible: GIF animado (CA-5; el WebP animado sí se optimiza)', { e: 'no-disponible', motivo: 'animado' }, { arch: 'gif' }),
+  E21('optimizando', 'optimizando en segundo plano: progreso indeterminado y anuncio; Nimbo sigue usable (CA-6, RNF-14)', { e: 'optimizando' }),
+  E21('completada', 'completada: versión 4 «Optimización» actual, la 3 como original conservado y la cuota baja (CA-7, CA-15)', { e: 'completada' }, {
+    versiones: IMG_OPT, cuota: Q.CUOTAS.ok,
+    filas: `<div><dt>Original conservado</dt><dd>${OPT.actual} · versión 3, hasta el ${OPT.hasta}; no ocupa tu espacio</dd></div>`,
+  }),
+  E21('descartada', 'descartada: el ahorro real fue mínimo y el archivo no cambió (CA-10; CA-11 como variante de texto)', { e: 'descartada' }),
+  E21('error-integridad', 'el resultado no pasó la verificación: el archivo no cambió, sin invitar a repetir (CA-9)', { e: 'error-integridad' }),
+  E21('error-servicio', 'optimizador no disponible: el archivo no cambió y «Calcular ahorro» sigue disponible (CA-14)', { e: 'error-servicio' }),
+  E21('solo-lectura', 'cuenta en solo lectura: banner de 010 arriba; ve la estimación y «Optimizar» queda deshabilitado (CA-17)', { e: 'conviene', soloLectura: true }, { soloLectura: true }),
+);
+
 for (const v of ESTADOS) {
   // Cada estado fija su archivo y su plan (los de 014 usan los valores por defecto)
   const a = v.arch ? ARCH[v.arch] : ['Informe_avance_sep.docx', 'Documento de Word (.docx)', 'docx'];
   [ARCHIVO, TIPO, TILE] = a;
   [PLAN, RETENIDAS] = v.plan || ['Personal', 3];
+  SOLO_LECTURA = !!v.soloLectura;
   const file = v.estado === 'default' ? 'ficha-archivo.html' : `ficha-archivo--${v.estado}.html`;
   fs.writeFileSync(path.join(OUT, file), page(v), 'utf8');
   console.log(file);

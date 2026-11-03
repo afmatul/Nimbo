@@ -10,7 +10,7 @@ import {
 } from '../../isolation/setup/nosuperuser-postgres';
 import type { RestrictedOwnerDatabase } from '../../isolation/setup/nosuperuser-postgres';
 import { connectAsOwner, connectTo } from '../../support/database-urls';
-import { revertFrom } from '../billing/billing-test-db';
+import { revertFrom, rlsOf } from '../billing/billing-test-db';
 import {
   inRolledBackTransaction,
   insertAccount,
@@ -525,6 +525,27 @@ describe('migraciones de `sharing` con dueño NOSUPERUSER (planes 012 §3 y 013 
       );
 
       expect((deleted as [unknown[], number])[1]).toBe(0);
+    });
+
+    /**
+     * Hallazgo del PR #85 (011b): con datos, el dueño `NOSUPERUSER` validaba las FK viendo solo la papelera
+     * (`FORCE` RLS), y el archivo de Ana en la papelera dentro de una carpeta viva parecía huérfano.
+     */
+    it('RNF-10: migración E down → up con datos: un archivo en la papelera dentro de una carpeta viva no la rompe', async () => {
+      const [trashed] = (await asActor(ana, (manager) =>
+        manager.query(
+          'SELECT 1 FROM archivo a JOIN carpeta c ON c.id = a.carpeta_id WHERE a.id = $1 AND c.eliminado_en IS NULL',
+          [nodes.trashed],
+        ),
+      )) as unknown[];
+      expect(trashed).toBeDefined();
+
+      const reverted = await revertFrom(owner, SAME_OWNER_FOLDER_MIGRATION);
+      await owner.runMigrations({ transaction: 'each' });
+
+      expect(reverted).toEqual([SAME_OWNER_FOLDER_MIGRATION]);
+      expect(await rlsOf(owner, 'archivo')).toMatchObject({ forced: true });
+      expect(await rlsOf(owner, 'carpeta')).toMatchObject({ forced: true });
     });
   });
 

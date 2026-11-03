@@ -14,6 +14,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 
+import { fakeSharingApi } from '../../sharing/test-sharing';
 import type { StorageApi } from '../api';
 import { StorageRequestError } from '../storage-request-error';
 import { GB, spaceSummaryWith } from '../test-space-summary';
@@ -105,7 +106,7 @@ function renderMyFiles(api: StorageApi): void {
   render(
     <UploadsProvider api={api}>
       <UploadsSpaceProvider>
-        <MyFiles folderId={null} />
+        <MyFiles folderId={null} sharingApi={fakeSharingApi()} />
       </UploadsSpaceProvider>
     </UploadsProvider>,
   );
@@ -534,7 +535,7 @@ describe('MyFiles en solo lectura (spec 010 CA-13, CA-14, RN-6)', () => {
     const tree = (folderId: string | null) => (
       <UploadsProvider api={api}>
         <UploadsSpaceProvider>
-          <MyFiles folderId={folderId} />
+          <MyFiles folderId={folderId} sharingApi={fakeSharingApi()} />
         </UploadsSpaceProvider>
       </UploadsProvider>
     );
@@ -558,5 +559,53 @@ describe('MyFiles en solo lectura (spec 010 CA-13, CA-14, RN-6)', () => {
     expect(
       screen.queryByText(/Tu suscripción venció y tu cuenta está en solo lectura\. Renueva/),
     ).toBeNull();
+  });
+});
+
+describe('MyFiles y la compartición (spec 012b CA-1, CA-6, CA-9)', () => {
+  it('CA-1: «Compartir» de una fila propia abre el diálogo con su nombre y sus accesos', async () => {
+    const sharingApi = fakeSharingApi();
+    render(
+      <UploadsProvider api={fakeApi()}>
+        <UploadsSpaceProvider>
+          <MyFiles folderId={null} sharingApi={sharingApi} />
+        </UploadsSpaceProvider>
+      </UploadsProvider>,
+    );
+    await screen.findByText('raiz.pdf');
+
+    await chooseRowAction('raiz.pdf', 'Compartir');
+
+    expect(screen.getByRole('dialog', { name: 'Compartir «raiz.pdf»' })).toBeTruthy();
+    expect(sharingApi.listAccess).toHaveBeenCalledWith({ nodeType: 'file', nodeId: 'f-root' });
+  });
+
+  it('CA-6, CA-9: en una carpeta compartida como Lector no hay escrituras y las migas empiezan en ella', async () => {
+    const shared: FolderContentsResponse = {
+      ...(LISTINGS[ALPHA.id] as FolderContentsResponse),
+      accessLevel: 'VIEWER',
+    };
+    render(
+      <UploadsProvider api={fakeApi({ folderContents: jest.fn(() => Promise.resolve(shared)) })}>
+        <UploadsSpaceProvider>
+          <MyFiles folderId={ALPHA.id} sharingApi={fakeSharingApi()} />
+        </UploadsSpaceProvider>
+      </UploadsProvider>,
+    );
+    await screen.findByText('acta.pdf');
+
+    expect(screen.queryByRole('button', { name: 'Nueva carpeta' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Subir archivos' })).toBeNull();
+    expect(screen.queryByTestId('upload-dropzone')).toBeNull();
+    const table = screen.getByRole('table');
+    expect(within(table).queryByRole('button', { name: 'Acciones de Fase 3' })).toBeNull();
+    await userEvent.click(within(table).getByRole('button', { name: 'Acciones de acta.pdf' }));
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Descargar']);
+    await userEvent.keyboard('{Escape}');
+    const crumbs = screen.getByRole('navigation', { name: 'Ruta' });
+    expect(
+      within(crumbs).getByRole('link', { name: 'Compartidos conmigo' }).getAttribute('href'),
+    ).toBe('/compartidos');
+    expect(seriousViolationsOf(await axe(document.body))).toEqual([]);
   });
 });

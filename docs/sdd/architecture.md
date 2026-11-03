@@ -11,7 +11,9 @@ Procesamiento Asíncrono → Almacenamiento de Datos**, más **Servicios Externo
 - `web`: Next.js.
 - `api`: NestJS con los módulos de la «Lógica del Sistema» (REST + WebSocket).
 - `worker`: NestJS standalone con los procesadores y trabajos programados del «Procesamiento Asíncrono» (Indexación,
-  Optimización, Control de Suscripciones, Actualizado de Versiones). Usa los mismos módulos que `api`.
+  Optimización, Control de Suscripciones, Actualizado de Versiones). Usa los mismos módulos que `api`. Son **dos
+  procesos con la misma imagen** (ADR-0038): el `worker` general (todas las colas salvo `optimization`) y
+  `worker-optimizer` (solo `optimization`, el único que carga `sharp`), cada uno con su salud interna y 768 MiB sin swap.
 
 Justificación (ADR-0001): 4 personas y 10 semanas no justifican microservicios; las fronteras por módulo permiten
 separar uno como servicio el día que haga falta.
@@ -23,6 +25,7 @@ separar uno como servicio el día que haga falta.
 activo) y `s3.staging.nimbo.me` (MinIO, habilitado cuando 005 lo necesite). Imágenes en `ghcr.io/afmatul/nimbo-{api,worker,web}`;
 despliegue por SSH desde GitHub Actions (`migration:run` antes de `up -d`); rollback = redesplegar la etiqueta anterior.
 Solo Traefik publica puertos (80/443). La separación `api`/`worker` es por **proceso e imagen**, no por carpeta (ADR-0001).
+La imagen `nimbo-worker` usa base glibc; la del `api`, Alpine (ADR-0038). C + glibc fue aceptada el 2026-10-27; la enmienda concreta `node:22.23.3-trixie-slim`, sharp 0.35.5/libvips 8.18.7, Ghostscript de Trixie y `MALLOC_ARENA_MAX=2` fue aceptada por Matul/Adrián el 2026-10-28, después de `7f9285ff`. Ghostscript está en la imagen compartida para 019/futuro 021b, no participa en 021 JPEG/PNG. El optimizador recibe solo las 17 claves de su schema por `environment` explícito, sin `env_file` (PD-159 cerrado); esto no enmienda CA-19 de 000.
 
 ```mermaid
 flowchart TB
@@ -39,7 +42,7 @@ flowchart TB
     X1[audit] & X2[realtime] & X3[notifications]
   end
   subgraph Async["Procesamiento Asíncrono · worker"]
-    Q1[Indexación] & Q2[Optimización] & Q3[Control de Suscripciones] & Q4[Actualizado de Versiones]
+    Q1[Indexación] & Q2[Optimización · worker-optimizer] & Q3[Control de Suscripciones] & Q4[Actualizado de Versiones]
   end
   subgraph Datos["Almacenamiento de Datos"]
     P[("PostgreSQL + pgvector")] & MI[("MinIO")] & R[("Redis")]
@@ -76,7 +79,8 @@ nimbo/
 │  ├─ api/                 # NestJS HTTP + WebSocket
 │  │  └─ src/shared/       # módulo transversal T1 (ver §3)
 │  │  └─ src/modules/<modulo>/   # aquí viven también los *.processor.ts y *.job.ts de cada módulo
-│  └─ worker/              # composición: WorkerModule + main.ts + salud interna; importa `@nimbo/api/*` (solo index.ts)
+│  └─ worker/              # imagen `nimbo-worker` (Dockerfile) y `healthcheck.ts`; las raíces `worker.main.ts` y
+│                          # `worker-optimizer.main.ts` viven en `apps/api/src` (plan 000 R-3, ADR-0038)
 ├─ packages/
 │  ├─ contracts/           # DTOs y tipos compartidos web ↔ api (fuente única)
 │  └─ config/              # eslint (incl. boundaries.js), tsconfig, jest base
@@ -105,7 +109,7 @@ No hay paquete `domain` aparte salvo que un ADR lo justifique.
 | `sharing` | M3b (escritura) | Comparticiones, enlaces públicos, límite de intentos | shared, access, storage, audit |
 | `editing` | M5 | Sesiones de edición, presencia, callback, autoría e historial. Declara `IUserDirectory` e `IDocumentEditor`. Procesa `editing-save` en el `api` (ADR-0029) | shared, storage, access, realtime, audit (**sin `billing`**: los límites del plan salen de `IPlanLimitsProvider` de `storage`; mantener `editing → billing` cerraría el ciclo `editing → billing → identity → editing`) |
 | `intelligence` | M6 | Indexación (019: oyente de `storage.file-version-created`, extracción, fragmentos con vector, estado y «Reintentar», conciliación), recuperación híbrida y agente con citas (020). `IIndexQueue` es **interno** (DF-78); lee archivos de `storage` por `IndexableFileGateway`. El `api` carga `IntelligenceModule` (oyente, controlador y relay `index-status`) y el `worker`, `IntelligenceWorkerModule` (procesadores `indexing` e `index-reconcile`) | shared, storage, access, audit (resultados de la indexación, 019 CA-21; transversal sin dependencias de negocio, regla 5), billing (`IAgentQuota`, 020), realtime |
-| `optimizer` | M7 | Estimación y optimización de PDF e imágenes | shared, storage, access |
+| `optimizer` | M7 | Estimación y optimización de PDF e imágenes | shared, storage, access, audit (resultados terminales de optimización, 021 CA-21; transversal sin dependencias de negocio, regla 5) |
 | `backoffice` | M8 | Administración, soporte, métricas, colas (la salud y `RolesGuard` pasaron a `shared`: DF-49, 003 D-2) | shared, audit, identity, billing, storage (fachadas, DF-04) |
 
 **Reglas**
@@ -195,7 +199,7 @@ modules/storage/
 | `IAgentQuota` | `AgentQuotaService` (`reserve`/`release`/`status`; tabla `uso_agente` por `(usuario_id, periodo_inicio)`, reserva atómica con `INSERT … ON CONFLICT DO UPDATE … WHERE`, 020 D-3) | lo **declara e implementa** `billing` (`application/ports/i-agent-quota.port.ts`, token `I_AGENT_QUOTA` en `billing/index.ts`); lo consume `intelligence` (intelligence → billing; PD-18, DF-27) |
 | `IOptimizer` | `PdfOptimizer`, `ImageOptimizer` (vía `BaseOptimizer`) | optimizer |
 | `IIntegrityValidator` | `DefaultIntegrityValidator` | optimizer |
-| `ICommandRunner` | `ChildProcessRunner` (sin shell, tiempo límite y salida acotada) | **interno** de `intelligence` desde 019 (Ghostscript para PDF; DF-80, ADR-0033 b); 021 lo mueve a `shared` al ser el segundo consumidor (`optimizer`) |
+| `ICommandRunner` | `ChildProcessRunner` (sin shell, tiempo límite y salida acotada) | **interno** de `intelligence` desde 019 (Ghostscript para PDF; DF-80, ADR-0033 b); 021b (PDF) lo mueve a `shared` al ser el segundo consumidor (`optimizer`) |
 | `IHealthIndicator` | `PostgresHealthIndicator`, `RedisHealthIndicator`, `MinioHealthIndicator` (shared); ~~`OnlyOfficeHealthIndicator` (editing, DF-29)~~ omitido (PD-113): `editing` revisa ONLYOFFICE con `IDocumentEditor.isAvailable` al abrir | shared (DF-49); cada módulo puede aportar un indicador y la raíz de composición lo registra en `HealthModule.forRoot({ indicators })` |
 | `IQueueInspector` | `BullMqInspector` | backoffice |
 | `INodeMetadataReader` | `SqlNodeMetadataReader` (solo columnas de `archivo`, dentro de `withActor` y con RLS) | storage (lo **declara e implementa**; lo consume `backoffice`, arista `backoffice → storage`; sin `storage → backoffice`, cierra PD-31). Plan 011, Propuesto |
@@ -281,10 +285,27 @@ módulo con `PlanLimits.readOnly` (ADR-0032; en `storage`, `WritableAccountPolic
 global. Si la pasada falla, se dispara una alerta.
 
 ### 7.6 Optimización (RF-35, RF-36, DF-21)
-`OptimizerController.estimate` → `OptimizationService.estimate` → `IOptimizer.estimate` → `SavingsEstimate.isWorthIt(min)`; si no conviene, no se ofrece.
-`run` → `OptimizationJob` → `OptimizationProcessor` → `optimize` → `IIntegrityValidator.validate` → nueva `version_archivo(origen=optimizacion)`;
-el original sigue restaurable durante la retención en papelera del plan y no cuenta en `espacio_usado` desde el registro
-(spec 014b, ADR-0013: `version_archivo.conservada_hasta`); lo purga la pasada de `usage-reconcile` al vencer.
+021 procesa solo JPEG y PNG, archivo por archivo; el PDF queda para 021b y GIF/WebP no se ofrecen. El estado vive en
+`optimizacion`, bajo RLS `CLIENT` propietario, no en BullMQ. La ficha consulta `GET …/optimization` mientras hay
+`pollAfterMs`, sin realtime. `OptimizerModule` no carga `sharp`; `OptimizerWorkerModule` entra por `optimizer/worker.ts` y
+solo lo compone `WorkerOptimizerModule`, en el proceso `worker-optimizer`, con `StorageFacadesWorkerModule` (ADR-0038).
+
+`POST …/estimate` → `OptimizationService.estimate` → cola `optimization/estimate` → `OptimizationRunner.estimate`:
+lee la versión vigente por la fachada de storage, inspecciona, recomprime y valida en memoria (también hash de píxeles
+PNG), sin guardar candidato. `SavingsEstimate` exige mínimo de bytes **y** porcentaje para dejar `estimada`.
+
+`POST …/run { optimizationId }` exige cuenta escribible y última estimación de la versión vigente; CAS
+`estimada → optimizando` fija `version_resultado_id` una sola vez. Repetir mientras está `optimizando` recupera el mismo
+trabajo; un terminal no se reabre (`409 OPTIMIZER_ESTIMATE_STALE`). El worker vuelve al original, usa `ImageOptimizer`
+y `ImageIntegrityValidator` (ADR-0037), reaplica ambos umbrales reales y entrega el contenido a `OptimizableFileGateway`.
+Solo `OptimizedVersionRegistrar` sube, revalida bajo `lockUsage`, registra y compensa. `registered`/`duplicate` completan;
+`file_changed`, `file_missing` y `not_smaller` descartan; `corrupt` falla por integridad. Los reintentos recuperan los
+metadatos de la versión preasignada ya registrada antes de intentar releer un origen que dejó de ser current.
+
+La versión nueva tiene origen `optimizacion`; el original sigue restaurable durante `trashRetentionDays` y deja de
+contar en `espacio_usado` en la misma transacción: delta `Y−X`, sin exigir cuota libre (014b, ADR-0013). La fecha real
+es `version_archivo.conservada_hasta`; `usage-reconcile` lo purga al vencer sin alterar cuota. La restauración existente
+de 014/014b vuelve a contar el contenido y puede rechazar por cuota. No hay endpoint de restauración propio de optimizer.
 
 ## 8. Colas y trabajos (worker)
 
@@ -294,7 +315,7 @@ el original sigue restaurable durante la retención en papelera del plan y no cu
 | `index-status` (productor `worker`, **procesada en el `api`** por `IndexStatusRelay`; ADR-0033 d) | `QueuedIndexStatusNotifier` | sin reintentos (aviso de mejor esfuerzo) | no aplica: el estado guardado no depende de él; solo lleva `{ownerId, fileId, state, reason}` |
 | `index-reconcile` (repetible con `upsertJobScheduler`, cada `INDEX_RECONCILE_INTERVAL_MINUTES`, 019 RN-12) | `IndexReconcileScheduler` (worker, al arrancar) y `pnpm --filter api index:reconcile` | 3, backoff exponencial desde 30 s; concurrencia 1 | por cuenta, con su propio actor: encola versiones vigentes indexables sin fila y `pendiente`/`indexando` de más de 30 min; mismo `jobId` y fila única |
 | `editing-save` (**procesada en el `api`**, concurrencia 1, ADR-0029) | `SaveCallbackHandler` | 3, backoff exponencial | CAS `activa → guardando` + `UNIQUE sesion_edicion_id` (sin candado Redis, DF-72) |
-| `optimization` | `OptimizationService` | 2 | por `optimizacion.id` |
+| `optimization` (`estimate` y `run`; **solo `worker-optimizer`**, concurrencia 1; ADR-0038) | `OptimizationService` → `IJobQueue` (`BullmqJobQueue`) | `OPTIMIZER_MAX_ATTEMPTS` (3 intentos), backoff exponencial desde 2 s; `giveUp` al agotarlos | `estimate-<optimizacion.id>` / `run-<optimizacion.id>`; CAS de estado y fecha, id de versión preasignado, `registered`/`duplicate` convergen sin doble cuota. Se borran los jobs al terminar; el estado queda en `optimizacion`. Caducidad perezosa: intentos × 3 × timeout + 5 min |
 | `subscription-renewal` (repetible con `upsertJobScheduler`, cada `SUBSCRIPTION_RENEWAL_INTERVAL_MINUTES`, 010) | `RenewalScheduler` (worker, al arrancar) | 3, backoff exponencial; concurrencia 1 | idempotente por suscripción y `vence_en` con `FOR UPDATE`; lista con funciones de mantenimiento (ADR-0021) y renueva como cada dueño bajo RLS; alerta en fallo |
 | `mail` | `SmtpMailer` (notifications) | 5 (`attempts: 6`, exponencial desde 5 s) | por `idempotencyKey` del productor como `jobId` (sin `:`) + marca `mail:sent:<jobId>` en Redis + `Message-ID` determinista (ADR-0018); no usa `notificacion` |
 | `upload-cleanup` (repetible con `upsertJobScheduler`, cada `UPLOAD_CLEANUP_INTERVAL_MINUTES`, 005) | `UploadCleanupScheduler` (worker, al arrancar) | 3, backoff exponencial; concurrencia 1 | compare-and-set sobre `carga.estado`; opera bajo RLS con la función de mantenimiento de ADR-0021 |
@@ -343,4 +364,5 @@ apps/web/src/
 | 0021 | Mantenimiento sin actor bajo RLS: función `SECURITY DEFINER` mínima y RLS también en `carga`; enmienda 0005 (Propuesto) |
 | 0029 | `editing-save` se procesa en el `api`; excepción acotada a ADR-0001 (Aceptado) |
 | 0030 | Socket.IO en el `api` sin adaptador de Redis (Aceptado) |
+| 0038 | El optimizador corre en `worker-optimizer` (misma imagen glibc, otro comando); enmienda 0001 y 0037 (Aceptado) |
 | 0039 | Visitante de un enlace público: función `SECURITY DEFINER` de identificadores + `withActor` del propietario; amplía 0021 (spec 013; Propuesto) |
