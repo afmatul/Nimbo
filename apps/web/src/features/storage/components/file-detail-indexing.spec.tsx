@@ -25,6 +25,7 @@ import {
 } from '../../intelligence/test-indexing';
 import { fakeOptimizerApi } from '../../optimizer/test-optimization';
 import { RealtimeContext } from '../../realtime/use-realtime';
+import { fakeSharingApi } from '../../sharing/test-sharing';
 import type { StorageApi } from '../api';
 import { StorageRequestError } from '../storage-request-error';
 import { GB, spaceSummaryWith } from '../test-space-summary';
@@ -50,6 +51,9 @@ function storageApi(overrides: Partial<StorageApi> = {}): StorageApi {
     quickAccess: jest.fn(() => Promise.resolve({ pinned: [], recent: [], hasMoreRecent: false })),
     spaceSummary: jest.fn(() => Promise.resolve(spaceSummaryWith(4.8 * GB))),
     fileVersions: jest.fn(() => Promise.resolve(HISTORY)),
+    fileDetail: jest.fn(() =>
+      Promise.reject(new StorageRequestError(404, STORAGE_ERROR_CODES.STORAGE_NODE_NOT_FOUND)),
+    ),
     ...overrides,
   } as unknown as StorageApi;
 }
@@ -74,6 +78,7 @@ async function renderView(
               fileId={INDEXED_FILE_ID}
               indexingApi={indexingApi}
               optimizerApi={fakeOptimizerApi()}
+              sharingApi={fakeSharingApi()}
             />
           </UploadsSpaceProvider>
         </UploadsProvider>

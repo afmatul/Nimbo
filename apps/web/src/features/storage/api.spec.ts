@@ -200,4 +200,12 @@ describe('api de storage', () => {
     await expect(api.folderContents(null)).resolves.toEqual(EMPTY_ROOT);
     expect(new Headers(lastCall().init.headers).get('authorization')).toBe('Bearer token-b');
   });
+
+  it('012b CA-9: la ficha de un archivo compartido se lee con GET /files/:id y trae el nivel', async () => {
+    const detail = { file: FILE, accessLevel: 'EDITOR' };
+    fetchMock.mockResolvedValue(jsonResponse(detail));
+
+    await expect(api.fileDetail(FILE_ID)).resolves.toEqual(detail);
+    expect(lastCall()).toMatchObject({ url: `${API}/files/${FILE_ID}`, init: { method: 'GET' } });
+  });
 });

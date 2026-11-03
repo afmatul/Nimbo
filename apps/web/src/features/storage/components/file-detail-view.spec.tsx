@@ -18,6 +18,8 @@ import { AgentProvider, useAgent } from '../../intelligence';
 import { agentStatus } from '../../intelligence/test-agent';
 import { fakeIndexingApi } from '../../intelligence/test-indexing';
 import { fakeOptimizerApi } from '../../optimizer/test-optimization';
+import type { SharingApi } from '../../sharing';
+import { fakeSharingApi } from '../../sharing/test-sharing';
 import type { StorageApi } from '../api';
 import { StorageRequestError } from '../storage-request-error';
 import { GB, spaceSummaryWith } from '../test-space-summary';
@@ -86,11 +88,18 @@ function fakeApi(overrides: Partial<StorageApi> = {}): jest.Mocked<StorageApi> {
     fileVersions: jest.fn(() => Promise.resolve(AT_LIMIT)),
     restoreVersion: jest.fn(() => never()),
     versionDownloadUrl: jest.fn(() => never()),
+    fileDetail: jest.fn(() =>
+      Promise.reject(new StorageRequestError(404, STORAGE_ERROR_CODES.STORAGE_NODE_NOT_FOUND)),
+    ),
     ...overrides,
   } as jest.Mocked<StorageApi>;
 }
 
-async function renderView(api: StorageApi, openUrl = jest.fn()): Promise<void> {
+async function renderView(
+  api: StorageApi,
+  openUrl = jest.fn(),
+  sharingApi: SharingApi = fakeSharingApi(),
+): Promise<void> {
   render(
     <SessionProvider apiPublicUrl="http://localhost/api/v1">
       <UploadsProvider api={api}>
@@ -99,6 +108,7 @@ async function renderView(api: StorageApi, openUrl = jest.fn()): Promise<void> {
             fileId={FILE_ID}
             indexingApi={fakeIndexingApi()}
             optimizerApi={fakeOptimizerApi()}
+            sharingApi={sharingApi}
             openUrl={openUrl}
           />
         </UploadsSpaceProvider>
@@ -427,6 +437,7 @@ async function renderWithAgent(api: StorageApi, citedLocation?: string): Promise
               fileId={FILE_ID}
               indexingApi={fakeIndexingApi()}
               optimizerApi={fakeOptimizerApi()}
+              sharingApi={fakeSharingApi()}
               citedLocation={citedLocation}
             />
             <AgentProbe />
@@ -485,5 +496,76 @@ describe('FileDetailView con el agente (020b CA-11, CA-12, CA-15)', () => {
     await screen.findByRole('list', { name: 'Historial de versiones' });
 
     expect(screen.queryByRole('button', { name: 'Preguntar sobre esto' })).toBeNull();
+  });
+});
+
+describe('FileDetailView y la compartición (spec 012b CA-1, CA-6, CA-9)', () => {
+  const gone = new StorageRequestError(404, STORAGE_ERROR_CODES.STORAGE_NODE_NOT_FOUND);
+  const SHARED_DOCX = {
+    id: FILE_ID,
+    name: 'Informe_trimestral_Q3.docx',
+    sizeBytes: 2_600_000,
+    kind: 'docx',
+    folderId: FOLDER_ID,
+    createdAt: '2026-10-08T16:42:00.000Z',
+    updatedAt: '2026-10-08T16:42:00.000Z',
+  } as const;
+  const sharedApi = (accessLevel: 'EDITOR' | 'VIEWER', overrides: Partial<StorageApi> = {}) =>
+    fakeApi({
+      fileVersions: jest.fn(() => Promise.reject(gone)),
+      fileDetail: jest.fn(() => Promise.resolve({ file: SHARED_DOCX, accessLevel })),
+      ...overrides,
+    });
+
+  beforeEach(() => {
+    global.fetch = jest.fn(() => never<Response>());
+    rememberSession(sessionFixture());
+  });
+
+  afterEach(() => forgetSession());
+
+  it('CA-9: como Editor ve la ficha sin historial, con «Descargar» y «Editar» y sin «Compartir»', async () => {
+    const openUrl = jest.fn();
+    const api = sharedApi('EDITOR', { downloadUrl: jest.fn(() => Promise.resolve(SIGNED)) });
+    await renderView(api, openUrl);
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Informe_trimestral_Q3.docx' }),
+    ).toBeTruthy();
+    expect(screen.getByText('2,6 MB · Tu nivel: Editor')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Editar' }).getAttribute('href')).toBe(
+      `/editor/${FILE_ID}`,
+    );
+    expect(screen.getByRole('link', { name: 'Compartidos conmigo' }).getAttribute('href')).toBe(
+      '/compartidos',
+    );
+    expect(screen.queryByRole('list', { name: 'Historial de versiones' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Compartir' })).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Descargar' }));
+
+    expect(api.downloadUrl).toHaveBeenCalledWith(FILE_ID);
+    expect(openUrl).toHaveBeenCalledWith(SIGNED.url);
+  });
+
+  it('CA-6: como Lector abre y descarga, sin «Editar»', async () => {
+    await renderView(sharedApi('VIEWER'));
+
+    expect(await screen.findByText('2,6 MB · Tu nivel: Lector')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Descargar' })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Editar' })).toBeNull();
+    expect((await axe(document.body)).violations).toEqual([]);
+  });
+
+  it('CA-1: como propietario, «Compartir» abre el diálogo con el nombre del archivo', async () => {
+    const sharingApi = fakeSharingApi();
+    await renderView(fakeApi(), jest.fn(), sharingApi);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Compartir' }));
+
+    expect(
+      screen.getByRole('dialog', { name: 'Compartir «Informe_avance_sep.docx»' }),
+    ).toBeTruthy();
+    expect(sharingApi.listAccess).toHaveBeenCalledWith({ nodeType: 'file', nodeId: FILE_ID });
   });
 });
