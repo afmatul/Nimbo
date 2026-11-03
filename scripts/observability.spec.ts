@@ -7,6 +7,8 @@ import { parseEnv } from 'node:util';
 const ROOT = resolve(__dirname, '..');
 const MIB = 1024 * 1024;
 const OBSERVABILITY = ['prometheus', 'grafana', 'cadvisor'] as const;
+/** Donde Grafana lee los tableros: destino del montaje y `path` del proveedor (CA-10). */
+const DASHBOARDS_PATH = '/var/lib/grafana/dashboards';
 
 interface Port {
   readonly host_ip?: string;
@@ -273,12 +275,31 @@ describe('022 T-01: Compose de observabilidad (CA-2, CA-3, CA-9, CA-10)', () => 
       });
     });
 
+    it('CA-9: ningún tablero se publica sin cuenta y el Viewer no edita ni explora (P-6)', () => {
+      expect(serviceOf(config, 'grafana').environment).toMatchObject({
+        GF_PUBLIC_DASHBOARDS_ENABLED: 'false',
+        GF_SNAPSHOTS_EXTERNAL_ENABLED: 'false',
+        GF_USERS_VIEWERS_CAN_EDIT: 'false',
+      });
+    });
+
+    it('CA-10: Grafana monta el aprovisionamiento y los tableros desde infra/grafana', () => {
+      const sources = Object.fromEntries(
+        (serviceOf(config, 'grafana').volumes ?? []).map((volume) => [
+          volume.target,
+          volume.source ?? '',
+        ]),
+      );
+      expect(sources['/etc/grafana/provisioning']).toMatch(/infra\/grafana\/provisioning$/);
+      expect(sources[DASHBOARDS_PATH]).toMatch(/infra\/grafana\/dashboards$/);
+    });
+
     it('CA-10: Grafana lee la fuente, el tablero y las reglas por archivo, en solo lectura', () => {
       const readOnly = (serviceOf(config, 'grafana').volumes ?? [])
         .filter((volume) => volume.read_only === true)
         .map((volume) => volume.target);
       expect(readOnly).toEqual(
-        expect.arrayContaining(['/etc/grafana/provisioning', '/var/lib/grafana/dashboards']),
+        expect.arrayContaining(['/etc/grafana/provisioning', DASHBOARDS_PATH]),
       );
     });
 
@@ -596,6 +617,45 @@ describe('022 T-01: Compose de observabilidad (CA-2, CA-3, CA-9, CA-10)', () => 
       expect(dashboardExprs()).toContain(
         'sum(increase(nimbo_queue_job_failures_total{queue="subscription-renewal"}[15m]))',
       );
+    });
+  });
+  describe('022 T-08: tablero aprovisionado y runbook (CA-9, CA-10)', () => {
+    it('CA-10: el proveedor carga los tableros del montaje y no permite borrarlos desde la interfaz', () => {
+      const provider = read('infra/grafana/provisioning/dashboards/dashboards.yml');
+      expect(provider).toContain(`path: ${DASHBOARDS_PATH}`);
+      expect(provider).toMatch(/disableDeletion: true/);
+    });
+
+    it('CA-9: la fuente de datos aprovisionada no se edita desde la interfaz', () => {
+      expect(read('infra/grafana/provisioning/datasources/prometheus.yml')).toMatch(
+        /editable: false/,
+      );
+    });
+
+    it('CA-10: el tablero «Operación» tiene uid fijo, no es editable y sus paneles van en orden de id', () => {
+      const dashboard = JSON.parse(read('infra/grafana/dashboards/operacion.json')) as {
+        uid: string;
+        title: string;
+        editable: boolean;
+        panels: { id: number }[];
+      };
+      expect([dashboard.uid, dashboard.title, dashboard.editable]).toEqual([
+        'nimbo-operacion',
+        'Operación',
+        false,
+      ]);
+      const ids = dashboard.panels.map((panel) => panel.id);
+      expect(ids).toEqual([...ids].sort((a, b) => a - b));
+      expect(new Set(ids).size).toBe(ids.length);
+    });
+
+    it('CA-9 y CA-18: el runbook explica el tablero, las seis alertas y el alta de cuentas', () => {
+      const runbook = read('docs/operations/observabilidad.md');
+      expect(runbook).toContain('nimbo-operacion');
+      for (const rule of rules()) expect(runbook).toContain(rule.title);
+      expect(runbook).toMatch(/Viewer/);
+      expect(runbook).toMatch(/Editor/);
+      expect(runbook).toContain('Mailpit');
     });
   });
 });
