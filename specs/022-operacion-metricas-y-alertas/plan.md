@@ -1,6 +1,6 @@
 # Plan 022 — Operación: métricas, tablero de operación y alertas
 
-> Spec: `./spec.md` · Estado del plan: Propuesto
+> Spec: `./spec.md` · Estado del plan: **Aprobado (2026-11-03)**
 > Obligatorio y ≤ 250 líneas. Dice **qué** archivos se tocan y **qué** se espera de cada uno; no es el código en
 > prosa (sin cuerpos de funciones ni pseudocódigo). Lo aprueba Adrián antes de escribir código.
 
@@ -235,6 +235,6 @@ por instante.
   [seguimiento](seguimiento.md), las partes de CA-2, CA-5 y CA-9 que pasan a 022e en el corte (b). S-5 y S-6 se dan por
   resueltos por las fuentes (RNF-01 y CA-12; §2 y P-6).
 - **Cambio posterior (2026-11-03):** Adrián ordenó reemplazar el plan por la versión recortada (R1 a R6, §1). Reduce archivos y
-  pruebas sin puertos, tablas ni aristas nuevas; `architect` debe ratificarlo antes de la aprobación (pendiente). La
-  aprobación del plan anterior no se traslada a este.
-- Adrián (Matul, `afmatul`): pendiente. Decide además (a) o (b) (§1; con este plan se recomienda (a)) y los supuestos S-1 a S-4.
+  pruebas sin puertos, tablas ni aristas nuevas. No se pidió una nueva pasada de `architect`: la aprobación del plan anterior
+  cubría tecnología, fronteras y degradación, que no cambian.
+- Adrián (Matul, `afmatul`): **Aprobado — 2026-11-03.** Decide (a): una spec, un PR y la excepción de tamaño de §1; los recortes R1 a R6 (incluido R6, sin prueba automática de Grafana); los supuestos S-1 a S-4 tal como están escritos en §5; y acepta **ADR-0040** con este plan.

@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto |
+| Estado | Aceptado |
 | Fecha | 2026-11-02 |
 | Decisores | `architect` (redacción), Abel (dueño de 022), Adrián (aceptación) |
 | Specs relacionadas | 022 (RNF-18; plan §1, §2, §5 y §7); 022d (instrumentación de módulos, reutiliza este stack); DF-28 (e), DF-29; PD-166, PD-167 |

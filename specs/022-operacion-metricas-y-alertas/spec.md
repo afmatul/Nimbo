@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador |
+| Estado | Lista |
 | Dueño | Abel (3) |
 | Fase prevista | 3 (asignación original; calendario pendiente de reprogramación) |
 | Requisitos | RNF-18 (métricas, tableros y alertas; la salud ya la entregó 000); aplican RF-05, RF-22, RNF-01, RNF-09, RNF-12, RNF-16, RNF-17 |
 | Depende de | 000 (salud, bitácoras, CI, compose). Usa las colas BullMQ que ya existen (CA-1), incluidas las de 010, 019 y 021 |
-| Última actualización | 2026-11-02 |
+| Última actualización | 2026-11-03 |
 
 ## 1. Contexto y objetivo
 Nimbo ya informa su salud y deja bitácoras (000). Esta spec permite al Operador observar el sistema con métricas y
@@ -131,4 +131,5 @@ Resueltas por Adrián en el PR #78 el 2026-11-02; ninguna queda abierta.
 | 2026-10-24 a 2026-11-01 | Auditorías del PR #78: privacidad, seis alertas, eventos frente a conteos actuales, RN-3 con 019, 021 y `worker-optimizer`; plan y tareas preparatorios retirados por Modo 2 | Coherencia con producto, roles y flujo | — |
 | 2026-11-02 | Partición: CA-19 a CA-22, HU-4 y RN-5 → 022c; CA-23 y HU-5 → 000 (PD-169). P-2, P-3, P-5, P-6, P-7, P-8 y P-11 resueltas; RN-2, RN-3, CA-5, CA-9, CA-10, CA-11 y CA-18 ajustados; PD-168 del agente | Decisiones del PR #78 | Adrián |
 | 2026-11-02 | Corte al planificar: CA-4, CA-7, CA-8, CA-17 y los grupos de módulo de RN-3 → 022d; 022 conserva el núcleo | El plan con los módulos pasaba de 12 filas (condición autorizada en el PR #78) | Adrián (condición); confirma con el plan |
-| 2026-11-03 | Plan reemplazado por la versión recortada (25 archivos, ≈ 5,15 d); la spec no cambia | Instrucción de Adrián (YAGNI y pruebas por riesgo) | Adrián (plan pendiente de ratificación) |
+| 2026-11-03 | Plan reemplazado por la versión recortada (25 archivos, ≈ 5,15 d); la spec no cambia | Instrucción de Adrián (YAGNI y pruebas por riesgo) | Adrián |
+| 2026-11-03 | Plan aprobado, ADR-0040 aceptado y spec en Lista | Aprobación de Adrián (opción a, R1 a R6, S-1 a S-4) | Adrián |

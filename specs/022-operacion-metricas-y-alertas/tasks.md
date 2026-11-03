@@ -1,6 +1,6 @@
 # Tareas 022 — Operación: métricas, tablero de operación y alertas
 
-> Spec: `./spec.md` · Plan: `./plan.md` (Propuesto; `/implement` exige «Aprobado» y ADR-0040 `Aceptado`)
+> Spec: `./spec.md` · Plan: `./plan.md` (Aprobado 2026-11-03; ADR-0040 `Aceptado`)
 > 5 a 12 tareas verticales, de medio día a un día, un commit cada una (`feat(shared): … [022 T-xx]`).
 > Cada tarea es una línea: criterio, prueba y de qué depende. Los archivos viven en `plan.md`. Sin tareas de «cierre».
 > Cada tarea agrega al tablero `operacion.json` sus paneles y a `alertas.json` su regla, con sus pruebas. Esfuerzo ≈ 5,15 días-persona, la suma de las tareas (plan §1).
