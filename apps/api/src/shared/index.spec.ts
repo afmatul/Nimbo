@@ -98,6 +98,7 @@ const RUNTIME_EXPORTS_BY_TASK = {
   '019 T-01': ['I_DOMAIN_EVENT_PUBLISHER', 'EventEmitterDomainEventPublisher'],
   '019 T-FIX-2': ['errorClassOf'],
   '018 T-03': ['escapeLike'],
+  '022 T-02': ['attachMetricsRoute', 'startMetricsServer'],
 } as const;
 
 const ALL_RUNTIME_EXPORTS: readonly string[] = Object.values(RUNTIME_EXPORTS_BY_TASK).flat();
@@ -205,6 +206,9 @@ describe('shared/index.ts (CA-17)', () => {
   it('018 CA-4: exporta `escapeLike`, el único escape de comodines de `LIKE` (018 T-03)', () => {
     expectExportsOf('018 T-03');
     expect(shared.escapeLike('50%')).toBe('50\\%');
+  });
+  it('022 CA-2: exporta el servidor privado de métricas del `api` y la ruta `/metrics` de los `worker` (022 T-02, PD-171)', () => {
+    expectExportsOf('022 T-02');
   });
   it('CA-17: exporta exactamente la lista del plan §6.2 al cerrar el bloque 2 (T-26)', () => {
     expect(exportedKeys()).toEqual([...ALL_RUNTIME_EXPORTS].sort());
