@@ -119,6 +119,7 @@ el primer bucle durante 6 minutos para ver la tasa de 5xx y la regla 1; luego `d
 | 12 | Fallos de la renovación de suscripciones (15 min) | Lo que vigila la regla 6 |
 | 13 | Disponibilidad de dependencias (1 arriba, 0 caída) | Postgres, Redis, MinIO y ONLYOFFICE (si está configurado) |
 | 14 | Uso del disco del anfitrión (por dispositivo) | Fracción usada de cada disco de bloque; la regla 4 dispara sobre 80 % |
+| 15 | Disco usado por contenedor | Bytes escritos por cada contenedor en su capa (`container_fs_usage_bytes` por `name`); sin regla, sirve para ver quién llena el disco del panel 14 |
 
 ## 6. Las seis alertas
 
@@ -154,5 +155,6 @@ Anota la hora de ambos correos y toma la captura para el PR. Para probar solo el
   (`container_fs_*{id="/"}`) y el `host-gateway` hacia las apps de `pnpm dev`. Si no salen, la demo de CPU, memoria y
   disco (CA-3, CA-14) se hace con Docker Engine en WSL2 o en el runner Linux de CI.
 - La imagen fijada `ghcr.io/google/cadvisor:v0.60.6` no se pudo descargar en la sesión de desarrollo (403 del proxy).
-- El disco por contenedor (CA-3) no tiene panel; el panel 14 es el del anfitrión.
+- El panel 15 (disco por contenedor, CA-3) no se pudo comprobar con cAdvisor real: en la sesión de desarrollo cAdvisor no
+  registró la fábrica de Docker. Confirmar en la máquina del equipo que muestra una serie por contenedor.
 - Candidata a regla futura «caída de un proceso propio o de Prometheus» (`up == 0`), fuera de las seis (PD-167 (a)).

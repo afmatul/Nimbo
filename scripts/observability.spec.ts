@@ -531,6 +531,10 @@ describe('022 T-01: Compose de observabilidad (CA-2, CA-3, CA-9, CA-10)', () => 
       ).toBe(true);
     });
 
+    it('CA-3: el tablero muestra el disco usado por cada contenedor, por nombre', () => {
+      expect(dashboardExprs()).toContain('sum by (name) (container_fs_usage_bytes{name!=""})');
+    });
+
     it('RN-1: alertas.json tiene exactamente las seis reglas de product-context.md §7', () => {
       expect(
         rules()
