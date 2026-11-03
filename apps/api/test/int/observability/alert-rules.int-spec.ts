@@ -324,12 +324,36 @@ const RULE_3_CASES: RuleCase[] = [
   },
 ];
 
+const RENEWAL = { job: 'worker', queue: 'subscription-renewal' };
+
+const RULE_6_CASES: RuleCase[] = [
+  {
+    rule: 'nimbo-renovacion',
+    name: 'una pasada de renovación fallida en 15 min dispara, al primer intento (S-4)',
+    series: [counter(QUEUE_FAILURES, { ...RENEWAL, attempts_made: '1' }, 0.001)],
+    fires: true,
+  },
+  {
+    rule: 'nimbo-renovacion',
+    name: 'sin fallos nuevos de la renovación en 15 min no dispara',
+    series: [queueFailures(RENEWAL, '1', 0), queueFailures(RENEWAL, '3+', 0)],
+    fires: false,
+  },
+  {
+    rule: 'nimbo-renovacion',
+    name: 'los fallos de otras colas no disparan',
+    series: [queueFailures(RENEWAL, '1', 0), queueFailures(MAIL, '1', 0.1)],
+    fires: false,
+  },
+];
+
 const CASES: readonly RuleCase[] = [
   ...RULE_5XX_CASES,
   ...RULE_P95_CASES,
   ...RULE_5_CASES,
   ...RULE_DISK_CASES,
   ...RULE_3_CASES,
+  ...RULE_6_CASES,
 ];
 
 const windowStart = (index: number): number => EPOCH_SECONDS + index * WINDOW_SECONDS;

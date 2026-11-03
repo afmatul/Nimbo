@@ -171,6 +171,39 @@
           "annotations": {
             "summary": "La cola {{ .Labels.queue }} tiene más de 50 trabajos pendientes o un trabajo con tres intentos fallidos en los últimos 5 minutos. Revisar los paneles de colas del tablero «Operación» y las bitácoras del proceso que la consume."
           }
+        },
+        {
+          "uid": "nimbo-renovacion",
+          "title": "Fallo del proceso de renovación",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": { "from": 1200, "to": 0 },
+              "datasourceUid": "prometheus",
+              "model": {
+                "refId": "A",
+                "instant": true,
+                "expr": "sum(increase(nimbo_queue_job_failures_total{queue=\"subscription-renewal\"}[15m]))"
+              }
+            },
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [{ "evaluator": { "type": "gt", "params": [0] } }]
+              }
+            }
+          ],
+          "for": "0s",
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "annotations": {
+            "summary": "Falló una pasada de la renovación de suscripciones en los últimos 15 minutos. Revisar las bitácoras del worker y el panel de fallos de la renovación; la alerta se resuelve sola tras 15 minutos sin fallos nuevos."
+          }
         }
       ]
     }

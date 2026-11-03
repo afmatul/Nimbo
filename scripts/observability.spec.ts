@@ -574,4 +574,28 @@ describe('022 T-01: Compose de observabilidad (CA-2, CA-3, CA-9, CA-10)', () => 
       expect(ruleOf('nimbo-colas').annotations?.summary).toContain('{{ .Labels.queue }}');
     });
   });
+
+  describe('022 T-05: regla y panel de la renovación (CA-16)', () => {
+    it('CA-16: la regla de renovación dispara con cualquier fallo de subscription-renewal en 15 min, sin esperar (S-4)', () => {
+      const rule = ruleOf('nimbo-renovacion');
+      expect(rule.for).toBe('0s');
+      expect(thresholdOf(rule)).toEqual({ type: 'gt', value: 0 });
+      expect(queryOf(rule)).toBe(
+        'sum(increase(nimbo_queue_job_failures_total{queue="subscription-renewal"}[15m]))',
+      );
+    });
+
+    it('CA-16: la consulta de la regla abarca su ventana de 15 min', () => {
+      const query = ruleOf('nimbo-renovacion').data.find(
+        (candidate) => candidate.datasourceUid === 'prometheus',
+      ) as AlertQuery & { relativeTimeRange?: { from: number } };
+      expect(query.relativeTimeRange?.from).toBeGreaterThanOrEqual(15 * 60);
+    });
+
+    it('CA-16: el tablero muestra los fallos de la renovación', () => {
+      expect(dashboardExprs()).toContain(
+        'sum(increase(nimbo_queue_job_failures_total{queue="subscription-renewal"}[15m]))',
+      );
+    });
+  });
 });

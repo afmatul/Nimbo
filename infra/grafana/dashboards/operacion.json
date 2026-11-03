@@ -448,6 +448,38 @@
           "legendFormat": "{{queue}} · {{attempts_made}} intentos"
         }
       ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Fallos de la renovación de suscripciones (15 min)",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 48
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(increase(nimbo_queue_job_failures_total{queue=\"subscription-renewal\"}[15m]))",
+          "legendFormat": "subscription-renewal"
+        }
+      ]
     }
   ]
 }
