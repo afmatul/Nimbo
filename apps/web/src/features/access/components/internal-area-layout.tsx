@@ -7,7 +7,6 @@ import type { JSX, ReactNode } from 'react';
 import { AppLayout, type NavItem } from '../../../components/nimbo/app-layout';
 import { useSession } from '../../identity/session/session-provider';
 import { INTERNAL_PATHS } from '../home-path';
-import { ROLE_LABELS } from '../role-labels';
 
 type NavEntry = Omit<NavItem, 'active'>;
 
@@ -34,25 +33,6 @@ export function internalNavFor(role: RoleName, activeHref?: string): readonly Na
   return INTERNAL_NAV[role].map((entry) => ({ ...entry, active: entry.href === activeHref }));
 }
 
-/** Quién usa el área, al pie de la barra (mockups de `backoffice/`): nombre y rol, sin datos de clientes. */
-function AreaPersona({
-  fullName,
-  role,
-}: {
-  readonly fullName: string;
-  readonly role: RoleName;
-}): JSX.Element {
-  return (
-    <section
-      aria-label="Tu cuenta"
-      className="rounded-lg border border-border bg-card px-3.5 py-3 text-sm"
-    >
-      <p className="font-semibold text-foreground">{fullName}</p>
-      <p className="mt-0.5 text-xs text-secondary-foreground">{ROLE_LABELS[role]}</p>
-    </section>
-  );
-}
-
 export interface InternalAreaLayoutProps {
   readonly children: ReactNode;
   /** Ruta de la entrada de la navegación que corresponde a la página. */
@@ -60,8 +40,8 @@ export interface InternalAreaLayoutProps {
 }
 
 /**
- * Marco del área de Administrador, Soporte y Operador (011 CA-17, plan §2): el `AppLayout` con la navegación del rol y
- * su persona al pie. Sin sesión no decide: de eso se encarga `SessionGate`.
+ * Marco del área de Administrador, Soporte y Operador (011 CA-17, plan §2): el `AppLayout` con la navegación del rol. El
+ * nombre y el rol van en el menú de la cuenta, sin repetirlos al pie de la barra. Sin sesión no decide: de eso se encarga `SessionGate`.
  */
 export function InternalAreaLayout({
   children,
@@ -69,12 +49,5 @@ export function InternalAreaLayout({
 }: InternalAreaLayoutProps): JSX.Element | null {
   const { user } = useSession();
   if (user === null) return null;
-  return (
-    <AppLayout
-      navItems={internalNavFor(user.role, activeHref)}
-      quotaCard={<AreaPersona fullName={user.fullName} role={user.role} />}
-    >
-      {children}
-    </AppLayout>
-  );
+  return <AppLayout navItems={internalNavFor(user.role, activeHref)}>{children}</AppLayout>;
 }

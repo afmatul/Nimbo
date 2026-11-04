@@ -102,12 +102,11 @@ describe('InternalAreaLayout (011 CA-17)', () => {
     },
   );
 
-  it('CA-17: al pie de la barra dice quién es y con qué rol', async () => {
+  it('CA-17: no repite el nombre ni el rol al pie de la barra (van en el menú de la cuenta)', async () => {
     await renderLayout('ADMIN');
 
-    const persona = screen.getByLabelText('Tu cuenta');
-    expect(persona.textContent).toContain('Ana López');
-    expect(persona.textContent).toContain('Administrador');
+    expect(screen.queryByLabelText('Tu cuenta')).toBeNull();
+    expect(screen.queryByText('Administrador')).toBeNull();
   });
 
   it('CA-17: sin sesión no dibuja nada (de eso se encarga SessionGate)', () => {

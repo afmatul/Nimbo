@@ -16,6 +16,8 @@ import {
 } from '../../../../features/identity/session/session-memory';
 import { SessionProvider } from '../../../../features/identity/session/session-provider';
 import { sessionFixture } from '../../../../features/identity/session/test-session';
+import { SpaceProvider } from '../../../../features/storage/components/space-provider';
+import { GB, spaceSummaryWith } from '../../../../features/storage/test-space-summary';
 import { jsonResponse } from '../../../../lib/test-http';
 
 import SeguridadPage from './page';
@@ -154,11 +156,17 @@ function sessionListCalls(): number {
   return fetchMock.mock.calls.filter(([input]) => String(input).endsWith('/sessions')).length;
 }
 
+const spaceSummary = jest.fn(() => Promise.resolve(spaceSummaryWith(3 * GB)));
+
 async function renderPage(role: RoleName = 'CLIENT'): Promise<ReturnType<typeof render>> {
   rememberSession(sessionFixture({ role }));
   const view = render(
     <SessionProvider apiPublicUrl={API}>
-      <SessionGate>{SeguridadPage()}</SessionGate>
+      <SessionGate>
+        <SpaceProvider api={{ spaceSummary }} uploadedCount={0}>
+          {SeguridadPage()}
+        </SpaceProvider>
+      </SessionGate>
     </SessionProvider>,
   );
   await act(async () => undefined);
