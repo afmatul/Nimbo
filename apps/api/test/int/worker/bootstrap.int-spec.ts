@@ -201,12 +201,7 @@ describe('bootstrap del worker (CA-18, CA-21)', () => {
     const closedPort = await freePort();
     const url = `postgres://nimbo_app:clave-que-no-debe-salir@127.0.0.1:${String(closedPort)}/nimbo`;
 
-    // Reintentos cortos: con los 3 s de producción esta prueba espera ~30 s a que se agoten los 10 intentos.
-    const result = runOptimizerSync({
-      ...process.env,
-      DATABASE_URL: url,
-      DATABASE_RETRY_DELAY_MS: '100',
-    });
+    const result = runOptimizerSync({ ...process.env, DATABASE_URL: url });
 
     expect(result.status).toBe(1);
     const failure = jsonLines(result.stderr).find((line) => line.event === 'worker.start_failed');

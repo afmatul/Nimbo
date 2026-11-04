@@ -25,7 +25,7 @@ import { Argon2idHasher } from './infrastructure/security/argon2id.hasher';
 
 /** Postgres y Redis deben responder para que el proceso termine de arrancar (plan 000 §6.2, cambio 9). */
 const DB_RETRY_ATTEMPTS = 10;
-const DB_RETRY_DELAY_MS = 3000; // por omisión; `DATABASE_RETRY_DELAY_MS` la sustituye
+const DB_RETRY_DELAY_MS = 3000;
 
 /**
  * Módulo transversal sin parámetros: logger Pino, TypeORM (`autoLoadEntities`) y la conexión BullMQ,
@@ -46,7 +46,7 @@ const DB_RETRY_DELAY_MS = 3000; // por omisión; `DATABASE_RETRY_DELAY_MS` la su
         ...buildDataSourceOptions(env),
         autoLoadEntities: true,
         retryAttempts: DB_RETRY_ATTEMPTS,
-        retryDelay: env.DATABASE_RETRY_DELAY_MS ?? DB_RETRY_DELAY_MS,
+        retryDelay: DB_RETRY_DELAY_MS,
       }),
     }),
     BullModule.forRootAsync({
