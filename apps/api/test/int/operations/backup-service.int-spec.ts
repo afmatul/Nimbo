@@ -1,4 +1,10 @@
-import { resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import type { SpawnSyncReturns } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import { parseEnv } from 'node:util';
 
 import { PostgreSqlContainer } from '@testcontainers/postgresql';
 import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
@@ -44,6 +50,7 @@ interface BackupLine {
   readonly kept?: number;
   readonly code?: string;
   readonly exitCode?: number | null;
+  readonly nextRunAt?: string;
 }
 
 const startPostgres = (network: StartedNetwork): Promise<StartedPostgreSqlContainer> =>
@@ -301,6 +308,332 @@ describe('servicio de respaldos (022c CA-1, CA-2, CA-3, CA-4)', () => {
 
       expect(result.exitCode).toBe(1);
       expect(await volumeSnapshot()).toBe(before);
+    });
+  });
+});
+
+const ROOT = resolve(__dirname, '../../../../..');
+const BACKUP_SERVICE = 'backup';
+const BACKUP_PROFILE = 'backups';
+const BACKUP_VOLUME = 'backup_data';
+const BACKUP_SECRET = 'backup_public_key';
+/** Lo único que recibe el servicio (plan §2): ninguna credencial de la app. */
+const SERVICE_ENVIRONMENT = [
+  'BACKUP_TIME',
+  'POSTGRES_DB',
+  'POSTGRES_PASSWORD',
+  'POSTGRES_USER',
+  'TZ',
+];
+const SERVICE_TZ = 'America/Guatemala';
+const FIXTURE_PASSWORD = 'clave-del-dueno-compose-8Wd3';
+const COMPOSE_TIMEOUT_MS = 120_000;
+/** Espera de la corrida programada: hasta dos minutos de reloj más el volcado. */
+const SCHEDULE_TIMEOUT_MS = 240_000;
+const POLL_INTERVAL_MS = 5_000;
+/** El contenedor tiene que arrancar antes del minuto programado; si queda menos, se programa el siguiente. */
+const MIN_LEAD_SECONDS = 20;
+const MINUTE_MS = 60_000;
+/** `nextRunAt` debe caer dentro de esta ventana: si `TZ` no se aplicara, quedaría horas lejos. */
+const MAX_SCHEDULE_AHEAD_MS = 3 * MINUTE_MS;
+
+interface ComposeService {
+  readonly image?: string;
+  readonly entrypoint?: readonly string[];
+  readonly command?: readonly string[];
+  readonly environment?: Record<string, string>;
+  readonly ports?: unknown;
+  readonly env_file?: unknown;
+  readonly volumes?: readonly {
+    readonly type: string;
+    readonly source?: string;
+    readonly target: string;
+  }[];
+  readonly secrets?: readonly { readonly source: string }[];
+  readonly restart?: string;
+  readonly mem_limit?: unknown;
+}
+
+interface ComposeConfig {
+  readonly services: Record<string, ComposeService>;
+  readonly secrets?: Record<string, { readonly file?: string }>;
+}
+
+interface ComposeProject {
+  readonly name: string;
+  readonly envFile: string;
+  readonly files: readonly string[];
+  /**
+   * Directorio del proyecto para `config`: ahí resuelve también los `env_file` (`.env`) de las apps, que este fixture
+   * sustituye. Sin él, el de los archivos de compose (la raíz), para que los montajes de `./infra` existan al correr.
+   */
+  readonly projectDirectory?: string;
+}
+
+/** Entorno mínimo del CLI de Docker: nada del arnés (ni `COMPOSE_*`) pisa el archivo de entorno del proyecto. */
+const dockerEnv = (): NodeJS.ProcessEnv => {
+  const keep = [
+    'PATH',
+    'HOME',
+    'DOCKER_HOST',
+    'DOCKER_CONFIG',
+    'DOCKER_CERT_PATH',
+    'DOCKER_TLS_VERIFY',
+  ];
+  return Object.fromEntries(
+    keep.flatMap((key) => (process.env[key] ? [[key, process.env[key]]] : [])),
+  );
+};
+
+const compose = (
+  project: ComposeProject,
+  args: readonly string[],
+  timeout = COMPOSE_TIMEOUT_MS,
+): SpawnSyncReturns<string> =>
+  spawnSync(
+    'docker',
+    [
+      'compose',
+      ...['-p', project.name, '--env-file', project.envFile],
+      ...(project.projectDirectory === undefined
+        ? []
+        : ['--project-directory', project.projectDirectory]),
+      ...project.files.flatMap((file) => ['-f', join(ROOT, file)]),
+      ...args,
+    ],
+    { cwd: ROOT, env: dockerEnv(), encoding: 'utf8', timeout },
+  );
+
+/** `docker compose config` resuelto; no vuelca la salida si falla: contiene credenciales, aunque sean sintéticas. */
+const resolveConfig = (
+  project: ComposeProject,
+  profiles: readonly string[],
+): { readonly config: ComposeConfig; readonly stderr: string } => {
+  const result = compose(project, [
+    ...profiles.flatMap((profile) => ['--profile', profile]),
+    'config',
+    '--format',
+    'json',
+  ]);
+  if (result.status !== 0)
+    throw new Error('Docker Compose no pudo resolver el fixture de configuración.');
+  return { config: JSON.parse(result.stdout) as ComposeConfig, stderr: result.stderr };
+};
+
+/** `.env` del fixture: el de ejemplo con `overrides`; un valor `undefined` quita la variable. */
+const writeEnvFile = (
+  path: string,
+  overrides: Readonly<Record<string, string | undefined>>,
+): string => {
+  const source: Record<string, string | undefined> = {
+    ...parseEnv(readFileSync(join(ROOT, '.env.example'), 'utf8')),
+    POSTGRES_PASSWORD: FIXTURE_PASSWORD,
+    ...overrides,
+  };
+  const lines = Object.entries(source).flatMap(([key, value]) =>
+    value === undefined ? [] : [`${key}=${value}`],
+  );
+  writeFileSync(path, `${lines.join('\n')}\n`);
+  return path;
+};
+
+/** Par de claves de prueba generado y desechado dentro de la imagen del servicio; solo sale la pública. */
+const generatePublicKey = (): string => {
+  const result = spawnSync(
+    'docker',
+    [
+      ...['run', '--rm', '--entrypoint', 'bash', POSTGRES_IMAGE, '-c'],
+      `export GNUPGHOME=$(mktemp -d) && gpg --batch --quiet --passphrase '' --quick-gen-key \
+'Operador de prueba <operador@ejemplo.com>' future-default default never && gpg --batch --armor --export`,
+    ],
+    { env: dockerEnv(), encoding: 'utf8', timeout: COMPOSE_TIMEOUT_MS },
+  );
+  if (result.status !== 0) throw new Error('No se pudo generar la clave de prueba.');
+  return result.stdout;
+};
+
+/** `HH:MM` en `SERVICE_TZ` del próximo minuto con al menos `MIN_LEAD_SECONDS` de margen. */
+const scheduledMinute = (): string => {
+  const at = new Date(Date.now() + MIN_LEAD_SECONDS * 1000 + MINUTE_MS);
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: SERVICE_TZ,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(at);
+};
+
+const sleep = (ms: number): Promise<void> => new Promise((done) => setTimeout(done, ms));
+
+/** Líneas JSON de la bitácora del servicio (`docker compose logs`). */
+const serviceLines = (project: ComposeProject): BackupLine[] =>
+  compose(project, ['logs', '--no-log-prefix', '--no-color', BACKUP_SERVICE])
+    .stdout.split('\n')
+    .filter((line) => line.startsWith('{'))
+    .map((line) => JSON.parse(line) as BackupLine);
+
+const waitForEvent = async (project: ComposeProject, event: string): Promise<BackupLine[]> => {
+  const deadline = Date.now() + SCHEDULE_TIMEOUT_MS;
+  for (;;) {
+    const lines = serviceLines(project);
+    if (lines.some((line) => line.event === event) || Date.now() > deadline) return lines;
+    await sleep(POLL_INTERVAL_MS);
+  }
+};
+
+const servicesMounting = (config: ComposeConfig, volume: string): string[] =>
+  Object.entries(config.services)
+    .filter(([, service]) => (service.volumes ?? []).some((mount) => mount.source === volume))
+    .map(([name]) => name);
+
+/**
+ * El servicio `backup` del compose (022c CA-1, CA-9): la forma que resuelve `docker compose config` con y sin el
+ * perfil `backups`, y el servicio real corriendo `schedule` en un proyecto temporal que se borra al terminar.
+ */
+describe('servicio backup en compose (022c CA-1, CA-9)', () => {
+  let dir = '';
+  let publicKeyFile = '';
+
+  beforeAll(() => {
+    dir = mkdtempSync(join(tmpdir(), 'nimbo-backup-compose-'));
+    publicKeyFile = join(dir, 'backup.pub.asc');
+    writeFileSync(publicKeyFile, generatePublicKey());
+  });
+
+  afterAll(() => {
+    if (dir !== '') rmSync(dir, { recursive: true, force: true });
+  });
+
+  const projectFor = (
+    files: readonly string[],
+    overrides: Readonly<Record<string, string | undefined>>,
+  ): ComposeProject => ({
+    name: `nimbo-022c-${randomUUID().slice(0, 8)}`,
+    envFile: writeEnvFile(join(mkdtempSync(join(dir, 'proyecto-')), '.env'), overrides),
+    files,
+  });
+
+  const configProjectFor = (
+    files: readonly string[],
+    overrides: Readonly<Record<string, string | undefined>>,
+  ): ComposeProject => {
+    const project = projectFor(files, overrides);
+    return { ...project, projectDirectory: dirname(project.envFile) };
+  };
+
+  describe.each([
+    ['base', ['compose.yml']],
+    ['local', ['compose.yml', 'compose.override.yml']],
+  ])('CA-9: %s', (_name, files) => {
+    let config: ComposeConfig;
+    let service: ComposeService;
+
+    beforeAll(() => {
+      config = resolveConfig(configProjectFor(files, { BACKUP_PUBLIC_KEY_FILE: publicKeyFile }), [
+        BACKUP_PROFILE,
+      ]).config;
+      service = config.services[BACKUP_SERVICE] ?? {};
+    });
+
+    it('CA-9: backup no publica puertos ni usa env_file y recibe solo las variables del respaldo', () => {
+      expect(service.ports).toBeUndefined();
+      expect(service.env_file).toBeUndefined();
+      expect(Object.keys(service.environment ?? {}).sort()).toEqual(SERVICE_ENVIRONMENT);
+      expect(service.environment).toMatchObject({
+        POSTGRES_PASSWORD: FIXTURE_PASSWORD,
+        BACKUP_TIME: '03:00',
+        TZ: SERVICE_TZ,
+      });
+    });
+
+    it('CA-9: usa la imagen de postgres con entrypoint propio, schedule, reinicio y tope de memoria', () => {
+      expect(service.image).toBe(config.services.postgres?.image);
+      expect(service.entrypoint?.join(' ')).toContain('backup.sh');
+      expect(service.command).toEqual(['schedule']);
+      expect(service.restart).toBe('unless-stopped');
+      expect(service.mem_limit).toBeDefined();
+    });
+
+    it('CA-9: backup_data lo monta solo backup en /backups y la clave pública entra como secreto', () => {
+      expect(servicesMounting(config, BACKUP_VOLUME)).toEqual([BACKUP_SERVICE]);
+      const mount = service.volumes?.find((volume) => volume.source === BACKUP_VOLUME);
+      expect(mount?.target).toBe(BACKUP_DIR);
+      expect(service.secrets?.map((secret) => secret.source)).toEqual([BACKUP_SECRET]);
+      expect(config.secrets?.[BACKUP_SECRET]?.file).toBe(publicKeyFile);
+    });
+
+    it('CA-9 (R-3): sin el perfil, compose no incluye backup ni pide BACKUP_PUBLIC_KEY_FILE', () => {
+      const project = configProjectFor(files, { BACKUP_PUBLIC_KEY_FILE: undefined });
+
+      const { config: withoutProfile, stderr } = resolveConfig(project, []);
+
+      expect(Object.keys(withoutProfile.services)).not.toContain(BACKUP_SERVICE);
+      expect(stderr).not.toContain('BACKUP_PUBLIC_KEY_FILE');
+    });
+  });
+
+  describe('CA-1: el servicio programado', () => {
+    let project: ComposeProject;
+
+    beforeAll(() => {
+      project = projectFor(['compose.yml'], { BACKUP_PUBLIC_KEY_FILE: publicKeyFile });
+      expect(compose(project, ['up', '-d', '--wait', 'postgres']).status).toBe(0);
+    });
+
+    afterAll(() => {
+      compose(project, ['--profile', BACKUP_PROFILE, 'down', '-v', '--remove-orphans']);
+    });
+
+    it(
+      'CA-1: con BACKUP_TIME un minuto por delante, schedule deja la copia del día y registra backup.completed',
+      async () => {
+        writeEnvFile(project.envFile, {
+          BACKUP_PUBLIC_KEY_FILE: publicKeyFile,
+          BACKUP_TIME: scheduledMinute(),
+        });
+        expect(
+          compose(project, ['--profile', BACKUP_PROFILE, 'up', '-d', BACKUP_SERVICE]).status,
+        ).toBe(0);
+
+        const [scheduled] = await waitForEvent(project, 'backup.scheduled');
+        expect(Date.parse(scheduled?.nextRunAt ?? '') - Date.now()).toBeLessThan(
+          MAX_SCHEDULE_AHEAD_MS,
+        );
+        const completed = (await waitForEvent(project, 'backup.completed')).find(
+          (line) => line.event === 'backup.completed',
+        );
+
+        expect(completed).toMatchObject({ level: 30, kept: 1 });
+        expect(completed?.sizeBytes).toBeGreaterThan(0);
+        expect(completed?.durationMs).toBeGreaterThanOrEqual(0);
+        const listing = compose(project, ['exec', '-T', BACKUP_SERVICE, 'ls', '-A', BACKUP_DIR]);
+        expect(listing.stdout.trim()).toBe(completed?.backupFile);
+        expect(completed?.backupFile).toMatch(BACKUP_FILE_PATTERN);
+        expect(completed?.backupFile?.slice('nimbo-'.length, 'nimbo-'.length + 8)).toBe(
+          new Date().toISOString().slice(0, 10).replaceAll('-', ''),
+        );
+      },
+      SCHEDULE_TIMEOUT_MS + COMPOSE_TIMEOUT_MS,
+    );
+
+    it('CA-1 (R-3): sin BACKUP_PUBLIC_KEY_FILE, una corrida del servicio responde BACKUP_KEY_MISSING', () => {
+      const envFile = writeEnvFile(join(dir, 'sin-clave.env'), {
+        BACKUP_PUBLIC_KEY_FILE: undefined,
+      });
+      const withoutKey = { ...project, envFile };
+
+      const result = compose(withoutKey, [
+        '--profile',
+        BACKUP_PROFILE,
+        'run',
+        '--rm',
+        '-T',
+        BACKUP_SERVICE,
+        'run',
+      ]);
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toContain('"code":"BACKUP_KEY_MISSING"');
     });
   });
 });

@@ -7,7 +7,92 @@
 
 ## 1. Respaldo de la base de datos
 
-Pendiente (022c T-03 a T-06): encender el servicio, respaldo bajo demanda, dónde están las copias y custodia de la clave.
+El servicio `backup` del compose (perfil `backups`, apagado por defecto) vuelca la base una vez al día con `pg_dump`
+en formato *custom*, cifra el flujo con `gpg` y la **clave pública** del Operador (ADR-0041) y guarda la copia en el
+volumen `backup_data`, distinto del de Postgres. Conserva las **7 copias más recientes**. Los comandos se ejecutan
+desde la raíz del repositorio en el servidor, con el `.env` de ese ambiente.
+
+### 1.1 Generar el par de claves (una vez)
+
+Se genera dentro de la imagen del servicio, sin instalar `gpg` en el host (igual en Windows y Linux). El directorio
+de destino queda **fuera** del repositorio:
+
+```bash
+mkdir -p "$HOME/nimbo-claves"
+docker run --rm --user "$(id -u):$(id -g)" -v "$HOME/nimbo-claves:/claves" --entrypoint bash \
+  pgvector/pgvector:pg17 -c 'umask 077; export GNUPGHOME=$(mktemp -d)
+    gpg --batch --quiet --passphrase "" --quick-gen-key "Respaldos Nimbo <operador@nimbo.me>" future-default default never
+    gpg --batch --armor --export > /claves/respaldos.pub.asc
+    gpg --batch --armor --export-secret-keys > /claves/respaldos.priv.asc'
+```
+
+- `respaldos.pub.asc` (pública) se copia al servidor, fuera del repositorio (p. ej. `/srv/nimbo-claves/`), y su ruta
+  va en `BACKUP_PUBLIC_KEY_FILE` del `.env`. Es lo único que el servidor necesita para cifrar.
+- `respaldos.priv.asc` (privada) **no se queda en el servidor**: va al gestor de contraseñas del equipo o a un medio
+  sin conexión y se borra del disco donde se generó. No tiene frase de paso porque la restauración corre sin
+  terminal; su protección es la custodia (§1.5). Nunca va al repositorio, a `.env`, a `.env.example` ni a una bitácora.
+
+### 1.2 Encender el servicio
+
+```bash
+docker compose --profile backups up -d backup
+docker compose logs backup        # backup.scheduled con nextRunAt (UTC) de la próxima corrida
+```
+
+La corrida diaria ocurre a `BACKUP_TIME` (por defecto `03:00`) en la zona `BACKUP_TZ` (por defecto
+`America/Guatemala`). Si el servicio está apagado a esa hora, ese día no tiene copia y no se recupera al arrancar
+(spec S-2): se nota porque falta el `backup.completed` del día. El servicio no publica puertos y solo recibe las
+credenciales del dueño de la base (`POSTGRES_*`), que necesita para volcar las tablas con RLS forzada (plan D-2).
+
+### 1.3 Respaldo bajo demanda
+
+```bash
+docker compose --profile backups run --rm backup run
+```
+
+Sale con `0` y una línea `backup.completed`, o con `1` y una línea `backup.failed` con su `code`.
+
+### 1.4 Dónde están las copias y cómo leer la bitácora
+
+- Volumen `backup_data` (en el host, `nimbo_backup_data`), montado en `/backups` solo dentro del servicio `backup`.
+  Para listarlas: `docker compose --profile backups run --rm --entrypoint ls backup -l /backups`.
+- Nombre: `nimbo-<AAAAMMDD>T<HHMMSS>Z.dump.gpg` (fecha y hora UTC del volcado). Mientras se escribe, la copia es un
+  temporal oculto que solo se renombra si `pg_dump` y `gpg` terminan bien.
+- Cada corrida escribe una línea JSON con su `correlationId` (`docker compose logs backup`), sin host, usuario,
+  contraseñas, ruta ni contenido de la clave, ni el texto de error de las herramientas:
+
+| Evento | Qué significa |
+|---|---|
+| `backup.scheduled` | `nextRunAt`: próxima corrida programada |
+| `backup.completed` | `backupFile`, `sizeBytes`, `durationMs` y `kept` (copias que quedan tras rotar, máximo 7) |
+| `backup.failed` | `code`, `durationMs`, `exitCode` de la herramienta; no queda archivo parcial y **no se rota** |
+
+| `code` | Causa probable | Qué hacer |
+|---|---|---|
+| `BACKUP_KEY_MISSING` | `BACKUP_PUBLIC_KEY_FILE` sin definir o el archivo vacío o ilegible. Si la ruta no existe, Docker ni crea el contenedor (`bind source path does not exist`) | Corrige la ruta en `.env` y vuelve a levantar el servicio (§1.1) |
+| `BACKUP_DUMP_FAILED` | Postgres caído o credenciales del dueño rechazadas | Revisa `docker compose ps postgres` y `POSTGRES_*` del `.env` |
+| `BACKUP_ENCRYPT_FAILED` | El archivo de la clave pública no es una clave `gpg` válida | Vuelve a copiar `respaldos.pub.asc` |
+| `BACKUP_WRITE_FAILED` | Sin espacio o sin permiso en `backup_data` | Libera espacio en el host (`docker system df`) |
+
+### 1.5 Custodia y rotación de la clave
+
+- Solo el Operador custodia la clave privada, fuera del servidor. Si se pierde, **ninguna copia se puede leer**: se
+  guarda en dos lugares (gestor de contraseñas del equipo y un medio sin conexión).
+- Rotación (cambio de Operador, sospecha de filtración o una vez por fase): genera un par nuevo (§1.1), reemplaza el
+  archivo de `BACKUP_PUBLIC_KEY_FILE` y ejecuta `docker compose --profile backups up -d --force-recreate backup`.
+  Conserva la privada **anterior** hasta que rote la última copia cifrada con ella (7 copias, una semana); para
+  restaurar en esa semana sirve un archivo con las dos privadas concatenadas (`gpg` importa ambas).
+- Si la privada se filtró: rota la clave, ejecuta un respaldo bajo demanda (§1.3) y borra las copias anteriores del
+  volumen, que ya no están protegidas.
+
+### 1.6 Antes de producción y en staging
+
+- **Copia externa (RN-6):** las copias viven en el mismo servidor que la base. Antes de producción se llevan además a
+  un destino externo; destino y frecuencia están pendientes (PD-170). Lo mismo vale para los objetos de MinIO, que no
+  tienen copia fuera de su volumen (PD-171).
+- **Staging (R-2):** `pg_dump` necesita un rol que salte la RLS forzada (superusuario o `BYPASSRLS`). En local lo es
+  el dueño; en staging el rol dueño todavía es provisional (PD-43); el rol del volcado y el ensayo en staging se definen y
+  repiten cuando exista (PD-173).
 
 ## 2. Restaurar la base de datos
 

@@ -82,6 +82,9 @@ Secreto = nunca en el repositorio, vacío en `.env.example` de staging, redactad
 | `OPTIMIZER_MAX_PIXELS` | | | | | | `36000000` | Solo valida `worker-optimizer`: píxeles decodificados; por encima, `no_disponible(pixeles)` (021 RN-8, CA-5) |
 | `OPTIMIZER_MIN_SAVED_PERCENT` / `OPTIMIZER_MIN_SAVED_BYTES` | | | | | | `20` / `1000000` | Solo valida `worker-optimizer`: se exigen ambos umbrales; porcentaje 1–99 (021 RN-2) |
 | `OPTIMIZER_JPEG_QUALITY` | | | | | | `80` | Solo valida `worker-optimizer`: calidad JPEG con mozjpeg, 1–100 (ADR-0037) |
+| `BACKUP_TIME` | | | | ✓ | | `03:00` | 022c: hora `HH:MM` (24 h) de la corrida diaria del servicio `backup` (perfil `backups`), en la zona de `BACKUP_TZ` |
+| `BACKUP_TZ` | | | | ✓ | | `America/Guatemala` | 022c: `TZ` del contenedor `backup`; solo afecta a `BACKUP_TIME` (los nombres de las copias van en UTC) |
+| `BACKUP_PUBLIC_KEY_FILE` | | | | ✓ | | `/dev/null` | 022c (ADR-0041): ruta del host, **fuera** del repositorio, a la clave **pública** `gpg` con la que se cifran las copias; entra como `secret` de compose solo en `backup`. Nunca la privada. Sin ella, cada corrida responde `BACKUP_KEY_MISSING`; el compose sin el perfil no la exige (R-3) |
 | `API_MEM_LIMIT`, `WORKER_MEM_LIMIT`, `WORKER_OPTIMIZER_MEM_LIMIT` | | | | ✓ | | `768m` | Staging; en demos con ONLYOFFICE solo `API_MEM_LIMIT` baja a `512m` (R-6). Los dos `worker` quedan en 768m con `memswap_limit` igual (sin swap del contenedor; ADR-0038) |
 | `MALLOC_ARENA_MAX` | | | | | | `2` | Runtime glibc de ambos workers, no Zod: fijada en la imagen (ADR-0038); limita arenas y memoria retenida |
 | `COMPOSE_FILE` | | | | ✓ | | — | Solo staging: `compose.yml:compose.staging.yml` |
@@ -138,6 +141,11 @@ limitan a lo que CA-3 permite:
 | Traefik | `traefik.local.yml` sin TLS; `local-routes.yml` enruta `/` → host:3002 y `/api` → host:3000; `/docs` por etiquetas; MinIO por el puerto 9000 (sin router `/s3`: el `stripprefix` rompe la firma, 005 R-6) | `traefik.staging.yml` con Let's Encrypt; enrutadores por `Host()`; `s3.staging` definido pero deshabilitado hasta 005 |
 | Volúmenes | Nombrados (`postgres_data`, `minio_data`, …) | Nombrados con ruta persistente del Droplet |
 | Extras | Mailpit (correo de desarrollo) | Cabeceras seguras (`secure-headers`), límites de memoria |
+
+Perfiles apagados por defecto (`docker compose up -d` no los levanta ni exige sus variables): `onlyoffice` (016) y
+`backups` (022c, ADR-0041). Con `--profile backups`, el servicio `backup` (imagen `pgvector/pgvector:pg17`, sin
+puertos ni `env_file`) hace el respaldo diario cifrado de la base en el volumen **`backup_data`**, que solo él monta y
+que es distinto de `postgres_data` (RN-2). Procedimiento del Operador: `docs/operations/respaldos.md`.
 
 Imágenes (idénticas en compose y en Testcontainers): `pgvector/pgvector:pg17`, `redis:7-alpine`,
 `pgsty/silo` + `pgsty/mc` en `RELEASE.2026-09-16T00-00-00Z` (fork compatible de MinIO; Docker Hub dejó de servir
