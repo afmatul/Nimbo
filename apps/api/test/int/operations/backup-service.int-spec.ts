@@ -77,6 +77,64 @@ const KEY_SETUP = [
   `chmod 644 ${PUBLIC_KEY_PATH}`,
 ].join(' && ');
 
+/** Contraseña rechazada por Postgres: no debe aparecer en la salida. */
+const WRONG_PASSWORD = 'contrasena-erronea-7Tq2';
+/** Lo que nunca sale en la bitácora (plan §4): credenciales, host, ruta de la clave y texto de las herramientas. */
+const FORBIDDEN_OUTPUT = [
+  OWNER_PASSWORD,
+  WRONG_PASSWORD,
+  DB_ALIAS,
+  PUBLIC_KEY_PATH,
+  'pg_dump',
+  'FATAL',
+  'authentication',
+  'gpg:',
+];
+
+/** Un fallo del respaldo: cómo provocarlo y cómo dejar el contenedor como estaba. */
+interface FailureCase {
+  readonly name: string;
+  readonly code: string;
+  readonly arrange: string;
+  readonly undo: string;
+  readonly env: Record<string, string>;
+}
+
+const FAILURES: readonly FailureCase[] = [
+  {
+    name: 'la contraseña del dueño es errónea',
+    code: 'BACKUP_DUMP_FAILED',
+    arrange: 'true',
+    undo: 'true',
+    env: { POSTGRES_PASSWORD: WRONG_PASSWORD },
+  },
+  {
+    name: 'falta la clave pública',
+    code: 'BACKUP_KEY_MISSING',
+    arrange: `mv ${PUBLIC_KEY_PATH} /tmp/clave.bak`,
+    undo: `mv /tmp/clave.bak ${PUBLIC_KEY_PATH}`,
+    env: {},
+  },
+  {
+    name: 'la clave pública no sirve para cifrar',
+    code: 'BACKUP_ENCRYPT_FAILED',
+    arrange: `cp ${PUBLIC_KEY_PATH} /tmp/clave.bak && echo 'no es una clave' > ${PUBLIC_KEY_PATH}`,
+    undo: `mv /tmp/clave.bak ${PUBLIC_KEY_PATH}`,
+    env: {},
+  },
+  {
+    name: 'no se puede escribir en el volumen',
+    code: 'BACKUP_WRITE_FAILED',
+    arrange: `chmod 555 ${BACKUP_DIR}`,
+    undo: `chmod 755 ${BACKUP_DIR}`,
+    env: {},
+  },
+];
+
+/** Espera al próximo segundo: dos corridas en el mismo segundo tendrían el mismo nombre. */
+const nextSecond = (): Promise<void> =>
+  new Promise((done) => setTimeout(done, 1000 - (Date.now() % 1000) + 10));
+
 const parseLines = (stdout: string): BackupLine[] =>
   stdout
     .split('\n')
@@ -84,10 +142,10 @@ const parseLines = (stdout: string): BackupLine[] =>
     .map((line) => JSON.parse(line) as BackupLine);
 
 /**
- * Servicio de respaldos (022c CA-1, CA-4) con contenedores propios: el script real corre dentro de la imagen fijada de
+ * Servicio de respaldos (022c CA-1, CA-2, CA-4) con contenedores propios: el script real corre dentro de la imagen fijada de
  * Postgres, contra una base migrada con el corpus sintético, y llega a ella por el nombre `postgres` de su red.
  */
-describe('servicio de respaldos (022c CA-1, CA-4)', () => {
+describe('servicio de respaldos (022c CA-1, CA-2, CA-4)', () => {
   let network: StartedNetwork;
   let postgres: StartedPostgreSqlContainer;
   let backup: StartedTestContainer;
@@ -176,5 +234,36 @@ describe('servicio de respaldos (022c CA-1, CA-4)', () => {
 
     expect(restoreList.exitCode).not.toBe(0);
     expect(withoutKey.exitCode).not.toBe(0);
+  });
+
+  /** Nombre y hash de todo lo que hay en el volumen, temporales incluidos. */
+  const volumeSnapshot = (): Promise<string> =>
+    shell(`cd ${BACKUP_DIR} && ls -A | xargs -r sha256sum --`);
+
+  describe('CA-2: un respaldo fallido', () => {
+    beforeAll(async () => {
+      await nextSecond();
+      expect((await runBackup()).exitCode).toBe(0);
+    });
+
+    it.each(FAILURES)(
+      'CA-2: si $name, registra backup.failed con $code, sale con 1, no deja temporal y las copias previas siguen iguales',
+      async ({ code, arrange, undo, env }) => {
+        const before = await volumeSnapshot();
+        await shell(arrange);
+
+        const result = await runBackup(env).finally(() => shell(undo));
+
+        expect(result.exitCode).toBe(1);
+        expect(result.stderr).toBe('');
+        const lines = parseLines(result.stdout);
+        expect(lines).toHaveLength(1);
+        expect(lines[0]).toMatchObject({ level: 50, event: 'backup.failed', code });
+        expect(lines[0]?.durationMs).toBeGreaterThanOrEqual(0);
+        expect(lines[0]).toHaveProperty('exitCode');
+        expect(await volumeSnapshot()).toBe(before);
+        for (const forbidden of FORBIDDEN_OUTPUT) expect(result.output).not.toContain(forbidden);
+      },
+    );
   });
 });
