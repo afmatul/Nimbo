@@ -148,6 +148,12 @@ docker compose start redis     # el correo «[RESOLVED] …» llega en unos 5 mi
 Anota la hora de ambos correos y toma la captura para el PR. Para probar solo el canal sin provocar una condición:
 *Alerting → Contact points → correo-equipo → Test* (Operador).
 
+**Cascada esperada.** Una dependencia caída arrastra a otras reglas, y no es un fallo de las alertas. Con Postgres
+detenido (demo T-09, CA-11) dispararon, además de la tasa de 5xx, «Dependencia caída (postgres)», «Fallo del proceso
+de renovación» (la pasada de renovación falla sin base de datos) y «Cola con trabajos pendientes o reintentados» (los
+trabajos que usan la base agotan su tercer intento). Se atiende primero la dependencia caída; las demás se resuelven
+solas al recuperarla, y la de renovación 15 min después del último fallo.
+
 ## 8. Pendiente
 
 - **Spike de cAdvisor en Docker Desktop/WSL2 (ADR-0040, R-1):** solo se verificó en Docker Engine nativo con cAdvisor
