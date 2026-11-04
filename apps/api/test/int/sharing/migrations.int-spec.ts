@@ -543,7 +543,7 @@ describe('migraciones de `sharing` con dueño NOSUPERUSER (planes 012 §3 y 013 
       const reverted = await revertFrom(owner, SAME_OWNER_FOLDER_MIGRATION);
       await owner.runMigrations({ transaction: 'each' });
 
-      expect(reverted).toEqual([SAME_OWNER_FOLDER_MIGRATION]);
+      expect(reverted).toEqual([SAME_OWNER_FOLDER_MIGRATION, PUBLIC_LINK_MIGRATION]);
       expect(await rlsOf(owner, 'archivo')).toMatchObject({ forced: true });
       expect(await rlsOf(owner, 'carpeta')).toMatchObject({ forced: true });
     });
