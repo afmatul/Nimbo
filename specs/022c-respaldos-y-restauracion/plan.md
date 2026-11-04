@@ -1,6 +1,6 @@
 # Plan 022c — Respaldos y restauración
 
-> Spec: `./spec.md` · Estado del plan: Propuesto
+> Spec: `./spec.md` · Estado del plan: Aprobado
 > Obligatorio y ≤ 250 líneas. Dice **qué** archivos se tocan y **qué** se espera de cada uno; no es el código en
 > prosa (sin cuerpos de funciones ni pseudocódigo). Lo aprueba Adrián antes de escribir código.
 
@@ -45,7 +45,7 @@ Todo es infraestructura y procedimiento: no hay módulo de Nest, ni migración, 
   `tasks.md`, ya con el corpus sobre el mundo de aislamiento). Cumple el límite de archivos y pasa de los ~3 días. Se
   pide excepción en días. La alternativa, separar MinIO (CA-7 y CA-8, ≈ 1 día con su ensayo), cambia el agrupamiento
   de P-5. Lo decide Adrián al aprobar.
-- Tecnología nueva: la herramienta de cifrado (ADR-0041, `Propuesto`; recomienda `gpg` asimétrico si viene en la
+- Tecnología nueva: la herramienta de cifrado (ADR-0041, `Aceptado` el 2026-11-04; recomienda `gpg` asimétrico si viene en la
   imagen, `age` con la fila condicional si no). `pg_dump`, `pg_restore` y `mc` ya vienen en las imágenes
   fijadas de `postgres` y `minio-init` (ADR-0025).
 
@@ -161,7 +161,7 @@ aislamiento existente debe seguir en verde. `pnpm env:check` sigue en verde (las
   copia de los respaldos a un destino externo antes de producción (RN-6); rol del volcado en staging (R-2); los
   objetos de MinIO no tienen copia fuera de su volumen (spec §7); repetir el ensayo en staging cuando exista (P-2);
   la D-11 de la spec 000 todavía remite a la 022 (`architecture.md` ya dice `(022c) backup/`).
-- ADR requeridos: **ADR-0041** — cifrado, ejecutor programado y regla ILM de los respaldos (`Propuesto`, redactado
+- ADR requeridos: **ADR-0041** — cifrado, ejecutor programado y regla ILM de los respaldos (`Aceptado` el 2026-11-04, redactado
   por `architect` el 2026-11-02; 0040 queda reservado para la 022). Recomienda `gpg` asimétrico con la imagen fijada
   de `postgres` si la comprobación del ADR confirma que trae `gpg`; si no, `age` con la fila condicional. Se acepta
   antes de T-03.
@@ -174,5 +174,6 @@ aislamiento existente debe seguir en verde. `pnpm env:check` sigue en verde (las
   (4) CA-5 compara RLS y políticas de **todas** las tablas, no tres; (5) ILM por `mc ilm import` desde *heredoc*;
   (6) R-7 objetos purgados tras el respaldo. Condición: ADR-0041 `Aceptado`, con la comprobación de `gpg` en
   `pgvector/pgvector:pg17` hecha, antes de T-03. Fronteras, DAG y capas sin cambios; sin puertos ni tablas.
-- Adrián: pendiente. Incluye la autorización para cambiar `compose.yml`, `infra/minio/init.sh` y
-  `docs/operations/ambientes.md` (R-6).
+- Adrián: **Aprobado — Adrián, 2026-11-04**, con la autorización para cambiar `compose.yml`, `infra/minio/init.sh` y
+  `docs/operations/ambientes.md` (R-6). ADR-0041 `Aceptado` el mismo día; `gpg` 2.2.40 comprobado en
+  `pgvector/pgvector:pg17`, así que la fila condicional del `Dockerfile` no existe (12 archivos).

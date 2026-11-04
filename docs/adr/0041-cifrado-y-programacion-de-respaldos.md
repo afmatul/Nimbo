@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Propuesto |
+| Estado | Aceptado (2026-11-04, Adrián) |
 | Fecha | 2026-11-02 |
 | Decisores | Adrián (acepta), Abel (dueño de 022c); redactó `architect` |
 | Specs relacionadas | 022c (RNF-21), 000 (compose, `minio-init`) |
@@ -90,7 +90,9 @@ silencio); (e) igual en Windows y Linux; (f) custodia y rotación de la clave.
 4. **Posponer** — RNF-21 queda sin cumplir para objetos.
 
 ## Decisión
-**Propuesta** (pendiente de aceptación por Adrián):
+**Aceptada** por Adrián el 2026-11-04. Comprobación del contexto hecha ese día: `pgvector/pgvector:pg17` trae
+`gpg` (GnuPG 2.2.40), `pg_dump`/`pg_restore` 17.11 y los datos de zona (`America/Guatemala`); se queda `gpg` y no hay
+`infra/backup/Dockerfile`.
 
 1. **Cifrado: `gpg` asimétrico (opción 1.1), con la imagen fijada `pgvector/pgvector:pg17`**, condicionado a la
    comprobación del contexto. Es la opción que cumple los seis criterios **sin** imagen propia, y eso pesa más en este
