@@ -5,8 +5,8 @@ import { IDENTITY_FIELD_MESSAGES } from '@nimbo/contracts';
 import type { FieldIssueReason } from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
-import { errorName, Role } from '../../../shared';
-import type { Actor, FieldIssue } from '../../../shared';
+import { errorName, Role, I_PASSWORD_HASHER } from '../../../shared';
+import type { Actor, FieldIssue, PasswordHash, IPasswordHasher } from '../../../shared';
 import { I_MAILER } from '../../notifications';
 import type { IMailer, MailMessage } from '../../notifications';
 import { EmailAddress } from '../domain/email-address.vo';
@@ -18,14 +18,11 @@ import {
 } from '../domain/errors';
 import { InternalUser } from '../domain/internal-user.entity';
 import { OpaqueToken } from '../domain/opaque-token.vo';
-import type { PasswordHash } from '../domain/password-hash.vo';
 
 import { AccountSetupLinkIssuer } from './account-setup-link-issuer';
 import type { IdentityLogger } from './identity-logger';
 import { I_ADMIN_ROSTER_REPOSITORY } from './ports/i-admin-roster.repository.port';
 import type { IAdminRosterRepository } from './ports/i-admin-roster.repository.port';
-import { I_PASSWORD_HASHER } from './ports/i-password-hasher.port';
-import type { IPasswordHasher } from './ports/i-password-hasher.port';
 
 /** Alta interna ya validada por `enrollInternalAccountRequestSchema`; correo y código aún sin normalizar. */
 export interface EnrollInternalCommand {

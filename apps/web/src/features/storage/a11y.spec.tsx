@@ -153,6 +153,7 @@ function renderExplorer(overrides: Partial<FileExplorerProps> = {}): Promise<voi
     <main>
       <FileExplorer
         status="ready"
+        accessLevel="OWNER"
         folderId={null}
         breadcrumbs={[]}
         nodes={[]}
@@ -180,6 +181,7 @@ function rowMenu(file: FileSummary, pinned = false): ReactElement {
       onMove={jest.fn()}
       onMoveToTrash={jest.fn()}
       pin={{ pinned, onToggle: jest.fn() }}
+      sharing={{ level: 'OWNER', onShare: jest.fn() }}
     />
   );
 }
@@ -433,6 +435,7 @@ describe('Accesibilidad de los estados de carga y descarga (CA-21)', () => {
           <main>
             <FileExplorer
               status="ready"
+              accessLevel="OWNER"
               folderId={null}
               breadcrumbs={[]}
               nodes={[PROMPTS, FILE_NODE]}

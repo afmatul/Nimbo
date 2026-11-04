@@ -1,10 +1,9 @@
-import { Role } from '../../../../shared';
+import { Role, PasswordHash } from '../../../../shared';
 import { ClientUser } from '../../domain/client-user.entity';
 import { EmailAddress } from '../../domain/email-address.vo';
 import { EmployeeCode } from '../../domain/employee-code.vo';
 import { InternalUser } from '../../domain/internal-user.entity';
 import { LegalAcceptance } from '../../domain/legal-acceptance.vo';
-import { PasswordHash } from '../../domain/password-hash.vo';
 import type { User } from '../../domain/user.entity';
 
 import type { UsuarioOrmEntity } from './usuario.orm-entity';

@@ -72,6 +72,7 @@ async function mount(ui: ReactElement): Promise<void> {
 function renderExplorer(overrides: Partial<FileExplorerProps> = {}): Promise<void> {
   const props: FileExplorerProps = {
     status: 'ready',
+    accessLevel: 'OWNER',
     folderId: null,
     breadcrumbs: [],
     nodes: [],
@@ -134,6 +135,7 @@ describe('FileExplorer (CA-1, CA-21)', () => {
     await mount(
       <FileExplorer
         status="ready"
+        accessLevel="OWNER"
         folderId={null}
         breadcrumbs={[]}
         nodes={[]}
@@ -680,6 +682,7 @@ function renderWithAgent(overrides: Partial<FileExplorerProps>): Promise<void> {
     <AgentProvider deps={deps}>
       <FileExplorer
         status="ready"
+        accessLevel="OWNER"
         folderId={null}
         breadcrumbs={[]}
         nodes={[]}

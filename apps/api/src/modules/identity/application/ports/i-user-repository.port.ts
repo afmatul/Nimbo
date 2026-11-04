@@ -1,6 +1,6 @@
+import type { PasswordHash } from '../../../../shared';
 import type { ClientUser } from '../../domain/client-user.entity';
 import type { EmailAddress } from '../../domain/email-address.vo';
-import type { PasswordHash } from '../../domain/password-hash.vo';
 import type { User } from '../../domain/user.entity';
 
 /**

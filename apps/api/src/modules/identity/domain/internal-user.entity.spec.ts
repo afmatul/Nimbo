@@ -1,3 +1,4 @@
+import { PasswordHash } from '../../../shared/domain/password-hash.vo';
 import { Role } from '../../../shared/domain/role.enum';
 
 import { AccountStatus } from './account-status.enum';
@@ -5,7 +6,6 @@ import { EmailAddress } from './email-address.vo';
 import { EmployeeCode } from './employee-code.vo';
 import { AccountStateConflictError } from './errors';
 import { InternalUser } from './internal-user.entity';
-import { PasswordHash } from './password-hash.vo';
 
 const enrollInput = (role: Role = Role.SUPPORT) => ({
   id: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',

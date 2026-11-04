@@ -5,6 +5,13 @@ import type { FileVersionSummary } from '@nimbo/contracts';
  * la más nueva a la más antigua (`GET /files/:fileId/versions`).
  */
 
+/** La versión vigente del historial (la que marca `isCurrent`). */
+export function currentVersionOf(
+  versions: readonly FileVersionSummary[],
+): FileVersionSummary | undefined {
+  return versions.find((version) => version.isCurrent);
+}
+
 /**
  * Número de la versión que la poda eliminaría al registrar una nueva (CA-15): la más antigua retenida si el archivo ya
  * está en el límite del plan (D-2, cuenta la actual); `null` si queda lugar.

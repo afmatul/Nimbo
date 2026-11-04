@@ -12,6 +12,7 @@ import {
   Pencil,
   Pin,
   PinOff,
+  Share2,
   X,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -26,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from '../../../components/ui/dropdown-menu';
 import { editorPath } from '../../editing/routes';
+import { canEditDocx, isOwner, type RowSharing } from '../node-access';
 import { fileDetailPath } from '../routes';
 import { StorageRequestError } from '../storage-request-error';
 
@@ -56,6 +58,8 @@ export interface FileRowMenuProps {
   /** «Mover a la papelera», sin confirmación (006 CA-10). */
   readonly onMoveToTrash: () => void;
   readonly pin: PinToggle;
+  /** Nivel sobre el archivo y «Compartir» (012b): sin `OWNER`, solo descargar y, como Editor, editar un `.docx`. */
+  readonly sharing: RowSharing;
 }
 
 /** Abre la URL firmada en la pestaña: el navegador descarga (005 CA-13). */
@@ -116,6 +120,7 @@ export function FileRowMenu({
   onMove,
   onMoveToTrash,
   pin,
+  sharing,
 }: FileRowMenuProps): React.JSX.Element {
   const [open, setOpen] = React.useState(false);
   const [preparing, setPreparing] = React.useState(false);
@@ -172,16 +177,52 @@ export function FileRowMenu({
             )}
             {preparing ? 'Preparando…' : 'Descargar'}
           </DropdownMenuItem>
-          <HistoryMenuItem fileId={file.id} />
-          <OrganizeMenuItems onRename={onRename} onMove={onMove} />
-          <PinMenuItem pin={pin} />
-          {file.kind === 'docx' ? <EditMenuItem fileId={file.id} /> : null}
-          <MoveToTrashMenuItem onSelect={onMoveToTrash} />
+          <FileActionItems
+            file={file}
+            sharing={sharing}
+            organize={{ onRename, onMove }}
+            onMoveToTrash={onMoveToTrash}
+            pin={pin}
+          />
         </DropdownMenuContent>
       </DropdownMenu>
       <span role="status" aria-live="polite" className="sr-only">
         {preparing ? `Preparando la descarga de ${file.name}…` : ''}
       </span>
+    </>
+  );
+}
+
+type FileActionItemsProps = Pick<FileRowMenuProps, 'file' | 'sharing' | 'onMoveToTrash' | 'pin'> & {
+  readonly organize: OrganizeMenuItemsProps;
+};
+
+/** Lo que sigue a «Descargar»: las acciones del propietario o, compartido, solo «Editar» de un `.docx` (012b CA-6). */
+function FileActionItems({
+  file,
+  sharing,
+  organize,
+  onMoveToTrash,
+  pin,
+}: FileActionItemsProps): React.JSX.Element {
+  const owner = isOwner(sharing.level);
+  const editable = file.kind === 'docx' && canEditDocx(sharing.level);
+  return (
+    <>
+      {owner ? (
+        <>
+          <HistoryMenuItem fileId={file.id} />
+          <OrganizeMenuItems {...organize} />
+          <PinMenuItem pin={pin} />
+        </>
+      ) : null}
+      {editable ? <EditMenuItem fileId={file.id} /> : null}
+      {owner ? (
+        <>
+          <ShareMenuItem onShare={sharing.onShare} />
+          <MoveToTrashMenuItem onSelect={onMoveToTrash} />
+        </>
+      ) : null}
     </>
   );
 }
@@ -206,6 +247,16 @@ function EditMenuItem({ fileId }: { readonly fileId: string }): React.JSX.Elemen
         <FilePen className="h-4 w-4 text-secondary-foreground" aria-hidden="true" />
         Editar
       </Link>
+    </DropdownMenuItem>
+  );
+}
+
+/** «Compartir»: abre el diálogo con el formulario y la lista de accesos (012b CA-1); solo para el propietario. */
+export function ShareMenuItem({ onShare }: { readonly onShare: () => void }): React.JSX.Element {
+  return (
+    <DropdownMenuItem onSelect={onShare}>
+      <Share2 className="h-4 w-4 text-secondary-foreground" aria-hidden="true" />
+      Compartir
     </DropdownMenuItem>
   );
 }

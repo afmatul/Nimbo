@@ -1,9 +1,9 @@
+import type { PasswordHash } from '../../../shared/domain/password-hash.vo';
 import type { Role } from '../../../shared/domain/role.enum';
 
 import type { AccountStatus } from './account-status.enum';
 import type { EmailAddress } from './email-address.vo';
 import { AccountStateConflictError } from './errors/account-state-conflict.error';
-import type { PasswordHash } from './password-hash.vo';
 
 export interface UserProps {
   readonly id: string;

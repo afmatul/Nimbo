@@ -1,10 +1,10 @@
+import type { PasswordHash } from '../../../../shared';
 import { Role } from '../../../../shared/domain/role.enum';
 import { AccountStatus } from '../../domain/account-status.enum';
 import { ClientUser } from '../../domain/client-user.entity';
 import type { EmailAddress } from '../../domain/email-address.vo';
 import type { EmployeeCode } from '../../domain/employee-code.vo';
 import { InternalUser } from '../../domain/internal-user.entity';
-import type { PasswordHash } from '../../domain/password-hash.vo';
 import type { User } from '../../domain/user.entity';
 import type { IAdminRosterRepository } from '../ports/i-admin-roster.repository.port';
 import type { IUserRepository } from '../ports/i-user-repository.port';
