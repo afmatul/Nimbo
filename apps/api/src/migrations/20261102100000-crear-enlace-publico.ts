@@ -13,6 +13,9 @@ const OWNER_OF_ROW = "nimbo_actor_role() = 'CLIENT' AND propietario_id = nimbo_a
 const FILE_OWNED_BY_ACTOR =
   'EXISTS (SELECT 1 FROM archivo a WHERE a.id = archivo_id AND a.propietario_id = nimbo_actor_id())';
 
+/** Solo se actualiza un enlace sin revocar: la fecha de revocación de uno revocado no se reescribe (CA-8). */
+const NOT_REVOKED = 'revocado_en IS NULL';
+
 /** Revocar es irreversible (CA-8, RN-3): un `UPDATE` nunca deja `revocado_en` en `NULL`. */
 const REVOKED = 'revocado_en IS NOT NULL';
 
@@ -39,7 +42,8 @@ const LINK_BY_TOKEN_BODY = `
  *   Sin `intento_acceso` (plan D-5): el bloqueo vive en Redis.
  * - Permisos: `nimbo_app` no borra ni vacía la tabla y solo actualiza `revocado_en`.
  * - RLS: el propietario (cliente) lee, crea y revoca los suyos, una política por orden como en `comparticion`; la de
- *   `UPDATE` exige `revocado_en IS NOT NULL`, así revocar no se deshace. Los roles internos no tienen política.
+ *   `UPDATE` solo alcanza enlaces sin revocar y exige `revocado_en IS NOT NULL`, así revocar no se deshace ni se
+ *   reescribe su fecha. Los roles internos no tienen política.
  *   Como `FORCE` también somete al dueño, `enlace_publico_por_token` (`TO CURRENT_USER`, solo `SELECT` de enlaces disponibles) es
  *   lo único que ve `enlace_por_token()`, que ejecuta como el dueño: la segunda barrera del filtro de su cuerpo.
  * - `enlace_por_token(char(64))`: `char(64)` como la columna, para que `uq_enlace_publico_token_hash` sirva la búsqueda.
@@ -109,7 +113,7 @@ export class CrearEnlacePublico20261102100000 implements MigrationInterface {
     `);
     await queryRunner.query(`
       CREATE POLICY enlace_publico_propietario_revocar ON enlace_publico FOR UPDATE TO nimbo_app
-        USING      (${OWNER_OF_ROW})
+        USING      (${OWNER_OF_ROW} AND ${NOT_REVOKED})
         WITH CHECK (${OWNER_OF_ROW} AND ${FILE_OWNED_BY_ACTOR} AND ${REVOKED})
     `);
     await queryRunner.query(

@@ -641,18 +641,29 @@ describe('RLS de enlaces públicos y `enlace_por_token()` con dueño NOSUPERUSER
     });
 
     it('ISO-28: A no puede des-revocar por SQL su enlace revocado: `revocado_en` no vuelve a `NULL`', async () => {
-      await expect(
-        attemptAs(a, (m) => m.query(changedIdsSql('revocado_en = NULL'), [links.revoked.id])),
-      ).rejects.toThrow(RLS_ERROR);
-      await expect(
-        attemptAs(a, async (m) => {
-          await m.query(changedIdsSql('revocado_en = now()'), [links.ofA.id]);
-          return m.query(changedIdsSql('revocado_en = NULL'), [links.ofA.id]);
-        }),
-      ).rejects.toThrow(RLS_ERROR);
+      const unrevoked = await attemptAs(a, (m) =>
+        m.query(changedIdsSql('revocado_en = NULL'), [links.revoked.id]),
+      );
+      const unrevokedInSameTransaction = await attemptAs(a, async (m) => {
+        await m.query(changedIdsSql('revocado_en = now()'), [links.ofA.id]);
+        return m.query(changedIdsSql('revocado_en = NULL'), [links.ofA.id]);
+      });
 
+      expect(unrevoked).toEqual([]);
+      expect(unrevokedInSameTransaction).toEqual([]);
+      await expect(
+        attemptAs(a, (m) => m.query(changedIdsSql('revocado_en = NULL'), [links.ofA.id])),
+      ).rejects.toThrow(RLS_ERROR);
       expect(await resolveWithoutActor(links.revoked.tokenHash)).toEqual([]);
       expect(await resolveWithoutActor(links.ofA.tokenHash)).toHaveLength(1);
+    });
+
+    it('ISO-29: A no puede reescribir por SQL la fecha de revocación de su enlace ya revocado: 0 filas cambiadas', async () => {
+      const changed = await attemptAs(a, (m) =>
+        m.query(changedIdsSql("revocado_en = now() + interval '1 day'"), [links.revoked.id]),
+      );
+
+      expect(changed).toEqual([]);
     });
   });
 
@@ -745,6 +756,7 @@ describe('RLS de enlaces públicos y `enlace_por_token()` con dueño NOSUPERUSER
       ]);
       expect(policies[0]?.qual).toMatch(/revocado_en IS NULL.*vence_en > now\(\)/s);
       expect(policies[1]?.qual).toContain('nimbo_actor_id()');
+      expect(policies[3]?.qual).toContain('revocado_en IS NULL');
       expect(policies[3]?.with_check).toContain('revocado_en IS NOT NULL');
       expect(table).toEqual({
         relrowsecurity: true,

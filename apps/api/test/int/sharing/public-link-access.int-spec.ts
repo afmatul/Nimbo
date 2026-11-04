@@ -34,7 +34,7 @@ const DOWNLOAD_BYTES = 3000;
 const MS_PER_SECOND = 1000;
 /** Holgura entre el reloj de la prueba y el de la API al comparar `expiresAt`. */
 const CLOCK_SLACK_MS = 30_000;
-/** Ni el límite por propietario ni el de red interfieren con los demás casos; CA-14 tiene su propia app. */
+/** Ni el límite por propietario ni el de red interfieren con los demás casos; CA-13 tiene su propia app. */
 const ROOMY_RATE_LIMIT = '1000';
 
 interface ErrorBody {
@@ -422,8 +422,8 @@ describe('POST /public-links/open y /download (013 CA-9 a CA-11, CA-14 a CA-16, 
   });
 });
 
-/** CA-14, RN-7: el límite general de las rutas públicas, por red (IPv4 /32, IPv6 /64) con `X-Forwarded-For`. */
-describe('POST /public-links/open y /download: límite por red (013 CA-13, CA-14, RN-7)', () => {
+/** CA-13, RN-7: el límite general de las rutas públicas, por red (IPv4 /32, IPv6 /64) con `X-Forwarded-For`. */
+describe('POST /public-links/open y /download: límite por red (013 CA-13, RN-7)', () => {
   const LIMIT = 2;
   let sharing: SharingHttpApp;
 
@@ -444,7 +444,7 @@ describe('POST /public-links/open y /download: límite por red (013 CA-13, CA-14
   const randomNetwork = (): string =>
     `2001:db8:${Math.floor(Math.random() * 0xffff).toString(16)}:1`;
 
-  it('CA-14: dos IPv6 del mismo /64 comparten el límite (429 con la espera); otra red no', async () => {
+  it('CA-13: dos IPv6 del mismo /64 comparten el límite (429 con la espera); otra red no', async () => {
     const network = randomNetwork();
     for (let attempt = 0; attempt < LIMIT; attempt += 1) {
       expect((await openFrom(`${network}::${attempt + 1}`)).status).toBe(404);
@@ -459,7 +459,7 @@ describe('POST /public-links/open y /download: límite por red (013 CA-13, CA-14
     expect((await openFrom(`${network.replace(/:1$/, ':2')}::1`)).status).toBe(404);
   });
 
-  it('CA-14: abrir y descargar comparten el mismo límite por red', async () => {
+  it('CA-13: abrir y descargar comparten el mismo límite por red', async () => {
     const network = randomNetwork();
     expect((await openFrom(`${network}::1`)).status).toBe(404);
     expect((await downloadFrom(`${network}::2`)).status).toBe(404);

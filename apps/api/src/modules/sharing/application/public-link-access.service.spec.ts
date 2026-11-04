@@ -155,7 +155,7 @@ const networkKeyOf = (network: string): string => `sharing:link-ip:${sha256Of(ne
 /** Plan §5: el bloqueo es por enlace y red (RN-7), con el hash de la red, nunca la IP (S-3). */
 const FAILURE_KEY = `sharing:link-fail:${RESOLVED.linkId}:${sha256Of('2001:db8:aa:bb::/64')}`;
 
-describe('PublicLinkAccessService.openLink (013 CA-9, CA-11, CA-14; ADR-0039)', () => {
+describe('PublicLinkAccessService.openLink (013 CA-9, CA-11, CA-13; ADR-0039)', () => {
   it('CA-9: la ficha con nombre, tamaño, quien comparte, vencimiento y si pide contraseña; nada más', async () => {
     const { service } = setup({ link: availableLink(PASSWORD_HASH) });
 
@@ -188,7 +188,7 @@ describe('PublicLinkAccessService.openLink (013 CA-9, CA-11, CA-14; ADR-0039)', 
     expect(files.findOwnedFile).toHaveBeenCalledWith(OWNER, RESOLVED.fileId);
   });
 
-  it('CA-14, RN-7: el límite cuenta por red (/64) con su hash, nunca con la IP', async () => {
+  it('CA-13, RN-7: el límite cuenta por red (/64) con su hash, nunca con la IP', async () => {
     const { service, rateLimiter } = setup();
 
     await service.openLink({ token: TOKEN, ip: IP });
@@ -198,7 +198,7 @@ describe('PublicLinkAccessService.openLink (013 CA-9, CA-11, CA-14; ADR-0039)', 
     ]);
   });
 
-  it('CA-14: por encima del límite, 429 sin resolver el token ni tocar la base', async () => {
+  it('CA-13: por encima del límite, 429 sin resolver el token ni tocar la base', async () => {
     const { service, journal } = setup({ rate: { allowed: false, retryAfterSeconds: 42 } });
 
     const error = await service.openLink({ token: TOKEN, ip: IP }).catch((e: unknown) => e);
@@ -446,7 +446,7 @@ describe('PublicLinkAccessService.downloadLink (013 CA-10 a CA-14, CA-18; ADR-00
     expect(JSON.stringify(issued)).not.toContain(RESOLVED.ownerId);
   });
 
-  it('CA-14: comparte el límite por red con `openLink`: por encima, 429 sin resolver ni firmar', async () => {
+  it('CA-13: comparte el límite por red con `openLink`: por encima, 429 sin resolver ni firmar', async () => {
     const { service, journal } = setup({ rate: { allowed: false, retryAfterSeconds: 42 } });
 
     await expect(service.downloadLink({ token: TOKEN, ip: IP })).rejects.toBeInstanceOf(

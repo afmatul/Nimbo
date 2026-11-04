@@ -232,7 +232,7 @@ export class PublicLinkAccessService {
     logLink(this.logger, 'public_link.locked', link);
   }
 
-  /** CA-14: antes de mirar el token, así el `429` no revela nada; nunca dice cuántos quedan. */
+  /** CA-13: antes de mirar el token, así el `429` no revela nada; nunca dice cuántos quedan. */
   private async assertWithinRate(ip: string): Promise<void> {
     const decision = await this.rateLimiter.consume(networkKeyOf(ip), [
       { limit: this.config.publicLinkRequestsPerMinute, windowSeconds: RATE_LIMIT_WINDOW_SECONDS },
