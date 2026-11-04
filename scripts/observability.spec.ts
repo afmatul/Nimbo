@@ -525,7 +525,7 @@ describe('022 T-01: Compose de observabilidad (CA-2, CA-3, CA-9, CA-10)', () => 
   });
 
   describe('022 T-07: disco del anfitrión y las seis reglas (CA-3, CA-14, RN-1)', () => {
-    const BLOCK_DEVICES = 'id="/",device=~"/dev/.+"';
+    const BLOCK_DEVICES = 'id="/",device=~"/dev/.+",device!~"/dev/(loop|shm).*"';
 
     it('CA-14: la regla de disco toma el máximo de los dispositivos de bloque del anfitrión, > 80 % por 1 min (S-3, PD-170)', () => {
       const rule = ruleOf('nimbo-disco');

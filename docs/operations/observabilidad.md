@@ -131,7 +131,7 @@ Evaluadas cada minuto (grupo `operacion`, carpeta `Nimbo`). Sin datos no avisan.
 | Tasa de errores 5xx del api | Más del 2 % de respuestas 5xx | 5m | Panel 3 y 5 para la ruta; bitácoras del `api` por `correlationId`; panel 13 por si cayó una dependencia |
 | Latencia p95 del api | p95 > 300 ms, sin `POST /api/v1/agent/ask` ni `GET /api/v1/editing/content/:token` | 10m | Panel 5 para la ruta lenta; paneles 1 y 2 por saturación; Postgres |
 | Cola con trabajos pendientes o reintentados | Una cola con más de 50 pendientes, o un trabajo con su tercer intento fallido en 5 min | 1m | Paneles 7 a 11; ¿está arriba el proceso que consume la cola (panel 6)?; bitácoras de ese `worker` |
-| Uso del disco del anfitrión | El disco de bloque de mayor capacidad > 80 % (en WSL2 es el de datos de Docker; las imágenes de sistema, pequeñas y casi llenas, no cuentan) | 1m | Panel 14; `docker system df`; liberar imágenes y volúmenes que ya no se usan o bajar la retención de Prometheus |
+| Uso del disco del anfitrión | El disco de bloque de mayor capacidad > 80 % (en WSL2 es el de datos de Docker); no cuentan `/dev/loop*`, imágenes de solo lectura siempre al 100 %, ni `/dev/shm` | 1m | Panel 14; `docker system df`; liberar imágenes y volúmenes que ya no se usan o bajar la retención de Prometheus |
 | Dependencia caída | Una dependencia en 0 | 1m | Panel 13; `docker compose ps`; levantar el contenedor y revisar sus bitácoras |
 | Fallo del proceso de renovación | Cualquier fallo de `subscription-renewal` en 15 min | 0s | Bitácoras del `worker` y panel 12; se resuelve sola tras 15 min sin fallos nuevos |
 

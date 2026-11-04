@@ -113,9 +113,9 @@ Resultado del spike (T-01, 2026-11-03): **parcial, no verificado en Docker Deskt
 - **Pendiente:** repetir el spike en Docker Desktop/WSL2 (la máquina del equipo) y confirmar las mismas series y el `host-gateway` con las apps en `pnpm dev`. Hasta entonces, CA-3 (contenedores) y CA-14 no están demostrados en el entorno de desarrollo del equipo.
 - **Demo T-09 en Docker Desktop/WSL2 (2026-11-04, Abel):** CPU y memoria por contenedor sí salen. El disco por contenedor
   (`container_fs_usage_bytes{name!=""}`) **no**: con el almacenamiento de containerd cAdvisor no lee la capa de cada
-  contenedor (limitación del entorno; PD-173, se comprueba en staging). WSL2 expone imágenes de sistema pequeñas y casi
-  llenas como `/dev/*`, que hacían disparar la regla de disco (H-1): la regla mira ahora solo el dispositivo de bloque de
-  mayor capacidad (`topk(1, container_fs_limit_bytes)`), que en WSL2 es el disco de datos de Docker.
+  contenedor (limitación del entorno; PD-173, se comprueba en staging). WSL2 expone `/dev/loop0` y `/dev/loop1`, imágenes de solo
+  lectura siempre al 100 %, que hacían disparar la regla de disco (H-1): la regla excluye `/dev/loop*` y `/dev/shm` y mira
+  solo el dispositivo de bloque de mayor capacidad (`topk(1, container_fs_limit_bytes)`), que en WSL2 es el de datos de Docker.
 
 ## Consecuencias
 - Positivas: un solo stack para 022 y 022d. Sin puertos públicos nuevos. CA-10 queda cubierto por aprovisionamiento.

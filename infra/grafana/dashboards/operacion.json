@@ -476,7 +476,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "max by (device) (container_fs_usage_bytes{id=\"/\",device=~\"/dev/.+\"} / container_fs_limit_bytes{id=\"/\",device=~\"/dev/.+\"})",
+          "expr": "max by (device) (container_fs_usage_bytes{id=\"/\",device=~\"/dev/.+\",device!~\"/dev/(loop|shm).*\"} / container_fs_limit_bytes{id=\"/\",device=~\"/dev/.+\",device!~\"/dev/(loop|shm).*\"})",
           "legendFormat": "{{device}}"
         }
       ]

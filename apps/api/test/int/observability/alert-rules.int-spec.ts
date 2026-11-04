@@ -254,6 +254,16 @@ const RULE_DISK_CASES: RuleCase[] = [
   },
   {
     rule: 'nimbo-disco',
+    name: 'una imagen /dev/loop de solo lectura al 100 % no dispara aunque sea el disco mayor (H-1, WSL2)',
+    series: [
+      ...filesystem('/dev/sde', 0.49),
+      ...filesystem('/dev/loop0', 1, { limitBytes: 10 * FS_LIMIT_BYTES }),
+      ...filesystem('/dev/shm', 1, { limitBytes: 10 * FS_LIMIT_BYTES }),
+    ],
+    fires: false,
+  },
+  {
+    rule: 'nimbo-disco',
     name: 'tmpfs, overlay y /dev al 95 % no disparan (PD-170)',
     series: [
       ...filesystem('/dev/vda', 0.5),
