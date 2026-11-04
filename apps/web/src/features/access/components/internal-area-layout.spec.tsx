@@ -89,7 +89,7 @@ describe('InternalAreaLayout (011 CA-17)', () => {
     expect(within(screen.getByRole('main')).getByText('Contenido del área')).toBeTruthy();
     const links = within(desktopNav()).getAllByRole('link');
     expect(links.map((link) => link.textContent)).toEqual(['Metadatos de archivos', 'Papelera']);
-    expect(screen.queryByRole('link', { name: 'Mis Archivos' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Mis archivos' })).toBeNull();
   });
 
   it.each(['ADMIN', 'SUPPORT', 'OPERATOR'] as const)(

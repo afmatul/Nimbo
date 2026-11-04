@@ -202,7 +202,7 @@ describe('página Seguridad (/cuenta/seguridad)', () => {
 
       expect(within(sessionsCard()).getAllByRole('listitem')).toHaveLength(2);
       expect(screen.getByRole('region', { name: 'Cambiar contraseña' })).toBeTruthy();
-      expect(screen.queryAllByRole('link', { name: 'Mis Archivos' }).length > 0).toBe(
+      expect(screen.queryAllByRole('link', { name: 'Mis archivos' }).length > 0).toBe(
         role === 'CLIENT',
       );
     },

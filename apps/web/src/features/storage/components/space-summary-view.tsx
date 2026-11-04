@@ -12,7 +12,6 @@ import { Alert } from '../../../components/ui/alert';
 import { buttonVariants } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { longLastDayLabel } from '../../../lib/format-date';
-import { SignOutButton } from '../../identity/components/sign-out-button';
 import { MY_FILES_PATH, SPACE_PATH, TRASH_PATH } from '../routes';
 
 import { extraQuotaNote } from './extra-quota-note';
@@ -238,9 +237,6 @@ export function SpaceSummaryView({ state, onRetry }: SpaceSummaryViewProps): Rea
   return (
     <AppLayout navItems={SPACE_NAV_ITEMS} quotaCard={<SidebarQuota state={state} linked={false} />}>
       <div className="space-y-4">
-        <div className="flex justify-end">
-          <SignOutButton />
-        </div>
         <section className="flex flex-col gap-5" aria-labelledby="espacio-titulo">
           <header>
             <h1

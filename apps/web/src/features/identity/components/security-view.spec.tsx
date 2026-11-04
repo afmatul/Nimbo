@@ -41,10 +41,10 @@ describe('SecurityView: marco de cada rol (011 CA-17)', () => {
     forgetSession();
   });
 
-  it('CA-17: el cliente ve Seguridad en su marco, con Mis Archivos', async () => {
+  it('CA-17: el cliente ve Seguridad en su marco, con Mis archivos', async () => {
     await renderView('CLIENT');
 
-    expect(sidebarLinks()).toContain('Mis Archivos');
+    expect(sidebarLinks()).toContain('Mis archivos');
   });
 
   it.each([
@@ -59,7 +59,7 @@ describe('SecurityView: marco de cada rol (011 CA-17)', () => {
       const main = screen.getByRole('main');
       expect(within(main).getByRole('heading', { level: 1, name: 'Seguridad' })).toBeTruthy();
       expect(sidebarLinks()).toEqual(links);
-      expect(screen.queryByRole('link', { name: 'Mis Archivos' })).toBeNull();
+      expect(screen.queryByRole('link', { name: 'Mis archivos' })).toBeNull();
     },
   );
 
