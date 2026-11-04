@@ -283,6 +283,15 @@ describe('022 T-01: Compose de observabilidad (CA-2, CA-3, CA-9, CA-10)', () => 
       });
     });
 
+    it('H-6: los enlaces de los correos de alerta apuntan a Grafana, no al api', () => {
+      expect(serviceOf(config, 'grafana').environment?.GF_SERVER_ROOT_URL).toMatch(
+        /^http:\/\/localhost:\d+\/$/,
+      );
+      expect(serviceOf(config, 'grafana').environment?.GF_SERVER_ROOT_URL).not.toBe(
+        'http://localhost:3000/',
+      );
+    });
+
     it('CA-10: Grafana monta el aprovisionamiento y los tableros desde infra/grafana', () => {
       const sources = Object.fromEntries(
         (serviceOf(config, 'grafana').volumes ?? []).map((volume) => [
@@ -388,6 +397,14 @@ describe('022 T-01: Compose de observabilidad (CA-2, CA-3, CA-9, CA-10)', () => 
             /nimbo_http_request_duration_seconds_count/.test(expr) &&
             /status=~"5\.\."/.test(expr) &&
             expr.includes(' / '),
+        ),
+      ).toBe(true);
+    });
+
+    it('CA-6 y H-4: sin respuestas 5xx la tasa de errores muestra 0 y no «No data»', () => {
+      expect(
+        dashboardExprs().some(
+          (expr) => /status=~"5\.\."/.test(expr) && expr.includes('or vector(0)) / '),
         ),
       ).toBe(true);
     });
@@ -518,6 +535,12 @@ describe('022 T-01: Compose de observabilidad (CA-2, CA-3, CA-9, CA-10)', () => 
       expect(expr).toMatch(/^max\(/);
       expect(expr).toContain(`container_fs_usage_bytes{${BLOCK_DEVICES}}`);
       expect(expr).toContain(`container_fs_limit_bytes{${BLOCK_DEVICES}}`);
+    });
+
+    it('CA-14 y H-1: la regla de disco solo mira el dispositivo de bloque de mayor capacidad', () => {
+      expect(queryOf(ruleOf('nimbo-disco'))).toContain(
+        `and on (device) topk(1, container_fs_limit_bytes{${BLOCK_DEVICES}})`,
+      );
     });
 
     it('CA-3: el tablero muestra el uso de los discos del anfitrión por dispositivo', () => {

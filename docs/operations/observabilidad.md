@@ -107,7 +107,7 @@ el primer bucle durante 6 minutos para ver la tasa de 5xx y la regla 1; luego `d
 |---|---|---|
 | 1 | CPU por contenedor | Núcleos usados por contenedor (cAdvisor) |
 | 2 | Memoria por contenedor | Memoria en uso frente al `mem_limit` |
-| 3 | Tasa de errores 5xx (api) | Proporción de respuestas 5xx; la regla 1 dispara sobre 2 % |
+| 3 | Tasa de errores 5xx (api) | Proporción de respuestas 5xx (0 % si no hay errores); la regla 1 dispara sobre 2 % |
 | 4 | Latencia HTTP del api (p50, p95, p99) | Todas las rutas; la regla 2 excluye las de transferencia (S-5) |
 | 5 | Peticiones por ruta (api) | Por plantilla de ruta, sin ids ni consulta |
 | 6 | Procesos arriba (up por job) | 1 si Prometheus recolecta `api`, `worker`, `worker-optimizer` y `cadvisor` |
@@ -118,7 +118,7 @@ el primer bucle durante 6 minutos para ver la tasa de 5xx y la regla 1; luego `d
 | 11 | Intentos fallidos por cola e intentos hechos | `attempts_made` = `1`, `2` o `3+` |
 | 12 | Fallos de la renovación de suscripciones (15 min) | Lo que vigila la regla 6 |
 | 13 | Disponibilidad de dependencias (1 arriba, 0 caída) | Postgres, Redis, MinIO y ONLYOFFICE (si está configurado) |
-| 14 | Uso del disco del anfitrión (por dispositivo) | Fracción usada de cada disco de bloque; la regla 4 dispara sobre 80 % |
+| 14 | Uso del disco del anfitrión (por dispositivo) | Fracción usada de cada disco de bloque; la regla 4 solo mira el de mayor capacidad y dispara sobre 80 % |
 | 15 | Disco usado por contenedor | Bytes escritos por cada contenedor en su capa (`container_fs_usage_bytes` por `name`); sin regla, sirve para ver quién llena el disco del panel 14 |
 
 ## 6. Las seis alertas
@@ -131,7 +131,7 @@ Evaluadas cada minuto (grupo `operacion`, carpeta `Nimbo`). Sin datos no avisan.
 | Tasa de errores 5xx del api | Más del 2 % de respuestas 5xx | 5m | Panel 3 y 5 para la ruta; bitácoras del `api` por `correlationId`; panel 13 por si cayó una dependencia |
 | Latencia p95 del api | p95 > 300 ms, sin `POST /api/v1/agent/ask` ni `GET /api/v1/editing/content/:token` | 10m | Panel 5 para la ruta lenta; paneles 1 y 2 por saturación; Postgres |
 | Cola con trabajos pendientes o reintentados | Una cola con más de 50 pendientes, o un trabajo con su tercer intento fallido en 5 min | 1m | Paneles 7 a 11; ¿está arriba el proceso que consume la cola (panel 6)?; bitácoras de ese `worker` |
-| Uso del disco del anfitrión | Un disco del anfitrión > 80 % | 1m | Panel 14; `docker system df`; liberar imágenes y volúmenes que ya no se usan o bajar la retención de Prometheus |
+| Uso del disco del anfitrión | El disco de bloque de mayor capacidad > 80 % (en WSL2 es el de datos de Docker; las imágenes de sistema, pequeñas y casi llenas, no cuentan) | 1m | Panel 14; `docker system df`; liberar imágenes y volúmenes que ya no se usan o bajar la retención de Prometheus |
 | Dependencia caída | Una dependencia en 0 | 1m | Panel 13; `docker compose ps`; levantar el contenedor y revisar sus bitácoras |
 | Fallo del proceso de renovación | Cualquier fallo de `subscription-renewal` en 15 min | 0s | Bitácoras del `worker` y panel 12; se resuelve sola tras 15 min sin fallos nuevos |
 
@@ -155,6 +155,10 @@ Anota la hora de ambos correos y toma la captura para el PR. Para probar solo el
   (`container_fs_*{id="/"}`) y el `host-gateway` hacia las apps de `pnpm dev`. Si no salen, la demo de CPU, memoria y
   disco (CA-3, CA-14) se hace con Docker Engine en WSL2 o en el runner Linux de CI.
 - La imagen fijada `ghcr.io/google/cadvisor:v0.60.6` no se pudo descargar en la sesión de desarrollo (403 del proxy).
-- El panel 15 (disco por contenedor, CA-3) no se pudo comprobar con cAdvisor real: en la sesión de desarrollo cAdvisor no
-  registró la fábrica de Docker. Confirmar en la máquina del equipo que muestra una serie por contenedor.
+- El panel 15 (disco por contenedor, CA-3) queda sin datos en Docker Desktop/WSL2 (demo T-09, 2026-11-04) y en la sesión de
+  desarrollo: con el almacenamiento de containerd, cAdvisor no lee la capa de cada contenedor. Se comprueba en staging
+  (Linux) y, si tampoco hay datos, se retira el panel (PD-173).
+- Los enlaces de los correos de alerta usan `GF_SERVER_ROOT_URL` (`http://localhost:${GRAFANA_PORT}/`); en staging
+  funcionan con el túnel SSH de §2.
+- Tras restaurar Redis, el `api` puede tardar en responder unos instantes sin reiniciarse (demo T-09, PD-174).
 - Candidata a regla futura «caída de un proceso propio o de Prometheus» (`up == 0`), fuera de las seis (PD-167 (a)).

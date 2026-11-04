@@ -198,6 +198,8 @@ services:
       GF_PUBLIC_DASHBOARDS_ENABLED: 'false'
       GF_SNAPSHOTS_EXTERNAL_ENABLED: 'false'
       GF_USERS_VIEWERS_CAN_EDIT: 'false'
+      # Enlaces de los correos de alerta (H-6); sin esto Grafana usa localhost:3000, que es el api.
+      GF_SERVER_ROOT_URL: http://localhost:${GRAFANA_PORT}/
       GF_SMTP_ENABLED: 'true'
       GF_SMTP_HOST: ${GRAFANA_SMTP_HOST}
       GF_SMTP_USER: ${GRAFANA_SMTP_USER}

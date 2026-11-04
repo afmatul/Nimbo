@@ -118,7 +118,7 @@
               "model": {
                 "refId": "A",
                 "instant": true,
-                "expr": "max(container_fs_usage_bytes{id=\"/\",device=~\"/dev/.+\"} / container_fs_limit_bytes{id=\"/\",device=~\"/dev/.+\"})"
+                "expr": "max((container_fs_usage_bytes{id=\"/\",device=~\"/dev/.+\"} / container_fs_limit_bytes{id=\"/\",device=~\"/dev/.+\"}) and on (device) topk(1, container_fs_limit_bytes{id=\"/\",device=~\"/dev/.+\"}))"
               }
             },
             {
@@ -136,7 +136,7 @@
           "noDataState": "OK",
           "execErrState": "Error",
           "annotations": {
-            "summary": "Un disco del anfitrión supera el 80 % de uso. Revisar el panel de disco y liberar espacio (imágenes y volúmenes de Docker o la retención de Prometheus)."
+            "summary": "El disco de mayor capacidad del anfitrión supera el 80 % de uso. Revisar el panel de disco y liberar espacio (imágenes y volúmenes de Docker o la retención de Prometheus)."
           }
         },
         {

@@ -102,7 +102,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(nimbo_http_request_duration_seconds_count{job=\"api\",status=~\"5..\"}[5m])) / sum(rate(nimbo_http_request_duration_seconds_count{job=\"api\"}[5m]))",
+          "expr": "(sum(rate(nimbo_http_request_duration_seconds_count{job=\"api\",status=~\"5..\"}[5m])) or vector(0)) / sum(rate(nimbo_http_request_duration_seconds_count{job=\"api\"}[5m]))",
           "legendFormat": "5xx"
         }
       ]

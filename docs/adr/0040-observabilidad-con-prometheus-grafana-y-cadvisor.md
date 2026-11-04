@@ -111,6 +111,11 @@ Resultado del spike (T-01, 2026-11-03): **parcial, no verificado en Docker Deskt
 - `container_fs_usage_bytes` y `container_fs_limit_bytes` con `id="/"` salen **por dispositivo** (`/dev/vda`, `/dev/vdb`, `/dev`, `overlay`, rutas bind de contenedores…). La regla de disco no puede sumarlos: debe elegir el dispositivo raíz (PD-170, T-07).
 - Prometheus 3.15.0 de compose recolecta cAdvisor (`up`), y `api`, `worker` y `worker-optimizer` por `extra_hosts` resuelven a la pasarela del anfitrión (172.17.0.1). Un proceso que escucha en `127.0.0.1` del anfitrión **no** es alcanzable (conexión rechazada); uno en `0.0.0.0` sí. Los `app.listen(puerto)` actuales escuchan en todas las interfaces; el servidor de métricas de T-02 también debe hacerlo.
 - **Pendiente:** repetir el spike en Docker Desktop/WSL2 (la máquina del equipo) y confirmar las mismas series y el `host-gateway` con las apps en `pnpm dev`. Hasta entonces, CA-3 (contenedores) y CA-14 no están demostrados en el entorno de desarrollo del equipo.
+- **Demo T-09 en Docker Desktop/WSL2 (2026-11-04, Abel):** CPU y memoria por contenedor sí salen. El disco por contenedor
+  (`container_fs_usage_bytes{name!=""}`) **no**: con el almacenamiento de containerd cAdvisor no lee la capa de cada
+  contenedor (limitación del entorno; PD-173, se comprueba en staging). WSL2 expone imágenes de sistema pequeñas y casi
+  llenas como `/dev/*`, que hacían disparar la regla de disco (H-1): la regla mira ahora solo el dispositivo de bloque de
+  mayor capacidad (`topk(1, container_fs_limit_bytes)`), que en WSL2 es el disco de datos de Docker.
 
 ## Consecuencias
 - Positivas: un solo stack para 022 y 022d. Sin puertos públicos nuevos. CA-10 queda cubierto por aprovisionamiento.

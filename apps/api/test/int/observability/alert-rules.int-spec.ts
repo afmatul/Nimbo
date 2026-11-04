@@ -208,14 +208,24 @@ const FS_USAGE = 'container_fs_usage_bytes';
 const FS_LIMIT = 'container_fs_limit_bytes';
 const FS_LIMIT_BYTES = 100 * 1024 ** 3;
 
+interface FilesystemOptions {
+  readonly id?: string;
+  readonly limitBytes?: number;
+}
+
 /** Uso y límite de un sistema de archivos visto por cAdvisor, al `fraction` de su capacidad. */
-const filesystem = (device: string, fraction: number, id = '/'): Series[] => {
+const filesystem = (
+  device: string,
+  fraction: number,
+  options: FilesystemOptions = {},
+): Series[] => {
+  const { id = '/', limitBytes = FS_LIMIT_BYTES } = options;
   const labels = { id, device };
-  return [
-    gauge(FS_USAGE, labels, fraction * FS_LIMIT_BYTES),
-    gauge(FS_LIMIT, labels, FS_LIMIT_BYTES),
-  ];
+  return [gauge(FS_USAGE, labels, fraction * limitBytes), gauge(FS_LIMIT, labels, limitBytes)];
 };
+
+/** Imagen de sistema de WSL2: un disco pequeño y casi lleno que no es el de Docker (H-1). */
+const SMALL_DISK = { limitBytes: 1024 ** 3 };
 
 const RULE_DISK_CASES: RuleCase[] = [
   {
@@ -232,9 +242,15 @@ const RULE_DISK_CASES: RuleCase[] = [
   },
   {
     rule: 'nimbo-disco',
-    name: 'el segundo disco de bloque al 85 % dispara aunque el primero esté al 50 % (PD-170)',
-    series: [...filesystem('/dev/vda', 0.5), ...filesystem('/dev/sdc', 0.85)],
+    name: 'el disco de mayor capacidad al 85 % dispara aunque uno menor esté al 50 % (PD-170, H-1)',
+    series: [...filesystem('/dev/sdd', 0.85), ...filesystem('/dev/sda', 0.5, SMALL_DISK)],
     fires: true,
+  },
+  {
+    rule: 'nimbo-disco',
+    name: 'un disco menor al 99 % no dispara si el de mayor capacidad está al 50 % (H-1, WSL2)',
+    series: [...filesystem('/dev/sdd', 0.5), ...filesystem('/dev/sda', 0.99, SMALL_DISK)],
+    fires: false,
   },
   {
     rule: 'nimbo-disco',
@@ -250,7 +266,10 @@ const RULE_DISK_CASES: RuleCase[] = [
   {
     rule: 'nimbo-disco',
     name: 'un contenedor al 95 % no cuenta como disco del anfitrión',
-    series: [...filesystem('/dev/vda', 0.5), ...filesystem('/dev/vda', 0.95, '/docker/abc')],
+    series: [
+      ...filesystem('/dev/vda', 0.5),
+      ...filesystem('/dev/vda', 0.95, { id: '/docker/abc' }),
+    ],
     fires: false,
   },
 ];
