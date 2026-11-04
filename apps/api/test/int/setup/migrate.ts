@@ -8,11 +8,12 @@ const MIGRATION_TIMEOUT_MS = 120_000;
  * Aplica las migraciones versionadas sobre el Postgres de Testcontainers con el mismo camino que
  * `pnpm --filter api migration:run` (`tsx src/scripts/migrate.ts run`, una transacción por migración). Un proceso
  * aparte porque TypeORM carga las migraciones `.ts` por glob, y eso requiere `tsx`, no el transformador de Jest.
- * Lo usan `int` e `isolation` desde `global-setup.ts`; si una migración falla, la corrida no arranca.
+ * Lo usan `int` e `isolation` desde `global-setup.ts`; si una migración falla, la corrida no arranca. Devuelve la
+ * salida estándar de `migrate.ts` (la línea `migration.run` con `applied`).
  * Migra como el dueño de las tablas: `DATABASE_MIGRATION_URL` (003 plan §6.8). Se pasa siempre explícita para que
  * el `.env` de la raíz (que `data-source.cli.ts` carga sin pisar el entorno) nunca apunte al Postgres local.
  */
-export function runMigrations(migrationUrl: string): void {
+export function runMigrations(migrationUrl: string): string {
   const result = spawnSync(
     process.execPath,
     [require.resolve('tsx/cli'), 'src/scripts/migrate.ts', 'run'],
@@ -26,4 +27,5 @@ export function runMigrations(migrationUrl: string): void {
   if (result.status !== 0) {
     throw new Error(`Las migraciones fallaron (salida ${String(result.status)}): ${result.stderr}`);
   }
+  return result.stdout;
 }

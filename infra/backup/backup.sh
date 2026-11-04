@@ -4,8 +4,9 @@
 #   run       una corrida inmediata: `pg_dump` custom como POSTGRES_USER, cifrado en flujo con la clave pública,
 #             temporal → renombrado atómico y rotación a las 7 copias más recientes.
 #   schedule  espera BACKUP_TIME (HH:MM) en la zona de TZ y corre una vez al día (D-1); no recupera días perdidos.
+#   restore <archivo>  restaura una copia de /backups sobre una base vacía (`restore.sh`, con estas mismas funciones).
 # Salida: una línea JSON por evento, sin stderr de las herramientas, host, usuario, contraseña ni ruta de la clave.
-# Sale con 0 si todo va bien y con 1 tras escribir `backup.failed`.
+# Sale con 0 si todo va bien y con 1 tras escribir `backup.failed` (o `restore.failed`).
 set -uo pipefail
 
 readonly BACKUP_DIR=/backups
@@ -18,6 +19,7 @@ readonly LEVEL_INFO=30
 readonly LEVEL_ERROR=50
 
 correlation_id=""
+run_event=backup
 started_ms=0
 temp_file=""
 gnupg_home=""
@@ -31,16 +33,19 @@ log() {
     "$1" "$(now_ms)" "$2" "$correlation_id" "${3:+,$3}"
 }
 
-# fail <code> <exitCode de la herramienta o null>
+# fail <code> <exitCode de la herramienta o null>: `<run_event>.failed` y salida con 1.
 fail() {
-  log "$LEVEL_ERROR" backup.failed \
+  log "$LEVEL_ERROR" "$run_event.failed" \
     "\"code\":\"$1\",\"durationMs\":$(($(now_ms) - started_ms)),\"exitCode\":$2"
   exit 1
 }
 
 cleanup() {
   [[ -n "$temp_file" ]] && rm -f "$temp_file"
-  [[ -n "$gnupg_home" ]] && rm -rf "$gnupg_home"
+  if [[ -n "$gnupg_home" ]]; then
+    GNUPGHOME="$gnupg_home" gpgconf --kill gpg-agent >/dev/null 2>&1
+    rm -rf "$gnupg_home"
+  fi
 }
 
 # Escribe el volcado cifrado en $temp_file; deja el código de salida de cada etapa en pipeline_status.
@@ -129,8 +134,13 @@ schedule() {
 case "${1:-}" in
   run) run_backup ;;
   schedule) schedule ;;
+  restore)
+    # shellcheck source=restore.sh
+    source "$(dirname "${BASH_SOURCE[0]}")/restore.sh"
+    restore_backup "${2:-}"
+    ;;
   *)
-    echo "Uso: backup.sh <run|schedule>" >&2
+    echo "Uso: backup.sh <run|schedule|restore <archivo>>" >&2
     exit 2
     ;;
 esac

@@ -12,7 +12,7 @@
 - [x] **T-04** Fallos del respaldo: códigos, sin temporal, copias previas intactas y bitácora sin secretos (0,5 d) — CA: CA-2 — Prueba: integración primero (contraseña errónea, clave ausente, escritura imposible) — Depende: T-03
 - [x] **T-05** Rotación a las 7 copias más recientes (0,25 d) — CA: CA-3 — Prueba: integración primero (8 corridas) — Depende: T-03
 - [x] **T-06** Servicio `backup` en compose (perfil `backups`, volumen `backup_data`, secreto de la clave, `schedule` con `BACKUP_TIME`/`TZ`), `.env.example` y `ambientes.md` (0,5 d) — CA: CA-1, CA-9 — Prueba: integración primero (hora a un minuto; forma del compose con y sin perfil) — Depende: T-03
-- [ ] **T-07** `restore.sh` sobre base vacía con negativa a base con tablas y a otra clave, y el procedimiento de restauración en `respaldos.md` (0,75 d) — CA: CA-4, CA-5, CA-6 — Prueba: integración primero (`backup-restore.int-spec.ts`: conteos, `applied: []`, RLS, `health/ready` 200) — Depende: T-03, T-06
+- [x] **T-07** `restore.sh` sobre base vacía con negativa a base con tablas y a otra clave, y el procedimiento de restauración en `respaldos.md` (0,75 d) — CA: CA-4, CA-5, CA-6 — Prueba: integración primero (`backup-restore.int-spec.ts`: conteos, `applied: []`, RLS, `health/ready` 200) — Depende: T-03, T-06
 - [ ] **T-08** **(humana, Abel como Operador)** Ensayo en local siguiendo `respaldos.md` (respaldo, restauración sobre volumen nuevo, recuperación de una versión) y fila en su registro; nota en el PR (0,5 d) — CA: CA-5, CA-8 — Depende: T-02, T-07
 
 ## Notas del developer
@@ -29,3 +29,24 @@
   proyecto temporal (como `scripts/optimizer-compose.spec.ts`, porque `config` exige el `.env` de las apps) y, para
   `schedule`, un proyecto temporal desde la raíz (`-p nimbo-022c-…`, solo `postgres` y `backup`) que se borra con
   `down -v`.
+- **T-07, enrutado:** `restore.sh` no se ejecuta solo; `backup.sh restore <archivo>` lo carga con `source` y reutiliza
+  sus constantes y su bitácora (DRY). `fail` pasó a escribir `<run_event>.failed`, así que `restore.failed` lleva
+  también `exitCode` (de `psql`/`gpg`/`pg_restore` o `null`), igual que `backup.failed`; el plan §4 solo listaba `code`
+  y `durationMs`. Sin secretos ni texto de las herramientas (probado en `backup-restore.int-spec.ts`).
+- **T-07, nombre de la copia:** `restore` solo acepta nombres de copia final (`nimbo-<AAAAMMDD>T<HHMMSS>Z.dump.gpg`)
+  dentro de `/backups`; cualquier otro es `RESTORE_FILE_NOT_FOUND` (evita rutas arbitrarias y JSON roto en la bitácora).
+  La clave privada ausente o ilegible es `RESTORE_KEY_INVALID` (CA-4 «sin la clave del Operador»).
+- **T-07, comparación de políticas (CA-5):** se comparan tabla, nombre, `permissive`, roles y `cmd` de `pg_policies`
+  (plan §3 pide tabla y nombre), no el texto de `qual`/`with_check`: Postgres reescribe algunos *casts* al recargar
+  (`ANY ((ARRAY[…])::text[])` → `ANY (ARRAY[(…)::text, …])`) sin cambiar su sentido. Se comparan además RLS/forzada de
+  todas las tablas de `public` y los permisos de `nimbo_app`.
+- **T-07, corpus del ensayo humano (ambigüedad para Adrián):** el plan §2 dice que el procedimiento invoca
+  `createBackupCorpus()` también en el ensayo. No se agregó comando: necesita la app de Nest completa (con `tsx` no hay
+  metadatos de decoradores) y su `close()` borra lo que crea. `respaldos.md` §2.2 indica datos inventados creados desde
+  Nimbo para T-08 y remite a `backup-restore.int-spec.ts`, que corre la restauración completa con ese corpus. Si se
+  quiere el corpus en la base local, haría falta un archivo más (comando y un modo «sin borrar»).
+- **T-07:** `runMigrations` (`test/int/setup/migrate.ts`) devuelve ahora la salida de `migrate.ts` para comprobar
+  `applied: []`; los demás llamadores no cambian.
+- **Pendientes del plan §7:** ya están en `docs/sdd/pendientes.md`: copia externa antes de producción (RN-6) → PD-170;
+  objetos de MinIO sin copia fuera de su volumen → PD-171; rol del volcado en staging (R-2) y ensayo en staging (P-2)
+  → PD-173. Queda sin fila la nota de la D-11 de la spec 000 que todavía remite a la 022 (la agrega el dueño en el PR).
