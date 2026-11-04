@@ -2,9 +2,9 @@
 
 | Campo | Valor |
 |---|---|
-| Fecha | 2026-11-03, de 21:07 a 23:50 (hora local, UTC−6), en dos sesiones |
-| Commit probado | `114a024e` (rama `spec/022-operacion-metricas-y-alertas`); la demo no cambió ningún archivo versionado |
-| Ejecutó | Abel, con apoyo de Claude Code |
+| Primera ronda | 2026-11-03, de 21:07 a 23:50 (hora local, UTC−6), sobre `114a024e` |
+| Segunda ronda | 2026-11-04, de 06:15 a 07:02, sobre `fd95398a`: verifica las correcciones de H-1, H-4 y H-6 (`e8765667` y `fd95398a`) y ejecuta CA-11, que Matul pidió como obligatoria |
+| Ejecutó | Abel, con apoyo de Claude Code. Las demos no cambiaron ningún archivo versionado |
 | Estado | **Verificada, pendiente de la decisión de Matul.** La T-09 sigue sin marcar en `tasks.md` |
 
 ## Ambiente
@@ -25,10 +25,10 @@
 | CA-10 | ✅ Aprobado | Todo aprovisionado desde volúmenes vacíos, con `provenance: file`. Además, verificación visual |
 | CA-5 | ✅ Aprobado | Las 375 series `nimbo_*` no tienen UUID, correos, `?` ni identificadores |
 | CA-18 | ✅ Aprobado | Dos pruebas reales; la segunda, limpia, con `[FIRING]` y `[RESOLVED]` en Mailpit |
-| CA-6 | 🟡 Aprobado con observaciones | Los 15 paneles se revisaron. El panel 3 muestra «No data» cuando no hay ningún 5xx (H-4) |
-| CA-3 | ❌ Falla parcial en Docker Desktop | CPU, memoria y dependencias se ven. Falta el disco por contenedor: el panel 15 no tiene series (H-2) |
-| CA-14 | ❌ Falso positivo en Docker Desktop | La regla de disco está disparada desde el arranque por `/dev/loop*` (H-1). Fuera del alcance de la T-09; se registra |
-| CA-11 | ⏸ Opcional, no ejecutado | Por indicación de Matul. La regla está cubierta por el banco automático `alert-rules.int-spec.ts` (T-03) |
+| CA-11 | ✅ Aprobado (segunda ronda) | Con solo Postgres de `nimbo-t09` detenido, la tasa de 5xx llegó al 50 %, la regla pasó a Firing y llegaron `[FIRING:1]` y `[RESOLVED]` a Mailpit |
+| CA-6 | ✅ Aprobado (segunda ronda) | Los 15 paneles se revisaron. H-4 está corregido: el panel 3 muestra 0 % sin errores |
+| CA-14 | ✅ Corregido (segunda ronda) | Con H-1 corregido, la regla de disco volvió a Normal y el panel 14 ya no muestra `/dev/loop*` |
+| CA-3 | ❌ Falla parcial en Docker Desktop | CPU, memoria y dependencias se ven. Falta el disco por contenedor: el panel 15 no tiene series (H-2, ahora PD-173) |
 
 ## Preparación (21:20)
 
@@ -156,9 +156,71 @@ El correo trae `alertname`, `dependency=redis`, `grafana_folder=Nimbo` y el resu
 
 ![Detalle del correo RESOLVED de Dependencia caída (redis)](13-ca18-resolved-detalle.jpg)
 
+## Segunda ronda (2026-11-04): correcciones y CA-11
+
+Se usó el mismo proyecto `nimbo-t09`, con la configuración de `fd95398a`. Las horas son locales (UTC−6) y las de los correos salen de Mailpit.
+
+### Correcciones de H-1, H-4 y H-6
+
+| Hallazgo | Corrección | Verificación |
+|---|---|---|
+| H-1 | `e8765667` y `fd95398a`: la regla 4 y el panel 14 excluyen `/dev/loop*` y `/dev/shm` y miran solo el `/dev/*` de mayor capacidad | Abel comprobó en la interfaz que el panel 14 ya no muestra `/dev/loop*`. Mailpit recibió `[RESOLVED] Uso del disco del anfitrión` a las 06:15:15, y la regla aparece en Normal durante CA-11 (captura 15) |
+| H-4 | `e8765667`: panel 3 con `or vector(0)` | Antes del tráfico de error, el panel 3 marca 0 % (captura 14) |
+| H-6 | `e8765667`: `GF_SERVER_ROOT_URL` en `compose.yml` | Llegaron tres correos `[FIRING:1] TestAlert Grafana` del punto de contacto (06:38:27, 06:38:29 y 06:40:37). Los enlaces de ese correo y del de CA-11 apuntan a `http://localhost:3030/…` (por ejemplo, `/alerting/grafana/nimbo-5xx/view` y `/alerting/silence/new`), que es Grafana. El enlace lleva a `/login` si no hay sesión |
+
+### CA-11: Postgres caído hasta el correo de 5xx
+
+Solo se detuvo Postgres de `nimbo-t09` y se generó tráfico HTTP contra el api, que respondió `503`.
+
+| Hora local | Evento |
+|---|---|
+| ≈ 06:47:30 | Postgres detenido; el panel 3 pasa de 0 % a 50 % (captura 14) |
+| 06:53:40 | Mailpit: `[FIRING:1] Tasa de errores 5xx del api Nimbo` |
+| — | Grafana muestra «Tasa de errores 5xx del api» en Firing (captura 15) |
+| antes de 06:58 | Postgres restaurado: `healthy`, y `health/ready` del api en `200` (registro 17) |
+| 06:58:40 | Mailpit: `[RESOLVED] Tasa de errores 5xx del api Nimbo` |
+
+El `[FIRING]` llegó unos 6 min después de empezar los errores, como corresponde a `for: 5m` más la evaluación de cada minuto.
+
+**Observaciones adicionales.** Durante la misma ventana también dispararon otras reglas. No se investigó qué las disparó ni se afirma una causa:
+
+| Hora local | Correo |
+|---|---|
+| 06:48:48 | `[FIRING:1] Fallo del proceso de renovación` |
+| 06:49:43 | `[FIRING:1] Dependencia caída Nimbo (postgres)` |
+| 06:51:41 | `[FIRING:3] Cola con trabajos pendientes o reintentados` |
+| 06:56:41 | `[FIRING:1, RESOLVED:2] Cola con trabajos pendientes o reintentados` |
+| 06:59:43 | `[RESOLVED] Dependencia caída Nimbo (postgres)` |
+| 07:01:41 | `[RESOLVED] Cola con trabajos pendientes o reintentados` |
+
+- «Dependencia caída (postgres)» es el comportamiento esperado de la regla 5 con Postgres detenido.
+- «Fallo del proceso de renovación» no tenía `[RESOLVED]` a las 07:05. Su regla se resuelve sola 15 min después del último fallo.
+- Tras restaurar Postgres, el api respondió `200` (registro 17). No se midió si hubo una recuperación tardía como la de H-7, que sigue sin caracterizar (PD-174).
+
+![Panel 3: la tasa de 5xx pasa de 0 % a 50 %](14-ca11-panel-3-tasa-5xx-50.png)
+
+![Reglas en Grafana: 5xx, dependencia, colas y renovación en Firing; disco en Normal](15-ca11-reglas-firing.png)
+
+![Mailpit con el FIRING de la tasa de 5xx y las demás alertas](16-ca11-mailpit-firing.png)
+
+Recuperación de Postgres y del api: [17-ca11-postgres-recuperado.txt](17-ca11-postgres-recuperado.txt). Es una transcripción de la consola, no una captura; se quitó la ruta del perfil local del prompt.
+
 ## Hallazgos
 
-No se cambió nada en esta tarea. Los hallazgos van a ADR-0040 o a pendientes, según decida Matul.
+Las demos no cambiaron nada. Las correcciones llegaron en commits aparte (`e8765667` y `fd95398a`) y se verificaron en la segunda ronda.
+
+| # | Estado (2026-11-04) |
+|---|---|
+| H-1 | ✅ Corregido y verificado |
+| H-2 | ⏳ Abierto, registrado como PD-173 (comprobar en staging Linux) |
+| H-3 | Efecto de la prueba aislada; sin acción |
+| H-4 | ✅ Corregido y verificado |
+| H-5 | Correcto según CA-3; sin acción |
+| H-6 | ✅ Corregido y verificado |
+| H-7 | ⏳ Abierto, registrado como PD-174 (reproducir y medir) |
+| PD-172 | ⏳ Abierto, confirmado y cuantificado en la demo |
+
+Detalle tal como se observó en la primera ronda:
 
 | # | Hallazgo | Implicación |
 |---|---|---|
@@ -173,12 +235,17 @@ No se cambió nada en esta tarea. Los hallazgos van a ADR-0040 o a pendientes, s
 
 ## Decisiones pendientes (Matul)
 
-1. **CA-3 y CA-14 en Docker Desktop (H-1 y H-2):** aceptarlos como limitación del entorno de desarrollo, corregirlos en 022 (excluir `/dev/loop.*` y una alternativa para el disco por contenedor) o diferirlos con un pendiente.
-2. **H-7:** si bloquea el cierre de la T-09 o se registra como PD-173 y se caracteriza después.
-3. **H-4 y H-6:** si se corrigen en 022 (`or vector(0)` y `GF_SERVER_ROOT_URL`) o quedan como pendientes.
-4. **Cierre de la T-09:** si con CA-11 opcional y las decisiones anteriores puede marcarse completada.
+Ya resuelto por las decisiones del 2026-11-04 y verificado: H-1, H-4 y H-6 se corrigieron en 022; H-2 pasó a PD-173 y H-7 a PD-174; CA-11 se ejecutó y fue aprobada. Queda por decidir:
 
-## Estado final de los servicios (2026-11-03, 23:5x)
+1. **CA-3 con PD-173 abierto:** si se acepta que el «disco por contenedor» se compruebe en staging Linux, o si bloquea la T-09.
+2. **PD-174 (H-7):** si se puede cerrar la T-09 con PD-174 abierto.
+3. **Cierre de la T-09:** si con lo anterior puede marcarse completada en `tasks.md`.
+
+## Estado final de los servicios
+
+Al cierre de la segunda ronda (2026-11-04, alrededor de las 07:00), Postgres estaba `healthy`, `health/ready` del api en `200` y los workers en `200`.
+
+Al cierre de la primera ronda (2026-11-03, 23:5x):
 
 - **api:** `health/live`, `health/ready` y `:9464/metrics` en `200`, en unos 20 a 35 ms.
 - **worker y worker-optimizer:** `/metrics` en `200`.

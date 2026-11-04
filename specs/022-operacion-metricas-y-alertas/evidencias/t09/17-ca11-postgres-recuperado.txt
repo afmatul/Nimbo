@@ -1,0 +1,10 @@
+CA-11 — Evidencia textual de recuperación (transcripción aportada por el usuario)
+
+PS> docker compose ps postgres
+NAME                   IMAGE                    COMMAND                  SERVICE    CREATED        STATUS                    PORTS
+nimbo-t09-postgres-1   pgvector/pgvector:pg17   "docker-entrypoint.s…"   postgres   10 hours ago   Up 36 seconds (healthy)   0.0.0.0:55432->5432/tcp, [::]:55432->5432/tcp
+
+PS> curl.exe --max-time 10 -sS -o NUL -w 'API: %{http_code}\n' http://127.0.0.1:3000/api/v1/health/ready
+API: 200
+
+Nota: esta evidencia se compartió como texto, no como captura de pantalla original.
