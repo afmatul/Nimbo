@@ -27,6 +27,11 @@ const OWNER_PASSWORD = 'clave-del-dueno-4Rk9';
 const APP_DB_PASSWORD = 'nimbo_app';
 const BACKUP_USER = 'postgres';
 const BACKUP_FILE_PATTERN = /^nimbo-\d{8}T\d{6}Z\.dump\.gpg$/;
+/** Copias que conserva la rotación (RN-2) y corridas de CA-3: una más que las que quedan. */
+const KEPT_COPIES = 7;
+const ROTATION_RUNS = KEPT_COPIES + 1;
+/** Archivo ajeno del volumen: no es una copia final, así que la rotación ni lo cuenta ni lo borra. */
+const FOREIGN_FILE = 'nimbo-20260101T000000Z.dump.gpg.tmp';
 
 interface BackupLine {
   readonly level: number;
@@ -142,10 +147,10 @@ const parseLines = (stdout: string): BackupLine[] =>
     .map((line) => JSON.parse(line) as BackupLine);
 
 /**
- * Servicio de respaldos (022c CA-1, CA-2, CA-4) con contenedores propios: el script real corre dentro de la imagen fijada de
+ * Servicio de respaldos (022c CA-1, CA-2, CA-3, CA-4) con contenedores propios: el script real corre dentro de la imagen fijada de
  * Postgres, contra una base migrada con el corpus sintético, y llega a ella por el nombre `postgres` de su red.
  */
-describe('servicio de respaldos (022c CA-1, CA-2, CA-4)', () => {
+describe('servicio de respaldos (022c CA-1, CA-2, CA-3, CA-4)', () => {
   let network: StartedNetwork;
   let postgres: StartedPostgreSqlContainer;
   let backup: StartedTestContainer;
@@ -265,5 +270,37 @@ describe('servicio de respaldos (022c CA-1, CA-2, CA-4)', () => {
         for (const forbidden of FORBIDDEN_OUTPUT) expect(result.output).not.toContain(forbidden);
       },
     );
+  });
+
+  describe('CA-3: rotación', () => {
+    const completed: BackupLine[] = [];
+
+    beforeAll(async () => {
+      await shell(`rm -f ${BACKUP_DIR}/* && touch ${BACKUP_DIR}/${FOREIGN_FILE}`);
+      for (let run = 0; run < ROTATION_RUNS; run += 1) {
+        await nextSecond();
+        completed.push(...parseLines((await runBackup()).stdout));
+      }
+    });
+
+    it('CA-3: tras 8 corridas quedan exactamente las 7 copias más recientes y la rotación ignora lo que no es una copia final', async () => {
+      const names = completed.map((line) => line.backupFile);
+
+      expect(completed.map((line) => line.event)).toEqual(
+        Array.from({ length: ROTATION_RUNS }, () => 'backup.completed'),
+      );
+      expect(completed.map((line) => line.kept)).toEqual([1, 2, 3, 4, 5, 6, 7, 7]);
+      expect(new Set(names).size).toBe(ROTATION_RUNS);
+      expect((await backupFiles()).sort()).toEqual([...names.slice(1), FOREIGN_FILE].sort());
+    });
+
+    it('CA-3: un respaldo fallido no rota: con 7 copias, las 7 siguen iguales', async () => {
+      const before = await volumeSnapshot();
+
+      const result = await runBackup({ POSTGRES_PASSWORD: WRONG_PASSWORD });
+
+      expect(result.exitCode).toBe(1);
+      expect(await volumeSnapshot()).toBe(before);
+    });
   });
 });
