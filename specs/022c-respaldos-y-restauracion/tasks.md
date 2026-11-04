@@ -7,7 +7,7 @@
 > Esfuerzo ≈ 4 días-persona, la suma de las tareas (plan §2, «Tamaño»).
 
 - [x] **T-01** Regla única de ciclo de vida (versiones no vigentes, 7 días) en `minio-init`, idempotente (0,5 d) — CA: CA-7 — Prueba: integración primero (`object-versions.int-spec.ts`, `init.sh` dos veces) — Depende: —
-- [ ] **T-02** Recuperar la versión anterior de un objeto sobrescrito o borrado fuera de Nimbo con `mc`, y su sección en `respaldos.md` (0,25 d) — CA: CA-8 — Prueba: integración primero (corpus mínimo de objetos, bytes originales; nada tras `purgeObject`) — Depende: T-01
+- [x] **T-02** Recuperar la versión anterior de un objeto sobrescrito o borrado fuera de Nimbo con `mc`, y su sección en `respaldos.md` (0,25 d) — CA: CA-8 — Prueba: integración primero (corpus mínimo de objetos, bytes originales; nada tras `purgeObject`) — Depende: T-01
 - [ ] **T-03** Corpus sintético sobre el mundo de aislamiento y conteos de control + `backup.sh run`: volcado *custom* cifrado en flujo al volumen propio, con `backup.completed` (0,75 d) — CA: CA-1 (resultado), CA-4 (archivo ilegible) — Prueba: integración primero (`backup-service.int-spec.ts`) — Depende: ADR-0041 `Aceptado` (con `gpg` comprobado en la imagen)
 - [ ] **T-04** Fallos del respaldo: códigos, sin temporal, copias previas intactas y bitácora sin secretos (0,5 d) — CA: CA-2 — Prueba: integración primero (contraseña errónea, clave ausente, escritura imposible) — Depende: T-03
 - [ ] **T-05** Rotación a las 7 copias más recientes (0,25 d) — CA: CA-3 — Prueba: integración primero (8 corridas) — Depende: T-03
