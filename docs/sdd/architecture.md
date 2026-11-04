@@ -84,7 +84,7 @@ nimbo/
 ├─ packages/
 │  ├─ contracts/           # DTOs y tipos compartidos web ↔ api (fuente única)
 │  └─ config/              # eslint (incl. boundaries.js), tsconfig, jest base
-├─ infra/                  # solo configuraciones: traefik/, minio/, deploy/, (022) prometheus/, grafana/, respaldos
+├─ infra/                  # solo configuraciones: traefik/, minio/, deploy/, (022) prometheus/, grafana/, (022c) backup/
 ├─ docs/operations/        # despliegue, ambientes, rollback (insumo del Manual Técnico)
 ├─ e2e/  load/  specs/  docs/
 ```
