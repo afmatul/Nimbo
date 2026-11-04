@@ -3,7 +3,6 @@
 import * as React from 'react';
 
 import { showNotice } from '../../../components/ui/sonner';
-import { SignOutButton } from '../../identity/components/sign-out-button';
 import { IndexingBanner } from '../../intelligence/components/indexing-banner';
 import {
   useIndexingStatus,
@@ -118,9 +117,6 @@ interface FileDetailContentProps {
 function FileDetailContent(props: FileDetailContentProps): React.JSX.Element {
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <SignOutButton />
-      </div>
       {props.listing.status === 'not_found' ? <FileNotFoundState /> : <FoundFile {...props} />}
     </div>
   );

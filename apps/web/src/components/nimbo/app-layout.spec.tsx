@@ -113,7 +113,7 @@ describe('AppLayout component (CA-5)', () => {
       menuButton.click();
     });
 
-    // 3. Menú abierto y foco en el primer enlace ("Mis Archivos")
+    // 3. Menú abierto y foco en el primer enlace ("Mis archivos")
     const dialog = dom.window.document.querySelector('[role="dialog"]');
     expect(dialog).not.toBeNull();
     const firstLink = dialog?.querySelector('a') as HTMLAnchorElement;
@@ -163,17 +163,17 @@ describe('AppLayout component (CA-5)', () => {
     });
   });
 
-  it('005 CA-1: «Mis Archivos» enlaza a la página /archivos', () => {
+  it('005 CA-1: «Mis archivos» enlaza a la página /archivos', () => {
     const markup = renderToStaticMarkup(
       <AppLayout>
         <div>Contenido</div>
       </AppLayout>,
     );
 
-    expect(markup).toMatch(/<a[^>]*href="\/archivos"[^>]*>(?:(?!<\/a>).)*Mis Archivos/);
+    expect(markup).toMatch(/<a[^>]*href="\/archivos"[^>]*>(?:(?!<\/a>).)*Mis archivos/);
   });
 
-  it('018 CA-12: «Buscar» enlaza a /buscar justo después de «Mis Archivos», en la barra y en el menú móvil', () => {
+  it('018 CA-12: «Buscar» enlaza a /buscar justo después de «Mis archivos», en la barra y en el menú móvil', () => {
     const doc = parse(
       <AppLayout initialMobileMenuOpen>
         <div>Contenido</div>
@@ -183,7 +183,7 @@ describe('AppLayout component (CA-5)', () => {
     for (const name of ['Navegación principal', 'Navegación móvil']) {
       const links = [...doc.querySelectorAll(`nav[aria-label="${name}"] a`)];
       const labels = links.map((link) => link.textContent);
-      expect(labels.slice(0, 2)).toEqual(['Mis Archivos', 'Buscar']);
+      expect(labels.slice(0, 2)).toEqual(['Mis archivos', 'Buscar']);
       expect(links[1]?.getAttribute('href')).toBe('/buscar');
       expect(links[1]?.querySelector('svg')?.classList.contains('lucide-search')).toBe(true);
     }
