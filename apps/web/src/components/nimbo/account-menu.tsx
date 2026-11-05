@@ -1,6 +1,7 @@
 'use client';
 
 import { CreditCard, History, LogOut, ShieldCheck } from 'lucide-react';
+import Link from 'next/link';
 import * as React from 'react';
 
 import {
@@ -91,10 +92,10 @@ function BillingItem({ href }: { readonly href: string | undefined }): React.JSX
   if (href === undefined) return null;
   return (
     <DropdownMenuItem asChild>
-      <a href={href}>
+      <Link href={href}>
         <CreditCard aria-hidden="true" className="h-4 w-4 text-secondary-foreground" />
         Plan y facturación
-      </a>
+      </Link>
     </DropdownMenuItem>
   );
 }
@@ -108,16 +109,16 @@ function AccountItems({
   return (
     <div role="menu" aria-orientation="vertical" aria-labelledby={triggerId}>
       <DropdownMenuItem asChild>
-        <a href={SECURITY_HREF}>
+        <Link href={SECURITY_HREF}>
           <ShieldCheck aria-hidden="true" className="h-4 w-4 text-secondary-foreground" />
           Seguridad
-        </a>
+        </Link>
       </DropdownMenuItem>
       <DropdownMenuItem asChild>
-        <a href={activityHref}>
+        <Link href={activityHref}>
           <History aria-hidden="true" className="h-4 w-4 text-secondary-foreground" />
           Mi actividad
-        </a>
+        </Link>
       </DropdownMenuItem>
       <BillingItem href={billingHref} />
       <DropdownMenuSeparator />

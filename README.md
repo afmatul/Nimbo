@@ -21,7 +21,9 @@ pnpm install                         # instala el workspace y compila packages/c
 cp .env.example .env                 # valores locales listos; no hace falta editar nada
 docker compose up -d                 # Postgres (pgvector), Redis, MinIO, Traefik y Mailpit
 pnpm --filter api migration:run      # migraciones de la API (llega con el PR-2 de la spec 000)
-pnpm dev                             # api (3000), worker (3001, salud interna) y web (3002)
+pnpm start:all                       # Todo en uno: Docker + migraciones + api, worker y web (Ctrl+C para parar)
+pnpm start:all --prod                # igual, pero con la web compilada (`next build` + `next start`) para medir velocidad real
+pnpm dev                             # solo api (3000), worker (3001, salud interna) y web (3002), con Docker ya arriba
 ```
 
 `api`, `worker` y las migraciones leen ese `.env` de la raíz al arrancar (`process.loadEnvFile`, integrado en

@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "pnpm -r --parallel --filter \"./apps/*\" run dev",
+    "start:all": "node scripts/start-all.mjs",
     "lint": "eslint . --max-warnings 0 && prettier --check .",
     "typecheck": "pnpm -r --filter \"./apps/*\" --filter \"./packages/*\" run typecheck",
     "test": "jest --config jest.config.cjs && pnpm -r run test",
