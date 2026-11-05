@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { isIPv6 } from 'node:net';
 
 const IPV4_PREFIX = 32;
@@ -60,3 +61,10 @@ export const limitNetworkOf = (ip: string): string => {
   const prefix = groups.slice(0, NETWORK_GROUPS).map((group) => group.toString(HEX_RADIX));
   return `${prefix.join(':')}::/${IPV6_PREFIX}`;
 };
+
+/**
+ * La red de los límites del visitante (RN-7) con hash: la usan la clave del límite por red y la del bloqueo por
+ * contraseñas fallidas, así en Redis nunca va la IP ni la red en claro (plan §5, S-3).
+ */
+export const networkHashOf = (ip: string): string =>
+  createHash('sha256').update(limitNetworkOf(ip)).digest('hex');

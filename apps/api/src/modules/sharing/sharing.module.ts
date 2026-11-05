@@ -9,6 +9,7 @@ import { I_PUBLIC_LINK_RESOLVER } from './application/ports/i-public-link-resolv
 import { I_PUBLIC_LINK_REPOSITORY } from './application/ports/i-public-link.repository.port';
 import { I_SHARE_REPOSITORY } from './application/ports/i-share.repository.port';
 import { PublicLinkAccessService } from './application/public-link-access.service';
+import { PublicLinkPasswordGate } from './application/public-link-password-gate';
 import { PublicLinkService } from './application/public-link.service';
 import { ReceivedSharesService } from './application/received-shares.service';
 import { SHARING_CONFIG } from './application/sharing-config';
@@ -74,6 +75,7 @@ export class SharingModule {
         SharingService,
         ReceivedSharesService,
         PublicLinkService,
+        PublicLinkPasswordGate,
         PublicLinkAccessService,
       ],
     };

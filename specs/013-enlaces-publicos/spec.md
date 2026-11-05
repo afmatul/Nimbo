@@ -117,3 +117,4 @@ Sin interfaz en esta spec: la pantalla es la 013b. Para el `ui-designer`, estos 
 | 2026-10-31 | CA-12: una contraseña vacía (`""`) cuenta como ausente (`403`, no cuenta ni se registra) | Implementación de T-02: el cuerpo acepta `password` como texto libre; el campo vacío del formulario no debe gastar intentos | Fátima |
 | 2026-11-03 | P-4 marcada resuelta; PD-156 de la 013 renumerado a PD-174 (choque con el PD-156 de la 021); PD-175 y PD-176 abiertos | Revisión final (`review.md`: I-2, SEC-4, S-1, S-2) | Fátima |
 | 2026-11-04 | `consumeOrThrow` en `shared` para los límites de `sharing`, prueba de arquitectura del actor derivado y PD-177 (separar la política de contraseña y bloqueo) | Auditoría de Adrián en el PR #93 (M-2, M-3, M-6, m-1, m-4) | Fátima |
+| 2026-11-04 | PD-177: política de contraseña y bloqueo separada en `PublicLinkPasswordGate`; inyección uniforme de puertos | Auditoría de Adrián en el PR #93 (M-3, m-4) | Fátima |

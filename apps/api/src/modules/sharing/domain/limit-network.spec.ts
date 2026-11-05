@@ -1,4 +1,6 @@
-import { limitNetworkOf } from './limit-network';
+import { createHash } from 'node:crypto';
+
+import { limitNetworkOf, networkHashOf } from './limit-network';
 
 describe('limitNetworkOf (plan 013 §5, RN-7)', () => {
   it('RN-7: una IPv4 cuenta sola (/32)', () => {
@@ -28,5 +30,18 @@ describe('limitNetworkOf (plan 013 §5, RN-7)', () => {
 
     expect(limitNetworkOf('2001:db8:85a3:12:9f3e:1c2d:aa01:7')).toBe(network);
     expect(limitNetworkOf('2001:db8:85a3:13::1')).not.toBe(network);
+  });
+});
+
+describe('networkHashOf (plan 013 §5, RN-7, S-3)', () => {
+  it('S-3: es el SHA-256 de la red, nunca la IP ni la red en claro', () => {
+    const hash = networkHashOf('2001:db8:85a3:12::1');
+
+    expect(hash).toBe(createHash('sha256').update('2001:db8:85a3:12::/64').digest('hex'));
+    expect(hash).not.toContain('2001');
+  });
+
+  it('RN-7: dos IP del mismo /64 dan el mismo hash', () => {
+    expect(networkHashOf('2001:db8:85a3:12:9f3e::7')).toBe(networkHashOf('2001:db8:85a3:12::1'));
   });
 });
