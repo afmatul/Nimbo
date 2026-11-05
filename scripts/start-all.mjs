@@ -16,6 +16,9 @@ const onlyoffice = args.has('--onlyoffice');
 /** Servicios permanentes que tienen que estar sanos antes de aplicar migraciones. */
 const WAITED_SERVICES = ['postgres', 'redis', 'minio'];
 
+/** Sin salida `standalone`: es para la imagen de Docker y en Windows exige symlinks (EPERM sin modo desarrollador). */
+const WEB_LOCAL_ENV = { NIMBO_WEB_STANDALONE: 'off' };
+
 const say = (message) => process.stdout.write(`\n[nimbo] ${message}\n`);
 
 function fail(message) {
@@ -24,9 +27,14 @@ function fail(message) {
 }
 
 /** Corre un comando hasta que termine; si falla, corta todo. */
-function step(title, command, commandArgs) {
+function step(title, command, commandArgs, env = {}) {
   say(title);
-  const result = spawnSync(command, commandArgs, { cwd: ROOT, stdio: 'inherit', shell: true });
+  const result = spawnSync(command, commandArgs, {
+    cwd: ROOT,
+    stdio: 'inherit',
+    shell: true,
+    env: { ...process.env, ...env },
+  });
   if (result.status !== 0) fail(`Falló: ${command} ${commandArgs.join(' ')}`);
 }
 
@@ -49,14 +57,19 @@ const services = prod
     ]
   : [['apps', ['dev']]];
 
-if (prod) step('Compilando la web…', 'pnpm', ['--filter', 'web', 'build']);
+if (prod) step('Compilando la web…', 'pnpm', ['--filter', 'web', 'build'], WEB_LOCAL_ENV);
 if (prod) services.push(['web', ['--filter', 'web', 'start']]);
 
 say(
   `Arrancando ${prod ? 'api, worker y web compilada' : 'api, worker y web'}. Web: http://localhost:3002 · Ctrl+C para parar.`,
 );
 const children = services.map(([, commandArgs]) =>
-  spawn('pnpm', commandArgs, { cwd: ROOT, stdio: 'inherit', shell: true }),
+  spawn('pnpm', commandArgs, {
+    cwd: ROOT,
+    stdio: 'inherit',
+    shell: true,
+    env: { ...process.env, ...(prod ? WEB_LOCAL_ENV : {}) },
+  }),
 );
 
 let stopping = false;
