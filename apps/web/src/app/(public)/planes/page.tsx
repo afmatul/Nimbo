@@ -9,6 +9,9 @@ import { getEnv } from '../../../env';
 import { fetchPlanCatalog, PlanComparisonTable, subscribeHref } from '../../../features/billing';
 import { cn } from '../../../lib/utils';
 
+/** Se lee de la API en cada visita: sin esto Next intenta prerenderizarla al compilar y falla si la API no responde. */
+export const dynamic = 'force-dynamic';
+
 /** Catálogo público (008): se lee en el servidor; la carga y el error los muestran `loading.tsx` y `error.tsx`. */
 export default async function PlanesPage(): Promise<ReactNode> {
   const { plans } = await fetchPlanCatalog(getEnv().API_INTERNAL_URL);
