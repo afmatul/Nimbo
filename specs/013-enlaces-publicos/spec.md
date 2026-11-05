@@ -9,7 +9,7 @@
 | Fase | 2 |
 | Requisitos | RF-17, RNF-08; apoyan RF-05, RF-07, RF-09, RF-18, RNF-05, RNF-06, RNF-07, RNF-17 |
 | Depende de | 012 (módulo `sharing`); consume lo integrado de 004, 005, 006, 010 y 011 · Hermana: 013b (pantalla) |
-| Última actualización | 2026-11-05 |
+| Última actualización | 2026-11-04 |
 
 ## 1. Contexto y objetivo
 La 012 deja compartir con otros clientes. Esta spec deja que un propietario genere un enlace público a un **archivo**,
@@ -117,4 +117,4 @@ Sin interfaz en esta spec: la pantalla es la 013b. Para el `ui-designer`, estos 
 | 2026-10-31 | CA-12: una contraseña vacía (`""`) cuenta como ausente (`403`, no cuenta ni se registra) | Implementación de T-02: el cuerpo acepta `password` como texto libre; el campo vacío del formulario no debe gastar intentos | Fátima |
 | 2026-11-03 | P-4 marcada resuelta; PD-156 de la 013 renumerado a PD-174 (choque con el PD-156 de la 021); PD-175 y PD-176 abiertos | Revisión final (`review.md`: I-2, SEC-4, S-1, S-2) | Fátima |
 | 2026-11-04 | `consumeOrThrow` en `shared` para los límites de `sharing`, prueba de arquitectura del actor derivado y PD-177 (separar la política de contraseña y bloqueo) | Auditoría de Adrián en el PR #93 (M-2, M-3, M-6, m-1, m-4) | Fátima |
-| 2026-11-05 | Estado «Hecha»; DF-90 aceptado; PD-175 planificado antes de exponer la API (dueña: Fátima) | Squash merge del PR #93 (`f3f487f0`) y decisiones de Adrián en el PR | Adrián |
+| 2026-11-04 | Estado «Hecha»; DF-90 aceptado; PD-175 planificado antes de exponer la API (dueña: Fátima) | Squash merge del PR #93 (`f3f487f0`) y decisiones de Adrián en el PR | Adrián |
