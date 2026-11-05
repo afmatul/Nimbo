@@ -7,6 +7,7 @@ import { useSession } from '../../features/identity/session/session-provider';
 import { SessionAgentProvider } from '../../features/intelligence/components/session-agent-provider';
 import { UploadsSpaceProvider } from '../../features/storage/components/space-provider';
 import { SessionUploadsProvider } from '../../features/storage/components/uploads-provider';
+import { ViewCacheProvider } from '../../lib/view-cache';
 
 interface ClientProvidersProps {
   readonly apiPublicUrl: string;
@@ -19,11 +20,13 @@ interface ClientProvidersProps {
  */
 export function ClientProviders({ apiPublicUrl, children }: ClientProvidersProps): ReactNode {
   return (
-    <SessionUploadsProvider apiPublicUrl={apiPublicUrl}>
-      <SessionAgentProvider apiPublicUrl={apiPublicUrl}>
-        <UploadsSpaceProvider>{children}</UploadsSpaceProvider>
-      </SessionAgentProvider>
-    </SessionUploadsProvider>
+    <ViewCacheProvider>
+      <SessionUploadsProvider apiPublicUrl={apiPublicUrl}>
+        <SessionAgentProvider apiPublicUrl={apiPublicUrl}>
+          <UploadsSpaceProvider>{children}</UploadsSpaceProvider>
+        </SessionAgentProvider>
+      </SessionUploadsProvider>
+    </ViewCacheProvider>
   );
 }
 
