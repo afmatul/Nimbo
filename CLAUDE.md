@@ -88,6 +88,7 @@ pnpm install
 cp .env.example .env
 docker compose up -d                        # Postgres, Redis, MinIO, Traefik, Mailpit
 docker compose --profile onlyoffice up -d   # + ONLYOFFICE Docs (solo para edición, spec 016)
+pnpm start:all [--prod] [--onlyoffice]      # Docker + migraciones + web, api y worker en un solo comando
 pnpm dev                                    # web (3002) + api (3000) + worker (3001, salud interna)
 pnpm lint && pnpm typecheck                 # verificaciones estáticas
 pnpm test                                   # unitarias
