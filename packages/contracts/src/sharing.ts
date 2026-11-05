@@ -1,10 +1,12 @@
 import { z } from 'zod';
 
 import { isValidEmail } from './identity';
+import { byteCount } from './storage/schema-fields';
 
 /**
- * Contratos de `sharing` (spec 012, plan §4). El dominio de `api` no importa este paquete (ADR-0008). Las respuestas
- * llevan correos y nombres: viajan solo en el cuerpo (`Cache-Control: no-store`), nunca en bitácoras ni en la URL.
+ * Contratos de `sharing` (specs 012 y 013, plan §4). El dominio de `api` no importa este paquete (ADR-0008). Las
+ * respuestas llevan correos y nombres, y la de generar un enlace público su token: viajan solo en el cuerpo
+ * (`Cache-Control: no-store`), nunca en bitácoras ni en la URL.
  */
 
 /** Códigos de error de `sharing`. Las clases de `api` los reutilizan (Art. VI). */
@@ -14,16 +16,22 @@ export const SHARING_ERROR_CODES = {
   SHARING_RECIPIENT_NOT_FOUND: 'SHARING_RECIPIENT_NOT_FOUND',
   SHARING_CANNOT_SHARE_WITH_SELF: 'SHARING_CANNOT_SHARE_WITH_SELF',
   SHARING_SHARE_NOT_FOUND: 'SHARING_SHARE_NOT_FOUND',
+  SHARING_LINK_NOT_FOUND: 'SHARING_LINK_NOT_FOUND',
+  SHARING_LINK_UNAVAILABLE: 'SHARING_LINK_UNAVAILABLE',
+  SHARING_LINK_PASSWORD_INVALID: 'SHARING_LINK_PASSWORD_INVALID',
 } as const;
 export type SharingErrorCode = (typeof SHARING_ERROR_CODES)[keyof typeof SHARING_ERROR_CODES];
 
 /** `fields[].reason` de una petición de `sharing`; `INVALID_LEVEL` se responde como `SHARING_INVALID_LEVEL` (CA-2). */
-export type SharingFieldIssueReason = 'INVALID_LEVEL' | 'INVALID_EMAIL' | 'INVALID_NODE';
+export type SharingFieldIssueReason =
+  'INVALID_LEVEL' | 'INVALID_EMAIL' | 'INVALID_NODE' | 'INVALID_EXPIRY' | 'INVALID_PASSWORD';
 
 export const SHARING_FIELD_MESSAGES: Readonly<Record<SharingFieldIssueReason, string>> = {
   INVALID_LEVEL: 'Elige si la persona puede ver o editar.',
   INVALID_EMAIL: 'Escribe un correo válido, por ejemplo nombre@dominio.com.',
   INVALID_NODE: 'Elige un archivo o una carpeta válidos y vuelve a intentarlo.',
+  INVALID_EXPIRY: 'Elige un vencimiento de 1, 7 o 30 días.',
+  INVALID_PASSWORD: 'Escribe una contraseña de 8 a 128 caracteres o deja el campo vacío.',
 };
 
 /** Niveles que se asignan; `OWNER` nace de la propiedad y no se asigna (RN-2, DF-31). */
@@ -138,9 +146,100 @@ export const receivedShareSchema = z
 /** `GET /shares/received` (CA-22): más recientes primero, sin paginar (S-8). */
 export const receivedSharesSchema = z.object({ entries: z.array(receivedShareSchema) }).strict();
 
+/** Vencimientos que se ofrecen al generar un enlace público, en días (013 RN-2). */
+export const PUBLIC_LINK_EXPIRY_OPTIONS = [1, 7, 30] as const;
+export type PublicLinkExpiryDays = (typeof PUBLIC_LINK_EXPIRY_OPTIONS)[number];
+export const PUBLIC_LINK_DEFAULT_EXPIRY_DAYS: PublicLinkExpiryDays = 7;
+
+/** Longitud de la contraseña de un enlace, sin la política de complejidad de la cuenta (013 S-2). */
+export const PUBLIC_LINK_PASSWORD_MIN_LENGTH = 8;
+export const PUBLIC_LINK_PASSWORD_MAX_LENGTH = 128;
+
+/** Estado de un enlace sin revocar que ve su propietario (013 CA-7). */
+export const PUBLIC_LINK_STATUSES = ['active', 'expired'] as const;
+export type PublicLinkStatus = (typeof PUBLIC_LINK_STATUSES)[number];
+
+const isExpiryDays = (value: unknown): value is PublicLinkExpiryDays =>
+  (PUBLIC_LINK_EXPIRY_OPTIONS as readonly unknown[]).includes(value);
+const isLinkPassword = (value: unknown): value is string | undefined =>
+  value === undefined ||
+  (typeof value === 'string' &&
+    value.length >= PUBLIC_LINK_PASSWORD_MIN_LENGTH &&
+    value.length <= PUBLIC_LINK_PASSWORD_MAX_LENGTH);
+const withDefaultExpiry = (value: unknown): unknown =>
+  value === undefined ? PUBLIC_LINK_DEFAULT_EXPIRY_DAYS : value;
+
+/** `POST /public-links` (013 CA-1, CA-2): solo archivos; vencimiento obligatorio, 7 días por omisión. */
+export const createPublicLinkSchema = z
+  .object({
+    fileId: reasonField('INVALID_NODE', isNodeId),
+    expiresInDays: reasonField('INVALID_EXPIRY', isExpiryDays, withDefaultExpiry),
+    password: reasonField('INVALID_PASSWORD', isLinkPassword),
+  })
+  .strict();
+
+/** `GET /public-links?fileId` (013 CA-7): el archivo cuyo enlace sin revocar se pide. */
+export const publicLinkQuerySchema = z
+  .object({ fileId: reasonField('INVALID_NODE', isNodeId) })
+  .strict();
+
+/** Un enlace sin revocar, para su propietario (013 CA-7): nunca lleva el token ni la URL (RN-3). */
+export const publicLinkSummarySchema = z
+  .object({
+    id: z.string().uuid(),
+    fileId: z.string().uuid(),
+    expiresAt: timestamp,
+    hasPassword: z.boolean(),
+    status: z.enum(PUBLIC_LINK_STATUSES),
+    createdAt: timestamp,
+  })
+  .strict();
+
+/** Respuesta de `GET /public-links?fileId` (013 CA-7): `null` si el archivo no tiene enlace sin revocar. */
+export const currentPublicLinkSchema = z
+  .object({ link: publicLinkSummarySchema.nullable() })
+  .strict();
+
+/** Respuesta de `POST /public-links` (013 CA-1): la URL con el token viaja solo aquí, una vez. */
+export const createdPublicLinkSchema = z
+  .object({ link: publicLinkSummarySchema, url: z.string().url() })
+  .strict();
+
+/**
+ * Cuerpos de las rutas del visitante (013 CA-17, plan D-4): solo el token y la contraseña, nunca un id. Todo cuerpo que
+ * no los cumple, también uno con un campo de más o una contraseña de más de 128, se responde con el `404` de CA-11. Sin
+ * mínimo: `""` cuenta como ausente y es el `403` de CA-12.
+ */
+export const publicLinkOpenSchema = z.object({ token: z.string() }).strict();
+export const publicLinkDownloadSchema = z
+  .object({
+    token: z.string(),
+    password: z.string().max(PUBLIC_LINK_PASSWORD_MAX_LENGTH).optional(),
+  })
+  .strict();
+
+/** Ficha que ve el visitante (013 CA-9): sin ids, carpeta ni correo de quien comparte. */
+export const publicLinkDetailsSchema = z
+  .object({
+    name: z.string().min(1),
+    sizeBytes: byteCount,
+    sharedBy: z.object({ displayName: z.string().min(1) }).strict(),
+    expiresAt: timestamp,
+    requiresPassword: z.boolean(),
+  })
+  .strict();
+
 export type ShareRequest = z.infer<typeof shareRequestSchema>;
 export type AccessListQuery = z.infer<typeof accessListQuerySchema>;
 export type AccessEntry = z.infer<typeof accessEntrySchema>;
 export type AccessList = z.infer<typeof accessListSchema>;
 export type ReceivedShare = z.infer<typeof receivedShareSchema>;
 export type ReceivedShares = z.infer<typeof receivedSharesSchema>;
+export type CreatePublicLinkRequest = z.infer<typeof createPublicLinkSchema>;
+export type PublicLinkQuery = z.infer<typeof publicLinkQuerySchema>;
+export type PublicLinkSummary = z.infer<typeof publicLinkSummarySchema>;
+export type CurrentPublicLink = z.infer<typeof currentPublicLinkSchema>;
+export type CreatedPublicLink = z.infer<typeof createdPublicLinkSchema>;
+export type PublicLinkOpenRequest = z.infer<typeof publicLinkOpenSchema>;
+export type PublicLinkDownloadRequest = z.infer<typeof publicLinkDownloadSchema>;
+export type PublicLinkDetails = z.infer<typeof publicLinkDetailsSchema>;

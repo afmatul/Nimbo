@@ -155,12 +155,24 @@ migración (`ENABLE` + `FORCE ROW LEVEL SECURITY`, `USING (… = nimbo_actor_id(
 contrato contra la librería y Redis reales están en `test/int/shared/password-hash.int-spec.ts` y
 `test/int/shared/redis-attempt-lockout.int-spec.ts`.
 
+### `consumeOrThrow` (013 M-2, auditoría del PR #93)
+
+| Pieza                                          | Dónde                                        | Para qué                                                                                                                                                                                                           |
+| ---------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `consumeOrThrow(limiter, key, limitPerMinute)` | `application/rate-limit/consume-or-throw.ts` | Consume `key` con una sola regla (`limitPerMinute` en `RATE_LIMIT_WINDOW_SECONDS`) y, si se rechaza, lanza `RateLimitExceededError` con `retryAfterSeconds`. Si el almacén falla, propaga su error (falla cerrado) |
+| `RATE_LIMIT_WINDOW_SECONDS`                    | `application/rate-limit/consume-or-throw.ts` | La ventana única de 60 s de los límites «por minuto»                                                                                                                                                               |
+
+Entra por la regla 8 (lo usan ≥ 3 módulos: hoy `sharing`; `storage`, `optimizer` e `intelligence` tienen su copia y
+pasan a usarlo con PD-176). No tiene reglas de negocio: la **clave**, el **límite** y la **bitácora** del rechazo los
+pone cada consumidor; para registrar el `429`, el consumidor captura `RateLimitExceededError`, escribe su bitácora y
+vuelve a lanzar (así `sharing` conserva `sharing.rate_limited` con `actorId` del propietario y sin datos del visitante).
+
 ## Capas
 
 ```
 shared/
 ├─ domain/          # sin Nest, TypeORM ni zod (incluye PasswordHash)
-├─ application/     # HealthService, puertos (IHealthIndicator, IRateLimiter, IAttemptLockout, IPasswordHasher, ITransactionRunner, IAccessTokenVerifier, IDomainEventPublisher)
+├─ application/     # HealthService, puertos (IHealthIndicator, IRateLimiter, IAttemptLockout, IPasswordHasher, ITransactionRunner, IAccessTokenVerifier, IDomainEventPublisher), consumeOrThrow
 ├─ infrastructure/  # config, logging, correlation, persistence, queue, health, clock, redis, rate-limit, security, events
 ├─ presentation/    # HealthController, DomainExceptionFilter, VersionHeaderMiddleware, ZodValidationPipe, configureHttpApp, auth/ (guards y decoradores)
 ├─ shared.module.ts  health.module.ts

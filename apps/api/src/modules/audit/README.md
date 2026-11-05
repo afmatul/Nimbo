@@ -60,8 +60,9 @@ descartado se anota como `audit.record_failed` con el motivo y las **claves**, n
   filtra `usuario_afectado_id = actor.id` dentro del SQL (RLS es la segunda barrera). No hay ruta por id ni por usuario.
 - `origin` es `self` si el actor es el afectado; cualquier otro, incluido el actor anonimizado (`null`), es `staff`.
 - `toAuditEventResponse` es de lista blanca: no copia `actorId`, `correlationId`, `resourceId` ni atributos fuera de
-  `itemCount`, `sizeBytes`, `note` (que solo sale si existe) y `trigger` (solo `manual` o `scheduled`: distingue la purga
-  programada de la papelera de la que pidió el cliente).
+  `itemCount`, `sizeBytes`, `note` (que solo sale si existe) y `trigger` (solo `manual`, `scheduled` o `public_link`:
+  `manual`/`scheduled` distinguen la purga programada de la papelera de la que pidió el cliente, y `public_link` marca lo
+  que hizo un visitante de un enlace, solo en `public_link.downloaded` y `public_link.locked`, 013 CA-18).
 - Las acciones internas sobre la cuenta (recurso `account`) salen con `resourceType: null` (el texto de la acción ya
   lo dice) y el cliente ve solo el rol de quien actuó (CA-16). Un evento `SYSTEM` nunca llega al mapeador; si llegara,
   lanza un error interno en lugar de inventar un rol que el contrato de 004 no tiene.

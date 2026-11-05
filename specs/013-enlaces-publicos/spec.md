@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Lista |
+| Estado | En revisión |
 | Dueño | Fátima |
 | Fase | 2 |
 | Requisitos | RF-17, RNF-08; apoyan RF-05, RF-07, RF-09, RF-18, RNF-05, RNF-06, RNF-07, RNF-17 |
@@ -43,7 +43,7 @@ y la autorización; la sección «Enlace público» del diálogo «Compartir» y
 - **CA-9** (HU-3, RF-17) Dado un enlace disponible, cuando un visitante sin sesión lo abre, entonces ve la ficha: nombre y tamaño del archivo, nombre visible de quien lo compartió, vencimiento y si pide contraseña; nada más (ni ids, ni carpeta, ni correo, ni otros archivos).
 - **CA-10** (HU-3, RF-09, RNF-06) Dado un enlace disponible sin contraseña, o con la contraseña correcta, cuando el visitante pide descargar, entonces recibe una URL de 5 minutos a la versión vigente de ese archivo, con descarga forzada; la actividad del propietario registra la descarga.
 - **CA-11** (HU-3, RF-17, 011 RN-6) — error: Dado un token inexistente, mal formado, revocado, reemplazado o vencido, un archivo en la papelera o un propietario suspendido, cuando el visitante abre o descarga, entonces `404` `SHARING_LINK_UNAVAILABLE` con el mismo cuerpo en todos los casos (P-1). Al restaurar el archivo o reactivar al propietario vuelve a servir si no venció; con la eliminación definitiva desaparece.
-- **CA-12** (HU-4, RNF-08) — error: Dado un enlace con contraseña, cuando el visitante descarga sin ella o con una incorrecta, entonces `403` `SHARING_LINK_PASSWORD_INVALID` y no recibe URL. Sin contraseña, el intento no cuenta para el bloqueo ni se registra; una contraseña incorrecta cuenta y queda en la bitácora técnica (`password_failed`), sin la contraseña ni la IP.
+- **CA-12** (HU-4, RNF-08) — error: Dado un enlace con contraseña, cuando el visitante descarga sin ella o con una incorrecta, entonces `403` `SHARING_LINK_PASSWORD_INVALID` y no recibe URL. Sin contraseña (ausente o vacía, `""`), el intento no cuenta para el bloqueo ni se registra; una contraseña incorrecta cuenta y queda en la bitácora técnica (`password_failed`), sin la contraseña ni la IP.
 - **CA-13** (HU-4, RNF-08, RNF-07) — error: Dado que desde una IP se fallaron N contraseñas de un enlace en la ventana (S-1), cuando vuelve a intentar con ese enlace, entonces `429` `SHARED_TOO_MANY_REQUESTS` con la espera, aunque la contraseña sea correcta; otra IP sigue pudiendo, tras la espera se vuelve a intentar, y el bloqueo queda una vez en la actividad del propietario. Igual `429` si una IP supera el límite general de las rutas públicas.
 - **CA-14** (HU-3, 010 RN-6) Dado el propietario en solo lectura, cuando el visitante abre o descarga, entonces el enlace sigue sirviendo (descargar es lectura).
 
@@ -104,7 +104,7 @@ Sin interfaz en esta spec: la pantalla es la 013b. Para el `ui-designer`, estos 
 - [RESUELTA 2026-10-30: recomendación aceptada, Fátima] P-1 ¿El visitante distingue «vencido» de «no disponible»? Recomendación: no; un único `SHARING_LINK_UNAVAILABLE` (no revela que el token existió ni su fecha) y la 013b funde «Expirado» y «Revocado» del mockup en «No disponible». Si se decide que sí, solo cambia CA-11 y un código — bloquea: no
 - [RESUELTA 2026-10-30: recomendación aceptada, Fátima] P-2 ¿Longitud de la contraseña del enlace? Recomendación: 8 a 128 caracteres, sin mayúscula, número ni símbolo obligatorios (la comparte el propietario de palabra; el bloqueo de CA-13 frena la fuerza bruta). Se construye con S-2 — bloquea: no
 - [RESUELTA 2026-10-30: recomendación aceptada, Fátima] P-3 ¿La respuesta a una contraseña incorrecta dice cuántos intentos quedan (el mockup muestra «Te quedan 4 intentos»)? Recomendación: no (revela el umbral y no lo pide RF-17); la 013b ajusta el mockup — bloquea: no
-- [ABIERTA] P-4 ¿Adrián autoriza a Fátima a cambiar `shared`, `identity`, `storage` y `audit` en los archivos que nombra el plan §8 (precedente 012 P-3), o los hace él? — bloquea: no
+- [RESUELTA 2026-10-31: autorizada por Adrián en PR #87, plan §8] P-4 ¿Adrián autoriza a Fátima a cambiar `shared`, `identity`, `storage` y `audit` en los archivos que nombra el plan §8 (precedente 012 P-3), o los hace él? — bloquea: no
 
 ## 10. Registro de cambios
 | Fecha | Cambio | Motivo | Aprobó |
@@ -114,3 +114,6 @@ Sin interfaz en esta spec: la pantalla es la 013b. Para el `ui-designer`, estos 
 | 2026-10-31 | Auditoría de Adrián en PR #87 (M-1…M-4, m-1…m-4, m-6): CA-12 aclara qué cuenta, CA-17 sin ids en el cuerpo, CA-18 nuevo (`trigger` `public_link`), S-3 sin tabla de intentos | Decisiones de Fátima sobre la auditoría | Pendiente (Adrián) |
 | 2026-10-31 | Segunda revisión de Adrián en PR #87 (N-1, N-3, n-1): merge de `main` (011b y 018); el pendiente del token opaco pasa a PD-155 y se quita el de la tabla de intentos (PD-145 y PD-146 ya eran de la 018); ADR-0010 sin `intento_acceso` | Choque de numeración con la 018 | Pendiente (Adrián) |
 | 2026-10-31 | Pasa a `Lista`: plan y ADR-0039 aprobados | Acuerdo de Adrián en PR #87, con la condición de que el actor derivado del dueño solo exista dentro de `PublicLinkAccessService` y que las acciones del visitante se sigan distinguiendo como tales (`trigger: 'public_link'`, CA-18) | Adrián |
+| 2026-10-31 | CA-12: una contraseña vacía (`""`) cuenta como ausente (`403`, no cuenta ni se registra) | Implementación de T-02: el cuerpo acepta `password` como texto libre; el campo vacío del formulario no debe gastar intentos | Fátima |
+| 2026-11-03 | P-4 marcada resuelta; PD-156 de la 013 renumerado a PD-174 (choque con el PD-156 de la 021); PD-175 y PD-176 abiertos | Revisión final (`review.md`: I-2, SEC-4, S-1, S-2) | Fátima |
+| 2026-11-04 | `consumeOrThrow` en `shared` para los límites de `sharing`, prueba de arquitectura del actor derivado y PD-177 (separar la política de contraseña y bloqueo) | Auditoría de Adrián en el PR #93 (M-2, M-3, M-6, m-1, m-4) | Fátima |

@@ -15,6 +15,7 @@ import { UserShare } from '../../domain/user-share';
 import type { SharedNodeRef, ShareLevel, ShareNodeType } from '../../domain/user-share';
 
 import { ComparticionOrmEntity } from './comparticion.orm-entity';
+import { queryNamed } from './query-named';
 
 /** Tabla de cada tipo de nodo, como la nombra `tipo_nodo` de los fragmentos de `access`. */
 const NODE_TABLES: Readonly<Record<ShareNodeType, 'archivo' | 'carpeta'>> = {
@@ -192,20 +193,6 @@ const fromDeleted = (row: DeletedRow): UserShare =>
     level: row.nivel,
     createdAt: row.creado_en,
   });
-
-/** Consulta con parámetros con nombre (los del fragmento de `access` y los propios). */
-const queryNamed = async <T>(
-  manager: EntityManager,
-  sql: string,
-  parameters: Readonly<Record<string, unknown>>,
-): Promise<T[]> => {
-  const [escaped, values] = manager.connection.driver.escapeQueryWithParameters(
-    sql,
-    parameters,
-    {},
-  );
-  return (await manager.query(escaped, values)) as T[];
-};
 
 /**
  * `IShareRepository` sobre Postgres (plan 012 §2). Todo con el `EntityManager` de `withActor` (`requireActorScope`):
