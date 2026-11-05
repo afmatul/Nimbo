@@ -1,4 +1,5 @@
 import { Cloud } from 'lucide-react';
+import Link from 'next/link';
 import type * as React from 'react';
 
 export interface BrandLogoProps {
@@ -20,7 +21,7 @@ export function BrandLogo({
   label = 'Nimbo, ir al inicio',
 }: BrandLogoProps): React.JSX.Element {
   return (
-    <a
+    <Link
       href={href}
       aria-label={compact ? label : undefined}
       className="flex min-h-11 shrink-0 items-center gap-2 rounded-md px-1 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -29,6 +30,6 @@ export function BrandLogo({
         <Cloud className="h-5 w-5" aria-hidden="true" />
       </span>
       {compact ? null : <span className="text-xl font-bold tracking-tight">Nimbo</span>}
-    </a>
+    </Link>
   );
 }
