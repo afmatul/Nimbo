@@ -216,6 +216,9 @@ describe('aislamiento de la restauración de Soporte (011b CA-15)', () => {
   beforeAll(async () => {
     world = await createIsolationWorld();
     testApp = await createFullApiTestApp(buildTestEnv(world.appComposition().env));
+    // Escuchando de antemano: si no, supertest abre el servidor con la primera petición y lo cierra al terminar ella,
+    // y las demás de un `Promise.all` (ISO-18) caen con `ECONNRESET`.
+    await testApp.app.listen(0, '127.0.0.1');
     owner = await connectAsOwner();
     runner = testApp.app.get<ITransactionRunner>(I_TRANSACTION_RUNNER, { strict: false });
     context = testApp.app.get(TransactionContext, { strict: false });

@@ -42,6 +42,8 @@ export interface AccountMenuProps {
   readonly activityHref?: string;
   /** Ruta de «Plan y facturación» (009); solo la recibe un cliente: sin ella, el ítem no se ofrece. */
   readonly billingHref?: string;
+  /** Rol de una cuenta interna («Administrador», 011 CA-17), bajo el correo; el cliente no lo muestra. */
+  readonly roleLabel?: string;
 }
 
 function initialsOf(fullName: string): string {
@@ -162,6 +164,7 @@ export function AccountMenu({
   onSignOut,
   activityHref = ACTIVITY_HREF,
   billingHref,
+  roleLabel,
 }: AccountMenuProps): React.JSX.Element {
   const triggerId = React.useId();
   const triggerRef = React.useRef<HTMLButtonElement>(null);
@@ -174,6 +177,9 @@ export function AccountMenu({
           <div className="mb-1.5 border-b border-border px-3 pb-3 pt-2.5">
             <p className="text-sm font-semibold text-foreground">{fullName}</p>
             <p className="break-all text-sm text-muted-foreground">{email}</p>
+            {roleLabel === undefined ? null : (
+              <p className="mt-1 text-xs font-medium text-secondary-foreground">{roleLabel}</p>
+            )}
           </div>
           <AccountItems
             triggerId={triggerId}
