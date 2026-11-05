@@ -4,6 +4,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 
 import {
+  consumeOrThrow,
   createActor,
   I_ATTEMPT_LOCKOUT,
   I_PASSWORD_HASHER,
@@ -39,7 +40,6 @@ import { SHARING_CONFIG } from './sharing-config';
 import type { SharingConfig } from './sharing-config';
 import type { SharingLogger } from './sharing-logger';
 
-const RATE_LIMIT_WINDOW_SECONDS = 60;
 /** Clave del límite por red de las rutas del visitante (plan §5): el hash de la red, nunca la IP (S-3). */
 const NETWORK_RATE_KEY_PREFIX = 'sharing:link-ip:';
 /** Clave del bloqueo por contraseñas fallidas (plan §5, RN-7): por enlace y por el hash de la red. */
@@ -234,12 +234,14 @@ export class PublicLinkAccessService {
 
   /** CA-13: antes de mirar el token, así el `429` no revela nada; nunca dice cuántos quedan. */
   private async assertWithinRate(ip: string): Promise<void> {
-    const decision = await this.rateLimiter.consume(networkKeyOf(ip), [
-      { limit: this.config.publicLinkRequestsPerMinute, windowSeconds: RATE_LIMIT_WINDOW_SECONDS },
-    ]);
-    if (decision.allowed) return;
-    this.logger.warn({ event: 'sharing.rate_limited' });
-    throw new RateLimitExceededError(decision.retryAfterSeconds);
+    const limit = this.config.publicLinkRequestsPerMinute;
+    try {
+      await consumeOrThrow(this.rateLimiter, networkKeyOf(ip), limit);
+    } catch (error) {
+      if (error instanceof RateLimitExceededError)
+        this.logger.warn({ event: 'sharing.rate_limited' });
+      throw error;
+    }
   }
 
   /** CA-11: el mismo error para todos los motivos; la bitácora solo lleva los ids si hubo fila (CA-15). */

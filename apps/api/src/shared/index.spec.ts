@@ -105,6 +105,7 @@ const RUNTIME_EXPORTS_BY_TASK = {
   '019 T-FIX-2': ['errorClassOf'],
   '018 T-03': ['escapeLike'],
   '013 T-01': ['PasswordHash', 'I_PASSWORD_HASHER', 'I_ATTEMPT_LOCKOUT'],
+  '013 M-2': ['consumeOrThrow', 'RATE_LIMIT_WINDOW_SECONDS'],
 } as const;
 
 const ALL_RUNTIME_EXPORTS: readonly string[] = Object.values(RUNTIME_EXPORTS_BY_TASK).flat();
@@ -218,6 +219,10 @@ describe('shared/index.ts (CA-17)', () => {
     expect(typeof shared.I_PASSWORD_HASHER).toBe('symbol');
     expect(typeof shared.I_ATTEMPT_LOCKOUT).toBe('symbol');
     expect(String(shared.PasswordHash.fromPhc('$argon2id$x'))).toBe('[REDACTED]');
+  });
+  it('CA-13: exporta `consumeOrThrow` y la ventana única de 60 s de los límites por minuto (013 M-2)', () => {
+    expectExportsOf('013 M-2');
+    expect(shared.RATE_LIMIT_WINDOW_SECONDS).toBe(60);
   });
   it('CA-17: exporta exactamente la lista del plan §6.2 al cerrar el bloque 2 (T-26)', () => {
     expect(exportedKeys()).toEqual([...ALL_RUNTIME_EXPORTS].sort());

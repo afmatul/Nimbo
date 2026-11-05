@@ -234,16 +234,21 @@ describe('POST, GET y DELETE /public-links (013 CA-1 a CA-8, CA-15, CA-16)', () 
     ]);
     await expect(servedLinkOf(firstToken)).resolves.toEqual([]);
     await expect(servedLinkOf(tokenOf(second))).resolves.toHaveLength(1);
+    // `revoked` y `created` del mismo reemplazo comparten `ocurrido_en` y su `id` es aleatorio: se comparan por petición.
     const events = await linkEventsOf(fileId);
-    expect(events.map((event) => [event.accion, event.atributos])).toEqual([
-      ['public_link.revoked', { reason: 'replaced' }],
+    const eventsOfRequest = (response: { headers: Record<string, string> }) =>
+      events
+        .filter((event) => event.correlation_id === response.headers[CORRELATION_HEADER])
+        .map((event) => [event.accion, event.atributos])
+        .sort(([a], [b]) => String(a).localeCompare(String(b)));
+    expect(events).toHaveLength(4);
+    expect(eventsOfRequest(first)).toEqual([
       ['public_link.created', { expiresInDays: 7, protection: 'none' }],
       ['public_link.revoked', { reason: 'replaced' }],
-      ['public_link.created', { expiresInDays: 7, protection: 'password' }],
     ]);
-    expect(events.slice(2).map((event) => event.correlation_id)).toEqual([
-      second.headers[CORRELATION_HEADER],
-      second.headers[CORRELATION_HEADER],
+    expect(eventsOfRequest(second)).toEqual([
+      ['public_link.created', { expiresInDays: 7, protection: 'password' }],
+      ['public_link.revoked', { reason: 'replaced' }],
     ]);
     expect(JSON.stringify(sharing.storage.testApp.logs.lines())).toContain('public_link.revoked');
   });
