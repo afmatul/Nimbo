@@ -5,6 +5,7 @@
 - Tablas y columnas: **español** `snake_case`, igual que el diagrama E-R. El mapeo vive solo en las entidades TypeORM.
 - UI, mensajes de error al usuario, specs, ADRs, manuales, descripción de commits y PRs: **español**.
 - Nombres de clases, puertos y métodos: los de `docs/sdd/design-model.md`. Si necesitas uno nuevo, agrégalo también al diagrama.
+- Fechas en specs, pendientes, hallazgos y ADRs: `AAAA-MM-DD` en hora local de Guatemala (UTC−6), no la hora UTC de GitHub.
 
 ## TypeScript
 - `strict: true`, `noUncheckedIndexedAccess: true`. Sin `any` implícito.
