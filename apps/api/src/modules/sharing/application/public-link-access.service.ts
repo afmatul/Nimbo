@@ -102,7 +102,8 @@ export class PublicLinkAccessService {
     @Inject(I_RATE_LIMITER) private readonly rateLimiter: IRateLimiter,
     @Inject(PublicLinkPasswordGate) private readonly passwordGate: PublicLinkPasswordGate,
     @Inject(I_AUDIT_LOGGER) private readonly audit: IAuditLogger,
-    @Inject(SHARING_CONFIG) private readonly config: SharingConfig,
+    @Inject(SHARING_CONFIG)
+    private readonly config: Pick<SharingConfig, 'publicLinkRequestsPerMinute'>,
     @Inject(PinoLogger) private readonly logger: SharingLogger,
   ) {}
 
@@ -112,10 +113,10 @@ export class PublicLinkAccessService {
   }
 
   /**
-   * CA-10 a CA-14, CA-18: la URL de 5 minutos a la versión vigente, sin contraseña o con la correcta y sin bloqueo de
-   * esa red para el enlace (`assertPassword`). La firma la hace
-   * `LinkedFileGateway` con el actor derivado (sin la auditoría ni el límite de descargas del propietario); la
-   * auditoría es de mejor esfuerzo (`record` nunca lanza), como `FileService`. Devuelve solo `{ url, expiresAt }`.
+   * CA-10 a CA-14, CA-18: la URL de 5 minutos a la versión vigente, si el enlace no pide contraseña o llega la
+   * correcta sin bloqueo de esa red (`assertPassword`). La URL la firma `LinkedFileGateway` con el actor derivado (sin
+   * la auditoría ni el límite de descargas del propietario); la auditoría es de mejor esfuerzo (`record` nunca lanza),
+   * como en `FileService`. Devuelve solo `{ url, expiresAt }`.
    */
   async downloadLink(command: DownloadPublicLinkCommand): Promise<DownloadUrl> {
     const { owner, link, file } = await this.resolveAvailable(command);

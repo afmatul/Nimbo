@@ -44,4 +44,9 @@ describe('networkHashOf (plan 013 §5, RN-7, S-3)', () => {
   it('RN-7: dos IP del mismo /64 dan el mismo hash', () => {
     expect(networkHashOf('2001:db8:85a3:12:9f3e::7')).toBe(networkHashOf('2001:db8:85a3:12::1'));
   });
+
+  it('RN-7: un valor que no es IP (vacío o texto) no lanza y cuenta como una red propia', () => {
+    expect(networkHashOf('')).toBe(createHash('sha256').update('/32').digest('hex'));
+    expect(networkHashOf('no-es-ip')).not.toBe(networkHashOf(''));
+  });
 });

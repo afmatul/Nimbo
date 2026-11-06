@@ -48,7 +48,7 @@ export class PublicLinkPasswordGate {
   constructor(
     @Inject(I_PASSWORD_HASHER) private readonly hasher: IPasswordHasher,
     @Inject(I_ATTEMPT_LOCKOUT) private readonly lockout: IAttemptLockout,
-    @Inject(SHARING_CONFIG) private readonly config: SharingConfig,
+    @Inject(SHARING_CONFIG) private readonly config: Pick<SharingConfig, 'publicLinkLockout'>,
     @Inject(PinoLogger) private readonly logger: SharingLogger,
   ) {}
 
