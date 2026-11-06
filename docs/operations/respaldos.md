@@ -302,3 +302,5 @@ Una fila por ensayo de restauración o de recuperación de versión (RNF-21), co
 
 | Fecha | Respaldo | Duración | Resultado | Quién |
 |---|---|---|---|---|
+| 2026-11-05 | `nimbo-20261105T230727Z.dump.gpg` | Respaldo 356 ms; restauración 495 ms (suma de ambas operaciones: 851 ms, no la duración total del ensayo) | Restauración (CA-5) OK: conteos idénticos, migraciones sin cambios, health HTTP 200, cero objetos faltantes, cuentas y descargas recuperadas | Abel |
+| 2026-11-05 | — (versiones MinIO) | — | Recuperación de versiones (CA-8) OK: sobrescritura y borrado recuperados, descargas HTTP 200, hashes idénticos al original y cero objetos faltantes | Abel |

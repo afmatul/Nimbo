@@ -13,7 +13,7 @@
 - [x] **T-05** Rotación a las 7 copias más recientes (0,25 d) — CA: CA-3 — Prueba: integración primero (8 corridas) — Depende: T-03
 - [x] **T-06** Servicio `backup` en compose (perfil `backups`, volumen `backup_data`, secreto de la clave, `schedule` con `BACKUP_TIME`/`TZ`), `.env.example` y `ambientes.md` (0,5 d) — CA: CA-1, CA-9 — Prueba: integración primero (hora a un minuto; forma del compose con y sin perfil) — Depende: T-03
 - [x] **T-07** `restore.sh` sobre base vacía con negativa a base con tablas y a otra clave, y el procedimiento de restauración en `respaldos.md` (0,75 d) — CA: CA-4, CA-5, CA-6 — Prueba: integración primero (`backup-restore.int-spec.ts`: conteos, `applied: []`, RLS, `health/ready` 200) — Depende: T-03, T-06
-- [ ] **T-08** **(humana, Abel como Operador)** Ensayo en local siguiendo `respaldos.md` (respaldo, restauración sobre volumen nuevo, recuperación de una versión) y fila en su registro; nota en el PR (0,5 d) — CA: CA-5, CA-8 — Depende: T-02, T-07
+- [x] **T-08** **(humana, Abel como Operador)** Ensayo en local siguiendo `respaldos.md` (respaldo, restauración sobre volumen nuevo, recuperación de una versión) y fila en su registro; nota en el PR (0,5 d) — CA: CA-5, CA-8 — Depende: T-02, T-07
 
 ## Notas del developer
 - **T-06, usuario del servicio `backup`: `root`** (el de la imagen; plan sin indicación). El volumen nombrado
