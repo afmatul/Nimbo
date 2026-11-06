@@ -72,10 +72,7 @@ export function useReceivedShares(
   );
   const [attempt, setAttempt] = React.useState(0);
 
-  React.useEffect(
-    () => requestReceived(api, now, setListing, cache),
-    [api, attempt, now, cache],
-  );
+  React.useEffect(() => requestReceived(api, now, setListing, cache), [api, attempt, now, cache]);
 
   const reload = React.useCallback(() => {
     setListing((previous) => (previous.status === 'error' ? LOADING : previous));
