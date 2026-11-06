@@ -63,6 +63,11 @@
 - La firma de la URL de 5 minutos, extraída a `current-version-download.ts`, aplica DRY de conocimiento sin cambiar `FileService`.
 - Migración reversible y probada con un dueño `NOSUPERUSER`; merge con la 021 bien resuelto en auditoría, `storage` y las listas de migraciones.
 
+## Auditoría de Adrián (PR #93, 2026-11-04)
+- [Auditoría](https://github.com/afmatul/Nimbo/pull/93#issuecomment-6640713503) (~93 %, sin bloqueantes) y [respuesta](https://github.com/afmatul/Nimbo/pull/93#issuecomment-6646008150).
+- Corregidos en `cb386205`: M-2 (`consumeOrThrow` en `shared`, que resuelve S-1 en `sharing`), M-6 (`derived-actor.arch.spec.ts`, que resuelve S-4), m-1 (`audit/README.md`) y CA-4 con orden estable (M-1).
+- M-3 y m-4 → PD-177 (PR #98). M-4 y M-5 → [decisiones de Adrián](https://github.com/afmatul/Nimbo/pull/93#issuecomment-6646871998): PD-175 planificado y DF-90 aceptado.
+
 ## DF y pendientes
 - DF-09 y DF-10 aceptados; DF-86 aceptado y ampliado por T-04 a T-09; DF-90 abierto (SEC-1), lo decide Adrián; la desviación de I-2 (c) declarada en DF-86.
 - `pendientes.md`: PD-20 cerrado; PD-155 y PD-174 abiertos; la parte de 013 de PD-78 y PD-121 anotada (I-2 a); PD-174 (antes PD-156, renumerado por choque con la 021) ampliado con S-2; PD-175 (SEC-4) y PD-176 (S-1) abiertos.
