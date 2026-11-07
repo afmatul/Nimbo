@@ -5,7 +5,7 @@
 > Cada tarea es una línea: criterio, prueba y de qué depende. Los archivos viven en `plan.md`. Sin tareas de «cierre».
 > `/implement` exige el plan `Aprobado` y la spec en `Lista` (P-1 a P-4 y P-6 resueltas).
 
-- [ ] **T-01** (`ui-designer`) Estado `resultados-por-contenido` en `storage/busqueda` con `/mockup` (marca y nota de alcance) y capturas a 360 y 1440 px, aprobado por Adrián — CA: CA-8 — Prueba: axe del mockup sin violaciones — Depende: P-4, P-6
+- [x] **T-01** (`ui-designer`) Estado `resultados-por-contenido` en `storage/busqueda` con `/mockup` (marca y nota de alcance) y capturas a 360 y 1440 px, aprobado por Adrián — CA: CA-8 — Prueba: axe del mockup sin violaciones — Depende: P-4, P-6
 - [ ] **T-02** Contrato `matchedBy` en `searchHitSchema` y puerto `IContentMatchReader` exportado por `storage/index.ts` (JSDoc del contrato, parámetro `contentText`) — CA: CA-4, CA-8 — Prueba: unitaria de contratos y `storage.module.spec.ts` (no enlaza el token; rojas primero) — Depende: —
 - [ ] **T-03** `SqlContentMatchReader` en `intelligence`, `ContentMatchBindingModule` en la raíz, y `architecture.md` (§3 patrón «condición SQL que da el dueño de la tabla» junto a `accessibleNodes`; §5 fila del puerto) y `design-model.md` M2/M6 al día — CA: CA-1, CA-2, CA-3, CA-5, CA-7 — Prueba: integración `content-match.int-spec.ts` y unitaria del enlace (rojas primero) — Depende: T-02
 - [ ] **T-04** Repositorio de búsqueda con «nombre ∨ contenido» y `coincide_nombre` — CA: CA-4, CA-6, CA-7, CA-9 — Prueba: integración `search.repository.int-spec.ts` (roja primero) — Depende: T-03
