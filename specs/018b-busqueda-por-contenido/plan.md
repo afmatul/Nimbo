@@ -1,6 +1,6 @@
 # Plan 018b — Búsqueda por contenido
 
-> Spec: `./spec.md` · Estado del plan: Propuesto
+> Spec: `./spec.md` · Estado del plan: Aprobado (Adrián, 2026-11-07)
 > Obligatorio y ≤ 250 líneas. Dice **qué** archivos se tocan y **qué** se espera de cada uno; no es el código en
 > prosa (sin cuerpos de funciones ni pseudocódigo). Lo aprueba Adrián antes de escribir código.
 >
@@ -211,4 +211,6 @@ Sin E2E (marcador hasta 023). El recorrido de la demo es la tarea humana.
      (no como excepción de la regla 7) y §5 la fila del puerto; DF-95 pasa a `Aceptado` con la aprobación de Adrián.
   Verificado: 12 archivos de producción reales (todos existen salvo los 3 nuevos); no toca la migración de 019; índices
   `uq_fragmento_version_orden`, `idx_fragmento_texto_busq` y `texto_busq` en `spanish` existen. Vigilar R-1 en 023.
-- Adrián: excepción de 13 archivos de producción aprobada (2026-11-07, auditoría de la rama). El resto del plan: pendiente (incluye los archivos suyos de R-6 y P-1 a P-4 y P-6 ya respondidas por el dueño).
+- Adrián: **Aprobado** (2026-11-07, tras la auditoría de la rama): el plan completo, la excepción de 13 archivos de
+  producción, los archivos suyos de R-6, D-1 opción A con DF-95 y las respuestas de P-1 a P-4 y P-6. Los hallazgos
+  H-3 a H-8 de la auditoría (`tasks.md`) se atienden en las tareas indicadas, dentro de este PR.

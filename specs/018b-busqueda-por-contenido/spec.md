@@ -4,14 +4,14 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador |
+| Estado | Lista (2026-11-07): plan aprobado por Adrián |
 | Dueño | Juan Marcos (2) |
 | Fase | 2 |
 | Requisitos | RF-15 (contenido; nombre, tipo y fecha son de 018); aplican RF-05, RF-07, RF-11, RF-30, RNF-01, RNF-05, RNF-09, RNF-13, RNF-17 |
 | Depende de | 018 (búsqueda por nombre, `GET /search` y `/buscar`), 019 (texto indexado por fragmento), 012 (lo compartido) |
 | Módulo | M2 `storage/search` (consume) + M6 `intelligence` (implementa el puerto `IContentMatchReader`, PD-127) |
 | DF | DF-15 (búsqueda), DF-95 (nuevo: puerto de coincidencia por contenido) |
-| Última actualización | 2026-11-06 |
+| Última actualización | 2026-11-07 |
 
 ## 1. Contexto y objetivo
 
@@ -104,3 +104,4 @@ páginas, estados, aislamiento, roles y bitácoras.
 | 2026-11-06 | CA-10: el archivo compartido coincide solo por contenido (no por nombre) | Cambio 1 de `architect` (RLS `fragmento_compartido`) | — |
 | 2026-11-06 | Mensajes de §6 alineados con el mockup `resultados-por-contenido` (nota con «los que no tienen texto», subtítulo y etiqueta del campo) | Mockup de T-01 | Juan Marcos |
 | 2026-11-07 | Mockup `resultados-por-contenido` aprobado (incluidas las decisiones visuales 1 a 5 de su README) | Auditoría de la rama | Adrián |
+| 2026-11-07 | Plan aprobado; la spec pasa a `Lista` (P-5 y P-7 abiertas, no bloquean) | Aprobación del plan | Adrián |
