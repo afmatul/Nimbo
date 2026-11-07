@@ -66,7 +66,7 @@ páginas, estados, aislamiento, roles y bitácoras.
 
 | Pantalla | Mockup (`docs/design/mockups/…`) | Estados requeridos | Estado del mockup |
 |---|---|---|---|
-| Búsqueda (`/buscar`) | `storage/busqueda/` | los 11 de 018 + **resultados-por-contenido** (mezcla de coincidencias por nombre y por contenido, con la marca y la nota de alcance) a 360 y 1440 px | 018: `Aprobado` (2026-10-28). Estado nuevo: **Pendiente de aprobación de Adrián** (generado el 2026-11-06, axe sin violaciones a 360 y 1440 px). `busqueda--resultados.html` (propuesta) **no** se usa tal cual: muestra fragmentos, relevancia y un botón que incumple AA (DF-41) |
+| Búsqueda (`/buscar`) | `storage/busqueda/` | los 11 de 018 + **resultados-por-contenido** (mezcla de coincidencias por nombre y por contenido, con la marca y la nota de alcance) a 360 y 1440 px | 018: `Aprobado` (2026-10-28). Estado nuevo: `Aprobado` por Adrián (2026-11-07; generado el 2026-11-06, axe sin violaciones a 360 y 1440 px). `busqueda--resultados.html` (propuesta) **no** se usa tal cual: muestra fragmentos, relevancia y un botón que incumple AA (DF-41) |
 
 - Mensajes clave (tuteo): marca «Coincide en el contenido»; nota «También buscamos dentro de los documentos ya indexados. Los que aún se están procesando, y los que no tienen texto (como las imágenes), solo aparecen por su nombre.»; subtítulo «Encuentra archivos y carpetas por su nombre, y documentos por las palabras que contienen. Sin distinguir mayúsculas ni acentos.»; etiqueta del campo «Nombre o palabras del documento». Los demás, los de 018.
 
@@ -103,3 +103,4 @@ páginas, estados, aislamiento, roles y bitácoras.
 | 2026-11-06 | P-1 a P-4 y P-6 resueltas según la recomendación (P-1 tras revisar el mockup original: sin pestañas) | Decisión del dueño | Juan Marcos |
 | 2026-11-06 | CA-10: el archivo compartido coincide solo por contenido (no por nombre) | Cambio 1 de `architect` (RLS `fragmento_compartido`) | — |
 | 2026-11-06 | Mensajes de §6 alineados con el mockup `resultados-por-contenido` (nota con «los que no tienen texto», subtítulo y etiqueta del campo) | Mockup de T-01 | Juan Marcos |
+| 2026-11-07 | Mockup `resultados-por-contenido` aprobado (incluidas las decisiones visuales 1 a 5 de su README) | Auditoría de la rama | Adrián |

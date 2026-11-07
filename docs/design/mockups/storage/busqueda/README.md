@@ -3,7 +3,7 @@
 - **Spec**: [018](../../../../../specs/018-busqueda/spec.md) (búsqueda por **nombre**, **tipo** y **fecha** de última
   modificación; RF-15 parcial; CA-1…CA-15, §6 y §7). La búsqueda por contenido es la
   [018b](../../../../../specs/018b-busqueda-por-contenido/spec.md) (CA-8, §6): un estado nuevo,
-  `resultados-por-contenido`, **Pendiente de aprobación de Adrián** (ver «Estado de 018b»).
+  `resultados-por-contenido`, **Aprobado** por Adrián (2026-11-07; ver «Estado de 018b»).
 - **Estado**: **Aprobado** por Adrián (2026-10-28, auditoría del PR #81), con observaciones (ver «Aprobación»). Dueño de la spec: Juan Marcos. Alineado con
   la spec el 2026-10-26 (decisiones del dueño: entrada por la navegación, sin resaltado, filtro de fecha con atajos).
 - **Origen**:
@@ -42,13 +42,13 @@ coincidencias, orden elegible, búsqueda mientras se escribe, «En comentarios»
 «Resumir con citas», «Incluir papelera», «Solo indexados», % de relevancia, «Ámbito de la búsqueda» y fragmentos de
 contenido (spec §6 y §7).
 
-## Estado de 018b (Pendiente de aprobación de Adrián, 2026-11-06)
+## Estado de 018b (Aprobado por Adrián, 2026-11-07)
 
 | Estado | Archivo | Qué muestra | Spec |
 |---|---|---|---|
 | resultados-por-contenido | `busqueda--resultados-por-contenido.html` | «camion» con una sola lista en el orden de 018 (carpetas y luego archivos, del más reciente al más antiguo), sin total, relevancia, pestañas, fragmento ni resaltado. Coinciden solo por contenido y llevan la marca «Coincide en el contenido»: «Acta_reunion_logistica.docx», «Contrato_arrendamiento_flota.pdf», «Informe_entregas_septiembre.docx» (**Compartido contigo**, 012) y «Minuta_comite_operaciones.docx». «Mantenimiento_camion_C-12.docx» coincide por nombre y contenido: una vez y sin marca. Las carpetas y la imagen nunca la llevan. Nota de alcance bajo el título de la lista | CA-1, CA-4, CA-8, CA-9, CA-10, RN-2, RN-3 |
 
-Decisiones visuales (propuestas):
+Decisiones visuales (aprobadas por Adrián, 2026-11-07):
 
 1. **Marca = `StatusBadge` tono `neutral`** (§4 de `ui-guidelines.md`): ícono lucide `TextSearch` + texto «Coincide en
    el contenido», `secondary-foreground` sobre `card` (8.09:1), borde `border`. No hay token ni par de colores nuevo. El

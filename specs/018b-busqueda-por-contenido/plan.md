@@ -37,9 +37,11 @@ La web solo agrega la marca «Coincide en el contenido» en la fila y la nota de
 | raíz | `apps/api/src/content-match-binding.module.ts` (nuevo, **de Adrián**) | `@Global()`; `{ provide: I_CONTENT_MATCH_READER, useClass: SqlContentMatchReader }`, exporta el token. Solo el `api` (el `worker` no monta la búsqueda) |
 | raíz | `apps/api/src/app.module.ts` (cambia, compartido) | Importa `ContentMatchBindingModule` junto a `PlanLimitsBindingModule` y suma una línea al comentario de composición |
 | web · lista | `apps/web/src/features/search/components/search-results.tsx` (cambia) | `HitMatch`: marca «Coincide en el contenido» con ícono `lucide` y texto (tokens de `ui-guidelines.md`, no solo color), en la celda del nombre a 360 y 1440 px, cuando `matchedBy === 'content'` |
+| web · formulario | `apps/web/src/features/search/components/search-form.tsx` (cambia) | Etiqueta del campo «Nombre o palabras del documento» y nombre del formulario según la spec §6 y el mockup aprobado (sin otra lógica) |
 | web · pantalla | `apps/web/src/features/search/components/search-view.tsx` (cambia) | Nota de alcance (CA-8) junto a los resultados y en «sin resultados», con el texto del mockup aprobado |
 
-12 archivos de producción (al tope de `workflow.md` §4.1, una pantalla). Documentación en el mismo PR (T-03): `architecture.md`
+13 archivos de producción, una pantalla: uno más que el tope de `workflow.md` §4.1 por `search-form.tsx` (solo textos);
+la excepción la aprobó Adrián el 2026-11-07 y no se parte la spec. Documentación en el mismo PR (T-03): `architecture.md`
 §3 (el patrón «condición SQL que da el dueño de la tabla» junto a `accessibleNodes`, no como excepción de la regla 7;
 fila `storage`: el puerto y su enlace) y §5 (fila del puerto `IContentMatchReader`), `design-model.md` M2 y M6,
 `apps/api/src/modules/storage/README.md` (sección de búsqueda, PD-150) y `intelligence/README.md` (PD-127 cerrado).
@@ -176,7 +178,8 @@ Sin E2E (marcador hasta 023). El recorrido de la demo es la tarea humana.
 - **R-6 Archivos de Adrián**: `storage/index.ts`, `intelligence/index.ts`, `sql-content-match.reader.ts` (módulo
   `intelligence`), `content-match-binding.module.ts`, la documentación de `architecture.md` y `design-model.md`, y
   `app.module.ts` (compartido). Se piden en esta aprobación (como 018 R-5).
-- **R-7 Tope de 12 archivos**: el plan queda justo en 12. Si `architect` pide B (D-1) o una prueba de contrato del
+- **R-7 Tope de 12 archivos**: el plan queda en 13 (`search-form.tsx`, auditoría 2026-11-07); excepción aprobada por
+  Adrián (2026-11-07). Si `architect` pide B (D-1) o una prueba de contrato del
   puerto en `intelligence`, se reevalúa antes de partir.
 - Desviaciones de los diagramas: **DF-95** nuevo (puerto `IContentMatchReader`, `storage` ← `intelligence`, que
   devuelve una condición SQL); DF-15 actualizado (018b). Clases M2 y M6 sin redibujar → PD-185.
@@ -208,4 +211,4 @@ Sin E2E (marcador hasta 023). El recorrido de la demo es la tarea humana.
      (no como excepción de la regla 7) y §5 la fila del puerto; DF-95 pasa a `Aceptado` con la aprobación de Adrián.
   Verificado: 12 archivos de producción reales (todos existen salvo los 3 nuevos); no toca la migración de 019; índices
   `uq_fragmento_version_orden`, `idx_fragmento_texto_busq` y `texto_busq` en `spanish` existen. Vigilar R-1 en 023.
-- Adrián: pendiente (incluye los archivos suyos de R-6 y P-1 a P-4 y P-6 ya respondidas por el dueño).
+- Adrián: excepción de 13 archivos de producción aprobada (2026-11-07, auditoría de la rama). El resto del plan: pendiente (incluye los archivos suyos de R-6 y P-1 a P-4 y P-6 ya respondidas por el dueño).
