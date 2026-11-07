@@ -11,7 +11,7 @@
 - [x] **T-04** Repositorio de búsqueda con «nombre ∨ contenido» y `coincide_nombre` — CA: CA-4, CA-6, CA-7, CA-9 — Prueba: integración `search.repository.int-spec.ts` (roja primero) — Depende: T-03
 - [x] **T-05** `SearchService` con `matchedBy` y `GET /search` de punta a punta — CA: CA-4, CA-5, CA-12 — Prueba: unitaria del servicio + integración HTTP (feliz, `400`, bitácora sin texto) — Depende: T-04
 - [x] **T-06** Aislamiento: B no encuentra el texto de A; un compartido que coincide solo por contenido aparece con `shared` (`fragmento_compartido`) y desaparece al revocarse; actor interno sin filas — CA: CA-10, CA-11 — Prueba: aislamiento `storage-search.iso-spec.ts` — Depende: T-04
-- [ ] **T-07** Web: marca «Coincide en el contenido», nota de alcance y textos del encabezado y del formulario (`search-form.tsx`) según el mockup de T-01 — CA: CA-8 — Prueba: componente `search-view.spec.tsx` (con la etiqueta nueva) + axe a 360 y 1440 px — Depende: T-01, T-05
+- [x] **T-07** Web: marca «Coincide en el contenido», nota de alcance y textos del encabezado y del formulario (`search-form.tsx`) según el mockup de T-01 — CA: CA-8 — Prueba: componente `search-view.spec.tsx` (con la etiqueta nueva) + axe a 360 y 1440 px — Depende: T-01, T-05
 - [ ] **T-08** **(humana, Juan Marcos)** Recorrido de la demo en local: subir un `.docx` y un PDF, esperar su indexación, buscar por una frase, ver la marca, compartir y revocar con otra cuenta; nota en el PR — CA: CA-1, CA-4, CA-6, CA-8, CA-10 — Depende: T-06, T-07
 
 ## Notas del developer
@@ -34,6 +34,11 @@
   pruebas unitarias nacen verdes; la integración HTTP suma el caso por contenido, la carpeta sin `matchedBy`, las
   palabras vacías y la bitácora (sin la palabra, el texto ni el nombre del archivo indexado, ni el `NOTICE` de
   Postgres, R-4).
+- T-07: marca con `StatusBadge` neutral e ícono `TextSearch` bajo el nombre (decisiones 1 y 2), nota con `Info` en
+  `primary` bajo el título y `aria-describedby` en la tabla (decisión 3), textos del encabezado y del formulario en toda
+  `/buscar` (decisión 4, H-8: «Buscar por nombre o contenido») y la nota también bajo «sin resultados» (decisión 5).
+  Desviación: la nota usa `text-sm` (14 px) y no los 13 px del mockup, porque no hay token de 13 px y la guía prohíbe
+  valores arbitrarios.
 
 ## Hallazgos de la auditoría de la rama (2026-11-07), a atender en este PR
 
@@ -56,7 +61,7 @@ el mockup `resultados-por-contenido` queda aprobado, así que T-01 está hecha (
 - [x] **H-7** (menor, T-04) Las columnas que recibe el puerto son rutas de propiedad del *query builder*
   (`archivo.versionActualId`), no nombres de columna; y `FILES` deja de ser una constante de módulo para usar el reader
   inyectado (se arma en el repositorio).
-- [ ] **H-8** (menor, T-07) Mockup frente a código: el nombre del formulario del mockup («Buscar por nombre o
+- [x] **H-8** (menor, T-07) Mockup frente a código: el nombre del formulario del mockup («Buscar por nombre o
   contenido») y el actual («Buscar archivos y carpetas») difieren: se usa el del mockup aprobado. Los 11 estados de 018
   conservan los textos viejos (decisión 4 del README) y la nota en «sin resultados» no está dibujada (decisión 5): la
   web aplica ambas.

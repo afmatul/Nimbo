@@ -24,7 +24,7 @@ import {
 
 import { SearchFilters } from './search-filters';
 import { SearchForm } from './search-form';
-import { resultsTitle, SearchResults } from './search-results';
+import { resultsTitle, ScopeNote, SearchResults } from './search-results';
 
 const SEARCH_NAV_ITEMS = DEFAULT_NAV_ITEMS.map((item) => ({
   ...item,
@@ -57,22 +57,30 @@ function SearchSkeleton({ q }: { readonly q: string }): React.JSX.Element {
   );
 }
 
-/** Sin coincidencias (CA-11): con filtros activos sugiere quitarlos y ofrece la acción; sin ellos, no hay acción. */
+/**
+ * Sin coincidencias (CA-11): con filtros activos sugiere quitarlos y ofrece la acción; sin ellos, no hay acción. La
+ * nota de alcance explica que un documento sin indexar solo aparece por su nombre (018b CA-8, decisión 5).
+ */
 function NoResults({ search }: { readonly search: Search }): React.JSX.Element {
   const filtered = search.activeFilters > 0;
   return (
-    <StateView
-      type="empty"
-      headingLevel="h2"
-      icon={SearchX}
-      title={`No encontramos nada con «${search.q}».`}
-      description={
-        filtered ? 'Revisa lo que escribiste o quita los filtros.' : 'Revisa lo que escribiste.'
-      }
-      {...(filtered
-        ? { action: { label: 'Quitar filtros', onClick: search.clearFilters, variant: 'outline' } }
-        : {})}
-    />
+    <div className="space-y-3">
+      <StateView
+        type="empty"
+        headingLevel="h2"
+        icon={SearchX}
+        title={`No encontramos nada con «${search.q}».`}
+        description={
+          filtered ? 'Revisa lo que escribiste o quita los filtros.' : 'Revisa lo que escribiste.'
+        }
+        {...(filtered
+          ? {
+              action: { label: 'Quitar filtros', onClick: search.clearFilters, variant: 'outline' },
+            }
+          : {})}
+      />
+      <ScopeNote />
+    </div>
   );
 }
 
@@ -96,6 +104,7 @@ function ResultsSection({
       <h2 id="resultados-titulo" className="text-base font-semibold text-foreground">
         {resultsTitle(search.q)}
       </h2>
+      <ScopeNote />
       <div
         data-testid={search.stale ? 'resultados-desactualizados' : undefined}
         inert={search.stale || undefined}
@@ -150,7 +159,7 @@ function SearchEntry(): React.JSX.Element {
   );
 }
 
-/** Pantalla `/buscar` (018, mockup `storage/busqueda`): formulario, filtros y resultados con sus estados. */
+/** Pantalla `/buscar` (018 y 018b, mockup `storage/busqueda`): formulario, filtros y resultados con sus estados. */
 export function SearchView({
   load,
   location,
@@ -166,8 +175,8 @@ export function SearchView({
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-foreground">Buscar</h1>
           <p className="text-sm text-secondary-foreground">
-            Encuentra archivos y carpetas por su nombre, en cualquier carpeta. Sin distinguir
-            mayúsculas ni acentos.
+            Encuentra archivos y carpetas por su nombre, y documentos por las palabras que
+            contienen. Sin distinguir mayúsculas ni acentos.
           </p>
         </header>
         <SearchForm key={search.q} initialText={search.q} onSubmit={search.submit} />
