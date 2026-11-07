@@ -9,7 +9,7 @@
 - [x] **T-02** Contrato `matchedBy` en `searchHitSchema` y puerto `IContentMatchReader` exportado por `storage/index.ts` (JSDoc del contrato, parámetro `contentText`) — CA: CA-4, CA-8 — Prueba: unitaria de contratos y `storage.module.spec.ts` (no enlaza el token; rojas primero) — Depende: —
 - [x] **T-03** `SqlContentMatchReader` en `intelligence`, `ContentMatchBindingModule` en la raíz, y `architecture.md` (§3 patrón «condición SQL que da el dueño de la tabla» junto a `accessibleNodes`; §5 fila del puerto) y `design-model.md` M2/M6 al día — CA: CA-1, CA-2, CA-3, CA-5, CA-7 — Prueba: integración `content-match.int-spec.ts` y unitaria del enlace (rojas primero) — Depende: T-02
 - [x] **T-04** Repositorio de búsqueda con «nombre ∨ contenido» y `coincide_nombre` — CA: CA-4, CA-6, CA-7, CA-9 — Prueba: integración `search.repository.int-spec.ts` (roja primero) — Depende: T-03
-- [ ] **T-05** `SearchService` con `matchedBy` y `GET /search` de punta a punta — CA: CA-4, CA-5, CA-12 — Prueba: unitaria del servicio + integración HTTP (feliz, `400`, bitácora sin texto) — Depende: T-04
+- [x] **T-05** `SearchService` con `matchedBy` y `GET /search` de punta a punta — CA: CA-4, CA-5, CA-12 — Prueba: unitaria del servicio + integración HTTP (feliz, `400`, bitácora sin texto) — Depende: T-04
 - [ ] **T-06** Aislamiento: B no encuentra el texto de A; un compartido que coincide solo por contenido aparece con `shared` (`fragmento_compartido`) y desaparece al revocarse; actor interno sin filas — CA: CA-10, CA-11 — Prueba: aislamiento `storage-search.iso-spec.ts` — Depende: T-04
 - [ ] **T-07** Web: marca «Coincide en el contenido», nota de alcance y textos del encabezado y del formulario (`search-form.tsx`) según el mockup de T-01 — CA: CA-8 — Prueba: componente `search-view.spec.tsx` (con la etiqueta nueva) + axe a 360 y 1440 px — Depende: T-01, T-05
 - [ ] **T-08** **(humana, Juan Marcos)** Recorrido de la demo en local: subir un `.docx` y un PDF, esperar su indexación, buscar por una frase, ver la marca, compartir y revocar con otra cuenta; nota en el PR — CA: CA-1, CA-4, CA-6, CA-8, CA-10 — Depende: T-06, T-07
@@ -30,6 +30,10 @@
   verdadero), así que no hace falta una rama por grupo. Los arneses de prueba que montan `StorageModule` sin
   `AppModule` (`storage-http.ts`, `billing-http.ts`, `upload-cleanup`, `billing.iso-spec.ts`,
   `billing-renewal.iso-spec.ts`) suman `ContentMatchBindingModule`, como ya hacían con `PlanLimitsBindingModule`.
+- T-05: el mapeo de `matchedBy` en `SearchService` ya entró en T-02 (para mantener el contrato verde), así que sus
+  pruebas unitarias nacen verdes; la integración HTTP suma el caso por contenido, la carpeta sin `matchedBy`, las
+  palabras vacías y la bitácora (sin la palabra, el texto ni el nombre del archivo indexado, ni el `NOTICE` de
+  Postgres, R-4).
 
 ## Hallazgos de la auditoría de la rama (2026-11-07), a atender en este PR
 

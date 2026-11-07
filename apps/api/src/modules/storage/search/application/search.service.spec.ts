@@ -165,6 +165,34 @@ describe('SearchService', () => {
     });
   });
 
+  it('018b CA-8: un archivo que coincide solo por contenido sale con `matchedBy: content`', async () => {
+    const { repository, service } = setup();
+    repository.page = {
+      hits: [{ node: file, location: null, matchedBy: 'content' }],
+      nextCursor: null,
+    };
+
+    const [hit] = (await service.search(ANA, { q: 'camion', limit: 50 })).items;
+
+    expect(hit).toMatchObject({ type: 'file', id: FILE_ID, matchedBy: 'content' });
+  });
+
+  it('018b CA-4, RN-3: un archivo por nombre sale con `name` y una carpeta no lleva `matchedBy`', async () => {
+    const { repository, service } = setup();
+    repository.page = {
+      hits: [
+        { node: folder, location: null, matchedBy: 'name' },
+        { node: file, location: null, matchedBy: 'name' },
+      ],
+      nextCursor: null,
+    };
+
+    const [folderHit, fileHit] = (await service.search(ANA, { q: 'informe', limit: 50 })).items;
+
+    expect(folderHit).not.toHaveProperty('matchedBy');
+    expect(fileHit).toMatchObject({ type: 'file', matchedBy: 'name' });
+  });
+
   describe('lo compartido por otra cuenta (012, PD-148 y PD-152)', () => {
     const OWNER_ID = '99999999-9999-4999-8999-999999999999';
     const sharedFile = File.create({
