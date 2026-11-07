@@ -9,7 +9,7 @@
 | Fase | 2 |
 | Requisitos | RF-17, RNF-08, RNF-13, RNF-14; apoyan RF-07, RNF-05, RNF-07 |
 | Depende de | 013 (API integrada, PR #93; PD-177 en PR #98) · Hermana: 013c (sección «Enlace público» del diálogo) |
-| Última actualización | 2026-11-06 |
+| Última actualización | 2026-11-07 |
 
 ## 1. Contexto y objetivo
 La 013 dejó la API del enlace público: quien recibe `…/enlace#<token>` hoy llega a una ruta que no existe. Esta spec
@@ -31,13 +31,13 @@ corrige el texto de ayuda de la contraseña (S-3 de 013). La sección del diálo
 - **CA-2** (HU-1, RF-17) Dado un enlace con contraseña, cuando el visitante abre la página, entonces ve la misma ficha sin escribir nada (013 S-7) y, antes de «Descargar», el campo «Contraseña del enlace».
 - **CA-3** (HU-2, RF-17, RNF-14) Dado la ficha, sin contraseña o con la correcta, cuando pulsa «Descargar», entonces la descarga empieza en la misma pestaña (URL de 5 minutos, 013 CA-10). Si tarda más de 2 s, el botón dice «Preparando descarga…» y no acepta otro clic. Después se anuncia el aviso de éxito «Tu descarga comenzó. Si no empieza, vuelve a intentarlo.» y el botón vuelve a estar disponible.
 - **CA-4** (HU-2, RNF-08) — error: Dado una contraseña incorrecta, cuando descarga, entonces ve «La contraseña no es correcta. Revísala y vuelve a intentarlo.», sin decir cuántos intentos quedan (013 P-3), con el campo vacío, marcado como inválido y con el foco. Con el campo vacío, «Escribe la contraseña del enlace.» y no se envía nada.
-- **CA-5** (HU-2, RNF-07, RNF-08) — error: Dado un `429` al descargar (bloqueo por red, techo global o límite general), entonces ve un aviso que se anuncia «Hiciste demasiados intentos. Espera {n} minutos e inténtalo de nuevo.», con {n} de la espera de la API, sin cuenta regresiva y con la ficha visible. Un `429` al abrir muestra el mismo texto en lugar de la ficha, con «Reintentar».
+- **CA-5** (HU-2, RNF-07, RNF-08) — error: Dado un `429` al descargar (bloqueo por red, techo global o límite general), entonces ve un aviso que se anuncia «Hubo demasiados intentos con este enlace. Espera {n} minutos e inténtalo de nuevo.», con {n} de la espera de la API, sin decir cuál de los tres motivos fue (RN-1), sin cuenta regresiva y con la ficha visible. Un `429` al abrir muestra el mismo texto en lugar de la ficha, con «Reintentar».
 - **CA-6** (HU-1, RF-17) — error: Dado un token inexistente, mal formado, revocado, reemplazado o vencido, un archivo en la papelera, un propietario suspendido, un fragmento vacío (sin llamar a la API) o un `404` al descargar, entonces el visitante ve solo «Este enlace ya no está disponible. Pide a quien te lo compartió uno nuevo.», sin ficha ni motivo (013 CA-11, P-1).
 - **CA-7** (HU-2, RNF-14) — error: Dado que la red falla o la API responde 5xx, cuando abre, entonces ve «No pudimos cargar el archivo compartido. Revisa tu conexión e inténtalo de nuevo.» con «Reintentar», distinto de CA-6. Si pasa al descargar, el aviso usa el diseño de «bloqueado» sobre la ficha, que se mantiene, con «Reintentar».
 - **CA-8** (HU-1, RF-17) Dado la página abierta, cuando el visitante recarga, entonces vuelve a ver la ficha: el token sigue en el fragmento de la barra. El token nunca va en la ruta, en la consulta, en el título ni en una petición a `web`, y el título de la pestaña es «Archivo compartido · Nimbo» (sin el nombre del archivo).
 - **CA-9** (HU-1, RNF-07, RNF-08) Dado cualquier petición de la página, entonces sale del navegador directo a la API pública (`API_PUBLIC_URL`, por Traefik), sin cookies ni `Authorization`. Ningún servidor de `web` la reenvía, así el límite por red cuenta la red de cada visitante (SEC-6 de 013).
 - **CA-10** (HU-1, 013 CA-16) Dado un visitante con sesión de cliente o de un rol interno, cuando abre el enlace, entonces la página se ve y responde igual que sin sesión, y nada se agrega a su cuenta.
-- **CA-11** (HU-1, RNF-13) Dado la página en cualquiera de sus estados (§6), entonces se usa sin desplazamiento horizontal a 360 px, cumple el contraste AA, axe no da violaciones a 360 ni a 1440 px, los errores se anuncian y la animación respeta «reducir movimiento».
+- **CA-11** (HU-1, RNF-13) Dado la página en cualquiera de sus estados (§6), entonces axe no da violaciones y los errores se anuncian; además se usa sin desplazamiento horizontal a 360 px, cumple el contraste AA a 360 y 1440 px y la animación respeta «reducir movimiento». Axe en jsdom no evalúa el viewport ni el contraste: esa parte se verifica a mano (T-09) y en los mockups (T-05).
 
 **Techo global de fallos por enlace (PD-175, RNF-08)**
 - **CA-12** (HU-3, RNF-08) — error: Dado que un enlace acumuló en la última hora el techo de contraseñas incorrectas (100 por omisión) sumando todas las redes, cuando cualquiera intenta descargar, entonces recibe `429` `SHARED_TOO_MANY_REQUESTS` con la espera, aunque la contraseña sea correcta, falte o venga de una red nueva, durante 60 minutos desde que se activó.
@@ -49,7 +49,7 @@ corrige el texto de ayuda de la contraseña (S-3 de 013). La sección del diálo
 - **CA-16** (HU-3, RF-17) — error: Dado una contraseña de menos de 8 o más de 128 caracteres al generar un enlace, entonces el `422` de 013 CA-2 dice «Escribe una contraseña de 8 a 128 caracteres.», sin «o deja el campo vacío» (`""` sigue rechazado; el formulario de 013c omite el campo).
 
 ## 4. Reglas de negocio
-- **RN-1** Un solo «No disponible» para todo motivo; nunca se dicen los intentos restantes (013 P-1, P-3).
+- **RN-1** Un solo «No disponible» para todo motivo y un solo texto de `429`; nunca se dicen el motivo ni los intentos restantes (013 P-1, P-3).
 - **RN-2** La ficha no pide contraseña: la contraseña protege la descarga (013 S-7).
 - **RN-3** Techo global por enlace: suma los fallos de todas las redes en una ventana móvil de 60 minutos. Al llegar al techo, `429` para todos durante 60 minutos. No inhabilita el enlace, un acierto no lo reinicia y convive con el bloqueo por enlace y red (013 RN-7).
 - **RN-4** La página no usa la sesión: todos los visitantes son iguales (013 CA-16).
@@ -65,9 +65,9 @@ corrige el texto de ayuda de la contraseña (S-3 de 013). La sección del diálo
 ## 6. Experiencia de usuario
 | Pantalla | Mockup | Estados requeridos | Estado del mockup |
 |---|---|---|---|
-| Página pública `/enlace` (`ui-guidelines.md` §7, fila «Enlace público») | `docs/design/mockups/sharing/enlace-publico/` | cargando (CA-1) · sin-contrasena (CA-1) · con-contrasena (CA-2) · contrasena-incorrecta (CA-4) · bloqueado (CA-5, CA-12) · descargando (CA-3) · descarga-iniciada (CA-3) · no-disponible (CA-6) · error-carga (CA-7; el `429` al abrir usa este diseño en tono de advertencia) | Borrador (con-contrasena); los 9 estados, a 360 y 1440 px, con `/mockup` en T-01 |
+| Página pública `/enlace` (`ui-guidelines.md` §7, fila «Enlace público») | `docs/design/mockups/sharing/enlace-publico/` | cargando (CA-1) · sin-contrasena (CA-1) · con-contrasena (CA-2) · contrasena-incorrecta (CA-4) · bloqueado (CA-5, CA-12) · descargando (CA-3) · descarga-iniciada (CA-3) · no-disponible (CA-6) · error-carga (CA-7; el `429` al abrir usa este diseño en tono de advertencia) | Borrador (con-contrasena); los 9 estados, a 360 y 1440 px, con `/mockup` en T-05 |
 
-- Mensajes clave: los de CA-4 a CA-7 y CA-16. Botón «Descargar»; campo «Contraseña del enlace».
+- Mensajes clave: los de CA-4 a CA-7 y CA-16. El `429` usa el texto neutro propio de la página de CA-5, no el genérico «Hiciste demasiados intentos…». Botón «Descargar»; campo «Contraseña del enlace».
 - Correcciones al mockup actual: «Ver archivo» → «Descargar»; «clave» → «contraseña». El README dice que pide la clave antes de mostrar el archivo, y no es así (S-7). Lleva la cabecera pública real (Planes / Iniciar sesión) y el color del botón corregido (DF-41). «Expirado» y «Revocado» pasan a no-disponible. La fila de §7 se parte en «Enlace público (página)» (esta spec) y «Enlace público (diálogo)» (013c).
 
 ## 7. Fuera de alcance
@@ -87,7 +87,7 @@ corrige el texto de ayuda de la contraseña (S-3 de 013). La sección del diálo
 - [RESUELTA 2026-11-06, Fátima] P-1 ¿Se parte la 013b? → Sí: 013b = página pública + PD-175 + S-3; 013c = sección del diálogo.
 - [RESUELTA 2026-11-06, Fátima] P-2 ¿El token se borra de la barra al abrir? → No (S-1).
 - [RESUELTA 2026-11-06, Fátima] P-3 ¿El techo se audita, cuánto dura y un acierto lo reinicia? → Una vez `public_link.locked`, 60 minutos, no lo reinicia (CA-12 a CA-14).
-- [RESUELTA 2026-11-06, Fátima] P-4 ¿Mockup o patrones existentes? → Mockup de los 9 estados con `/mockup` (T-01).
+- [RESUELTA 2026-11-06, Fátima] P-4 ¿Mockup o patrones existentes? → Mockup de los 9 estados con `/mockup` (T-05).
 - [ABIERTA] P-A, P-B y P-C, para Adrián: autorizaciones sobre `shared`, `PasswordField`, `storage` y `lib` (detalle en plan §7) — bloquea: no
 
 ## 10. Registro de cambios
@@ -95,3 +95,5 @@ corrige el texto de ayuda de la contraseña (S-3 de 013). La sección del diálo
 |---|---|---|---|
 | 2026-11-06 | Creación en `Borrador` con plan y tareas (ADR-0034); 013b partida en 013b (página + PD-175 + S-3) y 013c (diálogo) | Más de 12 archivos y dos pantallas (`workflow.md` §4.1); decisiones de Fátima | Pendiente (Adrián) |
 | 2026-11-06 | Revisión de documentos: CA-1 fecha absoluta, CA-3 texto de éxito, CA-6 fragmento vacío sin API, CA-7 diseño de «bloqueado», CA-12 sin contraseña también `429`, CA-14 con fallos simultáneos; P-A a P-C | Revisión del `reviewer` (B-1, I-1, I-5, S-2, S-4, S-8, S-9); decisiones de Fátima | Pendiente (Adrián) |
+| 2026-11-07 | Auditoría de Adrián en el PR #100 (85 %; M-1 a M-3, m-1 a m-7): CA-5 con texto de `429` neutro propio (M-2), CA-11 separa lo que mide axe de lo que se verifica a mano (m-6), tareas renumeradas (T-01 a T-03 en PR-A, T-04 a T-09 en PR-B) | Auditoría de Adrián; decisiones de Fátima (M-3, m-4, m-5, m-7) | Pendiente (Adrián) |
+| 2026-11-07 | Adrián aceptó pasar de los 12 archivos de `workflow.md` §4.1 (PR #100, 2026-11-06); dos PR | M-1: sin PR `refactor(web)` aparte; el refactor de `storage` (T-04) va en PR-B | Adrián |
