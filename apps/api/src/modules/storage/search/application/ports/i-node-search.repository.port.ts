@@ -1,3 +1,5 @@
+import type { SearchMatch } from '@nimbo/contracts';
+
 import type { Actor } from '../../../../../shared';
 import type { FileKind } from '../../../domain/file-kind';
 import type { StorageNode } from '../../../domain/storage-node';
@@ -22,10 +24,14 @@ export interface SearchLocation {
   readonly name: string;
 }
 
-/** Un resultado y su ubicación; `null` = la raíz o una carpeta que el actor no ve. */
+/**
+ * Un resultado y su ubicación; `null` = la raíz o una carpeta que el actor no ve. `matchedBy` = `content` solo si es
+ * un archivo que coincide por contenido y no por nombre (018b RN-3); las carpetas, siempre `name`.
+ */
 export interface NodeSearchHit {
   readonly node: StorageNode;
   readonly location: SearchLocation | null;
+  readonly matchedBy: SearchMatch;
 }
 
 /** Carpetas y luego archivos, cada grupo del modificado más reciente al más antiguo (CA-2). */

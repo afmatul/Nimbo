@@ -34,6 +34,7 @@ export function fileHit(n: number, name = `Camión_${String(n)}.docx`): FileHit 
     updatedAt: '2026-10-20T15:00:00.000Z',
     location: null,
     shared: false,
+    matchedBy: 'name',
   };
 }
 

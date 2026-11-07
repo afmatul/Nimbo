@@ -184,7 +184,7 @@ export class TypeOrmNodeSearchRepository implements INodeSearchRepository {
     const rowById = new Map(raw.map((row) => [row[`${group.alias}_id`], row]));
     return entities.map((entity) => {
       const node = group.toNode(entity);
-      return { node, location: locationOf(rowById.get(node.id)) };
+      return { node, location: locationOf(rowById.get(node.id)), matchedBy: 'name' as const };
     });
   }
 

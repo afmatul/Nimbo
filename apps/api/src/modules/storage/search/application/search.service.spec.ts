@@ -127,8 +127,8 @@ describe('SearchService', () => {
     const { repository, service } = setup();
     repository.page = {
       hits: [
-        { node: folder, location: null },
-        { node: file, location: { id: FOLDER_ID, name: 'Informes' } },
+        { node: folder, location: null, matchedBy: 'name' },
+        { node: file, location: { id: FOLDER_ID, name: 'Informes' }, matchedBy: 'name' },
       ],
       nextCursor: 'siguiente',
     };
@@ -158,6 +158,7 @@ describe('SearchService', () => {
           updatedAt: AT.toISOString(),
           location: { id: FOLDER_ID, name: 'Informes' },
           shared: false,
+          matchedBy: 'name',
         },
       ],
       nextCursor: 'siguiente',
@@ -201,28 +202,28 @@ describe('SearchService', () => {
 
     it('CA-2: lo que no es del actor sale con `shared`; lo propio, no', async () => {
       const [own, other] = await searchWith([
-        { node: file, location: { id: FOLDER_ID, name: 'Informes' } },
-        { node: sharedFile, location: { id: FOLDER_ID, name: 'Proyectos' } },
+        { node: file, location: { id: FOLDER_ID, name: 'Informes' }, matchedBy: 'name' },
+        { node: sharedFile, location: { id: FOLDER_ID, name: 'Proyectos' }, matchedBy: 'name' },
       ]);
 
       expect([own?.shared, other?.shared]).toEqual([false, true]);
     });
 
     it('CA-13: sin ubicación visible, el archivo sale sin `folderId` (no delata la carpeta)', async () => {
-      const [hit] = await searchWith([{ node: sharedFile, location: null }]);
+      const [hit] = await searchWith([{ node: sharedFile, location: null, matchedBy: 'name' }]);
 
       expect(hit).toMatchObject({ type: 'file', folderId: null, location: null, shared: true });
     });
 
     it('CA-13: sin ubicación visible, la carpeta sale sin `parentId`', async () => {
-      const [hit] = await searchWith([{ node: sharedFolder, location: null }]);
+      const [hit] = await searchWith([{ node: sharedFolder, location: null, matchedBy: 'name' }]);
 
       expect(hit).toMatchObject({ type: 'folder', parentId: null, location: null, shared: true });
     });
 
     it('CA-13: con ubicación visible se conserva el padre', async () => {
       const [hit] = await searchWith([
-        { node: sharedFile, location: { id: FOLDER_ID, name: 'Proyectos' } },
+        { node: sharedFile, location: { id: FOLDER_ID, name: 'Proyectos' }, matchedBy: 'name' },
       ]);
 
       expect(hit).toMatchObject({ type: 'file', folderId: FOLDER_ID, shared: true });

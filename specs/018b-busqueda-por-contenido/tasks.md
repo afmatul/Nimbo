@@ -6,7 +6,7 @@
 > `/implement` exige el plan `Aprobado` y la spec en `Lista` (P-1 a P-4 y P-6 resueltas).
 
 - [x] **T-01** (`ui-designer`) Estado `resultados-por-contenido` en `storage/busqueda` con `/mockup` (marca y nota de alcance) y capturas a 360 y 1440 px, aprobado por Adrián — CA: CA-8 — Prueba: axe del mockup sin violaciones — Depende: P-4, P-6
-- [ ] **T-02** Contrato `matchedBy` en `searchHitSchema` y puerto `IContentMatchReader` exportado por `storage/index.ts` (JSDoc del contrato, parámetro `contentText`) — CA: CA-4, CA-8 — Prueba: unitaria de contratos y `storage.module.spec.ts` (no enlaza el token; rojas primero) — Depende: —
+- [x] **T-02** Contrato `matchedBy` en `searchHitSchema` y puerto `IContentMatchReader` exportado por `storage/index.ts` (JSDoc del contrato, parámetro `contentText`) — CA: CA-4, CA-8 — Prueba: unitaria de contratos y `storage.module.spec.ts` (no enlaza el token; rojas primero) — Depende: —
 - [ ] **T-03** `SqlContentMatchReader` en `intelligence`, `ContentMatchBindingModule` en la raíz, y `architecture.md` (§3 patrón «condición SQL que da el dueño de la tabla» junto a `accessibleNodes`; §5 fila del puerto) y `design-model.md` M2/M6 al día — CA: CA-1, CA-2, CA-3, CA-5, CA-7 — Prueba: integración `content-match.int-spec.ts` y unitaria del enlace (rojas primero) — Depende: T-02
 - [ ] **T-04** Repositorio de búsqueda con «nombre ∨ contenido» y `coincide_nombre` — CA: CA-4, CA-6, CA-7, CA-9 — Prueba: integración `search.repository.int-spec.ts` (roja primero) — Depende: T-03
 - [ ] **T-05** `SearchService` con `matchedBy` y `GET /search` de punta a punta — CA: CA-4, CA-5, CA-12 — Prueba: unitaria del servicio + integración HTTP (feliz, `400`, bitácora sin texto) — Depende: T-04
@@ -15,6 +15,10 @@
 - [ ] **T-08** **(humana, Juan Marcos)** Recorrido de la demo en local: subir un `.docx` y un PDF, esperar su indexación, buscar por una frase, ver la marca, compartir y revocar con otra cuenta; nota en el PR — CA: CA-1, CA-4, CA-6, CA-8, CA-10 — Depende: T-06, T-07
 
 ## Notas del developer
+
+- T-02: para que cada commit quede verde, `NodeSearchHit.matchedBy` y su copia en `SearchService` entran con el contrato
+  (el repositorio responde `name` hasta T-04); T-05 suma las pruebas del mapeo y el HTTP. `contracts` exporta
+  `SEARCH_MATCHES` y `SearchMatch` para tipar `matchedBy` en `api` y `web` sin repetir los literales.
 
 ## Hallazgos de la auditoría de la rama (2026-11-07), a atender en este PR
 
@@ -30,7 +34,7 @@ el mockup `resultados-por-contenido` queda aprobado, así que T-01 está hecha (
   Hoy equivale porque `IndexingService.swap` escribe fragmentos y marca `indexado` en una transacción; al reindexar la
   misma versión los fragmentos viejos siguen mientras el estado es `pendiente`. Anotar el invariante en D-2 (o ajustar
   RN-4) y fijarlo en `content-match.int-spec.ts`.
-- [ ] **H-5** (menor, cierre) La rama incluye el cierre de la 018 (`f6dd5dc`); mencionarlo en la descripción del PR.
+- [x] **H-5** (menor, cierre) La rama incluye el cierre de la 018 (`f6dd5dc`); mencionarlo en la descripción del PR.
 - [ ] **H-6** (menor, T-03) Contrato del puerto: `SqlContentMatchReader` valida que `fileIdColumn`/`versionIdColumn`
   sean identificadores (`alias.propiedad`) y una prueba demuestra que un choque con el parámetro `contentText` falla
   (TypeORM pisa parámetros con el mismo nombre sin avisar, R-5).
