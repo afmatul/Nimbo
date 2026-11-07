@@ -1,6 +1,6 @@
 # Plan 013b — Página del enlace público (web) y techo global de fallos
 
-> Spec: `./spec.md` · Estado del plan: Propuesto
+> Spec: `./spec.md` · Estado del plan: Aprobado
 > Obligatorio y ≤ 250 líneas. Dice **qué** archivos se tocan y **qué** se espera de cada uno; no es el código en
 > prosa (sin cuerpos de funciones ni pseudocódigo). Lo aprueba Adrián antes de escribir código.
 
@@ -37,11 +37,14 @@
 - **Descarga (M-3, T-04):**
   - «Preparando… a los 2 s y una petición a la vez» ya está tres veces en `storage`. Se extrae a
     `usePreparingDownload` en `lib/` (Art. VI.2) y lo usan esos tres sitios y la página.
-  - La firma se queda en ≤ 3 parámetros. `download` devuelve una promesa y cada sitio que lo llama envuelve lo
-    suyo: `file-row-menu` limpia el aviso (`onNotice(null)`) antes y cierra el menú (`setOpen(false)`) en `finally`.
-    Un segundo clic ignorado por el hook igual limpia y cierra, como hoy: no cambia nada visible.
+  - La firma se queda en ≤ 3 parámetros. `download` devuelve `Promise<boolean>`: `true` si de verdad arrancó y
+    `false` si el hook lo ignoró porque ya había una petición en curso (N-1). Cada sitio que lo llama envuelve lo
+    suyo: `file-row-menu` limpia el aviso (`onNotice(null)`) y cierra el menú (`setOpen(false)`) solo si arrancó.
+    Así un segundo clic sigue sin hacer nada, como en el código actual, y lo prueba un doble clic en
+    `file-row-menu.spec.tsx`.
   - **T-04 sí cambia el comportamiento:** `shared-file-detail` gana «una petición a la vez», y lo prueba un doble
-    clic que debe dar una sola petición.
+    clic que debe dar una sola petición. Ese cambio va en un commit `fix(storage): … [013b T-04]`, separado del
+    `refactor(storage)` (N-2).
 - **S-3 (CA-16):** solo cambia el texto `INVALID_PASSWORD`. `createPublicLinkSchema` no se toca.
 
 ## 2. Módulos, archivos y diseño
@@ -52,8 +55,8 @@
 | A | shared (de Adrián, P-A) | `infrastructure/config/env.schema.ts`, `.env.example` | `PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR` (`positiveInt`, 100), junto a las `PUBLIC_LINK_*` de 013 (`pnpm env:check`) |
 | A | sharing | `application/sharing-config.ts`, `sharing.module.ts` | `SharingConfig.publicLinkCeiling: LockoutPolicy`: `maxFailures` sale del entorno; `windowSeconds` y `lockSeconds` valen 3600, con una constante con nombre (S-2) |
 | A | sharing | `application/public-link-password-gate.ts`, `README.md` del módulo | El orden de §1, con los pasos del techo en métodos privados (≤ 30 líneas, ≤ 3 parámetros); `engagedLock` es el de la red o el del techo. El README actualiza la fila de `POST /download` y el flujo del gate (m-1) |
-| B | web/lib (P-C) | `apps/web/src/lib/use-preparing-download.ts`, `lib/format-date.ts` | `usePreparingDownload<T>(requestUrl, onFailure, openUrl = openInBrowser)` devuelve `{ preparing: T \| null, download(arg): Promise<void> }`: «Preparando…» pasados `PREPARING_DELAY_MS`, una petición a la vez y limpieza del temporizador. `PREPARING_DELAY_MS` y `openInBrowser` se mudan aquí. `expiresAtLabel(iso)` da «14 nov 2026, 14:30» con los formateadores que ya existen (`dateTimeLabel` da «hoy, 14:30», I-1) |
-| B | web/storage (de Adrián, P-C) | `features/storage/components/file-row-menu.tsx`, `components/shared-file-detail.tsx`, `hooks/use-version-download.ts` | Usan `usePreparingDownload` y envuelven lo suyo en quien llama (§1): `file-row-menu` hace `onNotice(null)` antes y `setOpen(false)` en `finally`; `use-version-download` guarda la versión en `preparing`. `shared-file-detail` gana «una petición a la vez» (cambio de comportamiento declarado). `file-row-menu.tsx` deja de definir y exportar `PREPARING_DELAY_MS` y `openInBrowser`, sin reexportarlos (m-2) |
+| B | web/lib (P-C) | `apps/web/src/lib/use-preparing-download.ts`, `lib/format-date.ts` | `usePreparingDownload<T>(requestUrl, onFailure, openUrl = openInBrowser)` devuelve `{ preparing: T \| null, download(arg): Promise<boolean> }` (`true` si arrancó, N-1): «Preparando…» pasados `PREPARING_DELAY_MS`, una petición a la vez y limpieza del temporizador. `PREPARING_DELAY_MS` y `openInBrowser` se mudan aquí. `expiresAtLabel(iso)` da «14 nov 2026, 14:30» con los formateadores que ya existen (`dateTimeLabel` da «hoy, 14:30», I-1) |
+| B | web/storage (de Adrián, P-C) | `features/storage/components/file-row-menu.tsx`, `components/shared-file-detail.tsx`, `hooks/use-version-download.ts` | Usan `usePreparingDownload` y envuelven lo suyo en quien llama (§1): `file-row-menu` hace `onNotice(null)` y `setOpen(false)` solo si `download` arrancó (N-1); `use-version-download` guarda la versión en `preparing`. `shared-file-detail` gana «una petición a la vez» (cambio de comportamiento declarado). `file-row-menu.tsx` deja de definir y exportar `PREPARING_DELAY_MS` y `openInBrowser`, sin reexportarlos (m-2) |
 | B | web (solo imports, P-C) | `features/storage/components/file-detail-view.tsx`, `own-file-detail.tsx`, `quick-access-sidebar.tsx`; `features/sharing/components/received-shares-view.tsx` | Importan `openInBrowser` de `lib/use-preparing-download.ts`; nada más cambia. Las pruebas `storage/a11y.spec.tsx`, `file-detail-view.spec.tsx` y `file-row-menu.spec.tsx` importan `PREPARING_DELAY_MS` del mismo sitio |
 | B | web/app | `apps/web/src/app/(public)/enlace/page.tsx` | `export const metadata` con `title` «Archivo compartido · Nimbo» y `robots: { index: false }` (CA-8, S-5); monta `PublicLinkVisit` con `env.API_PUBLIC_URL` |
 | B | web/sharing (cliente y textos) | `features/sharing/public-link-visitor-api.ts`, `public-link-messages.ts`, `index.ts` | `createPublicLinkVisitorApi(apiPublicUrl)` (detalle abajo). Catálogo `code` → `{ title, tone }` como `ShareMessage` (Art. VI): `SHARING_LINK_UNAVAILABLE`, `SHARING_LINK_PASSWORD_INVALID`, red/5xx y `SHARED_TOO_MANY_REQUESTS` con texto neutro propio (M-2). `index.ts` exporta `PublicLinkVisit` |
@@ -99,18 +102,18 @@
   - `file-row-menu.tsx`, `shared-file-detail.tsx`, `use-version-download.ts`;
   - `page.tsx`, `public-link-visitor-api.ts`, `public-link-messages.ts`, `sharing/index.ts`;
   - `use-public-link-visit.ts`, `public-link-visit.tsx`, `public-link-password-form.tsx`.
-  - Si Adrián elige (a) en P-B, son **17**: se suman `components/nimbo/password-field.tsx` y sus 4 importadores de
-    `identity`.
+  - Con la opción (a) de P-B, que eligió Adrián, son **17**: se suman `components/nimbo/password-field.tsx` y sus 4
+    importadores de `identity`. El movimiento va en un commit propio dentro de T-08, sin cambio de comportamiento.
   - Aparte cuentan 4 archivos de «solo imports» (fila «solo imports», m-2), 3 pruebas con solo imports, y los
     mockups y capturas. `lib/error-catalog.ts` solo exporta `minutesFrom` (S-3).
-- Entre los dos PR son 21 (o 26). Pasa de los 12 de `workflow.md` §4.1, y Adrián lo aceptó (PR #100, M-1).
+- Entre los dos PR son 26. Pasa de los 12 de `workflow.md` §4.1, y Adrián lo aceptó (PR #100, M-1).
 
 **Puertos y dependencias:**
 - **Puertos nuevos:** ninguno. `IAttemptLockout` solo amplía el tipo de retorno de `recordFailure`, de forma compatible.
 - **Abstracciones nuevas:** `usePreparingDownload`, con cuatro usos de una misma regla de RNF-14 (Art. VI.2).
   `PublicLinkVisitorApi` es el tipo de una fábrica con una sola implementación, igual que `SharingApi` (012b).
 - **Dependencias nuevas entre módulos:** ninguna en `api`. En web, `storage → lib` y `sharing → lib`, lo normal.
-  `sharing → identity` solo si se elige (b) en P-B.
+  No hay `sharing → identity`, porque en P-B se eligió (a).
 
 **Reutilizar antes de crear** (buscado con Grep):
 - `requestJson`/`ApiClientError`, `IdentityCard`, `PublicHeader` (por `(public)/layout.tsx`), `StateView`,
@@ -194,21 +197,24 @@ Cada tarea de lógica empieza por su prueba en rojo, y ningún CA se prueba en t
 - **Desviaciones de los diagramas (m-7):** DF-91 y `design-model.md` M3b se actualizan al implementar T-01, en PR-A
   (`workflow.md` §4.10; la desviación la introduce el código de T-01, así que se registra en PR-A). Se agregan la llave del techo, `check`/`recordFailure` y
   `FailureRecord`. Sin DF nuevo.
-- **Pendientes:** PD-175 se cierra con PR-A. Sin PD nuevo.
+- **`429` del límite general (N-4):** es por red, no por enlace, y aun así dice «con este enlace». Adrián lo
+  aceptó por RN-1.
+- **Pendientes:** PD-175 se cierra con PR-A. PD-188 (N-3): `plan-and-billing.tsx:179` tiene su propia copia de
+  `openInBrowser`; `billing` pasa a usar la de `lib` en su próximo cambio.
 - **ADR:** ninguno.
 
 **Preguntas para Adrián:**
-- [ABIERTA] **P-A** ¿Autorizas a Fátima a cambiar en `shared`, en PR-A, `i-attempt-lockout.port.ts`,
+- [RESUELTA 2026-11-07, Adrián: sí; agregar a Adrián como revisor de esos archivos] **P-A** ¿Autorizas a Fátima a cambiar en `shared`, en PR-A, `i-attempt-lockout.port.ts`,
   `redis-attempt-lockout.ts`, `index.ts`, `README.md`, `env.schema.ts`, sus pruebas y fixtures, y el mock de
   `identity/application/auth.service.spec.ts:144` (precedente: 013 P-4)? Si no, los haces tú y T-01 espera ese commit — bloquea: no
-- [ABIERTA] **P-B** `PasswordField` (`features/identity/components/password-field.tsx`) tiene 4 usos dentro de
+- [RESUELTA 2026-11-07, Adrián: (a), en un commit propio sin cambio de comportamiento] **P-B** `PasswordField` (`features/identity/components/password-field.tsx`) tiene 4 usos dentro de
   `identity`: inicio de sesión, cambiar contraseña, restablecer y crear cuenta. La página pública es su primer uso
   fuera de `identity`, y un componente genérico que usan dos features va en `components/nimbo/` (`architecture.md`,
   árbol de `apps/web`; `ui-guidelines.md` §4).
   - (a) Moverlo ahora a `components/nimbo/` en PR-B y actualizar los 4 importadores (toca `identity`, que es tuyo).
   - (b) Importarlo desde `identity` y moverlo después.
   - **Recomiendo (a)**, si lo autorizas — bloquea: no
-- [ABIERTA] **P-C** ¿Autorizas a Fátima a hacer, en PR-B (T-04, commit `refactor(storage): … [013b T-04]`):
+- [RESUELTA 2026-11-07, Adrián: sí] **P-C** ¿Autorizas a Fátima a hacer, en PR-B (T-04, commit `refactor(storage): … [013b T-04]`):
   - crear `apps/web/src/lib/use-preparing-download.ts` y sumar `expiresAtLabel` a `lib/format-date.ts`;
   - cambiar `file-row-menu.tsx`, `shared-file-detail.tsx` y `use-version-download.ts` de `storage`;
   - actualizar los imports de `file-detail-view.tsx`, `own-file-detail.tsx`, `quick-access-sidebar.tsx` y sus tres
@@ -220,4 +226,4 @@ Cada tarea de lógica empieza por su prueba en rojo, y ningún CA se prueba en t
 ## 8. Aprobación
 - `architect`: no aplica. No hay puerto nuevo entre módulos, tecnología nueva ni cambio de arquitectura; el tipo de
   retorno de `recordFailure` se amplía de forma compatible.
-- Adrián: pendiente (P-A, P-B y P-C en §7).
+- Adrián: **Aprobado** (2026-11-07, PR #100, 95 %). P-A, P-B (a) y P-C resueltas en §7; notas N-1 a N-4 aplicadas.

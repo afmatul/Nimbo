@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador |
+| Estado | Lista |
 | Dueño | Fátima |
 | Fase | 2 |
 | Requisitos | RF-17, RNF-08, RNF-13, RNF-14; apoyan RF-07, RNF-05, RNF-07 |
@@ -88,7 +88,7 @@ corrige el texto de ayuda de la contraseña (S-3 de 013). La sección del diálo
 - [RESUELTA 2026-11-06, Fátima] P-2 ¿El token se borra de la barra al abrir? → No (S-1).
 - [RESUELTA 2026-11-06, Fátima] P-3 ¿El techo se audita, cuánto dura y un acierto lo reinicia? → Una vez `public_link.locked`, 60 minutos, no lo reinicia (CA-12 a CA-14).
 - [RESUELTA 2026-11-06, Fátima] P-4 ¿Mockup o patrones existentes? → Mockup de los 9 estados con `/mockup` (T-05).
-- [ABIERTA] P-A, P-B y P-C, para Adrián: autorizaciones sobre `shared`, `PasswordField`, `storage` y `lib` (detalle en plan §7) — bloquea: no
+- [RESUELTA 2026-11-07, Adrián] P-A, P-B y P-C: autorizaciones sobre `shared`, `PasswordField`, `storage` y `lib` → Sí a las tres; en P-B, opción (a) (detalle en plan §7)
 
 ## 10. Registro de cambios
 | Fecha | Cambio | Motivo | Aprobó |
@@ -97,3 +97,4 @@ corrige el texto de ayuda de la contraseña (S-3 de 013). La sección del diálo
 | 2026-11-06 | Revisión de documentos: CA-1 fecha absoluta, CA-3 texto de éxito, CA-6 fragmento vacío sin API, CA-7 diseño de «bloqueado», CA-12 sin contraseña también `429`, CA-14 con fallos simultáneos; P-A a P-C | Revisión del `reviewer` (B-1, I-1, I-5, S-2, S-4, S-8, S-9); decisiones de Fátima | Pendiente (Adrián) |
 | 2026-11-07 | Auditoría de Adrián en el PR #100 (85 %; M-1 a M-3, m-1 a m-7): CA-5 con texto de `429` neutro propio (M-2), CA-11 separa lo que mide axe de lo que se verifica a mano (m-6), tareas renumeradas (T-01 a T-03 en PR-A, T-04 a T-09 en PR-B) | Auditoría de Adrián; decisiones de Fátima (M-3, m-4, m-5, m-7) | Pendiente (Adrián) |
 | 2026-11-07 | Adrián aceptó pasar de los 12 archivos de `workflow.md` §4.1 (PR #100, 2026-11-06); dos PR | M-1: sin PR `refactor(web)` aparte; el refactor de `storage` (T-04) va en PR-B | Adrián |
+| 2026-11-07 | Plan aprobado (95 %); la spec pasa a `Lista`. P-A, P-B (a) y P-C resueltas; N-1 a N-3 en plan y tareas, y PD-188 por la copia de `openInBrowser` en `billing` | Aprobación de Adrián en el PR #100 | Adrián |
