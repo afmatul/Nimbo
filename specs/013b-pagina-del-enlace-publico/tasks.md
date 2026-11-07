@@ -6,7 +6,7 @@
 > Dos PR (plan §1): **PR-A (api)** = T-01 a T-03, cierra PD-175; **PR-B (web)** = T-04 a T-09.
 
 **PR-A (api)**
-- [ ] **T-01** Techo global por enlace: `recordFailure` con `engagedLock` en `shared` (P-A), techo en `PublicLinkPasswordGate` con el orden del plan §1, variable de entorno, README de `sharing` y de `shared`, y DF-91 + `design-model.md` M3b — CA: CA-12, CA-13, CA-14 — Prueba: unitaria primero (`public-link-password-gate.spec.ts`) y luego integración (`redis-attempt-lockout.int-spec.ts`, `public-link-access.int-spec.ts` con fallos simultáneos)
+- [x] **T-01** Techo global por enlace: `recordFailure` con `engagedLock` en `shared` (P-A), techo en `PublicLinkPasswordGate` con el orden del plan §1, variable de entorno, README de `sharing` y de `shared`, y DF-91 + `design-model.md` M3b — CA: CA-12, CA-13, CA-14 — Prueba: unitaria primero (`public-link-password-gate.spec.ts`) y luego integración (`redis-attempt-lockout.int-spec.ts`, `public-link-access.int-spec.ts` con fallos simultáneos)
 - [ ] **T-02** Texto de ayuda de `INVALID_PASSWORD` sin «o deja el campo vacío» — CA: CA-16 — Prueba: unitaria primero (`packages/contracts/src/sharing.spec.ts`)
 - [ ] **T-03** Aislamiento: el techo de un enlace de A no frena otro enlace de A, uno de B ni uno sin contraseña — CA: CA-15 — Prueba: aislamiento (`public-links.iso-spec.ts`) — Depende: T-01
 
@@ -19,3 +19,10 @@
 - [ ] **T-09** **(humana)** Recorrido de la demo en local (sin y con contraseña, incorrecta, techo bajado por entorno, revocado → «No disponible», sesión de Soporte) y revisión manual de CA-11 (360 px sin desplazamiento horizontal, contraste AA a 360 y 1440 px, «reducir movimiento»); nota en el PR — CA: los visibles, CA-11 — Depende: T-01, T-08
 
 ## Notas del developer
+- **T-01 (2026-11-07):** además de los 8 archivos de prueba y fixtures del plan §2, cambian
+  `public-link.service.spec.ts` y `sharing.service.spec.ts` de `sharing`: arman un `SharingConfig` completo y
+  `typecheck` pide `publicLinkCeiling` (una línea cada uno, sin cambiar aserciones). En
+  `public-link-access.int-spec.ts`, `randomNetwork64`, `insertProtectedLink` y `lockedEventsOf` suben al nivel del
+  archivo para que el `describe` del techo no copie los del bloqueo por red (Art. VI); el caso que mueve el reloj una
+  hora va al final de su `describe` porque vence las sesiones de prueba que usa «Mi actividad». La unitaria del gate
+  ajusta el orden esperado de llamadas de los casos de 013 (ahora empiezan por `check` del techo), sin quitar casos.

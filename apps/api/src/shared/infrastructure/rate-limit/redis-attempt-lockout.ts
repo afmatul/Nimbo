@@ -5,6 +5,7 @@ import type { Redis } from 'ioredis';
 
 import type {
   AttemptReservation,
+  FailureRecord,
   IAttemptLockout,
   LockoutPolicy,
   LockState,
@@ -79,9 +80,11 @@ export class RedisAttemptLockout implements IAttemptLockout {
     return toLockState(lockUntil - this.clock.now().getTime());
   }
 
-  async recordFailure(key: string, policy: LockoutPolicy): Promise<LockState> {
-    const { remainingMs } = await this.countFailure(key, policy);
-    return toLockState(remainingMs);
+  /** `engagedLock` sale del script atómico: solo el fallo que cruza el máximo lo recibe en `true` (013b CA-14). */
+  async recordFailure(key: string, policy: LockoutPolicy): Promise<FailureRecord> {
+    const { engagedLock, remainingMs } = await this.countFailure(key, policy);
+    const state = toLockState(remainingMs);
+    return state.locked ? { ...state, engagedLock } : state;
   }
 
   /** El mismo recuento que `recordFailure`, antes de verificar: solo se rechaza si el bloqueo ya estaba vigente. */

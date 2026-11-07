@@ -32,15 +32,25 @@ export type SharingEnv = Pick<
   | 'PUBLIC_LINK_MAX_FAILURES'
   | 'PUBLIC_LINK_FAILURE_WINDOW_MINUTES'
   | 'PUBLIC_LINK_LOCK_MINUTES'
+  | 'PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR'
 >;
 
 const SECONDS_PER_MINUTE = 60;
+/** 013b RN-3, S-2: la ventana del techo global y su espera son fijas, 60 minutos. */
+const PUBLIC_LINK_CEILING_SECONDS = 60 * SECONDS_PER_MINUTE;
 
 /** 013 CA-13, S-1: el bloqueo por enlace + red con los minutos del entorno pasados a segundos. */
 const publicLinkLockoutOf = (env: SharingEnv): LockoutPolicy => ({
   maxFailures: env.PUBLIC_LINK_MAX_FAILURES,
   windowSeconds: env.PUBLIC_LINK_FAILURE_WINDOW_MINUTES * SECONDS_PER_MINUTE,
   lockSeconds: env.PUBLIC_LINK_LOCK_MINUTES * SECONDS_PER_MINUTE,
+});
+
+/** 013b CA-12, RN-3: el techo global por enlace; solo el máximo sale del entorno. */
+const publicLinkCeilingOf = (env: SharingEnv): LockoutPolicy => ({
+  maxFailures: env.PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR,
+  windowSeconds: PUBLIC_LINK_CEILING_SECONDS,
+  lockSeconds: PUBLIC_LINK_CEILING_SECONDS,
 });
 
 /**
@@ -57,6 +67,7 @@ export class SharingModule {
       webPublicUrl: env.WEB_PUBLIC_URL,
       publicLinkRequestsPerMinute: env.PUBLIC_LINK_RATE_LIMIT_PER_MINUTE,
       publicLinkLockout: publicLinkLockoutOf(env),
+      publicLinkCeiling: publicLinkCeilingOf(env),
     };
     return {
       module: SharingModule,

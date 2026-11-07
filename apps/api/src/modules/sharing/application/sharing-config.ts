@@ -19,6 +19,11 @@ export interface SharingConfig {
    * bloqueo por contraseñas fallidas de un enlace desde una red (013 CA-13, RN-7, S-1).
    */
   readonly publicLinkLockout: LockoutPolicy;
+  /**
+   * `PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR` con ventana y espera fijas de 60 minutos: el techo global de contraseñas
+   * fallidas de un enlace, sumando todas las redes (013b CA-12, RN-3, S-2; PD-175).
+   */
+  readonly publicLinkCeiling: LockoutPolicy;
 }
 
 export const SHARING_CONFIG: unique symbol = Symbol('SharingConfig');

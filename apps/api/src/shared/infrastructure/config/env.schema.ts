@@ -117,6 +117,11 @@ const DEFAULT_PUBLIC_LINK_RATE_LIMIT_PER_MINUTE = 30;
 const DEFAULT_PUBLIC_LINK_MAX_FAILURES = 5;
 const DEFAULT_PUBLIC_LINK_FAILURE_WINDOW_MINUTES = 15;
 const DEFAULT_PUBLIC_LINK_LOCK_MINUTES = 15;
+/**
+ * Techo global de contraseñas fallidas por enlace, sumando todas las redes, en una ventana móvil de 60 minutos (013b
+ * CA-12, RN-3, S-2; PD-175). La ventana y la espera son fijas; solo el techo se configura.
+ */
+const DEFAULT_PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR = 100;
 /** Modelo de embeddings por defecto (ADR-0007): se vectoriza a 768 dimensiones (ADR-0003). */
 const DEFAULT_GEMINI_EMBEDDING_MODEL = 'gemini-embedding-001';
 /** Modelo que redacta las respuestas del agente (020 D-7, RNF-09). */
@@ -383,6 +388,9 @@ const sharingApiShape = {
   PUBLIC_LINK_MAX_FAILURES: positiveInt(DEFAULT_PUBLIC_LINK_MAX_FAILURES),
   PUBLIC_LINK_FAILURE_WINDOW_MINUTES: positiveInt(DEFAULT_PUBLIC_LINK_FAILURE_WINDOW_MINUTES),
   PUBLIC_LINK_LOCK_MINUTES: positiveInt(DEFAULT_PUBLIC_LINK_LOCK_MINUTES),
+  PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR: positiveInt(
+    DEFAULT_PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR,
+  ),
 };
 
 /** Agente con citas en el `api` (020 plan D-7, D-8): modelo, largo máximo de la pregunta (RN-7) y plazos (CA-15). */

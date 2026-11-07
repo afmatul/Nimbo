@@ -141,7 +141,11 @@ describe('AuthService.login: bloqueo y credenciales inválidas (plan 002 §6.3)'
     const ctx = await setup();
     const user = activeUser().build();
     ctx.users.seed(user);
-    ctx.lockout.recordFailure.mockResolvedValue({ locked: true, retryAfterSeconds: 900 });
+    ctx.lockout.recordFailure.mockResolvedValue({
+      locked: true,
+      retryAfterSeconds: 900,
+      engagedLock: true,
+    });
 
     await expect(
       ctx.service.login({ email: EMAIL, password: 'otra-contraseña' }, CLIENT),
