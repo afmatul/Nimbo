@@ -14,8 +14,8 @@ que cambia es la consulta de **archivos** de `TypeOrmNodeSearchRepository`: su c
 «nombre coincide **o** contenido coincide», y el `SELECT` suma si coincidió por nombre (para la marca, RN-3). La
 condición de contenido no la escribe `storage`: se la pide a un puerto nuevo, **`IContentMatchReader`**, declarado en
 `storage/search` y exportado por `storage/index.ts`, que implementa `intelligence` (`SqlContentMatchReader`) porque es
-el dueño de `fragmento` (PD-127). El puerto devuelve una condición SQL con parámetros (`EXISTS` sobre `fragmento` de la
-versión vigente con `texto_busq @@ plainto_tsquery('spanish', …)`) que el repositorio inserta en **la misma consulta**,
+el dueño de `fragmento` (PD-127). El puerto devuelve una condición SQL con parámetros (el archivo y su versión vigente `IN` los
+fragmentos con `texto_busq @@ plainto_tsquery('spanish', …)`, no correlacionada, H-3) que el repositorio inserta en **la misma consulta**,
 donde ya están `accessibleNodes(actor)`, `eliminado_en IS NULL`, los filtros, el orden y el cursor de 018. Así la
 unión, el orden y las páginas no cambian (RN-2), no hay tope de archivos por contenido y no se filtra después de
 consultar. El enlace del token vive en la raíz (`ContentMatchBindingModule`), como `PlanLimitsBindingModule` (DF-51),
@@ -32,7 +32,7 @@ La web solo agrega la marca «Coincide en el contenido» en la fila y la nota de
 | storage · infraestructura | `apps/api/src/modules/storage/search/infrastructure/typeorm-node-search.repository.ts` (cambia) | Inyecta `I_CONTENT_MATCH_READER`. El grupo de archivos usa «nombre ∨ contenido» como condición de coincidencia y selecciona `coincide_nombre`; carpetas sin cambio. El texto del contenido es `criteria.terms` unido por espacios. Cursor, orden, `pageOf`/`ordered` y ubicación, sin cambio (no hay tercera copia de `pageOf`) |
 | storage · aplicación | `apps/api/src/modules/storage/search/application/search.service.ts` (cambia) | `toSearchHit` copia `matchedBy` en los archivos. Sin otra regla nueva |
 | storage · fachada | `apps/api/src/modules/storage/index.ts` (cambia, **de Adrián**) | Exporta `IContentMatchReader`, `ContentMatchRequest`, `ContentMatchCondition` e `I_CONTENT_MATCH_READER` (solo tipos y token) |
-| intelligence · persistencia | `apps/api/src/modules/intelligence/infrastructure/persistence/sql-content-match.reader.ts` (nuevo, **módulo de Adrián**) | `SqlContentMatchReader implements IContentMatchReader`: arma el `EXISTS` sobre `fragmento` con las columnas recibidas (D-2). No lee tablas de `storage` por su cuenta, no recibe `EntityManager` y no ejecuta nada |
+| intelligence · persistencia | `apps/api/src/modules/intelligence/infrastructure/persistence/sql-content-match.reader.ts` (nuevo, **módulo de Adrián**) | `SqlContentMatchReader implements IContentMatchReader`: arma la condición `IN` sobre `fragmento` con las columnas recibidas, validadas como `alias.propiedad` (D-2, H-6). No lee tablas de `storage` por su cuenta, no recibe `EntityManager` y no ejecuta nada |
 | intelligence · fachada | `apps/api/src/modules/intelligence/index.ts` (cambia, **de Adrián**) | Exporta `SqlContentMatchReader` para la raíz, como `billing` exporta `PlanLimitsAdapter`; se ajusta el comentario («nada más de infraestructura») |
 | raíz | `apps/api/src/content-match-binding.module.ts` (nuevo, **de Adrián**) | `@Global()`; `{ provide: I_CONTENT_MATCH_READER, useClass: SqlContentMatchReader }`, exporta el token. Solo el `api` (el `worker` no monta la búsqueda) |
 | raíz | `apps/api/src/app.module.ts` (cambia, compartido) | Importa `ContentMatchBindingModule` junto a `PlanLimitsBindingModule` y suma una línea al comentario de composición |
@@ -86,6 +86,18 @@ ya es `to_tsvector('spanish', texto)` (019), así que plural, género y tildes a
 coincide con nada (CA-5): la búsqueda sigue por nombre. La condición exige `f.version_archivo_id` = versión vigente
 (RN-4): las filas de versiones anteriores que aún no borró `deleteOtherVersions` no cuentan (CA-7).
 
+Forma (auditoría H-3): `(archivo.id, archivo.versionActualId) IN (SELECT f.archivo_id, f.version_archivo_id FROM
+fragmento f WHERE f.texto_busq @@ plainto_tsquery('spanish', :contentText))`, no correlacionada, para que el
+planificador pueda ir por `idx_fragmento_texto_busq` (GIN) en lugar de evaluar `@@` archivo por archivo. Las columnas
+son rutas de propiedad del *query builder* de `storage` (H-7) y el lector rechaza lo que no sea `alias.propiedad`
+(H-6); `contentText` es el único parámetro y la consulta de `storage` no lo usa (R-5).
+
+Invariante (auditoría H-4): RN-4 pide texto en estado `indexado`, y la condición no lee `indexacion` porque los
+fragmentos de una versión solo existen si su indexación es `indexado`: `IndexingService.swap` reemplaza los fragmentos
+del archivo y marca `indexado` en una transacción, `indexado` es final (`FileIndexing`: ninguna transición sale de él;
+«Reintentar» solo desde `fallido`) y una versión nueva es otra fila. Lo fija `content-match.int-spec.ts`; si 019
+llegara a reindexar la misma versión, la condición tendría que unir `indexacion`.
+
 ### D-3 Marca sin segunda consulta
 
 `coincide_nombre` = la misma condición de nombre de 018 en el `SELECT` (mismos parámetros); `matchedBy = 'content'`
@@ -104,10 +116,9 @@ SELECT a.*, p.id AS ubicacion_id, p.nombre AS ubicacion_nombre,
  WHERE a.id IN (<accessibleNodes, archivos>)
    AND a.eliminado_en IS NULL
    AND ( (<nombre plegado LIKE por palabra>)
-         OR EXISTS (SELECT 1 FROM fragmento f                       -- condición de SqlContentMatchReader
-                     WHERE f.archivo_id = a.id
-                       AND f.version_archivo_id = a.version_actual_id
-                       AND f.texto_busq @@ plainto_tsquery('spanish', :contentText)) )
+         OR (a.id, a.version_actual_id) IN (                       -- condición de SqlContentMatchReader (H-3)
+              SELECT f.archivo_id, f.version_archivo_id FROM fragmento f
+               WHERE f.texto_busq @@ plainto_tsquery('spanish', :contentText)) )
    AND a.tipo IN (:...kinds)                                       -- solo con filtro de tipo (018)
    AND a.actualizado_en >= :from AND a.actualizado_en < :to         -- cada extremo, solo si viene
    AND (a.actualizado_en, a.id) < (:afterValue, :afterId)           -- solo con cursor
@@ -115,8 +126,8 @@ SELECT a.*, p.id AS ubicacion_id, p.nombre AS ubicacion_nombre,
  LIMIT :limit + 1;
 ```
 
-- Índices que ya existen y sirven: `uq_fragmento_version_orden` (prefijo `version_archivo_id`) para el `EXISTS` por
-  archivo, `idx_fragmento_archivo` e `idx_fragmento_texto_busq` (GIN; el planificador elige). `accessibleNodes` acota
+- Índices que ya existen y sirven: `idx_fragmento_texto_busq` (GIN) para la subconsulta no correlacionada,
+  `uq_fragmento_version_orden` e `idx_fragmento_archivo` si el planificador la convierte en *semi-join* por archivo. `accessibleNodes` acota
   primero a los nodos del actor (`idx_archivo_propietario_actualizado`). Sin índices nuevos (YAGNI, R-1).
 - RLS: sin cambios; segunda barrera. `fragmento_cliente` es solo de la propietaria desde `20261101100100`; lo
   compartido lo cubre `fragmento_compartido` (`FOR SELECT`, solo la versión vigente de lo compartido, migración
@@ -163,10 +174,11 @@ Sin E2E (marcador hasta 023). El recorrido de la demo es la tarea humana.
 
 ## 7. Riesgos y coherencia con el diseño
 
-- **R-1 Rendimiento** (RNF-01): el `OR` impide al planificador separar nombre y contenido; el `EXISTS` corre por
-  archivo accesible sobre sus fragmentos de la versión vigente. Mitigación: `accessibleNodes` acota primero,
-  `limit + 1`, índices existentes. Se mide en 023 con el mismo umbral de 018 R-1 (PD-153, ampliado a contenido). Si
-  no alcanza: separar la condición en un `IN (SELECT archivo_id … @@ …)` acotado por GIN antes de pensar en índices.
+- **R-1 Rendimiento** (RNF-01): el `OR` impide al planificador separar nombre y contenido. La condición ya es el
+  `IN (SELECT archivo_id, version_archivo_id … @@ …)` no correlacionado (H-3), que puede ir por el GIN; la RLS de
+  `fragmento` (`fragmento_cliente`, `fragmento_compartido`) se suma a esa subconsulta y `@@` no es *leakproof*, así
+  que el plan real se mide. Mitigación: `accessibleNodes` acota los archivos, `limit + 1`, índices existentes. Se mide
+  en 023 con el mismo umbral de 018 R-1 (PD-153, ampliado a contenido) antes de pensar en índices.
 - **R-2 Semánticas distintas**: el nombre coincide por trozo (018) y el contenido por palabra completa con variantes
   (CA-2). La nota de la página y la marca lo hacen visible; la prueba de integración fija los dos casos.
 - **R-3 Plegado del contenido**: `spanish` no pliega la diéresis ni otras marcas (`pingüino` ≠ `pinguino` en el

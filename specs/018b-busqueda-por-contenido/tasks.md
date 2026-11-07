@@ -7,7 +7,7 @@
 
 - [x] **T-01** (`ui-designer`) Estado `resultados-por-contenido` en `storage/busqueda` con `/mockup` (marca y nota de alcance) y capturas a 360 y 1440 px, aprobado por Adrián — CA: CA-8 — Prueba: axe del mockup sin violaciones — Depende: P-4, P-6
 - [x] **T-02** Contrato `matchedBy` en `searchHitSchema` y puerto `IContentMatchReader` exportado por `storage/index.ts` (JSDoc del contrato, parámetro `contentText`) — CA: CA-4, CA-8 — Prueba: unitaria de contratos y `storage.module.spec.ts` (no enlaza el token; rojas primero) — Depende: —
-- [ ] **T-03** `SqlContentMatchReader` en `intelligence`, `ContentMatchBindingModule` en la raíz, y `architecture.md` (§3 patrón «condición SQL que da el dueño de la tabla» junto a `accessibleNodes`; §5 fila del puerto) y `design-model.md` M2/M6 al día — CA: CA-1, CA-2, CA-3, CA-5, CA-7 — Prueba: integración `content-match.int-spec.ts` y unitaria del enlace (rojas primero) — Depende: T-02
+- [x] **T-03** `SqlContentMatchReader` en `intelligence`, `ContentMatchBindingModule` en la raíz, y `architecture.md` (§3 patrón «condición SQL que da el dueño de la tabla» junto a `accessibleNodes`; §5 fila del puerto) y `design-model.md` M2/M6 al día — CA: CA-1, CA-2, CA-3, CA-5, CA-7 — Prueba: integración `content-match.int-spec.ts` y unitaria del enlace (rojas primero) — Depende: T-02
 - [ ] **T-04** Repositorio de búsqueda con «nombre ∨ contenido» y `coincide_nombre` — CA: CA-4, CA-6, CA-7, CA-9 — Prueba: integración `search.repository.int-spec.ts` (roja primero) — Depende: T-03
 - [ ] **T-05** `SearchService` con `matchedBy` y `GET /search` de punta a punta — CA: CA-4, CA-5, CA-12 — Prueba: unitaria del servicio + integración HTTP (feliz, `400`, bitácora sin texto) — Depende: T-04
 - [ ] **T-06** Aislamiento: B no encuentra el texto de A; un compartido que coincide solo por contenido aparece con `shared` (`fragmento_compartido`) y desaparece al revocarse; actor interno sin filas — CA: CA-10, CA-11 — Prueba: aislamiento `storage-search.iso-spec.ts` — Depende: T-04
@@ -19,6 +19,12 @@
 - T-02: para que cada commit quede verde, `NodeSearchHit.matchedBy` y su copia en `SearchService` entran con el contrato
   (el repositorio responde `name` hasta T-04); T-05 suma las pruebas del mapeo y el HTTP. `contracts` exporta
   `SEARCH_MATCHES` y `SearchMatch` para tipar `matchedBy` en `api` y `web` sin repetir los literales.
+- T-03: la condición es la no correlacionada de H-3 (plan D-2, §3 y R-1 al día; DF-95 también). H-4: el invariante
+  queda en D-2 y en `content-match.int-spec.ts` (el `swap` interrumpido no deja texto que coincida; `indexado` es
+  final). H-6: `SqlContentMatchReader` lanza `TypeError` si una columna no es `alias.propiedad` (error de programación;
+  el JSDoc del puerto lo dice) y una prueba muestra que reutilizar `contentText` pisa el texto. R-1: `@@`
+  (`ts_match_vq`) no es *leakproof* en Postgres 17, así que con la RLS de `fragmento` el uso del GIN no está
+  garantizado; se mide en 023. PD-127 pasa a «Implementado en la rama»; se cierra al fusionar.
 
 ## Hallazgos de la auditoría de la rama (2026-11-07), a atender en este PR
 
@@ -30,12 +36,12 @@ el mockup `resultados-por-contenido` queda aprobado, así que T-01 está hecha (
   f.texto_busq @@ plainto_tsquery('spanish', :contentText))`, que usa `idx_fragmento_texto_busq` (GIN), en lugar del
   `EXISTS` por archivo de plan D-2 y §3 (que evalúa `@@` y la RLS de `fragmento_compartido` fila por fila). Actualizar
   D-2, §3 y R-1.
-- [ ] **H-4** (menor, T-03) RN-4 exige estado `indexado`, pero la condición solo mira fragmentos de la versión vigente.
+- [x] **H-4** (menor, T-03) RN-4 exige estado `indexado`, pero la condición solo mira fragmentos de la versión vigente.
   Hoy equivale porque `IndexingService.swap` escribe fragmentos y marca `indexado` en una transacción; al reindexar la
   misma versión los fragmentos viejos siguen mientras el estado es `pendiente`. Anotar el invariante en D-2 (o ajustar
   RN-4) y fijarlo en `content-match.int-spec.ts`.
 - [x] **H-5** (menor, cierre) La rama incluye el cierre de la 018 (`f6dd5dc`); mencionarlo en la descripción del PR.
-- [ ] **H-6** (menor, T-03) Contrato del puerto: `SqlContentMatchReader` valida que `fileIdColumn`/`versionIdColumn`
+- [x] **H-6** (menor, T-03) Contrato del puerto: `SqlContentMatchReader` valida que `fileIdColumn`/`versionIdColumn`
   sean identificadores (`alias.propiedad`) y una prueba demuestra que un choque con el parámetro `contentText` falla
   (TypeORM pisa parámetros con el mismo nombre sin avisar, R-5).
 - [ ] **H-7** (menor, T-04) Las columnas que recibe el puerto son rutas de propiedad del *query builder*
