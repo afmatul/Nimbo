@@ -8,7 +8,7 @@
 - [x] **T-01** (`ui-designer`) Estado `resultados-por-contenido` en `storage/busqueda` con `/mockup` (marca y nota de alcance) y capturas a 360 y 1440 px, aprobado por Adrián — CA: CA-8 — Prueba: axe del mockup sin violaciones — Depende: P-4, P-6
 - [x] **T-02** Contrato `matchedBy` en `searchHitSchema` y puerto `IContentMatchReader` exportado por `storage/index.ts` (JSDoc del contrato, parámetro `contentText`) — CA: CA-4, CA-8 — Prueba: unitaria de contratos y `storage.module.spec.ts` (no enlaza el token; rojas primero) — Depende: —
 - [x] **T-03** `SqlContentMatchReader` en `intelligence`, `ContentMatchBindingModule` en la raíz, y `architecture.md` (§3 patrón «condición SQL que da el dueño de la tabla» junto a `accessibleNodes`; §5 fila del puerto) y `design-model.md` M2/M6 al día — CA: CA-1, CA-2, CA-3, CA-5, CA-7 — Prueba: integración `content-match.int-spec.ts` y unitaria del enlace (rojas primero) — Depende: T-02
-- [ ] **T-04** Repositorio de búsqueda con «nombre ∨ contenido» y `coincide_nombre` — CA: CA-4, CA-6, CA-7, CA-9 — Prueba: integración `search.repository.int-spec.ts` (roja primero) — Depende: T-03
+- [x] **T-04** Repositorio de búsqueda con «nombre ∨ contenido» y `coincide_nombre` — CA: CA-4, CA-6, CA-7, CA-9 — Prueba: integración `search.repository.int-spec.ts` (roja primero) — Depende: T-03
 - [ ] **T-05** `SearchService` con `matchedBy` y `GET /search` de punta a punta — CA: CA-4, CA-5, CA-12 — Prueba: unitaria del servicio + integración HTTP (feliz, `400`, bitácora sin texto) — Depende: T-04
 - [ ] **T-06** Aislamiento: B no encuentra el texto de A; un compartido que coincide solo por contenido aparece con `shared` (`fragmento_compartido`) y desaparece al revocarse; actor interno sin filas — CA: CA-10, CA-11 — Prueba: aislamiento `storage-search.iso-spec.ts` — Depende: T-04
 - [ ] **T-07** Web: marca «Coincide en el contenido», nota de alcance y textos del encabezado y del formulario (`search-form.tsx`) según el mockup de T-01 — CA: CA-8 — Prueba: componente `search-view.spec.tsx` (con la etiqueta nueva) + axe a 360 y 1440 px — Depende: T-01, T-05
@@ -25,13 +25,18 @@
   el JSDoc del puerto lo dice) y una prueba muestra que reutilizar `contentText` pisa el texto. R-1: `@@`
   (`ts_match_vq`) no es *leakproof* en Postgres 17, así que con la RLS de `fragmento` el uso del GIN no está
   garantizado; se mide en 023. PD-127 pasa a «Implementado en la rama»; se cierra al fusionar.
+- T-04: el grupo de archivos se arma en el constructor con el lector inyectado (`filesMatching`, H-7) y pasa
+  `archivo.id`/`archivo.versionActualId`; las dos consultas seleccionan `coincide_nombre` (en carpetas siempre
+  verdadero), así que no hace falta una rama por grupo. Los arneses de prueba que montan `StorageModule` sin
+  `AppModule` (`storage-http.ts`, `billing-http.ts`, `upload-cleanup`, `billing.iso-spec.ts`,
+  `billing-renewal.iso-spec.ts`) suman `ContentMatchBindingModule`, como ya hacían con `PlanLimitsBindingModule`.
 
 ## Hallazgos de la auditoría de la rama (2026-11-07), a atender en este PR
 
 Resueltos con Adrián (2026-11-07): `search-form.tsx` entra al plan y la excepción de 13 archivos queda aprobada (H-1);
 el mockup `resultados-por-contenido` queda aprobado, así que T-01 está hecha (H-2). Pendientes, en la tarea indicada:
 
-- [ ] **H-3** (medio, T-03/T-04) Forma de la condición de contenido: preferir la no correlacionada
+- [x] **H-3** (medio, T-03/T-04) Forma de la condición de contenido: preferir la no correlacionada
   `(archivo.id, archivo.version_actual_id) IN (SELECT f.archivo_id, f.version_archivo_id FROM fragmento f WHERE
   f.texto_busq @@ plainto_tsquery('spanish', :contentText))`, que usa `idx_fragmento_texto_busq` (GIN), en lugar del
   `EXISTS` por archivo de plan D-2 y §3 (que evalúa `@@` y la RLS de `fragmento_compartido` fila por fila). Actualizar
@@ -44,7 +49,7 @@ el mockup `resultados-por-contenido` queda aprobado, así que T-01 está hecha (
 - [x] **H-6** (menor, T-03) Contrato del puerto: `SqlContentMatchReader` valida que `fileIdColumn`/`versionIdColumn`
   sean identificadores (`alias.propiedad`) y una prueba demuestra que un choque con el parámetro `contentText` falla
   (TypeORM pisa parámetros con el mismo nombre sin avisar, R-5).
-- [ ] **H-7** (menor, T-04) Las columnas que recibe el puerto son rutas de propiedad del *query builder*
+- [x] **H-7** (menor, T-04) Las columnas que recibe el puerto son rutas de propiedad del *query builder*
   (`archivo.versionActualId`), no nombres de columna; y `FILES` deja de ser una constante de módulo para usar el reader
   inyectado (se arma en el repositorio).
 - [ ] **H-8** (menor, T-07) Mockup frente a código: el nombre del formulario del mockup («Buscar por nombre o

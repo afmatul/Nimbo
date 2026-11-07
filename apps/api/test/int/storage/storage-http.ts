@@ -14,6 +14,7 @@ import request from 'supertest';
 import type { Response } from 'supertest';
 import type { DataSource } from 'typeorm';
 
+import { ContentMatchBindingModule } from '../../../src/content-match-binding.module';
 import { I_PLAN_LIMITS_PROVIDER, StorageModule } from '../../../src/modules/storage';
 import type { PlanLimits } from '../../../src/modules/storage';
 import { PlanLimitsBindingModule } from '../../../src/plan-limits-binding.module';
@@ -285,6 +286,7 @@ export const createStorageHttpApp = async (
     modules: [
       ...(options.modules ?? []),
       PlanLimitsBindingModule,
+      ContentMatchBindingModule,
       storageModule,
       ...(options.withStorage?.(storageModule, env) ?? []),
     ],

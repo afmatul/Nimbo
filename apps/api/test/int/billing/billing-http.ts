@@ -1,3 +1,4 @@
+import { ContentMatchBindingModule } from '../../../src/content-match-binding.module';
 import { BillingHttpModule } from '../../../src/modules/billing';
 import { StorageModule } from '../../../src/modules/storage';
 import { PlanLimitsBindingModule } from '../../../src/plan-limits-binding.module';
@@ -17,7 +18,12 @@ export const createBillingHttpApp = async (
   const storage = StorageModule.forRoot(env);
   const testApp = await createTestApp({
     validatedEnv: env,
-    modules: [PlanLimitsBindingModule, storage, BillingHttpModule.forRoot(env, storage)],
+    modules: [
+      PlanLimitsBindingModule,
+      ContentMatchBindingModule,
+      storage,
+      BillingHttpModule.forRoot(env, storage),
+    ],
     overrides,
   });
   return {

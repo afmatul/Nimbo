@@ -1,5 +1,6 @@
 import type { DataSource } from 'typeorm';
 
+import { SqlContentMatchReader } from '../../../src/modules/intelligence/infrastructure/persistence/sql-content-match.reader';
 import { InvalidQueryError } from '../../../src/modules/storage/domain/errors';
 import type {
   NodeSearchCriteria,
@@ -14,6 +15,7 @@ import {
 import { createActor, Role } from '../../../src/shared';
 import type { Actor } from '../../../src/shared';
 import { connectAsOwner } from '../../support/database-urls';
+import { insertChunk, insertIndexing } from '../intelligence/intelligence-test-db';
 
 import {
   connectAsAppDatabase,
@@ -86,7 +88,7 @@ describe('TypeOrmNodeSearchRepository · por nombre (018 CA-1 a CA-5)', () => {
   beforeAll(async () => {
     owner = await connectAsOwner();
     app = await connectAsAppDatabase();
-    repository = new TypeOrmNodeSearchRepository(app.context);
+    repository = new TypeOrmNodeSearchRepository(app.context, new SqlContentMatchReader());
   });
 
   afterAll(async () => {
@@ -346,6 +348,160 @@ describe('TypeOrmNodeSearchRepository · por nombre (018 CA-1 a CA-5)', () => {
       await expect(search(ana, { terms: ['a'], cursor: 'no-es-un-cursor' })).rejects.toBeInstanceOf(
         InvalidQueryError,
       );
+    });
+  });
+  describe('por contenido (018b)', () => {
+    /** Archivo cuya versión vigente quedó `indexado` con un fragmento de `text` (019). */
+    const indexedFile = async (
+      actor: Actor,
+      name: string,
+      text: string,
+      options: FileRowOptions = {},
+    ): Promise<string> =>
+      owner.transaction(async (manager) => {
+        const version = await insertFileWithVersion(manager, actor.id, { ...options, name });
+        await insertIndexing(manager, version, { state: 'indexado' });
+        await insertChunk(manager, version, { text });
+        return version.fileId;
+      });
+
+    const found = async (actor: Actor, terms: readonly string[], criteria = {}) =>
+      (await search(actor, { terms, ...criteria })).hits.map((hit) => [
+        hit.node.name.value,
+        hit.matchedBy,
+      ]);
+
+    it('CA-1, CA-4: el contenido suma archivos marcados `content`; el que coincide por nombre y contenido sale una vez con `name`', async () => {
+      const ana = await newClient();
+      const acta = await indexedFile(ana, 'Acta.docx', 'El camión llegó tarde');
+      const both = await indexedFile(ana, 'Camión rojo.pdf', 'Informe del camión');
+      await indexedFile(ana, 'Minuta.docx', 'Sin novedades');
+      await folderRow(ana, 'Camiones');
+      await touch('archivo', acta, OLDER);
+      await touch('archivo', both, NEWER);
+
+      expect(await found(ana, ['camion'])).toEqual([
+        ['Camiones', 'name'],
+        ['Camión rojo.pdf', 'name'],
+        ['Acta.docx', 'content'],
+      ]);
+    });
+
+    it('CA-2: por contenido valen palabras completas; un trozo («camio») solo encuentra por nombre', async () => {
+      const ana = await newClient();
+      await indexedFile(ana, 'Acta.docx', 'El camión llegó tarde');
+      await fileRow(ana, 'camionero.pdf');
+
+      expect(await found(ana, ['camio'])).toEqual([['camionero.pdf', 'name']]);
+      expect(await found(ana, ['CAMIONES'])).toEqual([['Acta.docx', 'content']]);
+    });
+
+    it('CA-3: todas las palabras en el mismo fragmento', async () => {
+      const ana = await newClient();
+      await indexedFile(ana, 'Acta.docx', 'El camión llegó tarde');
+
+      expect(await found(ana, ['camion', 'tarde'])).toEqual([['Acta.docx', 'content']]);
+      expect(await found(ana, ['camion', 'presupuesto'])).toEqual([]);
+    });
+
+    it('CA-5: un texto solo de palabras vacías busca solo por nombre', async () => {
+      const ana = await newClient();
+      await indexedFile(ana, 'Acta.docx', 'De la casa a la oficina');
+      await fileRow(ana, 'de la casa.pdf');
+
+      expect(await found(ana, ['de', 'la'])).toEqual([['de la casa.pdf', 'name']]);
+    });
+
+    it.each([['pendiente'], ['indexando'], ['fallido'], ['no_indexable']])(
+      'CA-6: un archivo `%s` (sin fragmentos) solo se encuentra por nombre; al indexarse, también por contenido',
+      async (state) => {
+        const ana = await newClient();
+        const version = await owner.transaction((manager) =>
+          insertFileWithVersion(manager, ana.id, { name: 'Acta.docx' }),
+        );
+        await insertIndexing(owner, version, {
+          state,
+          reason: { fallido: 'proveedor_no_disponible', no_indexable: 'sin_texto' }[state] ?? null,
+        });
+
+        expect(await found(ana, ['camion'])).toEqual([]);
+        expect(await found(ana, ['acta'])).toEqual([['Acta.docx', 'name']]);
+
+        await insertChunk(owner, version, { text: 'El camión llegó tarde' });
+        expect(await found(ana, ['camion'])).toEqual([['Acta.docx', 'content']]);
+      },
+    );
+
+    it('CA-7: una versión vigente nueva sin indexar no se encuentra por el texto de la anterior', async () => {
+      const ana = await newClient();
+      const acta = await indexedFile(ana, 'Acta.docx', 'El camión llegó tarde');
+      await owner.transaction(async (manager) => {
+        const [row] = (await manager.query(
+          `INSERT INTO version_archivo (id, archivo_id, origen, clave_objeto, tamano_bytes, creado_por, creada_en, numero)
+           VALUES (gen_random_uuid(), $1, 'carga', 'u/x/y/z', 10, $2, now(), 2) RETURNING id`,
+          [acta, ana.id],
+        )) as { id: string }[];
+        await manager.query('UPDATE archivo SET version_actual_id = $1 WHERE id = $2', [
+          row?.id,
+          acta,
+        ]);
+      });
+
+      expect(await found(ana, ['camion'])).toEqual([]);
+    });
+
+    it('CA-7: un archivo en la papelera no aparece aunque su texto coincida', async () => {
+      const ana = await newClient();
+      await indexedFile(ana, 'Acta.docx', 'El camión llegó tarde', { deletedAt: new Date() });
+
+      expect(await found(ana, ['camion'])).toEqual([]);
+    });
+
+    it('CA-9: el tipo y la fecha de modificación se aplican a lo encontrado por contenido', async () => {
+      const ana = await newClient();
+      const recent = await indexedFile(ana, 'Acta.docx', 'El camión llegó tarde');
+      const old = await indexedFile(ana, 'Minuta.docx', 'Otro camión');
+      await touch('archivo', recent, NEWER);
+      await touch('archivo', old, OLDER);
+
+      expect(await found(ana, ['camion'], { kinds: ['imagen'] })).toEqual([]);
+      expect(await found(ana, ['camion'], { kinds: ['pdf'] })).toEqual([
+        ['Acta.docx', 'content'],
+        ['Minuta.docx', 'content'],
+      ]);
+      expect(await found(ana, ['camion'], { from: MIDDLE })).toEqual([['Acta.docx', 'content']]);
+      expect(await found(ana, ['camion'], { to: MIDDLE })).toEqual([['Minuta.docx', 'content']]);
+    });
+
+    it('CA-9: una carpeta nunca coincide por contenido, ni por el texto de sus archivos', async () => {
+      const ana = await newClient();
+      const box = await folderRow(ana, 'Proyectos');
+      await indexedFile(ana, 'Acta.docx', 'El camión llegó tarde', { folderId: box.id });
+
+      const { hits } = await search(ana, { terms: ['camion'] });
+
+      expect(hits.map((hit) => [hit.node.type, hit.location?.name, hit.matchedBy])).toEqual([
+        ['file', 'Proyectos', 'content'],
+      ]);
+    });
+
+    it('CA-4: con coincidencias por nombre y por contenido mezcladas, las páginas no repiten ni saltan ninguna', async () => {
+      const ana = await newClient();
+      await folderRow(ana, 'Camiones');
+      const files = [
+        await indexedFile(ana, 'camion-1.pdf', 'Nada que ver'),
+        await indexedFile(ana, 'Acta.docx', 'El camión llegó tarde'),
+        await fileRow(ana, 'camion-2.pdf'),
+        await indexedFile(ana, 'Minuta.docx', 'Otro camión'),
+      ];
+      await Promise.all(files.map((id) => touch('archivo', id, MIDDLE)));
+      const all = (await search(ana, { terms: ['camion'] })).hits.map((hit) => hit.node.id);
+
+      for (const limit of [1, 2, 3]) {
+        const paged = (await allPages(ana, ['camion'], limit)).map((hit) => hit.node.id);
+        expect(paged).toEqual(all);
+      }
+      expect(new Set(all).size).toBe(5);
     });
   });
 });
