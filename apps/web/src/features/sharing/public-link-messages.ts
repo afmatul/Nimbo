@@ -44,13 +44,19 @@ const FIXED_MESSAGES: Readonly<Record<FixedKey, PublicLinkMessage>> = {
   },
 };
 
+/** «1 minuto» o «N minutos»: `minutesFrom` redondea hacia arriba y nunca da menos de 1. */
+function waitLabel(retryAfterSeconds: number): string {
+  const minutes = minutesFrom(retryAfterSeconds);
+  return minutes === '1' ? '1 minuto' : `${minutes} minutos`;
+}
+
 /**
  * El `429` de la página es neutro (M-2): el mismo para el bloqueo por red, el techo global y el límite general, sin
- * cuenta regresiva. Los minutos salen de `Retry-After`, hacia arriba y nunca menos de 1.
+ * cuenta regresiva. Los minutos salen de `Retry-After`; sin él, 1 minuto.
  */
 function tooManyRequestsMessage(retryAfterSeconds = 0): PublicLinkMessage {
   return {
-    title: `Hubo demasiados intentos con este enlace. Espera ${minutesFrom(retryAfterSeconds)} minutos e inténtalo de nuevo.`,
+    title: `Hubo demasiados intentos con este enlace. Espera ${waitLabel(retryAfterSeconds)} e inténtalo de nuevo.`,
     tone: 'warning',
   };
 }

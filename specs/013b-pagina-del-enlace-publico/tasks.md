@@ -33,7 +33,7 @@
 - **T-06** (2026-11-07):
   - `public-link-visitor-api.ts` repite el «`POST` JSON + `safeParse` → genérico» de `identity/api.ts` y de
     `identity/account-setup/api.ts` (tercera copia, Art. VI.2). No se extrajo a `lib/` porque tocaría `identity`, que
-    no está autorizado en el plan; se propone como pendiente (PD) para un cambio de `lib/api-client`.
+    no está autorizado en el plan; queda como PD-191 (ayudante en `lib/api-client`).
   - La ficha y la URL firmada de prueba viven en `features/sharing/test-public-link.ts` (como `test-sharing.ts`) para
     reutilizarlas en T-07 y T-08.
   - Hoy `web` no tiene `route.ts` ni `middleware`: la prueba de arquitectura los vigila por si aparecen, y se comprobó
@@ -51,5 +51,6 @@
   - El catálogo usa dos claves propias para la red o un 5xx (`PUBLIC_LINK_OPEN_FAILED`, `PUBLIC_LINK_DOWNLOAD_FAILED`),
     porque no traen `code`. Tonos: no disponible `neutral`; contraseña incorrecta y red al abrir `error`; `429` y red al
     descargar `warning` (README del mockup).
-  - «{n} minutos» sigue a `error-catalog`, que no tiene singular: con menos de un minuto dice «Espera 1 minutos». Solo
-    pasa si la API manda un `Retry-After` menor de 60 s o no lo manda; se propone como PD corregirlo en los dos.
+  - El `429` dice «Espera 1 minuto…» en singular cuando `minutesFrom` da 1 (menos de 60 s o sin `Retry-After`) y
+    «Espera N minutos…» si da más (decisión de Fátima, 2026-11-08). `error-catalog` sigue diciendo siempre «minutos»
+    y no se tocó: queda como PD-190.

@@ -49,9 +49,18 @@ describe('mensajes de la página del enlace público (013b §6, RN-1)', () => {
     });
   });
 
-  it('CA-5: menos de un minuto de espera dice 1, como el catálogo común (`minutesFrom`)', () => {
-    expect(publicLinkMessage(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, 30).title).toBe(
-      'Hubo demasiados intentos con este enlace. Espera 1 minutos e inténtalo de nuevo.',
+  it.each([
+    ['con menos de un minuto de espera', 30],
+    ['sin `Retry-After`', undefined],
+  ])('CA-5: %s, dice «1 minuto» en singular', (_caso, seconds) => {
+    expect(publicLinkMessage(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, seconds).title).toBe(
+      'Hubo demasiados intentos con este enlace. Espera 1 minuto e inténtalo de nuevo.',
+    );
+  });
+
+  it('CA-5: con más de un minuto dice «minutos» en plural', () => {
+    expect(publicLinkMessage(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, 61).title).toBe(
+      'Hubo demasiados intentos con este enlace. Espera 2 minutos e inténtalo de nuevo.',
     );
   });
 
