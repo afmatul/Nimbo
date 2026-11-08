@@ -957,4 +957,28 @@ describe('022d: grupos de los módulos en el tablero de operación', () => {
       );
     });
   });
+
+  describe('T-05: un solo tablero aprovisionado y runbook (CA-14, CA-15)', () => {
+    const GROUPS = ['Identidad', 'Almacenamiento', 'Indexación', 'Optimizador', 'Agente'];
+
+    it('CA-14: los grupos viven en el único tablero aprovisionado, sin otro tablero', () => {
+      expect(readdirSync(join(ROOT, 'infra/grafana/dashboards'))).toEqual(['operacion.json']);
+    });
+
+    it('CA-15: el tablero aprovisionado trae las cinco filas de los módulos, en orden', () => {
+      const rows = dashboardPanels()
+        .filter((panel) => panel.type === 'row')
+        .map((panel) => panel.title);
+      expect(rows).toEqual(GROUPS);
+    });
+
+    it('CA-15: el runbook nombra las cinco filas, los paneles 16 a 35 y cómo generar su tráfico', () => {
+      const runbook = read('docs/operations/observabilidad.md');
+      for (const group of GROUPS) expect(runbook).toContain(`«${group}»`);
+      for (const panel of dashboardPanels().filter((candidate) => candidate.id >= 16)) {
+        expect(runbook).toContain(`| ${String(panel.id)} | ${panel.title} |`);
+      }
+      expect(runbook).toContain('POST /api/v1/auth/login');
+    });
+  });
 });
