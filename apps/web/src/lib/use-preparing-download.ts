@@ -22,7 +22,7 @@ export interface PreparingDownload<T> {
 export function usePreparingDownload<T>(
   requestUrl: (arg: T) => Promise<{ readonly url: string }>,
   onFailure: (arg: T, error: unknown, retry: () => void) => void,
-  openUrl: (url: string) => void = openInBrowser,
+  openUrl: (url: string) => void,
 ): PreparingDownload<T> {
   const [preparing, setPreparing] = React.useState<T | null>(null);
   const inFlight = React.useRef(false);

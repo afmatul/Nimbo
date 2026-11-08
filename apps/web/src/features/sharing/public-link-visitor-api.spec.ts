@@ -24,7 +24,7 @@ describe('cliente del visitante del enlace público (013b CA-9, CA-10)', () => {
     global.fetch = fetchMock;
   });
 
-  it('CA-9: abre con POST a API_PUBLIC_URL/public-links/open, sin cookies ni Authorization', async () => {
+  it('CA-9, CA-10: abre con POST a API_PUBLIC_URL/public-links/open, sin cookies ni Authorization', async () => {
     fetchMock.mockResolvedValue(jsonResponse(PUBLIC_LINK_DETAILS));
 
     const details = await createPublicLinkVisitorApi(API).open(TOKEN);

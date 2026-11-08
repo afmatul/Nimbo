@@ -131,6 +131,30 @@ describe('PublicLinkVisitView (013b §6)', () => {
     }
   });
 
+  it('CA-3: con contraseña, enviar otra vez durante «Preparando descarga…» no hace otra petición', async () => {
+    jest.useFakeTimers();
+    try {
+      const api = fakeApi(WITH_PASSWORD);
+      api.download.mockReturnValue(new Promise(() => undefined));
+      renderVisit(api);
+      await act(async () => {
+        await Promise.resolve();
+      });
+      await screen.findByRole('button', { name: 'Descargar' });
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      await user.type(passwordInput(), 'clave-del-enlace{Enter}');
+      act(() => jest.advanceTimersByTime(PREPARING_DELAY_MS));
+      expect(screen.getByRole('button', { name: 'Preparando descarga…' })).toBeTruthy();
+
+      await user.type(passwordInput(), '{Enter}');
+
+      expect(api.download).toHaveBeenCalledTimes(1);
+      expect(screen.queryByRole('alert')).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('CA-3: descarga iniciada: abre la URL firmada, anuncia el éxito y «Descargar» vuelve', async () => {
     const { openUrl } = renderVisit(fakeApi());
     await shareHeading();

@@ -77,3 +77,18 @@
     y daba «2,5 MB», no el «2,4 MB» de CA-1. Ninguna prueba anterior leía el tamaño.
   - El bloque de axe de la página pide cero violaciones (no solo las graves, como los de 012b), en los 11 HTML del
     mockup (9 estados y 2 variantes), dentro de un `<main>` como el de `(public)/layout.tsx`.
+  - Revisión de cierre (I-1, S-3 a S-6; 2026-11-07):
+    - El tono sale del catálogo con dos mapas con nombre: `STATE_VIEW_BY_TONE` (tipo y clases de `StateView`) y
+      `ALERT_VARIANT_BY_TONE` (`variant` del `Alert`). Los tres estados sin ficha pasan por un `CatalogState`. Como el
+      `type="error"` de `StateView` exige acción (RNF-14), un tono `error` sin «Reintentar» se mostraría como estado
+      con `role="status"`; hoy no hay ningún caso así. «Tu descarga comenzó» sigue en `success` fijo: no está en el
+      catálogo.
+    - S-6: Tailwind solo genera clases que aparecen literales, así que `RETRY_ON_TINT` pasó a
+      `[&_button]:border-secondary-foreground [&_button]:text-foreground` y va en el contenedor: `StateView` y
+      `NoticeAlert`, que gana un `className` opcional. Los botones de `StateView` ya heredaban `foreground`, así que no
+      cambia nada visible.
+    - S-3: la prueba no se pone en rojo con solo quitar el `if (preparing) return` del formulario, porque el hook
+      también descarta la segunda petición (`inFlight`). Cubre la línea del guardia: las líneas de
+      `public-link-password-form.tsx` quedan al 100 %.
+    - S-4: todos los que llaman a `usePreparingDownload` ya pasaban `openUrl`, así que ninguna prueba cambió.
+      `openInBrowser` sigue exportado: lo usan otras 5 vistas.

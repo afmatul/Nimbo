@@ -21,7 +21,7 @@ import { useId, useMemo, type JSX, type ReactNode } from 'react';
 
 import { FileTypeIcon, fileTypeColors } from '../../../components/nimbo/file-type-chip';
 import { IdentityCard } from '../../../components/nimbo/identity-card';
-import { StateView } from '../../../components/nimbo/state-view';
+import { StateView, type StateViewProps } from '../../../components/nimbo/state-view';
 import { Alert } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
@@ -38,6 +38,7 @@ import {
   PUBLIC_LINK_OPEN_FAILED,
   publicLinkMessage,
   type PublicLinkMessageKey,
+  type PublicLinkMessageTone,
 } from '../public-link-messages';
 import { createPublicLinkVisitorApi, type PublicLinkVisitorApi } from '../public-link-visitor-api';
 import { receivedFileType } from '../received-file-type';
@@ -47,12 +48,36 @@ import { PublicLinkPasswordForm } from './public-link-password-form';
 const PAGE_TITLE = 'Archivo compartido';
 const DOWNLOAD_STARTED = 'Tu descarga comenzó. Si no empieza, vuelve a intentarlo.';
 const PREPARING_LABEL = 'Preparando descarga…';
-/** PD-189: sobre advertencia y error el borde `input` del `outline` no llega a 3:1; `secondary-foreground` sí. */
-const RETRY_ON_TINT = 'border-secondary-foreground text-foreground';
+/**
+ * PD-189: sobre advertencia y error el borde `input` del `outline` no llega a 3:1; `secondary-foreground` sí. Va en el
+ * contenedor de «Reintentar» y el texto queda en `foreground` aunque el contenedor lo tiña.
+ */
+const RETRY_ON_TINT = '[&_button]:border-secondary-foreground [&_button]:text-foreground';
+
+/** Tono del catálogo → `StateView` sin ficha; `warning` es el diseño de error-carga en tono de advertencia (CA-5). */
+const STATE_VIEW_BY_TONE: Readonly<
+  Record<PublicLinkMessageTone, { readonly type: 'empty' | 'error'; readonly className?: string }>
+> = {
+  neutral: { type: 'empty' },
+  error: { type: 'error' },
+  warning: {
+    type: 'empty',
+    className:
+      'border-warning bg-warning/10 [&_h2]:text-warning-foreground [&_p]:text-foreground [&_svg]:text-warning-foreground',
+  },
+};
+
+/** Tono del catálogo → `variant` del `Alert` de los avisos sobre la ficha. */
+const ALERT_VARIANT_BY_TONE: Readonly<Record<PublicLinkMessageTone, 'info' | 'error' | 'warning'>> =
+  {
+    neutral: 'info',
+    error: 'error',
+    warning: 'warning',
+  };
 
 /** «Qué pasó. Qué hacer.» del catálogo → título y texto de `StateView` (mockup: `h2` y párrafo). */
-function splitMessage(key: PublicLinkMessageKey, retryAfterSeconds?: number) {
-  const [title = '', ...rest] = publicLinkMessage(key, retryAfterSeconds).title.split(/(?<=\.) /);
+function splitTitle(message: string) {
+  const [title = '', ...rest] = message.split(/(?<=\.) /);
   return { title, description: rest.join(' ') };
 }
 
@@ -66,6 +91,40 @@ function WithoutDetails({ children }: { readonly children: ReactNode }): JSX.Ele
       </h1>
       {children}
     </section>
+  );
+}
+
+interface CatalogStateProps {
+  readonly messageKey: PublicLinkMessageKey;
+  readonly retryAfterSeconds?: number | undefined;
+  readonly icon?: StateViewProps['icon'];
+  readonly reload?: () => void;
+}
+
+/**
+ * Un estado sin ficha con el texto y el tono del catálogo; con `reload`, «Reintentar» (CA-5 a CA-7). El tono `error`
+ * de `StateView` exige una acción (RNF-14): sin `reload` se muestra como estado, anunciado con `role="status"`.
+ */
+function CatalogState({ messageKey, retryAfterSeconds, icon, reload }: CatalogStateProps) {
+  const message = publicLinkMessage(messageKey, retryAfterSeconds);
+  const { type, className } = STATE_VIEW_BY_TONE[message.tone];
+  const shared = {
+    ...splitTitle(message.title),
+    headingLevel: 'h2' as const,
+    ...(icon && { icon }),
+    className: cn(className, reload && RETRY_ON_TINT),
+  };
+  const action = reload && { label: 'Reintentar', onClick: reload, variant: 'outline' as const };
+  return (
+    <WithoutDetails>
+      {action === undefined ? (
+        <StateView type="empty" role="status" {...shared} />
+      ) : type === 'error' ? (
+        <StateView type="error" action={action} {...shared} />
+      ) : (
+        <StateView type="empty" role="status" action={action} {...shared} />
+      )}
+    </WithoutDetails>
   );
 }
 
@@ -106,36 +165,12 @@ function LoadingDetails(): JSX.Element {
 
 /** Un solo mensaje para todo motivo, sin acción (CA-6, RN-1). */
 function UnavailableState(): JSX.Element {
-  const { title, description } = splitMessage(SHARING_ERROR_CODES.SHARING_LINK_UNAVAILABLE);
-  return (
-    <WithoutDetails>
-      <StateView
-        type="empty"
-        role="status"
-        headingLevel="h2"
-        icon={Link2Off}
-        title={title}
-        description={description}
-      />
-    </WithoutDetails>
-  );
+  return <CatalogState messageKey={SHARING_ERROR_CODES.SHARING_LINK_UNAVAILABLE} icon={Link2Off} />;
 }
 
 /** Red o 5xx al abrir, distinto de «no disponible» (CA-7). */
 function LoadErrorState({ reload }: { readonly reload: () => void }): JSX.Element {
-  const { title, description } = splitMessage(PUBLIC_LINK_OPEN_FAILED);
-  return (
-    <WithoutDetails>
-      <StateView
-        type="error"
-        headingLevel="h2"
-        title={title}
-        description={description}
-        action={{ label: 'Reintentar', onClick: reload, variant: 'outline' }}
-        className="[&_button]:border-secondary-foreground"
-      />
-    </WithoutDetails>
-  );
+  return <CatalogState messageKey={PUBLIC_LINK_OPEN_FAILED} reload={reload} />;
 }
 
 interface RateLimitedProps {
@@ -145,23 +180,13 @@ interface RateLimitedProps {
 
 /** `429` al abrir: el diseño de error-carga en tono de advertencia, sin ficha (CA-5). */
 function RateLimitedState({ retryAfterSeconds, reload }: RateLimitedProps): JSX.Element {
-  const { title, description } = splitMessage(
-    SHARED_ERROR_CODES.TOO_MANY_REQUESTS,
-    retryAfterSeconds,
-  );
   return (
-    <WithoutDetails>
-      <StateView
-        type="empty"
-        role="status"
-        headingLevel="h2"
-        icon={Clock}
-        title={title}
-        description={description}
-        action={{ label: 'Reintentar', onClick: reload, variant: 'outline' }}
-        className="border-warning bg-warning/10 [&_button]:border-secondary-foreground [&_h2]:text-warning-foreground [&_p]:text-foreground [&_svg]:text-warning-foreground"
-      />
-    </WithoutDetails>
+    <CatalogState
+      messageKey={SHARED_ERROR_CODES.TOO_MANY_REQUESTS}
+      retryAfterSeconds={retryAfterSeconds}
+      icon={Clock}
+      reload={reload}
+    />
   );
 }
 
@@ -192,17 +217,17 @@ function FileSummary({ details }: { readonly details: PublicLinkDetails }): JSX.
   );
 }
 
-function NoticeAlert({
-  variant,
-  icon,
-  children,
-}: {
-  readonly variant: 'warning' | 'success';
+interface NoticeAlertProps {
+  /** `success` no es un estado del catálogo: es el resultado de la descarga. */
+  readonly variant: (typeof ALERT_VARIANT_BY_TONE)[PublicLinkMessageTone] | 'success';
   readonly icon: ReactNode;
   readonly children: ReactNode;
-}): JSX.Element {
+  readonly className?: string;
+}
+
+function NoticeAlert({ variant, icon, children, className }: NoticeAlertProps): JSX.Element {
   return (
-    <Alert variant={variant} className="flex items-start gap-2.5 text-left">
+    <Alert variant={variant} className={cn('flex items-start gap-2.5 text-left', className)}>
       {icon}
       <div className="grid min-w-0 justify-items-start gap-2.5">{children}</div>
     </Alert>
@@ -227,9 +252,15 @@ function RateLimitedNotice({
 }: {
   readonly retryAfterSeconds: number | undefined;
 }): JSX.Element {
-  const { title } = publicLinkMessage(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, retryAfterSeconds);
+  const { title, tone } = publicLinkMessage(
+    SHARED_ERROR_CODES.TOO_MANY_REQUESTS,
+    retryAfterSeconds,
+  );
   return (
-    <NoticeAlert variant="warning" icon={<Clock aria-hidden="true" className={iconClass} />}>
+    <NoticeAlert
+      variant={ALERT_VARIANT_BY_TONE[tone]}
+      icon={<Clock aria-hidden="true" className={iconClass} />}
+    >
       <p>{title}</p>
     </NoticeAlert>
   );
@@ -237,14 +268,19 @@ function RateLimitedNotice({
 
 /** La red falla al descargar: el diseño de «bloqueado» con «Reintentar» (CA-7). */
 function DownloadFailedNotice({ retry }: { readonly retry: () => void }): JSX.Element {
+  const { title, tone } = publicLinkMessage(PUBLIC_LINK_DOWNLOAD_FAILED);
   return (
-    <NoticeAlert variant="warning" icon={<AlertCircle aria-hidden="true" className={iconClass} />}>
-      <p>{publicLinkMessage(PUBLIC_LINK_DOWNLOAD_FAILED).title}</p>
+    <NoticeAlert
+      variant={ALERT_VARIANT_BY_TONE[tone]}
+      icon={<AlertCircle aria-hidden="true" className={iconClass} />}
+      className={RETRY_ON_TINT}
+    >
+      <p>{title}</p>
       <Button
         type="button"
         variant="outline"
         size="sm"
-        className={`${RETRY_ON_TINT} min-h-11 sm:min-h-9`}
+        className="min-h-11 sm:min-h-9"
         onClick={retry}
       >
         <RotateCw aria-hidden="true" className="h-3.5 w-3.5" />
