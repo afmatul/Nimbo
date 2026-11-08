@@ -33,3 +33,10 @@
   sin moverlos a un módulo común: son dos copias (Art. VI.2). Se comprobó a
   mano que las pruebas fallan si la llave del techo se comparte entre enlaces (ISO-31 e ISO-32 en rojo), sin
   commitear ese cambio.
+- **Auditoría del #102 (2026-11-08), M-1:** el caso del techo que mueve el reloj una hora pasa a un `describe` propio
+  de `public-link-access.int-spec.ts` con su app y su `FixedClock`; el otro `describe` del techo conserva su propio
+  reloj sin moverlo. Para no copiar el arranque ni los ayudantes en los dos, suben al nivel del archivo
+  `createCeilingApp(clock)`, `downloadFromNewNetwork`, `failFromNetworks`, `expectCeiling` (con `sharing` como
+  parámetro), `CEILING`, `CEILING_SECONDS` y `WRONG_PASSWORD`; `passwordHashOf(sharing)` sustituye además el hash en
+  línea del `describe` del bloqueo por red (tercer uso). Se comprobó la suite entera (40) y cada `describe` filtrado
+  con `-t`.

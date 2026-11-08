@@ -28,6 +28,7 @@ const FILE_PREFIX = 'Balance-reservado-5d1c';
 const SIZE_BYTES = 4096n;
 const OWNER_NAME = 'Ana Ruiz';
 const PASSWORD = 'clave-del-enlace-9c2e';
+const WRONG_PASSWORD = 'otra-clave-1234';
 const UNAVAILABLE = 'SHARING_LINK_UNAVAILABLE';
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DOWNLOAD_BYTES = 3000;
@@ -81,6 +82,12 @@ const insertProtectedLink = async (
     passwordHash,
   });
   return { fileId, linkId: id, token: token.toString() };
+};
+
+/** El hash Argon2id de `PASSWORD` con el hasher de la app. */
+const passwordHashOf = async (sharing: SharingHttpApp): Promise<string> => {
+  const hasher = sharing.storage.testApp.app.get<IPasswordHasher>(I_PASSWORD_HASHER);
+  return (await hasher.hash(PASSWORD)).reveal();
 };
 
 /** Los `public_link.locked` del archivo en la auditoría del propietario. */
@@ -513,7 +520,6 @@ describe('POST /public-links/open y /download: límite por red (013 CA-13, RN-7)
 describe('POST /public-links/download: contraseña y bloqueo por enlace + red (013 CA-12, CA-13, CA-18, RN-7)', () => {
   const MAX_FAILURES = 3;
   const LOCK_SECONDS = 60;
-  const WRONG_PASSWORD = 'otra-clave-1234';
   const clock = new FixedClock(PROBE_CLOCK_START);
   let sharing: SharingHttpApp;
   let ana: StorageClient;
@@ -530,8 +536,7 @@ describe('POST /public-links/download: contraseña y bloqueo por enlace + red (0
       overrides: [{ provide: I_CLOCK, useValue: clock }],
     });
     ana = await sharing.storage.newClient();
-    const hasher = sharing.storage.testApp.app.get<IPasswordHasher>(I_PASSWORD_HASHER);
-    passwordHash = (await hasher.hash(PASSWORD)).reveal();
+    passwordHash = await passwordHashOf(sharing);
   });
 
   afterAll(async () => {
@@ -670,17 +675,56 @@ describe('POST /public-links/download: contraseña y bloqueo por enlace + red (0
   });
 });
 
+const CEILING = 3;
+const CEILING_SECONDS = 3600;
+
 /**
- * 013b CA-12 a CA-14, RN-3 (PD-175): el techo global de fallos por enlace, sumando todas las redes. El bloqueo por red
- * tiene el mismo máximo que el techo, así un mismo intento puede activar los dos (CA-14). Cada caso usa su propio
- * enlace, y por eso su propia llave del techo.
+ * Una app con el techo global y el bloqueo por red en el mismo máximo, así un mismo intento puede activar los dos
+ * (CA-14), y con su propio reloj.
  */
-describe('POST /public-links/download: techo global de fallos por enlace (013b CA-12 a CA-14, PD-175)', () => {
-  const CEILING = 3;
-  const CEILING_SECONDS = 3600;
-  const WRONG_PASSWORD = 'otra-clave-1234';
-  const TOO_MANY = 'SHARED_TOO_MANY_REQUESTS';
-  const clock = new FixedClock(PROBE_CLOCK_START);
+const createCeilingApp = (clock: FixedClock): Promise<SharingHttpApp> =>
+  createSharingHttpApp({
+    env: {
+      PUBLIC_LINK_RATE_LIMIT_PER_MINUTE: ROOMY_RATE_LIMIT,
+      PUBLIC_LINK_MAX_FAILURES: String(CEILING),
+      PUBLIC_LINK_FAILURE_WINDOW_MINUTES: '15',
+      PUBLIC_LINK_LOCK_MINUTES: '15',
+      PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR: String(CEILING),
+    },
+    overrides: [{ provide: I_CLOCK, useValue: clock }],
+  });
+
+/** Desde un /64 nuevo cada vez: ninguna red llega a su propio bloqueo. */
+const downloadFromNewNetwork = (
+  sharing: SharingHttpApp,
+  body: Record<string, unknown>,
+): Promise<Response> =>
+  sharing.visitor({ 'X-Forwarded-For': `${randomNetwork64()}::1` }).download(body);
+
+const failFromNetworks = async (
+  sharing: SharingHttpApp,
+  token: string,
+  count: number,
+): Promise<void> => {
+  for (let failure = 0; failure < count; failure += 1) {
+    const response = await downloadFromNewNetwork(sharing, { token, password: WRONG_PASSWORD });
+    expect(response.status).toBe(403);
+  }
+};
+
+const expectCeiling = (response: Response): void => {
+  expect(response.status).toBe(429);
+  expect((response.body as ErrorBody).code).toBe('SHARED_TOO_MANY_REQUESTS');
+  expect(response.headers['retry-after']).toBe(String(CEILING_SECONDS));
+  expect(JSON.stringify(response.body)).not.toContain('X-Amz');
+  expect(JSON.stringify(response.body)).not.toMatch(/\d+ intentos?/);
+};
+
+/**
+ * 013b CA-13, CA-14, RN-3 (PD-175): el techo global de fallos por enlace, sumando todas las redes. Cada caso usa su
+ * propio enlace, y por eso su propia llave del techo.
+ */
+describe('POST /public-links/download: techo global de fallos por enlace (013b CA-13, CA-14, PD-175)', () => {
   let sharing: SharingHttpApp;
   let ana: StorageClient;
   /** Propietaria solo del caso concurrente, así su «Mi actividad» tiene un único enlace. */
@@ -688,53 +732,24 @@ describe('POST /public-links/download: techo global de fallos por enlace (013b C
   let passwordHash: string;
 
   beforeAll(async () => {
-    sharing = await createSharingHttpApp({
-      env: {
-        PUBLIC_LINK_RATE_LIMIT_PER_MINUTE: ROOMY_RATE_LIMIT,
-        PUBLIC_LINK_MAX_FAILURES: String(CEILING),
-        PUBLIC_LINK_FAILURE_WINDOW_MINUTES: '15',
-        PUBLIC_LINK_LOCK_MINUTES: '15',
-        PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR: String(CEILING),
-      },
-      overrides: [{ provide: I_CLOCK, useValue: clock }],
-    });
+    sharing = await createCeilingApp(new FixedClock(PROBE_CLOCK_START));
     ana = await sharing.storage.newClient();
     bea = await sharing.storage.newClient();
-    const hasher = sharing.storage.testApp.app.get<IPasswordHasher>(I_PASSWORD_HASHER);
-    passwordHash = (await hasher.hash(PASSWORD)).reveal();
+    passwordHash = await passwordHashOf(sharing);
   });
 
   afterAll(async () => {
     await sharing?.close();
   });
 
-  /** Desde un /64 nuevo cada vez: ninguna red llega a su propio bloqueo. */
-  const downloadFromNewNetwork = (body: Record<string, unknown>): Promise<Response> =>
-    sharing.visitor({ 'X-Forwarded-For': `${randomNetwork64()}::1` }).download(body);
-
-  const failFromNetworks = async (token: string, count: number): Promise<void> => {
-    for (let failure = 0; failure < count; failure += 1) {
-      const response = await downloadFromNewNetwork({ token, password: WRONG_PASSWORD });
-      expect(response.status).toBe(403);
-    }
-  };
-
-  const expectCeiling = (response: Response): void => {
-    expect(response.status).toBe(429);
-    expect((response.body as ErrorBody).code).toBe(TOO_MANY);
-    expect(response.headers['retry-after']).toBe(String(CEILING_SECONDS));
-    expect(JSON.stringify(response.body)).not.toContain('X-Amz');
-    expect(JSON.stringify(response.body)).not.toMatch(/\d+ intentos?/);
-  };
-
   it('CA-13, RN-3: un acierto antes del techo no reinicia la cuenta', async () => {
     const { token } = await insertProtectedLink(sharing, ana.id, passwordHash);
-    await failFromNetworks(token, CEILING - 1);
-    expect((await downloadFromNewNetwork({ token, password: PASSWORD })).status).toBe(200);
+    await failFromNetworks(sharing, token, CEILING - 1);
+    expect((await downloadFromNewNetwork(sharing, { token, password: PASSWORD })).status).toBe(200);
 
-    await failFromNetworks(token, 1);
+    await failFromNetworks(sharing, token, 1);
 
-    expectCeiling(await downloadFromNewNetwork({ token, password: PASSWORD }));
+    expectCeiling(await downloadFromNewNetwork(sharing, { token, password: PASSWORD }));
   });
 
   it('CA-14: con fallos simultáneos desde varias redes en el umbral, `public_link.locked` una sola vez en «Mi actividad»', async () => {
@@ -742,7 +757,7 @@ describe('POST /public-links/download: techo global de fallos por enlace (013b C
 
     const responses = await Promise.all(
       Array.from({ length: CEILING + 2 }, () =>
-        downloadFromNewNetwork({ token, password: WRONG_PASSWORD }),
+        downloadFromNewNetwork(sharing, { token, password: WRONG_PASSWORD }),
       ),
     );
 
@@ -754,7 +769,7 @@ describe('POST /public-links/download: techo global de fallos por enlace (013b C
     expect(activity.items.filter((item) => item.action === 'public_link.locked')).toEqual([
       expect.objectContaining({ origin: 'self', resourceType: 'file', trigger: 'public_link' }),
     ]);
-    expectCeiling(await downloadFromNewNetwork({ token, password: PASSWORD }));
+    expectCeiling(await downloadFromNewNetwork(sharing, { token, password: PASSWORD }));
   });
 
   it('CA-14: si el mismo intento activa el techo y el bloqueo por red, `public_link.locked` una sola vez', async () => {
@@ -768,18 +783,35 @@ describe('POST /public-links/download: techo global de fallos por enlace (013b C
     }
 
     expect(await lockedEventsOf(sharing, ana.id, fileId)).toHaveLength(1);
-    expectCeiling(await downloadFromNewNetwork({ token, password: PASSWORD }));
+    expectCeiling(await downloadFromNewNetwork(sharing, { token, password: PASSWORD }));
+  });
+});
+
+/** 013b CA-12, CA-13 (PD-175): la espera del techo se cumple moviendo el reloj propio de esta app. */
+describe('POST /public-links/download: el techo global de fallos dura una hora (013b CA-12, CA-13, PD-175)', () => {
+  const clock = new FixedClock(PROBE_CLOCK_START);
+  let sharing: SharingHttpApp;
+  let ana: StorageClient;
+  let passwordHash: string;
+
+  beforeAll(async () => {
+    sharing = await createCeilingApp(clock);
+    ana = await sharing.storage.newClient();
+    passwordHash = await passwordHashOf(sharing);
   });
 
-  // Va al final: mueve el reloj una hora y vence las sesiones de prueba que usa «Mi actividad».
+  afterAll(async () => {
+    await sharing?.close();
+  });
+
   it('CA-12, CA-13: al techo desde varias redes, 429 para todos aunque sea la correcta o falte; la ficha se abre; pasada la hora vuelve', async () => {
     const { token } = await insertProtectedLink(sharing, ana.id, passwordHash);
-    await failFromNetworks(token, CEILING);
+    await failFromNetworks(sharing, token, CEILING);
 
-    const correct = await downloadFromNewNetwork({ token, password: PASSWORD });
+    const correct = await downloadFromNewNetwork(sharing, { token, password: PASSWORD });
     expectCeiling(correct);
     for (const body of [{ token }, { token, password: '' }]) {
-      const missing = await downloadFromNewNetwork(body);
+      const missing = await downloadFromNewNetwork(sharing, body);
       expectCeiling(missing);
       expect(visibleErrorOf(missing)).toEqual(visibleErrorOf(correct));
     }
@@ -789,8 +821,8 @@ describe('POST /public-links/download: techo global de fallos por enlace (013b C
     expect(open.status).toBe(200);
 
     clock.advance(CEILING_SECONDS * MS_PER_SECOND - MS_PER_SECOND);
-    expect((await downloadFromNewNetwork({ token, password: PASSWORD })).status).toBe(429);
+    expect((await downloadFromNewNetwork(sharing, { token, password: PASSWORD })).status).toBe(429);
     clock.advance(MS_PER_SECOND);
-    expect((await downloadFromNewNetwork({ token, password: PASSWORD })).status).toBe(200);
+    expect((await downloadFromNewNetwork(sharing, { token, password: PASSWORD })).status).toBe(200);
   });
 });
