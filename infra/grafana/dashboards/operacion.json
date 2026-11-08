@@ -737,6 +737,248 @@
           "legendFormat": "{{route}}"
         }
       ]
+    },
+    {
+      "id": 24,
+      "type": "row",
+      "title": "Indexación",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 106
+      },
+      "panels": []
+    },
+    {
+      "id": 25,
+      "type": "timeseries",
+      "title": "Indexación: completados y fallidos por intento",
+      "description": "Trabajos terminados por cola e intentos fallidos por número de intento (1, 2 o 3+).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 107
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (queue) (rate(nimbo_queue_jobs_completed_total{queue=~\"indexing|index-reconcile\"}[5m]))",
+          "legendFormat": "{{queue}} · completados"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (queue, attempts_made) (rate(nimbo_queue_job_failures_total{queue=~\"indexing|index-reconcile\"}[5m]))",
+          "legendFormat": "{{queue}} · {{attempts_made}} intentos fallidos"
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "type": "timeseries",
+      "title": "Indexación: profundidad por estado",
+      "description": "Trabajos en cada estado de la cola.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 107
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (queue, state) (nimbo_queue_jobs{queue=~\"indexing|index-reconcile\"})",
+          "legendFormat": "{{queue}} · {{state}}"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "type": "timeseries",
+      "title": "Indexación: ejecución p95",
+      "description": "Duración de cada intento, termine bien o mal.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 115
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (queue, le) (rate(nimbo_queue_job_run_seconds_bucket{queue=~\"indexing|index-reconcile\"}[5m])))",
+          "legendFormat": "{{queue}}"
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "type": "row",
+      "title": "Optimizador",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 123
+      },
+      "panels": []
+    },
+    {
+      "id": 29,
+      "type": "timeseries",
+      "title": "Optimizador: solicitudes por ruta y código",
+      "description": "Solicitudes de estimar y de optimizar JPEG o PNG, por código de respuesta.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 124
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (route, status) (rate(nimbo_http_request_duration_seconds_count{job=\"api\",route=~\"POST /api/v1/files/:fileId/optimization/estimate|POST /api/v1/files/:fileId/optimization/run\"}[5m]))",
+          "legendFormat": "{{route}} · {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "type": "timeseries",
+      "title": "Cola optimization: completados y fallidos por intento",
+      "description": "Trabajos terminados de la cola optimization e intentos fallidos por número de intento (1, 2 o 3+).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 124
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (queue) (rate(nimbo_queue_jobs_completed_total{queue=\"optimization\"}[5m]))",
+          "legendFormat": "{{queue}} · completados"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (queue, attempts_made) (rate(nimbo_queue_job_failures_total{queue=\"optimization\"}[5m]))",
+          "legendFormat": "{{queue}} · {{attempts_made}} intentos fallidos"
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "type": "timeseries",
+      "title": "Cola optimization: ejecución p95",
+      "description": "Duración de cada intento, termine bien o mal.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 132
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (queue, le) (rate(nimbo_queue_job_run_seconds_bucket{queue=\"optimization\"}[5m])))",
+          "legendFormat": "{{queue}}"
+        }
+      ]
     }
   ]
 }

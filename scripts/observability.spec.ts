@@ -868,4 +868,49 @@ describe('022d: grupos de los módulos en el tablero de operación', () => {
       expect(sortedRoutes(expr)).toEqual([...UPLOADS, ...DOWNLOADS].sort());
     });
   });
+
+  describe('T-03: grupos «Indexación» y «Optimizador» (CA-7, CA-8)', () => {
+    const INDEXING = 'queue=~"indexing|index-reconcile"';
+    const OPTIMIZATION = 'queue="optimization"';
+
+    /** Completados por cola, fallidos por intento y ejecución p95 de las colas de un grupo. */
+    const expectQueueSignals = (group: string, queues: string): void => {
+      expect(
+        findExpr(group, `nimbo_queue_jobs_completed_total{${queues}}`, 'by (queue)'),
+      ).toBeDefined();
+      expect(
+        findExpr(group, `nimbo_queue_job_failures_total{${queues}}`, 'by (queue, attempts_made)'),
+      ).toBeDefined();
+      expect(
+        findExpr(
+          group,
+          'histogram_quantile(0.95',
+          `nimbo_queue_job_run_seconds_bucket{${queues}}`,
+          'by (queue, le)',
+        ),
+      ).toBeDefined();
+    };
+
+    it('CA-7: la fila «Indexación» muestra completados, fallidos por intento y ejecución p95 de indexing e index-reconcile', () => {
+      expectQueueSignals('Indexación', INDEXING);
+    });
+
+    it('CA-7: la fila «Indexación» muestra la profundidad de sus colas por estado', () => {
+      expect(
+        findExpr('Indexación', `nimbo_queue_jobs{${INDEXING}}`, 'by (queue, state)'),
+      ).toBeDefined();
+    });
+
+    it('CA-8: la fila «Optimizador» muestra las solicitudes de estimar y optimizar por código', () => {
+      const expr = findExpr('Optimizador', HTTP_COUNT, 'job="api"', 'by (route, status)');
+      expect(sortedRoutes(expr)).toEqual([
+        'POST /api/v1/files/:fileId/optimization/estimate',
+        'POST /api/v1/files/:fileId/optimization/run',
+      ]);
+    });
+
+    it('CA-8: la fila «Optimizador» muestra completados, fallidos por intento y ejecución p95 de la cola optimization', () => {
+      expectQueueSignals('Optimizador', OPTIMIZATION);
+    });
+  });
 });
