@@ -513,6 +513,118 @@
           "legendFormat": "{{name}}"
         }
       ]
+    },
+    {
+      "id": 16,
+      "type": "row",
+      "title": "Identidad",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 72
+      },
+      "panels": []
+    },
+    {
+      "id": 17,
+      "type": "timeseries",
+      "title": "Identidad: respuestas por ruta y código",
+      "description": "Registro, verificación del correo, sesión y contraseña, por plantilla de ruta y código de respuesta.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 73
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (route, status) (rate(nimbo_http_request_duration_seconds_count{job=\"api\",route=~\"POST /api/v1/auth/register|POST /api/v1/auth/resend-verification|POST /api/v1/auth/verify-email|POST /api/v1/auth/login|POST /api/v1/auth/session/refresh|POST /api/v1/auth/session/logout|POST /api/v1/auth/forgot-password|POST /api/v1/auth/reset-password|POST /api/v1/auth/change-password|POST /api/v1/sessions/revoke-others\"}[5m]))",
+          "legendFormat": "{{route}} · {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "type": "timeseries",
+      "title": "Inicios de sesión por resultado (2xx, 401, 429)",
+      "description": "Exitosos (2xx), fallidos por credenciales (401) y limitados o bloqueados (429). El 429 junta el bloqueo por correo y el límite por IP: el motivo exige instrumentar código (PD-190).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 73
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (status) (rate(nimbo_http_request_duration_seconds_count{job=\"api\",route=\"POST /api/v1/auth/login\"}[5m]))",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "type": "timeseries",
+      "title": "Accesos denegados (403) por ruta",
+      "description": "Todas las respuestas 403 del api: roles internos en rutas de cliente y cuentas en solo lectura. Se ven por ruta, no por motivo.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 81
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (route) (rate(nimbo_http_request_duration_seconds_count{job=\"api\",status=\"403\"}[5m]))",
+          "legendFormat": "{{route}}"
+        }
+      ]
     }
   ]
 }
