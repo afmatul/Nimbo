@@ -625,6 +625,118 @@
           "legendFormat": "{{route}}"
         }
       ]
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "Almacenamiento",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 89
+      },
+      "panels": []
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "Cargas por ruta y código",
+      "description": "Inicio, reanudación y cierre de cargas. 2xx = completadas; 4xx = rechazadas (422 límites, tipo o cuota; 409 partes faltantes; 410 vencida). El motivo exacto exige instrumentar código (PD-190).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 90
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (route, status) (rate(nimbo_http_request_duration_seconds_count{job=\"api\",route=~\"POST /api/v1/uploads|POST /api/v1/uploads/:uploadId/resume|POST /api/v1/uploads/:uploadId/complete\"}[5m]))",
+          "legendFormat": "{{route}} · {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "Enlaces de descarga emitidos",
+      "description": "Enlaces de descarga de archivos y de versiones respondidos con 2xx.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 90
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (route) (rate(nimbo_http_request_duration_seconds_count{job=\"api\",route=~\"POST /api/v1/files/:fileId/download-url|POST /api/v1/files/:fileId/versions/:versionId/download-url\",status=~\"2..\"}[5m]))",
+          "legendFormat": "{{route}}"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "Límite de frecuencia (429) por ruta",
+      "description": "Respuestas 429 de las rutas de cargas y descargas.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 98
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (route) (rate(nimbo_http_request_duration_seconds_count{job=\"api\",route=~\"POST /api/v1/uploads|POST /api/v1/uploads/:uploadId/resume|POST /api/v1/uploads/:uploadId/complete|POST /api/v1/files/:fileId/download-url|POST /api/v1/files/:fileId/versions/:versionId/download-url\",status=\"429\"}[5m]))",
+          "legendFormat": "{{route}}"
+        }
+      ]
     }
   ]
 }

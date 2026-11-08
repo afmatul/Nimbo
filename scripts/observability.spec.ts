@@ -841,4 +841,31 @@ describe('022d: grupos de los módulos en el tablero de operación', () => {
       expect(declared.has('POST /api/v1/agent/ask')).toBe(true);
     });
   });
+
+  describe('T-02: grupo «Almacenamiento» (CA-2)', () => {
+    const UPLOADS = [
+      'POST /api/v1/uploads',
+      'POST /api/v1/uploads/:uploadId/resume',
+      'POST /api/v1/uploads/:uploadId/complete',
+    ];
+    const DOWNLOADS = [
+      'POST /api/v1/files/:fileId/download-url',
+      'POST /api/v1/files/:fileId/versions/:versionId/download-url',
+    ];
+
+    it('CA-2: la fila «Almacenamiento» muestra las cargas iniciadas, reanudadas y completadas por ruta y código', () => {
+      const expr = findExpr('Almacenamiento', HTTP_COUNT, 'job="api"', 'by (route, status)');
+      expect(sortedRoutes(expr)).toEqual([...UPLOADS].sort());
+    });
+
+    it('CA-2: los enlaces de descarga emitidos (2xx) de archivos y versiones se ven por ruta', () => {
+      const expr = findExpr('Almacenamiento', HTTP_COUNT, 'status=~"2.."', 'by (route)');
+      expect(sortedRoutes(expr)).toEqual([...DOWNLOADS].sort());
+    });
+
+    it('CA-2: los límites de frecuencia (429) de cargas y descargas se ven por ruta', () => {
+      const expr = findExpr('Almacenamiento', HTTP_COUNT, 'status="429"', 'by (route)');
+      expect(sortedRoutes(expr)).toEqual([...UPLOADS, ...DOWNLOADS].sort());
+    });
+  });
 });
