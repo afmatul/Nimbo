@@ -15,7 +15,7 @@
 - [x] **T-05** Mockup de los 9 estados de la página con `/mockup` (`ui-designer`): generador `_generadores/enlace-publico/generar.js`, 18 PNG, README corregido, fila 302 de `ui-guidelines.md` §7 partida en página y diálogo; aprobación de Adrián — CA: CA-1 a CA-7 — Prueba: axe y capturas a 360 y 1440 px
 - [x] **T-06** Cliente del visitante sin sesión contra `API_PUBLIC_URL` y prueba de que nada en `web` reenvía `/public-links` — CA: CA-9, CA-10 — Prueba: unitaria web primero (`public-link-visitor-api.spec.ts`, `no-public-link-proxy.arch.spec.ts`)
 - [x] **T-07** Hook `use-public-link-visit` (fragmento crudo, vacío sin API, `StrictMode` sin repetir `POST /open`, descarga con `usePreparingDownload`) y catálogo `public-link-messages.ts` con el `429` neutro — CA: CA-3, CA-5, CA-6, CA-7, CA-8 — Prueba: unitaria web primero (`use-public-link-visit.spec.ts`) — Depende: T-04, T-06
-- [ ] **T-08** Ruta `/enlace` (`metadata` con título genérico y `noindex`) y vista `PublicLinkVisit` con formulario de contraseña y sus 9 estados (`PasswordField` movido a `components/nimbo/` en un commit propio, P-B (a)) — CA: CA-1, CA-2, CA-4, CA-6, CA-7, CA-8, CA-11 (axe y anuncios) — Prueba: componente (`public-link-visit.spec.tsx`, `page.spec.tsx`) y axe (`a11y.spec.tsx`) — Depende: T-05, T-07
+- [x] **T-08** Ruta `/enlace` (`metadata` con título genérico y `noindex`) y vista `PublicLinkVisit` con formulario de contraseña y sus 9 estados (`PasswordField` movido a `components/nimbo/` en un commit propio, P-B (a)) — CA: CA-1, CA-2, CA-4, CA-6, CA-7, CA-8, CA-11 (axe y anuncios) — Prueba: componente (`public-link-visit.spec.tsx`, `page.spec.tsx`) y axe (`a11y.spec.tsx`) — Depende: T-05, T-07
 - [ ] **T-09** **(humana)** Recorrido de la demo en local (sin y con contraseña, incorrecta, techo bajado por entorno, revocado → «No disponible», sesión de Soporte) y revisión manual de CA-11 (360 px sin desplazamiento horizontal, contraste AA a 360 y 1440 px, «reducir movimiento»); nota en el PR — CA: los visibles, CA-11 — Depende: T-01, T-08
 
 ## Notas del developer
@@ -54,3 +54,24 @@
   - El `429` dice «Espera 1 minuto…» en singular cuando `minutesFrom` da 1 (menos de 60 s o sin `Retry-After`) y
     «Espera N minutos…» si da más (decisión de Fátima, 2026-11-08). `error-catalog` sigue diciendo siempre «minutos»
     y no se tocó: queda como PD-190.
+- **T-08** (2026-11-07):
+  - `PasswordField` pasó a `components/nimbo/` en un commit propio (P-B (a)): solo la ruta y los 4 imports de
+    `identity`; sus pruebas siguen verdes sin cambiar aserciones (no tenía prueba propia).
+  - `public-link-visit.tsx` exporta `PublicLinkVisitView({ api, openUrl })`, que prueban la vista y axe con un cliente
+    falso, y `PublicLinkVisit({ apiPublicUrl })`, que crea el cliente y pasa `openInBrowser`; `index.ts` solo exporta
+    `PublicLinkVisit`. `page.spec.tsx` comprueba `metadata`, `noindex` y que la ficha se pide a `API_PUBLIC_URL`.
+  - El formulario lee `outcome`: tras el `403` vacía el campo y le pone el foco (CA-4); tras el `429`, solo lo vacía
+    (CA-5). El campo no es controlado (el valor se lee del `ref` al enviar), así no hay `setState` en un efecto.
+  - Los textos del catálogo («Qué pasó. Qué hacer.») se parten en la primera oración para el `h2` y el párrafo de
+    `StateView`, como el mockup.
+  - `StateView` no tiene tono de advertencia ni deja estilar el botón de su acción: el `429` al abrir usa
+    `type="empty"` con `role="status"` y clases de `warning` en `className`, y el borde `secondary-foreground` de
+    «Reintentar» (PD-189) va con variantes `[&_button]:`, `[&_h2]:`, `[&_p]:` y `[&_svg]:` (solo tokens, sin valores
+    arbitrarios). No se tocó `components/nimbo/state-view.tsx`.
+  - La baldosa del ícono del tipo es neutra (`bg-muted`, `text-secondary-foreground`, como «Accesos rápidos»), no del
+    color del tipo del mockup: los colores por tipo de `file-type-chip.tsx` no se exportan y no hay utilidades
+    `file-*` en `globals.css`. Exponerlos tocaría `components/nimbo` fuera del plan.
+  - El fixture `PUBLIC_LINK_DETAILS` de T-06 pasó de 2 516 582 a 2 400 000 bytes: `formatBytes` usa unidades decimales
+    y daba «2,5 MB», no el «2,4 MB» de CA-1. Ninguna prueba anterior leía el tamaño.
+  - El bloque de axe de la página pide cero violaciones (no solo las graves, como los de 012b), en los 11 HTML del
+    mockup (9 estados y 2 variantes), dentro de un `<main>` como el de `(public)/layout.tsx`.

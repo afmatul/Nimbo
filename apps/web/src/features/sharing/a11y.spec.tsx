@@ -13,15 +13,20 @@ import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import * as React from 'react';
 
+import { ApiClientError } from '../../lib/api-error';
+import { PREPARING_DELAY_MS } from '../../lib/use-preparing-download';
 import type { StorageApi } from '../storage/api';
 import { SpaceProvider } from '../storage/components/space-provider';
 import { UploadsProvider } from '../storage/components/uploads-provider';
 import { StorageRequestError } from '../storage/storage-request-error';
 import { GB, spaceSummaryWith } from '../storage/test-space-summary';
 
+import { PublicLinkVisitView } from './components/public-link-visit';
 import { ReceivedSharesView } from './components/received-shares-view';
 import { ShareDialog } from './components/share-dialog';
+import type { PublicLinkVisitorApi } from './public-link-visitor-api';
 import type { SharingApi } from './sharing-api';
+import { PUBLIC_LINK_DETAILS, SIGNED_DOWNLOAD } from './test-public-link';
 import {
   directEntry,
   fakeSharingApi,
@@ -328,5 +333,122 @@ describe('Accesibilidad de «Compartidos conmigo» a 360 y 1440 px (spec 012b CA
     await renderReceived(withTwo(), true);
     await screen.findByText('Tu cuenta está en solo lectura.');
     await expectNoBlockingViolations();
+  });
+});
+
+const visitorError = (code: string, retryAfterSeconds?: number) =>
+  new ApiClientError({ code, message: code, correlationId: 'c-1', retryAfterSeconds });
+const PROTECTED_LINK = { ...PUBLIC_LINK_DETAILS, requiresPassword: true };
+const pending = () => new Promise<never>(() => undefined);
+
+function visitorApi(overrides: Partial<PublicLinkVisitorApi> = {}): PublicLinkVisitorApi {
+  return {
+    open: jest.fn().mockResolvedValue(PUBLIC_LINK_DETAILS),
+    download: jest.fn().mockResolvedValue(SIGNED_DOWNLOAD),
+    ...overrides,
+  };
+}
+
+/** La página dentro del `<main>` del marco público (`(public)/layout.tsx`). */
+function renderVisit(api: PublicLinkVisitorApi): void {
+  render(
+    <main>
+      <PublicLinkVisitView api={api} openUrl={jest.fn()} />
+    </main>,
+  );
+}
+
+/** Ficha abierta y «Descargar» pulsado, con la contraseña si el enlace la pide. */
+async function downloadFrom(api: PublicLinkVisitorApi, password = ''): Promise<void> {
+  renderVisit(api);
+  await screen.findByRole('heading', { level: 1, name: /compartió un archivo contigo/ });
+  if (password !== '') {
+    await userEvent.type(screen.getByLabelText('Contraseña del enlace'), password);
+  }
+  await userEvent.click(screen.getByRole('button', { name: 'Descargar' }));
+}
+
+/** CA-11 pide cero violaciones de axe, no solo las bloqueantes. */
+async function expectNoViolations(): Promise<void> {
+  for (const width of VIEWPORTS) {
+    setViewport(width);
+    const results = await act(async () => axe(document.body));
+    const violations = results.violations.map((violation) => violation.id);
+    expect({ width, violations }).toEqual({ width, violations: [] });
+  }
+}
+
+describe('Accesibilidad de la página del enlace público a 360 y 1440 px (spec 013b CA-11)', () => {
+  beforeEach(() => window.history.replaceState(null, '', '/enlace#AbC-123_xyz'));
+
+  it('CA-11: cargando', async () => {
+    renderVisit(visitorApi({ open: jest.fn(pending) }));
+    await expectNoViolations();
+  });
+
+  it('CA-11: sin-contrasena', async () => {
+    renderVisit(visitorApi());
+    await screen.findByRole('button', { name: 'Descargar' });
+    await expectNoViolations();
+  });
+
+  it('CA-11: con-contrasena', async () => {
+    renderVisit(visitorApi({ open: jest.fn().mockResolvedValue(PROTECTED_LINK) }));
+    await screen.findByLabelText('Contraseña del enlace');
+    await expectNoViolations();
+  });
+
+  it('CA-11: contrasena-incorrecta (y el campo vacío)', async () => {
+    const download = jest
+      .fn()
+      .mockRejectedValue(visitorError(SHARING_ERROR_CODES.SHARING_LINK_PASSWORD_INVALID));
+    await downloadFrom(
+      visitorApi({ open: jest.fn().mockResolvedValue(PROTECTED_LINK), download }),
+      'no-es-esta',
+    );
+    await screen.findByRole('alert');
+    await expectNoViolations();
+  });
+
+  it('CA-11: bloqueado', async () => {
+    const download = jest
+      .fn()
+      .mockRejectedValue(visitorError(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, 900));
+    await downloadFrom(
+      visitorApi({ open: jest.fn().mockResolvedValue(PROTECTED_LINK), download }),
+      'la-correcta',
+    );
+    await screen.findByText(/Hubo demasiados intentos/);
+    await expectNoViolations();
+  });
+
+  it('CA-11: descargando', async () => {
+    jest.useFakeTimers({ advanceTimers: true });
+    await downloadFrom(visitorApi({ download: jest.fn(pending) }));
+    act(() => jest.advanceTimersByTime(PREPARING_DELAY_MS));
+    await screen.findByRole('button', { name: 'Preparando descarga…' });
+    await expectNoViolations();
+  });
+
+  it('CA-11: descarga-iniciada', async () => {
+    await downloadFrom(visitorApi());
+    await screen.findByText('Tu descarga comenzó. Si no empieza, vuelve a intentarlo.');
+    await expectNoViolations();
+  });
+
+  it('CA-11: descarga-error-red', async () => {
+    await downloadFrom(visitorApi({ download: jest.fn().mockRejectedValue(visitorError('X')) }));
+    await screen.findByRole('button', { name: 'Reintentar' });
+    await expectNoViolations();
+  });
+
+  it.each([
+    ['no-disponible', visitorError(SHARING_ERROR_CODES.SHARING_LINK_UNAVAILABLE)],
+    ['error-carga', visitorError('INTERNAL_ERROR')],
+    ['error-carga-limite', visitorError(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, 120)],
+  ])('CA-11: %s', async (_state, error) => {
+    renderVisit(visitorApi({ open: jest.fn().mockRejectedValue(error) }));
+    await screen.findByRole('heading', { level: 2 });
+    await expectNoViolations();
   });
 });
