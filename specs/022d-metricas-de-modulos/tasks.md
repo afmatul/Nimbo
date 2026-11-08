@@ -1,6 +1,6 @@
 # Tareas 022d — Grupos de los módulos en el tablero de operación
 
-> Spec: `./spec.md` · Plan: `./plan.md` (Propuesto; `/implement` exige «Aprobado»)
+> Spec: `./spec.md` · Plan: `./plan.md` (Aprobado 2026-11-08)
 > 5 a 12 tareas verticales, un commit cada una (`feat(infra): … [022d T-xx]`). Cada tarea es una línea: criterio,
 > prueba y de qué depende. Los archivos viven en `plan.md`. Sin tareas de «cierre». Esfuerzo ≈ 1 día-persona en total:
 > las tareas son más cortas que medio día porque cada una es un grupo del tablero con su prueba.

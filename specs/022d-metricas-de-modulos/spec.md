@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador |
+| Estado | Lista |
 | Dueño | Abel |
 | Fase | 3 (prevista; calendario pendiente de reprogramación) |
 | Requisitos | RNF-18 (tableros de los módulos); RNF-17 (privacidad de los tableros); RF-05 (acceso a tableros); RNF-12 (arranque aprovisionado, como 022 CA-10). Observa sin cambiar: RF-01, RF-02, RF-03, RF-04, RF-08, RF-09, RF-30, RF-32, RF-34, RF-35, RF-36 |
@@ -98,10 +98,10 @@ PD-67, PD-168 → fuera (§7; PD-190, PD-192).
 - **S-5** Se demuestra en local con el compose y tráfico sintético desde la web y el runbook, igual que 022 P-2.
 
 ## 9. Preguntas
-- [RESUELTA] P-1 → recorte a solo tableros (≈ 1 día, 3 archivos de autor); cabe en tamaño sin partir (2026-11-08, propuesta del dueño, pendiente de aprobación de Adrián).
-- [RESUELTA] P-2 → no se modifican módulos ni `shared` (RN-4); no hacen falta las autorizaciones del PR #78. Se retoman con PD-190 (2026-11-08, propuesta del dueño, pendiente de aprobación de Adrián).
-- [RESUELTA] P-3 → sin desglose por plan; el total va en CA-11 y el desglose a PD-192 (2026-11-08, propuesta del dueño, pendiente de aprobación de Adrián).
-- [RESUELTA] P-4 → sin tablero de negocio; la retención y las tendencias van a PD-191 (2026-11-08, propuesta del dueño, pendiente de aprobación de Adrián).
+- [RESUELTA] P-1 → recorte a solo tableros (≈ 1 día, 3 archivos de autor); cabe en tamaño sin partir (2026-11-08, propuesta del dueño, aprobado el 2026-11-08 (indicación en la sesión de Claude Code)).
+- [RESUELTA] P-2 → no se modifican módulos ni `shared` (RN-4); no hacen falta las autorizaciones del PR #78. Se retoman con PD-190 (2026-11-08, propuesta del dueño, aprobado el 2026-11-08 (indicación en la sesión de Claude Code)).
+- [RESUELTA] P-3 → sin desglose por plan; el total va en CA-11 y el desglose a PD-192 (2026-11-08, propuesta del dueño, aprobado el 2026-11-08 (indicación en la sesión de Claude Code)).
+- [RESUELTA] P-4 → sin tablero de negocio; la retención y las tendencias van a PD-191 (2026-11-08, propuesta del dueño, aprobado el 2026-11-08 (indicación en la sesión de Claude Code)).
 - [RESUELTA] P-7 → complementa 011 con tendencias por periodo (2026-11-02, Adrián, PR #78). Con el recorte, va a PD-191.
 - [RESUELTA] P-8 → grupo del agente en el tablero de operación; primer fragmento y costo, PD-168 (2026-11-02, Adrián). Con el recorte, el desglose por plan va a PD-192 y los fragmentos a PD-190.
 - [RESUELTA] P-11 → solo agregados y distribuciones, sin identificadores (2026-11-02, Adrián).
@@ -110,4 +110,4 @@ PD-67, PD-168 → fuera (§7; PD-190, PD-192).
 | Fecha | Cambio | Motivo | Aprobó |
 |---|---|---|---|
 | 2026-11-02 | Creación en Borrador desde 022 CA-4, CA-7, CA-8, CA-17, HU-2 (negocio y agente) y los grupos de módulo de RN-3; sin plan ni tareas por P-1 (inventario fuera de tamaño) | Corte de 022 por tamaño (PR #78) | — |
-| 2026-11-08 | Recorte a solo tableros: grupos Identidad, Almacenamiento, Indexación, Optimizador y Agente sobre las series de 022. CA-1, CA-2, CA-7, CA-8, CA-11, CA-12 y CA-14 reescritos; CA-15 nuevo; CA-3 a CA-6, CA-9, CA-10 y CA-13 y HU-2 salen (PD-190 a PD-192). P-1 a P-4 resueltas; plan y tareas escritos | Petición del dueño; P-1 sin otra salida en tamaño | Pendiente de Adrián |
+| 2026-11-08 | Recorte a solo tableros: grupos Identidad, Almacenamiento, Indexación, Optimizador y Agente sobre las series de 022. CA-1, CA-2, CA-7, CA-8, CA-11, CA-12 y CA-14 reescritos; CA-15 nuevo; CA-3 a CA-6, CA-9, CA-10 y CA-13 y HU-2 salen (PD-190 a PD-192). P-1 a P-4 resueltas; plan y tareas escritos | Petición del dueño; P-1 sin otra salida en tamaño | Plan aprobado 2026-11-08 (sesión de Claude Code) |

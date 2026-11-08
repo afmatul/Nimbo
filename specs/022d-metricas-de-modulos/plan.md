@@ -1,6 +1,6 @@
 # Plan 022d — Grupos de los módulos en el tablero de operación
 
-> Spec: `./spec.md` · Estado del plan: **Propuesto**
+> Spec: `./spec.md` · Estado del plan: **Aprobado** (2026-11-08)
 > Obligatorio y ≤ 250 líneas. Dice **qué** archivos se tocan y **qué** se espera de cada uno; no es el código en
 > prosa (sin cuerpos de funciones ni pseudocódigo). Lo aprueba Adrián antes de escribir código.
 
@@ -141,4 +141,4 @@ no hay código ni datos de clientes (spec §5). No se repite en la demo lo que l
 ## 8. Aprobación
 
 - `architect`: **no aplica** (sin puerto entre módulos, sin tecnología nueva, sin cambio de arquitectura).
-- Adrián: pendiente. Decide además el recorte de alcance de la spec (§9, P-1 a P-4) y los supuestos discutibles S-1 a S-4.
+- **Aprobado** — 2026-11-08, indicación en la sesión de Claude Code. Cubre el recorte de alcance de la spec (§9, P-1 a P-4) y los supuestos S-1 a S-4.
