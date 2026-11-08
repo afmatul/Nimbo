@@ -10,6 +10,12 @@ const REWRITES = /\brewrites\b/;
 
 /** Manejadores de ruta de Next (`route.ts`, `route.js`…) dentro de `src/app`. */
 const ROUTE_HANDLER = /(^|[\\/])route\.(ts|tsx|js|mjs)$/;
+/** Un manejador que llama a la API (o a cualquier sitio) es un proxy en potencia, aunque no nombre /public-links. */
+const CALLS_UPSTREAM = /\bfetch\s*\(|\bAPI_(PUBLIC_)?URL\b/;
+/** Segmento catch-all (`[...x]` o `[[...x]]`) en cualquier nivel de `src/app/api`. */
+const API_CATCH_ALL = /^api[\\/](.*[\\/])?\[\[?\.\.\.[^\]]+\]\]?([\\/]|$)/;
+/** Rutas de API del Pages Router: la web no las usa. */
+const PAGES_API_DIRS = ['src/pages/api', 'pages/api'];
 const MIDDLEWARE_FILES = [
   'middleware.ts',
   'middleware.js',
@@ -22,8 +28,11 @@ const VISITOR_CLIENT = 'src/features/sharing/public-link-visitor-api.ts';
 
 const sourceOf = (path: string): string => readFileSync(path, 'utf8');
 
+const filesUnder = (dir: string): string[] =>
+  existsSync(dir) ? readdirSync(dir, { recursive: true, encoding: 'utf8' }) : [];
+
 const routeHandlers = (): string[] =>
-  readdirSync(APP_DIR, { recursive: true, encoding: 'utf8' })
+  filesUnder(APP_DIR)
     .filter((path) => ROUTE_HANDLER.test(path))
     .map((path) => join(APP_DIR, path));
 
@@ -33,6 +42,24 @@ const existingMiddleware = (): string[] =>
 describe('arquitectura de web: nada reenvía /public-links (013b CA-9, SEC-6 de 013)', () => {
   it('CA-9: ningún manejador de ruta de `src/app` toca /public-links', () => {
     const offenders = routeHandlers().filter((path) => PUBLIC_LINKS.test(sourceOf(path)));
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('CA-9: ningún manejador de ruta de `src/app` hace `fetch` ni usa API_URL o API_PUBLIC_URL', () => {
+    const offenders = routeHandlers().filter((path) => CALLS_UPSTREAM.test(sourceOf(path)));
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('CA-9: no hay rutas catch-all bajo `src/app/api`', () => {
+    const offenders = filesUnder(APP_DIR).filter((path) => API_CATCH_ALL.test(path));
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('CA-9: no hay rutas de API del Pages Router (`src/pages/api` ni `pages/api`)', () => {
+    const offenders = PAGES_API_DIRS.flatMap((dir) => filesUnder(join(WEB_ROOT, dir)));
 
     expect(offenders).toEqual([]);
   });

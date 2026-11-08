@@ -38,6 +38,11 @@
     reutilizarlas en T-07 y T-08.
   - Hoy `web` no tiene `route.ts` ni `middleware`: la prueba de arquitectura los vigila por si aparecen, y se comprobó
     que falla con un `app/api/…/route.ts` que llama a `/public-links` (se borró tras verlo en rojo).
+  - SEC-8 (revisión de cierre, 2026-11-07): la prueba también falla si un `route.*` de `src/app` hace `fetch` o usa
+    `API_URL` o `API_PUBLIC_URL`, si hay un catch-all (`[...x]` o `[[...x]]`) bajo `src/app/api` y si hay cualquier
+    archivo en `src/pages/api` o `pages/api`. Cada caso se vio en rojo con un archivo temporal (`fetch`, `API_URL`,
+    `API_PUBLIC_URL`, `api/[...rest]`, `api/v1/[[...rest]]`, `src/pages/api/x.ts` y `pages/api/x.ts`), que se borró
+    después.
 - **T-07** (2026-11-07):
   - `usePublicLinkVisit(api, openUrl)` recibe el cliente y cómo abrir la URL, como `SharedFileDetail` (`api`,
     `openUrl`): la vista de T-08 crea el cliente con `API_PUBLIC_URL` y pasa `openInBrowser`. Las pruebas usan un
