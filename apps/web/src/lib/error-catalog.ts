@@ -382,7 +382,8 @@ function isReason(value: string): value is FieldIssueReason {
   return Object.prototype.hasOwnProperty.call(IDENTITY_FIELD_MESSAGES, value);
 }
 
-function minutesFrom(seconds: number): string {
+/** Minutos de espera para un texto: hacia arriba y nunca menos de 1. */
+export function minutesFrom(seconds: number): string {
   return String(Math.max(1, Math.ceil(seconds / SECONDS_PER_MINUTE)));
 }
 
