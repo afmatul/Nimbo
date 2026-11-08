@@ -10,8 +10,8 @@ import type { Response } from 'supertest';
 import type { DataSource, EntityManager } from 'typeorm';
 
 import { LinkToken } from '../../src/modules/sharing/domain/link-token';
-import { createActor, Role } from '../../src/shared';
-import type { Actor } from '../../src/shared';
+import { createActor, I_PASSWORD_HASHER, Role } from '../../src/shared';
+import type { Actor, IPasswordHasher } from '../../src/shared';
 import { TransactionContext } from '../../src/shared/infrastructure/persistence/transaction-context';
 import { TypeOrmTransactionRunner } from '../../src/shared/infrastructure/persistence/typeorm-transaction-runner';
 import { createSharingHttpApp } from '../int/sharing/sharing-http';
@@ -456,6 +456,107 @@ describe('aislamiento de enlaces públicos por HTTP (013 CA-17, CA-11, CA-16)', 
         }
       }
     });
+  });
+});
+
+interface SeededLink {
+  readonly ownerId: string;
+  readonly fileId: string;
+  readonly versionId: string;
+  readonly token: string;
+}
+
+/**
+ * El techo global de fallos es de un enlace, no de la cuenta ni del servicio (spec 013b CA-15, RNF-05; plan §6): con el
+ * techo bajado y activo en un enlace protegido de A, otro enlace protegido de A, uno de B y uno sin contraseña de A
+ * siguen sirviendo su propio archivo. Cada petición sale de un /64 nuevo, así ninguna red llega a su propio bloqueo.
+ */
+describe('aislamiento del techo global de fallos por enlace (013b CA-15)', () => {
+  const CEILING = 3;
+  const PASSWORD = 'clave-del-enlace-4b8d';
+  const WRONG_PASSWORD = 'otra-clave-1234';
+  let sharing: SharingHttpApp;
+  let ceilingLink: SeededLink;
+  let otherOfA: SeededLink;
+  let ofB: SeededLink;
+  let openOfA: SeededLink;
+
+  /** Un enlace sobre un archivo nuevo de la cuenta, con la contraseña si se da su hash. */
+  const seedLink = async (ownerId: string, hash?: string): Promise<SeededLink> => {
+    const file = await insertCommittedFile(sharing.storage.owner, ownerId, {
+      name: `Techo-${randomUUID()}.pdf`,
+      sizeBytes: SAME_SIZE,
+    });
+    const token = LinkToken.generate();
+    await insertPublicLink(sharing.storage.owner, {
+      ownerId,
+      fileId: file.fileId,
+      tokenHash: token.hash(),
+      ...(hash === undefined ? {} : { passwordHash: hash }),
+    });
+    return { ownerId, ...file, token: token.toString() };
+  };
+
+  const downloadFromNewNetwork = (body: Record<string, unknown>): Promise<Response> =>
+    sharing
+      .visitor({
+        'X-Forwarded-For': `2001:db8:${randomUUID().slice(0, 4)}:${randomUUID().slice(0, 4)}::1`,
+      })
+      .download(body);
+
+  const expectServes = async (link: SeededLink, password?: string): Promise<void> => {
+    const response = await downloadFromNewNetwork({ token: link.token, password });
+
+    expect(response.status).toBe(200);
+    expect(objectPathOf(response)).toContain(
+      objectKeyOf(link.ownerId, link.fileId, link.versionId),
+    );
+  };
+
+  beforeAll(async () => {
+    sharing = await createSharingHttpApp({
+      env: {
+        ...ROOMY_LIMITS,
+        PUBLIC_LINK_MAX_FAILURES: String(CEILING),
+        PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR: String(CEILING),
+      },
+    });
+    const [a, b] = [await sharing.storage.newClient(), await sharing.storage.newClient()];
+    const hasher = sharing.storage.testApp.app.get<IPasswordHasher>(I_PASSWORD_HASHER);
+    const passwordHash = (await hasher.hash(PASSWORD)).reveal();
+    ceilingLink = await seedLink(a.id, passwordHash);
+    otherOfA = await seedLink(a.id, passwordHash);
+    ofB = await seedLink(b.id, passwordHash);
+    openOfA = await seedLink(a.id);
+    for (let failure = 0; failure < CEILING; failure += 1) {
+      const response = await downloadFromNewNetwork({
+        token: ceilingLink.token,
+        password: WRONG_PASSWORD,
+      });
+      expect(response.status).toBe(403);
+    }
+  });
+
+  afterAll(async () => {
+    await sharing?.close();
+  });
+
+  it('ISO-30: con la contraseña correcta, el enlace de A al techo es 429 (control de ISO-31 a ISO-33)', async () => {
+    const response = await downloadFromNewNetwork({ token: ceilingLink.token, password: PASSWORD });
+
+    expect(errorOf(response)).toEqual({ status: 429, code: 'SHARED_TOO_MANY_REQUESTS' });
+  });
+
+  it('ISO-31: otro enlace protegido de A sigue descargando su archivo', async () => {
+    await expectServes(otherOfA, PASSWORD);
+  });
+
+  it('ISO-32: un enlace protegido de B sigue descargando su archivo', async () => {
+    await expectServes(ofB, PASSWORD);
+  });
+
+  it('ISO-33: un enlace sin contraseña de A sigue descargando su archivo', async () => {
+    await expectServes(openOfA);
   });
 });
 

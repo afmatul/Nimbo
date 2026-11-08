@@ -12,7 +12,7 @@ import { PublicLinkAccessService } from './application/public-link-access.servic
 import { PublicLinkPasswordGate } from './application/public-link-password-gate';
 import { PublicLinkService } from './application/public-link.service';
 import { ReceivedSharesService } from './application/received-shares.service';
-import { SHARING_CONFIG } from './application/sharing-config';
+import { publicLinkCeilingOf, SHARING_CONFIG } from './application/sharing-config';
 import type { SharingConfig } from './application/sharing-config';
 import { SharingService } from './application/sharing.service';
 import { SqlPublicLinkResolver } from './infrastructure/persistence/sql-public-link-resolver';
@@ -32,6 +32,7 @@ export type SharingEnv = Pick<
   | 'PUBLIC_LINK_MAX_FAILURES'
   | 'PUBLIC_LINK_FAILURE_WINDOW_MINUTES'
   | 'PUBLIC_LINK_LOCK_MINUTES'
+  | 'PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR'
 >;
 
 const SECONDS_PER_MINUTE = 60;
@@ -57,6 +58,7 @@ export class SharingModule {
       webPublicUrl: env.WEB_PUBLIC_URL,
       publicLinkRequestsPerMinute: env.PUBLIC_LINK_RATE_LIMIT_PER_MINUTE,
       publicLinkLockout: publicLinkLockoutOf(env),
+      publicLinkCeiling: publicLinkCeilingOf(env.PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR),
     };
     return {
       module: SharingModule,

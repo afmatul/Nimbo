@@ -39,6 +39,7 @@ export type { ITransactionRunner } from './application/persistence/i-transaction
 export { I_ATTEMPT_LOCKOUT } from './application/rate-limit/i-attempt-lockout.port';
 export type {
   AttemptReservation,
+  FailureRecord,
   IAttemptLockout,
   LockoutPolicy,
   LockState,

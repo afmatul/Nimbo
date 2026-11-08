@@ -19,6 +19,21 @@ export interface SharingConfig {
    * bloqueo por contraseñas fallidas de un enlace desde una red (013 CA-13, RN-7, S-1).
    */
   readonly publicLinkLockout: LockoutPolicy;
+  /**
+   * `PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR` con ventana y espera fijas de 60 minutos: el techo global de contraseñas
+   * fallidas de un enlace, sumando todas las redes (013b CA-12, RN-3, S-2; PD-175).
+   */
+  readonly publicLinkCeiling: LockoutPolicy;
 }
 
 export const SHARING_CONFIG: unique symbol = Symbol('SharingConfig');
+
+/** 013b RN-3, S-2: la ventana del techo global y su espera son fijas, 60 minutos. */
+const PUBLIC_LINK_CEILING_SECONDS = 60 * 60;
+
+/** 013b CA-12, RN-3: el techo global por enlace; solo el máximo sale del entorno. */
+export const publicLinkCeilingOf = (maxFailures: number): LockoutPolicy => ({
+  maxFailures,
+  windowSeconds: PUBLIC_LINK_CEILING_SECONDS,
+  lockSeconds: PUBLIC_LINK_CEILING_SECONDS,
+});
