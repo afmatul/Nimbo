@@ -57,7 +57,7 @@
     porque no traen `code`. Tonos: no disponible `neutral`; contraseña incorrecta y red al abrir `error`; `429` y red al
     descargar `warning` (README del mockup).
   - El `429` dice «Espera 1 minuto…» en singular cuando `minutesFrom` da 1 (menos de 60 s o sin `Retry-After`) y
-    «Espera N minutos…» si da más (decisión de Fátima, 2026-11-08). `error-catalog` sigue diciendo siempre «minutos»
+    «Espera N minutos…» si da más (decisión de Fátima, 2026-11-07). `error-catalog` sigue diciendo siempre «minutos»
     y no se tocó: queda como PD-190.
 - **T-08** (2026-11-07):
   - `PasswordField` pasó a `components/nimbo/` en un commit propio (P-B (a)): solo la ruta y los 4 imports de
@@ -73,8 +73,8 @@
     `type="empty"` con `role="status"` y clases de `warning` en `className`, y el borde `secondary-foreground` de
     «Reintentar» (PD-189) va con variantes `[&_button]:`, `[&_h2]:`, `[&_p]:` y `[&_svg]:` (solo tokens, sin valores
     arbitrarios). No se tocó `components/nimbo/state-view.tsx`: queda en PD-189 sumarle `tone="warning"` y un estilo
-    de acción, y quitar entonces esos selectores de la página (decisión de Fátima, 2026-11-08).
-  - La baldosa del ícono del tipo lleva el color del tipo, como el mockup (decisión de Fátima, 2026-11-08):
+    de acción, y quitar entonces esos selectores de la página (decisión de Fátima, 2026-11-07).
+  - La baldosa del ícono del tipo lleva el color del tipo, como el mockup (decisión de Fátima, 2026-11-07):
     `file-type-chip.tsx` exporta `fileTypeColors(fileType)`, el color y el fondo del mapa del chip como `style` (son
     variables de `globals.css`, sin utilidades `file-*`). `FileTypeChip` y `FileTypeIcon` no cambian. Contraste del
     ícono sobre la baldosa (sobre `card`): docx 5.12, xlsx 4.78, pptx 4.77, pdf 4.77, img 5.48, otro 5.02 (AA).

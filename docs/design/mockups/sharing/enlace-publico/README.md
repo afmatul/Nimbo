@@ -59,4 +59,4 @@
   con «reducir movimiento».
 
 ## Estado
-- Aprobado por Adrián (2026-11-08, T-05). La implementación es T-08.
+- Aprobado por Adrián (2026-11-07, T-05). La implementación es T-08.

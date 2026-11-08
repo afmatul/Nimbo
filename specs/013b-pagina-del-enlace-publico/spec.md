@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Lista |
+| Estado | En revisión |
 | Dueño | Fátima |
 | Fase | 2 |
 | Requisitos | RF-17, RNF-08, RNF-13, RNF-14; apoyan RF-07, RNF-05, RNF-07 |
@@ -49,7 +49,7 @@ corrige el texto de ayuda de la contraseña (S-3 de 013). La sección del diálo
 - **CA-16** (HU-3, RF-17) — error: Dado una contraseña de menos de 8 o más de 128 caracteres al generar un enlace, entonces el `422` de 013 CA-2 dice «Escribe una contraseña de 8 a 128 caracteres.», sin «o deja el campo vacío» (`""` sigue rechazado; el formulario de 013c omite el campo).
 
 ## 4. Reglas de negocio
-- **RN-1** Un solo «No disponible» para todo motivo y un solo texto de `429`; nunca se dicen el motivo ni los intentos restantes (013 P-1, P-3).
+- **RN-1** Un solo «No disponible» para todo motivo y un solo texto de `429`; nunca se dicen el motivo ni los intentos restantes (013 P-1, P-3). Los minutos de espera del `429` salen de la API (CA-5) y pueden variar según el motivo; eso se acepta porque no da acceso ni dice cuántos intentos quedan (SEC-7 de la revisión, pendiente de que Adrián lo confirme).
 - **RN-2** La ficha no pide contraseña: la contraseña protege la descarga (013 S-7).
 - **RN-3** Techo global por enlace: suma los fallos de todas las redes en una ventana móvil de 60 minutos. Al llegar al techo, `429` para todos durante 60 minutos. No inhabilita el enlace, un acierto no lo reinicia y convive con el bloqueo por enlace y red (013 RN-7).
 - **RN-4** La página no usa la sesión: todos los visitantes son iguales (013 CA-16).
@@ -65,7 +65,7 @@ corrige el texto de ayuda de la contraseña (S-3 de 013). La sección del diálo
 ## 6. Experiencia de usuario
 | Pantalla | Mockup | Estados requeridos | Estado del mockup |
 |---|---|---|---|
-| Página pública `/enlace` (`ui-guidelines.md` §7, fila «Enlace público (página)») | `docs/design/mockups/sharing/enlace-publico/` | cargando (CA-1) · sin-contrasena (CA-1) · con-contrasena (CA-2) · contrasena-incorrecta (CA-4) · bloqueado (CA-5, CA-12) · descargando (CA-3) · descarga-iniciada (CA-3) · no-disponible (CA-6) · error-carga (CA-7; el `429` al abrir usa este diseño en tono de advertencia) | Aprobado (Adrián, 2026-11-08, T-05): 11 HTML y 22 PNG (360 y 1440 px), generados con `_generadores/enlace-publico/generar.js`: los 9 estados más dos variantes con HTML propio, error-carga-limite (el `429` al abrir, con el diseño de error-carga en tono de advertencia) y descarga-error-red (la red falla al descargar: aviso de advertencia sobre la ficha con «Reintentar», CA-7). Axe sin violaciones y sin desplazamiento horizontal a 360 px. El HTML anterior pasa a `enlace-publico--propuesta.html` |
+| Página pública `/enlace` (`ui-guidelines.md` §7, fila «Enlace público (página)») | `docs/design/mockups/sharing/enlace-publico/` | cargando (CA-1) · sin-contrasena (CA-1) · con-contrasena (CA-2) · contrasena-incorrecta (CA-4) · bloqueado (CA-5, CA-12) · descargando (CA-3) · descarga-iniciada (CA-3) · no-disponible (CA-6) · error-carga (CA-7; el `429` al abrir usa este diseño en tono de advertencia) | Aprobado (Adrián, 2026-11-07, T-05): 11 HTML y 22 PNG (360 y 1440 px), generados con `_generadores/enlace-publico/generar.js`: los 9 estados más dos variantes con HTML propio, error-carga-limite (el `429` al abrir, con el diseño de error-carga en tono de advertencia) y descarga-error-red (la red falla al descargar: aviso de advertencia sobre la ficha con «Reintentar», CA-7). Axe sin violaciones y sin desplazamiento horizontal a 360 px. El HTML anterior pasa a `enlace-publico--propuesta.html` |
 
 - Mensajes clave: los de CA-4 a CA-7 y CA-16. El `429` usa el texto neutro propio de la página de CA-5, no el genérico «Hiciste demasiados intentos…». Botón «Descargar»; campo «Contraseña del enlace».
 - Correcciones al mockup actual: «Ver archivo» → «Descargar»; «clave» → «contraseña». El README dice que pide la clave antes de mostrar el archivo, y no es así (S-7). Lleva la cabecera pública real (Planes / Iniciar sesión) y el color del botón corregido (DF-41). «Expirado» y «Revocado» pasan a no-disponible. La fila de §7 se parte en «Enlace público (página)» (esta spec) y «Enlace público (diálogo)» (013c).
@@ -98,4 +98,5 @@ corrige el texto de ayuda de la contraseña (S-3 de 013). La sección del diálo
 | 2026-11-07 | Auditoría de Adrián en el PR #100 (85 %; M-1 a M-3, m-1 a m-7): CA-5 con texto de `429` neutro propio (M-2), CA-11 separa lo que mide axe de lo que se verifica a mano (m-6), tareas renumeradas (T-01 a T-03 en PR-A, T-04 a T-09 en PR-B) | Auditoría de Adrián; decisiones de Fátima (M-3, m-4, m-5, m-7) | Pendiente (Adrián) |
 | 2026-11-07 | Adrián aceptó pasar de los 12 archivos de `workflow.md` §4.1 (PR #100, 2026-11-06); dos PR | M-1: sin PR `refactor(web)` aparte; el refactor de `storage` (T-04) va en PR-B | Adrián |
 | 2026-11-07 | Plan aprobado (95 %); la spec pasa a `Lista`. P-A, P-B (a) y P-C resueltas; N-1 a N-3 en plan y tareas, y PD-188 por la copia de `openInBrowser` en `billing` | Aprobación de Adrián en el PR #100 | Adrián |
-| 2026-11-08 | Mockup de T-05 (11 HTML, 22 PNG): CA-2 con la ayuda bajo el campo, CA-5 con el campo vacío tras el `429`, CA-7 con texto propio para la red al descargar; variantes `error-carga-limite` y `descarga-error-red`; borde de «Reintentar» `outline` con 3:1 sobre advertencia y error (PD-189) | Dudas D-1 a D-4 del `ui-designer`; decisiones de Fátima | Adrián (2026-11-08, a Fátima en privado) |
+| 2026-11-07 | Mockup de T-05 (11 HTML, 22 PNG): CA-2 con la ayuda bajo el campo, CA-5 con el campo vacío tras el `429`, CA-7 con texto propio para la red al descargar; variantes `error-carga-limite` y `descarga-error-red`; borde de «Reintentar» `outline` con 3:1 sobre advertencia y error (PD-189) | Dudas D-1 a D-4 del `ui-designer`; decisiones de Fátima | Adrián (2026-11-07, a Fátima en privado) |
+| 2026-11-07 | Pasa a `En revisión` con `review.md` (✅, sin bloqueantes); RN-1 aclara que la neutralidad del `429` cubre el texto y no los minutos (SEC-7) | Revisión de cierre (`reviewer` y `security-auditor`); decisiones de Fátima | Pendiente (Adrián) |
