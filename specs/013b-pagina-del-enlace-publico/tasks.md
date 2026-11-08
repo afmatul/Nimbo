@@ -13,7 +13,7 @@
 **PR-B (web)**
 - [x] **T-04** `usePreparingDownload` y `expiresAtLabel` en `lib/` (P-C); los usan `file-row-menu`, `shared-file-detail` (gana «una petición a la vez») y `use-version-download`, con imports actualizados; `download` devuelve si arrancó (N-1); commits `refactor(storage): … [013b T-04]` y `fix(storage): … [013b T-04]` para `shared-file-detail` (N-2) — CA: CA-3, CA-1 (fecha) — Prueba: unitaria primero (`use-preparing-download.spec.ts`, `format-date.spec.ts`, doble clic en `shared-file-detail.spec.tsx` y en `file-row-menu.spec.tsx`) y suites de `storage` en verde sin cambiar aserciones
 - [ ] **T-05** Mockup de los 9 estados de la página con `/mockup` (`ui-designer`): generador `_generadores/enlace-publico/generar.js`, 18 PNG, README corregido, fila 302 de `ui-guidelines.md` §7 partida en página y diálogo; aprobación de Adrián — CA: CA-1 a CA-7 — Prueba: axe y capturas a 360 y 1440 px
-- [ ] **T-06** Cliente del visitante sin sesión contra `API_PUBLIC_URL` y prueba de que nada en `web` reenvía `/public-links` — CA: CA-9, CA-10 — Prueba: unitaria web primero (`public-link-visitor-api.spec.ts`, `no-public-link-proxy.arch.spec.ts`)
+- [x] **T-06** Cliente del visitante sin sesión contra `API_PUBLIC_URL` y prueba de que nada en `web` reenvía `/public-links` — CA: CA-9, CA-10 — Prueba: unitaria web primero (`public-link-visitor-api.spec.ts`, `no-public-link-proxy.arch.spec.ts`)
 - [ ] **T-07** Hook `use-public-link-visit` (fragmento crudo, vacío sin API, `StrictMode` sin repetir `POST /open`, descarga con `usePreparingDownload`) y catálogo `public-link-messages.ts` con el `429` neutro — CA: CA-3, CA-5, CA-6, CA-7, CA-8 — Prueba: unitaria web primero (`use-public-link-visit.spec.ts`) — Depende: T-04, T-06
 - [ ] **T-08** Ruta `/enlace` (`metadata` con título genérico y `noindex`) y vista `PublicLinkVisit` con formulario de contraseña y sus 9 estados (`PasswordField` movido a `components/nimbo/` en un commit propio, P-B (a)) — CA: CA-1, CA-2, CA-4, CA-6, CA-7, CA-8, CA-11 (axe y anuncios) — Prueba: componente (`public-link-visit.spec.tsx`, `page.spec.tsx`) y axe (`a11y.spec.tsx`) — Depende: T-05, T-07
 - [ ] **T-09** **(humana)** Recorrido de la demo en local (sin y con contraseña, incorrecta, techo bajado por entorno, revocado → «No disponible», sesión de Soporte) y revisión manual de CA-11 (360 px sin desplazamiento horizontal, contraste AA a 360 y 1440 px, «reducir movimiento»); nota en el PR — CA: los visibles, CA-11 — Depende: T-01, T-08
@@ -30,3 +30,11 @@
     `VersionActions` ni `use-version-actions.ts`.
   - En el worktree (`.claude/…`), Jest no encuentra pruebas con el `testMatch` de `<rootDir>` porque la ruta tiene una
     carpeta con punto; se corrió con `--testMatch "**/src/**/*.spec.{ts,tsx}"`. En el repositorio normal no pasa.
+- **T-06** (2026-11-07):
+  - `public-link-visitor-api.ts` repite el «`POST` JSON + `safeParse` → genérico» de `identity/api.ts` y de
+    `identity/account-setup/api.ts` (tercera copia, Art. VI.2). No se extrajo a `lib/` porque tocaría `identity`, que
+    no está autorizado en el plan; se propone como pendiente (PD) para un cambio de `lib/api-client`.
+  - La ficha y la URL firmada de prueba viven en `features/sharing/test-public-link.ts` (como `test-sharing.ts`) para
+    reutilizarlas en T-07 y T-08.
+  - Hoy `web` no tiene `route.ts` ni `middleware`: la prueba de arquitectura los vigila por si aparecen, y se comprobó
+    que falla con un `app/api/…/route.ts` que llama a `/public-links` (se borró tras verlo en rojo).
