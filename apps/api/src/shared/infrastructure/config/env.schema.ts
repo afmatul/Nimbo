@@ -16,6 +16,7 @@ const LOCAL_ONLYOFFICE_SECRET_MESSAGE = 'no puede ser el valor de desarrollo de 
 const PUBLISHED_ONLYOFFICE_SECRET_LENGTH_MESSAGE =
   'debe tener al menos 32 caracteres en staging y en producción';
 const MULTIPART_THRESHOLD_MESSAGE = 'debe ser mayor o igual que `UPLOAD_PART_SIZE_BYTES`';
+const PUBLIC_LINK_CEILING_MESSAGE = 'debe ser mayor o igual que `PUBLIC_LINK_MAX_FAILURES`';
 const JWT_SECRET_MIN_LENGTH = 32;
 /** 32 bytes aleatorios en base64url: el mínimo en ambientes publicados (plan 002 §6.10). */
 const PUBLISHED_JWT_SECRET_MIN_LENGTH = 43;
@@ -122,6 +123,11 @@ const DEFAULT_PUBLIC_LINK_LOCK_MINUTES = 15;
  * CA-12, RN-3, S-2; PD-175). La ventana y la espera son fijas; solo el techo se configura.
  */
 const DEFAULT_PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR = 100;
+/**
+ * Tope del techo global (auditoría del #102, M-2): por encima, el techo deja de frenar a quien prueba contraseñas desde
+ * muchas redes. Por debajo lo acota `PUBLIC_LINK_MAX_FAILURES`, para que el bloqueo por red llegue antes.
+ */
+const MAX_PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR = 10_000;
 /** Modelo de embeddings por defecto (ADR-0007): se vectoriza a 768 dimensiones (ADR-0003). */
 const DEFAULT_GEMINI_EMBEDDING_MODEL = 'gemini-embedding-001';
 /** Modelo que redacta las respuestas del agente (020 D-7, RNF-09). */
@@ -388,7 +394,9 @@ const sharingApiShape = {
   PUBLIC_LINK_MAX_FAILURES: positiveInt(DEFAULT_PUBLIC_LINK_MAX_FAILURES),
   PUBLIC_LINK_FAILURE_WINDOW_MINUTES: positiveInt(DEFAULT_PUBLIC_LINK_FAILURE_WINDOW_MINUTES),
   PUBLIC_LINK_LOCK_MINUTES: positiveInt(DEFAULT_PUBLIC_LINK_LOCK_MINUTES),
-  PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR: positiveInt(
+  PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR: intBetween(
+    1,
+    MAX_PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR,
     DEFAULT_PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR,
   ),
 };
@@ -548,8 +556,8 @@ const refinePublishedOnlyOfficeSecret = (
 };
 
 /**
- * Reglas entre variables del `api`: toda carga por partes tiene al menos dos partes (005 plan §5) y, en ambientes
- * publicados, el enlace del correo nunca viaja por http (001 CA-20) y la clave de firma no es la de desarrollo
+ * Reglas entre variables del `api`: toda carga por partes tiene al menos dos partes (005 plan §5), el techo global de
+ * un enlace no es menor que el máximo por red (013b, PD-175) y, en ambientes publicados, el enlace del correo nunca viaja por http (001 CA-20) y la clave de firma no es la de desarrollo
  * (002 CA-26).
  */
 const refineApiEnv = (
@@ -559,12 +567,17 @@ const refineApiEnv = (
     JWT_ACCESS_SECRET: string;
     UPLOAD_PART_SIZE_BYTES: number;
     UPLOAD_MULTIPART_THRESHOLD_BYTES: number;
+    PUBLIC_LINK_MAX_FAILURES: number;
+    PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR: number;
     ONLYOFFICE_JWT_SECRET?: string | undefined;
   },
   ctx: z.RefinementCtx,
 ): void => {
   if (env.UPLOAD_MULTIPART_THRESHOLD_BYTES < env.UPLOAD_PART_SIZE_BYTES) {
     addEnvIssue(ctx, 'UPLOAD_MULTIPART_THRESHOLD_BYTES', MULTIPART_THRESHOLD_MESSAGE);
+  }
+  if (env.PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR < env.PUBLIC_LINK_MAX_FAILURES) {
+    addEnvIssue(ctx, 'PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR', PUBLIC_LINK_CEILING_MESSAGE);
   }
   if (!isPublished(env.APP_ENV)) return;
   if (!env.WEB_PUBLIC_URL.startsWith('https://')) {

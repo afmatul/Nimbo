@@ -40,3 +40,8 @@
   parámetro), `CEILING`, `CEILING_SECONDS` y `WRONG_PASSWORD`; `passwordHashOf(sharing)` sustituye además el hash en
   línea del `describe` del bloqueo por red (tercer uso). Se comprobó la suite entera (40) y cada `describe` filtrado
   con `-t`.
+- **Auditoría del #102, M-2:** el tope de 10 000 usa `intBetween(1, MAX_PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR, 100)`,
+  el mecanismo del esquema para cotas de una variable (plan §2 decía `positiveInt`); la cota inferior, que cruza dos
+  variables, va en `refineApiEnv` como la del umbral por partes. Mensajes: «debe ser un entero entre 1 y 10000» y
+  «debe ser mayor o igual que `PUBLIC_LINK_MAX_FAILURES`». El README de `shared` no describe la variable (solo
+  `IAttemptLockout`), así que no cambia.

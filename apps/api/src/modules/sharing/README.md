@@ -67,7 +67,8 @@ vence_en > now()`, reloj de la base). `SqlPublicLinkResolver` (`IPublicLinkResol
   `PUBLIC_LINK_RATE_LIMIT_PER_MINUTE` (30, por red), `PUBLIC_LINK_MAX_FAILURES` (5),
   `PUBLIC_LINK_FAILURE_WINDOW_MINUTES` (15), `PUBLIC_LINK_LOCK_MINUTES` (15) y, con la 013b,
   `PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR` (100, el techo por enlace; ventana móvil y espera de 60 minutos, no configurables, en
-  `SharingConfig.publicLinkCeiling`). En Redis las claves por red llevan el hash de
+  `SharingConfig.publicLinkCeiling`). La API no arranca si el techo es menor que `PUBLIC_LINK_MAX_FAILURES` (el bloqueo
+  por red llega antes) o mayor que 10 000 (el techo quedaría inerte). En Redis las claves por red llevan el hash de
   la red (`limitNetworkOf`: /32 en IPv4, /64 en IPv6), nunca la IP; ninguna tabla guarda la IP ni la red.
 - Bitácoras: `public_link.created`, `public_link.revoked`, `public_link.downloaded` y `public_link.locked` (con
   `linkId` y `fileId`), `public_link.password_failed` (solo `linkId`) y `public_link.unavailable` (con `linkId` y

@@ -482,6 +482,48 @@ describe('loadEnv: carga y descarga de archivos (005 T-20)', () => {
   });
 });
 
+describe('loadEnv(apiEnvSchema): techo global de fallos de los enlaces públicos (013b CA-12, PD-175)', () => {
+  const ceilingOf = (ceiling: string) =>
+    loadEnv(apiEnvSchema, {
+      ...VALID_API,
+      PUBLIC_LINK_MAX_FAILURES: '5',
+      PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR: ceiling,
+    });
+
+  it('CA-12: un techo menor que el máximo por red se rechaza', () => {
+    expect(ceilingOf('4')).toEqual({
+      ok: false,
+      issues: [
+        '`PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR` debe ser mayor o igual que `PUBLIC_LINK_MAX_FAILURES`',
+      ],
+    });
+  });
+
+  it.each(['5', '10000'])('CA-12: un techo de %s es válido', (ceiling) => {
+    const result = ceilingOf(ceiling);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.env.PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR).toBe(Number(ceiling));
+  });
+
+  it('CA-12: un techo de más de 10000 se rechaza', () => {
+    expect(ceilingOf('10001')).toEqual({
+      ok: false,
+      issues: ['`PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR` debe ser un entero entre 1 y 10000'],
+    });
+  });
+
+  it('CA-12: por omisión el techo es 100 y el máximo por red 5', () => {
+    const result = loadEnv(apiEnvSchema, VALID_API);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.env.PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR).toBe(100);
+    expect(result.env.PUBLIC_LINK_MAX_FAILURES).toBe(5);
+  });
+});
+
 describe('loadEnv(migrationEnvSchema) (003 plan §6.8)', () => {
   const MIGRATION_URL = 'postgres://nimbo:nimbo@localhost:5432/nimbo';
 
