@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useState, type JSX } from 'react';
 import { useForm } from 'react-hook-form';
 
+import { PasswordField } from '../../../components/nimbo/password-field';
 import { TextLink } from '../../../components/nimbo/text-link';
 import { Alert } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
@@ -19,7 +20,6 @@ import { useEnterSession } from '../session/use-enter-session';
 
 import { FieldError } from './field-error';
 import { LoginAlert, RESET_PASSWORD_HREF } from './login-alert';
-import { PasswordField } from './password-field';
 
 const REQUEST_LINK_PATH = '/registro/pedir-enlace';
 
