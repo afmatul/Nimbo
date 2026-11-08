@@ -8,7 +8,7 @@
 **PR-A (api)**
 - [x] **T-01** Techo global por enlace: `recordFailure` con `engagedLock` en `shared` (P-A), techo en `PublicLinkPasswordGate` con el orden del plan §1, variable de entorno, README de `sharing` y de `shared`, y DF-91 + `design-model.md` M3b — CA: CA-12, CA-13, CA-14 — Prueba: unitaria primero (`public-link-password-gate.spec.ts`) y luego integración (`redis-attempt-lockout.int-spec.ts`, `public-link-access.int-spec.ts` con fallos simultáneos)
 - [x] **T-02** Texto de ayuda de `INVALID_PASSWORD` sin «o deja el campo vacío» — CA: CA-16 — Prueba: unitaria primero (`packages/contracts/src/sharing.spec.ts`)
-- [ ] **T-03** Aislamiento: el techo de un enlace de A no frena otro enlace de A, uno de B ni uno sin contraseña — CA: CA-15 — Prueba: aislamiento (`public-links.iso-spec.ts`) — Depende: T-01
+- [x] **T-03** Aislamiento: el techo de un enlace de A no frena otro enlace de A, uno de B ni uno sin contraseña — CA: CA-15 — Prueba: aislamiento (`public-links.iso-spec.ts`) — Depende: T-01
 
 **PR-B (web)**
 - [ ] **T-04** `usePreparingDownload` y `expiresAtLabel` en `lib/` (P-C); los usan `file-row-menu`, `shared-file-detail` (gana «una petición a la vez») y `use-version-download`, con imports actualizados; `download` devuelve si arrancó (N-1); commits `refactor(storage): … [013b T-04]` y `fix(storage): … [013b T-04]` para `shared-file-detail` (N-2) — CA: CA-3, CA-1 (fecha) — Prueba: unitaria primero (`use-preparing-download.spec.ts`, `format-date.spec.ts`, doble clic en `shared-file-detail.spec.tsx` y en `file-row-menu.spec.tsx`) y suites de `storage` en verde sin cambiar aserciones
@@ -26,3 +26,10 @@
   archivo para que el `describe` del techo no copie los del bloqueo por red (Art. VI); el caso que mueve el reloj una
   hora va al final de su `describe` porque vence las sesiones de prueba que usa «Mi actividad». La unitaria del gate
   ajusta el orden esperado de llamadas de los casos de 013 (ahora empiezan por `check` del techo), sin quitar casos.
+- **T-03 (2026-11-07):** el caso del techo va en un `describe` propio de `public-links.iso-spec.ts` (ISO-30 a ISO-33)
+  con su app y el techo y el bloqueo por red bajados a 3, como el `describe` del techo de
+  `public-link-access.int-spec.ts`; ISO-30 es el control (el enlace al techo da `429` con la contraseña correcta).
+  `seedLink` y `downloadFromNewNetwork` repiten en local lo de `insertProtectedLink` y `randomNetwork64` de la `int-spec`
+  sin moverlos a un módulo común: son dos copias (Art. VI.2). Se comprobó a
+  mano que las pruebas fallan si la llave del techo se comparte entre enlaces (ISO-31 e ISO-32 en rojo), sin
+  commitear ese cambio.
