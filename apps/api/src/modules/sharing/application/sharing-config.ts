@@ -27,3 +27,13 @@ export interface SharingConfig {
 }
 
 export const SHARING_CONFIG: unique symbol = Symbol('SharingConfig');
+
+/** 013b RN-3, S-2: la ventana del techo global y su espera son fijas, 60 minutos. */
+const PUBLIC_LINK_CEILING_SECONDS = 60 * 60;
+
+/** 013b CA-12, RN-3: el techo global por enlace; solo el máximo sale del entorno. */
+export const publicLinkCeilingOf = (maxFailures: number): LockoutPolicy => ({
+  maxFailures,
+  windowSeconds: PUBLIC_LINK_CEILING_SECONDS,
+  lockSeconds: PUBLIC_LINK_CEILING_SECONDS,
+});

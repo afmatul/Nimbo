@@ -45,3 +45,6 @@
   variables, va en `refineApiEnv` como la del umbral por partes. Mensajes: «debe ser un entero entre 1 y 10000» y
   «debe ser mayor o igual que `PUBLIC_LINK_MAX_FAILURES`». El README de `shared` no describe la variable (solo
   `IAttemptLockout`), así que no cambia.
+- **Auditoría del #102, m-1, m-4, m-6:** `publicLinkCeilingOf` recibe el máximo (`number`) en vez de `SharingEnv`,
+  porque `application/` no importa el tipo del módulo de Nest; `PUBLIC_LINK_CEILING_SECONDS` queda sin exportar en
+  `sharing-config.ts` (solo lo usa `publicLinkCeilingOf`). m-2 y m-3 quedan en PD-192; m-5 sin acción (S-2).

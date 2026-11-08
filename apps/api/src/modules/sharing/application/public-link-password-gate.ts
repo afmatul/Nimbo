@@ -58,12 +58,15 @@ export class PublicLinkPasswordGate {
   ) {}
 
   /**
-   * CA-10, CA-12, CA-13 (013b plan §1): sin contraseña en el enlace no se verifica nada ni cuenta el techo. Si la pide,
-   * primero el techo global del enlace: activo, `429` para todos (013b CA-12). Si falta (ausente o `""`), no pasa sin
-   * contar ni registrar. Con una, el intento se reserva por enlace + red **antes** de Argon2id (fuera de toda
-   * transacción), así el bloqueo vigente da `429` aunque sea la correcta. Un acierto libera solo la reserva por red (el
-   * techo no se reinicia, 013b RN-3); un fallo cuenta para el techo y va solo a la bitácora técnica, sin IP ni
-   * contraseña (CA-18). `engagedLock` es el de la red o el del techo (013b CA-14).
+   * CA-10, CA-12, CA-13, en este orden (013b plan §1):
+   * 1. Si el enlace no pide contraseña, pasa sin verificar nada ni contar para el techo (013b CA-15).
+   * 2. Si el techo global del enlace está activo, `429` para todos, aunque sea la correcta (013b CA-12).
+   * 3. Si la contraseña falta (ausente o `""`), no pasa, sin contar ni registrar (CA-12).
+   * 4. Con una, reserva el intento por enlace + red **antes** de Argon2id y fuera de toda transacción: el bloqueo
+   *    vigente da `429` aunque sea la correcta (CA-13).
+   * 5. Un acierto libera solo la reserva por red; el techo no se reinicia (013b RN-3). Un fallo va solo a la bitácora
+   *    técnica, sin IP ni contraseña (CA-18), y cuenta para el techo; `engagedLock` es el de la red o el del techo
+   *    (013b CA-14).
    */
   async check(link: PublicLink, { password, ip }: PasswordAttempt): Promise<PasswordCheck> {
     const { passwordHash } = link.toSnapshot();
