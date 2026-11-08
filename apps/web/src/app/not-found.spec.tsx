@@ -21,6 +21,7 @@ describe('app/not-found (CA-17, CA-11)', () => {
     ).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Ir al inicio' })).toBeTruthy();
     expect(screen.getByRole('main')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Nimbo' }).getAttribute('href')).toBe('/');
   });
 
   it('no tiene violaciones graves de accesibilidad', async () => {

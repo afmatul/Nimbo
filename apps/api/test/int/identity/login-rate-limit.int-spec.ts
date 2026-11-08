@@ -7,10 +7,8 @@ import {
 } from '@nimbo/contracts';
 import request from 'supertest';
 
-import { I_ATTEMPT_LOCKOUT } from '../../../src/modules/identity/application/ports/i-attempt-lockout.port';
-import type { IAttemptLockout } from '../../../src/modules/identity/application/ports/i-attempt-lockout.port';
-import { I_PASSWORD_HASHER } from '../../../src/modules/identity/application/ports/i-password-hasher.port';
-import type { IPasswordHasher } from '../../../src/modules/identity/application/ports/i-password-hasher.port';
+import { I_ATTEMPT_LOCKOUT, I_PASSWORD_HASHER } from '../../../src/shared';
+import type { IAttemptLockout, IPasswordHasher } from '../../../src/shared';
 import type { TestApp } from '../setup/test-app';
 
 import { LOGIN_PATH } from './accounts';

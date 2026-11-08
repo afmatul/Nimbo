@@ -1,9 +1,12 @@
 import { SHARING_ERROR_CODES } from '@nimbo/contracts';
 
-import { InvalidInputError, NotFoundError } from '../../../../shared/domain/errors';
+import { ForbiddenError, InvalidInputError, NotFoundError } from '../../../../shared/domain/errors';
 
 import {
   CannotShareWithSelfError,
+  PublicLinkNotFoundError,
+  PublicLinkPasswordInvalidError,
+  PublicLinkUnavailableError,
   RecipientNotFoundError,
   ShareNotFoundError,
   SharingInvalidLevelError,
@@ -54,5 +57,35 @@ describe('errores de `sharing` (plan 012 §2 y §4)', () => {
     expect(new RecipientNotFoundError().message).toBe(
       'No encontramos una cuenta de Nimbo con ese correo. Revisa que esté bien escrito o pídele que se registre.',
     );
+  });
+
+  it.each([
+    [
+      new PublicLinkNotFoundError(),
+      SHARING_ERROR_CODES.SHARING_LINK_NOT_FOUND,
+      'Este enlace ya no existe. Actualiza para ver el estado actual.',
+    ],
+    [
+      new PublicLinkUnavailableError(),
+      SHARING_ERROR_CODES.SHARING_LINK_UNAVAILABLE,
+      'Este enlace ya no está disponible. Pide a quien te lo compartió uno nuevo.',
+    ],
+  ])(
+    '013 CA-8, CA-11: %p es un 404 con el código del contrato y su mensaje',
+    (error, code, message) => {
+      expect(error).toBeInstanceOf(NotFoundError);
+      expect(error.status).toBe(404);
+      expect(error.code).toBe(code);
+      expect(error.message).toBe(message);
+    },
+  );
+
+  it('013 CA-12: `PublicLinkPasswordInvalidError` es un 403 que no dice cuántos intentos quedan (P-3)', () => {
+    const error = new PublicLinkPasswordInvalidError();
+
+    expect(error).toBeInstanceOf(ForbiddenError);
+    expect(error.status).toBe(403);
+    expect(error.code).toBe(SHARING_ERROR_CODES.SHARING_LINK_PASSWORD_INVALID);
+    expect(error.message).toBe('La contraseña no es correcta. Revísala y vuelve a intentarlo.');
   });
 });

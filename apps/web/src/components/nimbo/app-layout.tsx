@@ -1,6 +1,6 @@
 'use client';
 
-import { Cloud, Menu, Folder, Search, Share2, Trash2, HardDrive, Sparkles } from 'lucide-react';
+import { Menu, Folder, Search, Share2, Trash2, HardDrive, Sparkles } from 'lucide-react';
 import type * as React from 'react';
 
 import { cn } from '../../lib/utils';
@@ -8,7 +8,8 @@ import { Toaster } from '../ui/sonner';
 
 import { useAgentEntry } from './agent-entry';
 import { AppSidebar, TRASH_HREF, type AppSidebarProps, type NavItem } from './app-sidebar';
-import { useHeaderAccount } from './header-account';
+import { BrandLogo } from './brand-logo';
+import { useHeaderAccount, useHeaderHome } from './header-account';
 import { MobileNavDrawer } from './mobile-nav-drawer';
 import { useIsAgentSheet } from './use-agent-sheet';
 import { useMobileNav, type MobileNav } from './use-mobile-nav';
@@ -20,7 +21,7 @@ export type { NavItem };
  * CA-12) y «Compartidos», la de «Compartidos conmigo» (012b CA-8). «Agente Nimbo» no está aquí: lo suma el layout solo con la entrada del agente (020b D-4, CA-18).
  */
 export const DEFAULT_NAV_ITEMS: readonly NavItem[] = [
-  { label: 'Mis Archivos', icon: Folder, href: '/archivos', active: true },
+  { label: 'Mis archivos', icon: Folder, href: '/archivos', active: true },
   { label: 'Buscar', icon: Search, href: '/buscar' },
   { label: 'Compartidos', icon: Share2, href: '/compartidos' },
   { label: 'Papelera', icon: Trash2, href: TRASH_HREF },
@@ -102,7 +103,7 @@ function AppHeader({
         >
           <Menu className="h-6 w-6" aria-hidden="true" />
         </button>
-        <BrandLink />
+        <BrandLogo href={useHeaderHome()} />
         {topBar ? <div className="hidden min-w-0 md:ml-6 md:flex">{topBar}</div> : null}
       </div>
       <div className="flex items-center gap-3">
@@ -118,20 +119,6 @@ function HeaderAccount({ userEmail }: { readonly userEmail: string | undefined }
   if (account) return account;
   if (!userEmail) return null;
   return <span className="hidden text-xs text-muted-foreground sm:inline-block">{userEmail}</span>;
-}
-
-function BrandLink(): React.JSX.Element {
-  return (
-    <a
-      href="/"
-      className="flex items-center gap-2 text-foreground font-semibold text-lg tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md px-1"
-    >
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-button">
-        <Cloud className="h-5 w-5" aria-hidden="true" />
-      </div>
-      <span className="text-xl font-bold tracking-tight text-foreground">Nimbo</span>
-    </a>
-  );
 }
 
 /** Barra lateral de escritorio, fija bajo el encabezado (007 CA-19); `inert` tras el cajón móvil. */

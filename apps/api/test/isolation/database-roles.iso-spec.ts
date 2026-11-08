@@ -150,6 +150,28 @@ describe('roles de base de datos (CA-13)', () => {
     await expect(privilegesOf('migracion')).resolves.toEqual(none);
   });
 
+  it('013 CA-17: matriz de permisos — `enlace_publico` sin DELETE ni TRUNCATE y con UPDATE solo de `revocado_en`', async () => {
+    const updatableColumns = (await owner.query(
+      `SELECT a.attname AS columna FROM pg_attribute a
+        WHERE a.attrelid = 'enlace_publico'::regclass AND a.attnum > 0 AND NOT a.attisdropped
+          AND has_column_privilege($1, a.attrelid, a.attnum, 'UPDATE')`,
+      [APP_ROLE],
+    )) as { columna: string }[];
+    const [truncate] = (await owner.query(
+      `SELECT has_table_privilege($1, 'enlace_publico', 'TRUNCATE') AS permitido`,
+      [APP_ROLE],
+    )) as { permitido: boolean }[];
+
+    await expect(privilegesOf('enlace_publico')).resolves.toEqual({
+      SELECT: true,
+      INSERT: true,
+      UPDATE: false,
+      DELETE: false,
+    });
+    expect(updatableColumns).toEqual([{ columna: 'revocado_en' }]);
+    expect(truncate?.permitido).toBe(false);
+  });
+
   it('CA-13: una tabla nueva del dueño recibe SELECT/INSERT/UPDATE/DELETE por privilegios por defecto', async () => {
     const runner = owner.createQueryRunner();
     await runner.startTransaction();

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { DOWNLOAD_URL_TTL_SECONDS, STORAGE_NODE_FIELD_MESSAGES } from '@nimbo/contracts';
+import { STORAGE_NODE_FIELD_MESSAGES } from '@nimbo/contracts';
 import type { OnConflict } from '@nimbo/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
@@ -11,8 +11,9 @@ import type { IAuditLogger } from '../../audit';
 import { InvalidNodeRequestError, NodeNotFoundError, VersionNotFoundError } from '../domain/errors';
 import { File } from '../domain/file';
 import { FileName } from '../domain/file-name.vo';
-import { ObjectKey } from '../domain/object-key';
 
+import { currentVersionObject, signDownload } from './current-version-download';
+import type { DownloadObject, DownloadUrl } from './current-version-download';
 import { FILE_SERVICE_CONFIG } from './file-service-config';
 import type { FileServiceConfig } from './file-service-config';
 import { freeFileName } from './free-file-name';
@@ -31,19 +32,10 @@ import { WritableAccountPolicy } from './writable-account.policy';
 
 const RATE_LIMIT_WINDOW_SECONDS = 60;
 const DOWNLOAD_RATE_KEY_PREFIX = 'storage:download-url:';
-const MS_PER_SECOND = 1000;
 
-/** URL de descarga firmada y el instante en que deja de valer (CA-13). */
-export interface DownloadUrl {
-  readonly url: string;
-  readonly expiresAt: Date;
-}
-
-/** Lo que se firma al descargar: un solo objeto, el nombre del archivo y el tamaño que se audita (sin la clave). */
-interface DownloadTarget {
+/** Lo que se firma al descargar (un solo objeto y el nombre del archivo) y el tamaño que se audita (sin la clave). */
+interface DownloadTarget extends DownloadObject {
   readonly fileId: string;
-  readonly fileName: string;
-  readonly objectKey: string;
   readonly sizeBytes: bigint;
 }
 
@@ -164,17 +156,10 @@ export class FileService {
     const target = await this.transactions.withActor(actor, () =>
       this.resolveDownload(actor, fileId, versionId),
     );
-    const url = await this.objects.presignDownload({
-      key: target.objectKey,
-      fileName: target.fileName,
-      expiresInSeconds: DOWNLOAD_URL_TTL_SECONDS,
-    });
-    const expiresAt = new Date(
-      this.clock.now().getTime() + DOWNLOAD_URL_TTL_SECONDS * MS_PER_SECOND,
-    );
+    const issued = await signDownload(this.objects, this.clock, target);
     await this.recordIssued(actor, target);
     this.logger.info({ event: 'download.url_issued', fileId: target.fileId });
-    return { url, expiresAt };
+    return issued;
   }
 
   private async resolveDownload(
@@ -184,8 +169,7 @@ export class FileService {
   ): Promise<DownloadTarget> {
     if (versionId === undefined) {
       const file = await this.requireFile(actor, fileId);
-      const objectKey = ObjectKey.of(file.ownerId, file.id, file.currentVersionId).value;
-      return { fileId: file.id, fileName: file.name.value, objectKey, sizeBytes: file.sizeBytes };
+      return { fileId: file.id, sizeBytes: file.sizeBytes, ...currentVersionObject(file) };
     }
     const file = await this.requireOwnedFile(actor, fileId);
     const target = { fileId: file.id, fileName: file.name.value };

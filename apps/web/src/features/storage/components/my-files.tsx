@@ -4,7 +4,6 @@ import type { NodeAccessLevel, NodeSummary } from '@nimbo/contracts';
 import * as React from 'react';
 
 import { AppLayout } from '../../../components/nimbo/app-layout';
-import { SignOutButton } from '../../identity/components/sign-out-button';
 import { ShareDialog, type ShareTarget, type SharingApi } from '../../sharing';
 import type { FolderListing } from '../hooks/use-folder-contents';
 import {
@@ -118,9 +117,13 @@ function MyFilesExplorer({ state, status, share }: MyFilesExplorerProps): React.
   );
 }
 
-/** Migas en la barra superior cuando la ubicación ya cargó; lo compartido conmigo arranca en «Compartidos» (012b CA-9). */
+/**
+ * Migas en la barra superior cuando la ubicación ya cargó y hay al menos una carpeta abierta; lo compartido conmigo
+ * arranca en «Compartidos» (012b CA-9). En la raíz no: «Mis archivos» ya es el título y el ítem activo de la barra.
+ */
 function topBarOf(state: MyFilesState, level: NodeAccessLevel): React.ReactNode {
   if (state.contents.listing.status !== 'ready') return null;
+  if (state.view.breadcrumbs.length === 0) return null;
   const root = isOwner(level) ? {} : { root: SHARED_ROOT_CRUMB };
   return <FolderBreadcrumbs breadcrumbs={state.view.breadcrumbs} {...root} />;
 }
@@ -150,9 +153,6 @@ export function MyFiles({ folderId, sharingApi }: MyFilesProps): React.JSX.Eleme
       quotaCard={<SidebarQuota state={state.sidebar.space} />}
     >
       <div className="space-y-4">
-        <div className="flex justify-end">
-          <SignOutButton />
-        </div>
         <ReadOnlyNotice />
         {listing.status === 'not_found' ? (
           <FolderNotFoundState />

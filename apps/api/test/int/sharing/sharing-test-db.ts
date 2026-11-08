@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 
 import type { Queryable } from '../storage/storage-test-db';
 
@@ -31,4 +31,44 @@ export const insertShare = async (runner: Queryable, share: ShareRow): Promise<s
     ],
   );
   return id;
+};
+
+export interface PublicLinkRow {
+  readonly ownerId: string;
+  readonly fileId: string;
+  /** Por omisión, uno al azar de `randomTokenHash`. */
+  readonly tokenHash?: string;
+  /** Por omisión, `now()` de la base. */
+  readonly createdAt?: Date;
+  /** Por omisión, siete días después de `now()`. */
+  readonly expiresAt?: Date;
+  /** PHC Argon2id de la contraseña del enlace; por omisión, sin contraseña. */
+  readonly passwordHash?: string;
+}
+
+/** Un `token_hash` válido de relleno: 64 caracteres hexadecimales en minúscula, como el SHA-256 del token. */
+export const randomTokenHash = (): string => randomBytes(32).toString('hex');
+
+/** Inserta una fila de `enlace_publico` (como el propietario dentro de `withActor`) y devuelve su id y su hash. */
+export const insertPublicLink = async (
+  runner: Queryable,
+  link: PublicLinkRow,
+): Promise<{ id: string; tokenHash: string }> => {
+  const id = randomUUID();
+  const tokenHash = link.tokenHash ?? randomTokenHash();
+  await runner.query(
+    `INSERT INTO enlace_publico (id, archivo_id, propietario_id, token_hash, creado_en, vence_en, clave_hash)
+     VALUES ($1, $2, $3, $4, COALESCE($5::timestamptz, now()),
+             COALESCE($6::timestamptz, now() + interval '7 days'), $7)`,
+    [
+      id,
+      link.fileId,
+      link.ownerId,
+      tokenHash,
+      link.createdAt ?? null,
+      link.expiresAt ?? null,
+      link.passwordHash ?? null,
+    ],
+  );
+  return { id, tokenHash };
 };

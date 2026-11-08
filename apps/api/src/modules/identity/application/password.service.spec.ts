@@ -9,8 +9,15 @@ import {
   RESET_LINK_TTL_MINUTES,
 } from '@nimbo/contracts';
 
-import { createActor } from '../../../shared';
-import type { RateLimitDecision } from '../../../shared';
+import { createActor, PasswordHash } from '../../../shared';
+import type {
+  RateLimitDecision,
+  AttemptReservation,
+  IAttemptLockout,
+  LockoutPolicy,
+  LockState,
+  IPasswordHasher,
+} from '../../../shared';
 import { FixedClock } from '../../../shared/domain/fixed.clock';
 import { Role } from '../../../shared/domain/role.enum';
 import type { MailMessage } from '../../notifications';
@@ -27,19 +34,11 @@ import {
 } from '../domain/errors';
 import { InternalUser } from '../domain/internal-user.entity';
 import { OpaqueToken } from '../domain/opaque-token.vo';
-import { PasswordHash } from '../domain/password-hash.vo';
 import { Session } from '../domain/session.entity';
 import type { User } from '../domain/user.entity';
 import { VerificationToken } from '../domain/verification-token.entity';
 
 import { PasswordService } from './password.service';
-import type {
-  AttemptReservation,
-  IAttemptLockout,
-  LockoutPolicy,
-  LockState,
-} from './ports/i-attempt-lockout.port';
-import type { IPasswordHasher } from './ports/i-password-hasher.port';
 import { aClientUser } from './testing/client-user.builder';
 import { InMemorySessionRepository } from './testing/in-memory-session.repository';
 import { InMemoryUserRepository } from './testing/in-memory-user.repository';

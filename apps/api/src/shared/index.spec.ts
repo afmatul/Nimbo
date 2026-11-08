@@ -2,8 +2,10 @@ import * as shared from './index';
 import type {
   Actor,
   FieldIssue,
+  IAttemptLockout,
   IClock,
   IDomainEventPublisher,
+  IPasswordHasher,
   IRateLimiter,
   ITransactionRunner,
 } from './index';
@@ -24,6 +26,10 @@ type _DomainEventPublisherExposesOnlyPublish = Expect<
   Equal<keyof IDomainEventPublisher, 'publish'>
 >;
 type _RateLimiterExposesOnlyConsume = Expect<Equal<keyof IRateLimiter, 'consume'>>;
+type _PasswordHasherExposesHashAndVerify = Expect<Equal<keyof IPasswordHasher, 'hash' | 'verify'>>;
+type _AttemptLockoutKeepsItsFourMethods = Expect<
+  Equal<keyof IAttemptLockout, 'check' | 'recordFailure' | 'reserveAttempt' | 'clear'>
+>;
 type _TransactionRunnerExposesRunAndWithActor = Expect<
   Equal<keyof ITransactionRunner, 'run' | 'withActor'>
 >;
@@ -98,6 +104,8 @@ const RUNTIME_EXPORTS_BY_TASK = {
   '019 T-01': ['I_DOMAIN_EVENT_PUBLISHER', 'EventEmitterDomainEventPublisher'],
   '019 T-FIX-2': ['errorClassOf'],
   '018 T-03': ['escapeLike'],
+  '013 T-01': ['PasswordHash', 'I_PASSWORD_HASHER', 'I_ATTEMPT_LOCKOUT'],
+  '013 M-2': ['consumeOrThrow', 'RATE_LIMIT_WINDOW_SECONDS'],
 } as const;
 
 const ALL_RUNTIME_EXPORTS: readonly string[] = Object.values(RUNTIME_EXPORTS_BY_TASK).flat();
@@ -205,6 +213,16 @@ describe('shared/index.ts (CA-17)', () => {
   it('018 CA-4: exporta `escapeLike`, el único escape de comodines de `LIKE` (018 T-03)', () => {
     expectExportsOf('018 T-03');
     expect(shared.escapeLike('50%')).toBe('50\\%');
+  });
+  it('RN-8: exporta el hash de contraseñas y el bloqueo por intentos, movidos desde `identity` (013 T-01, D-2)', () => {
+    expectExportsOf('013 T-01');
+    expect(typeof shared.I_PASSWORD_HASHER).toBe('symbol');
+    expect(typeof shared.I_ATTEMPT_LOCKOUT).toBe('symbol');
+    expect(String(shared.PasswordHash.fromPhc('$argon2id$x'))).toBe('[REDACTED]');
+  });
+  it('CA-13: exporta `consumeOrThrow` y la ventana única de 60 s de los límites por minuto (013 M-2)', () => {
+    expectExportsOf('013 M-2');
+    expect(shared.RATE_LIMIT_WINDOW_SECONDS).toBe(60);
   });
   it('CA-17: exporta exactamente la lista del plan §6.2 al cerrar el bloque 2 (T-26)', () => {
     expect(exportedKeys()).toEqual([...ALL_RUNTIME_EXPORTS].sort());

@@ -1,3 +1,4 @@
+import { PasswordHash } from '../../../shared/domain/password-hash.vo';
 import { Role } from '../../../shared/domain/role.enum';
 
 import { AccountStatus } from './account-status.enum';
@@ -5,7 +6,6 @@ import { ClientUser, VerifiedAccountReplacementError } from './client-user.entit
 import { EmailAddress } from './email-address.vo';
 import { AccountStateConflictError } from './errors';
 import { LegalAcceptance } from './legal-acceptance.vo';
-import { PasswordHash } from './password-hash.vo';
 
 const acceptance = (): LegalAcceptance =>
   LegalAcceptance.of({

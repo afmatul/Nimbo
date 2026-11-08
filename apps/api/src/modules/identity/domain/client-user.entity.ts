@@ -1,9 +1,9 @@
+import type { PasswordHash } from '../../../shared/domain/password-hash.vo';
 import { Role } from '../../../shared/domain/role.enum';
 
 import { AccountStatus } from './account-status.enum';
 import type { EmailAddress } from './email-address.vo';
 import type { LegalAcceptance } from './legal-acceptance.vo';
-import type { PasswordHash } from './password-hash.vo';
 import { User } from './user.entity';
 
 // Sin rol, estado ni verificación: una cuenta registrada desde afuera siempre nace CLIENT (RN-1, CA-7).
