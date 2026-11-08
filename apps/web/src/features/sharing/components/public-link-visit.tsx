@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { useId, useMemo, type JSX, type ReactNode } from 'react';
 
-import { FileTypeIcon } from '../../../components/nimbo/file-type-chip';
+import { FileTypeIcon, fileTypeColors } from '../../../components/nimbo/file-type-chip';
 import { IdentityCard } from '../../../components/nimbo/identity-card';
 import { StateView } from '../../../components/nimbo/state-view';
 import { Alert } from '../../../components/ui/alert';
@@ -167,12 +167,15 @@ function RateLimitedState({ retryAfterSeconds, reload }: RateLimitedProps): JSX.
 
 /** Ícono del tipo, nombre, tamaño y vencimiento absoluto (CA-1, S-4); en 360 px el vencimiento baja de línea. */
 function FileSummary({ details }: { readonly details: PublicLinkDetails }): JSX.Element {
+  const fileType = receivedFileType(details.name);
   return (
     <div className="flex items-start gap-3 rounded-md border border-border bg-card p-3 sm:p-4">
-      <FileTypeIcon
-        fileType={receivedFileType(details.name)}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-secondary-foreground sm:h-10 sm:w-10"
-      />
+      <span
+        style={fileTypeColors(fileType)}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg sm:h-10 sm:w-10"
+      >
+        <FileTypeIcon fileType={fileType} />
+      </span>
       <div className="min-w-0 text-left">
         <p className="wrap-anywhere text-sm font-semibold text-foreground sm:text-base">
           {details.name}

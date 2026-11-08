@@ -67,10 +67,12 @@
   - `StateView` no tiene tono de advertencia ni deja estilar el botón de su acción: el `429` al abrir usa
     `type="empty"` con `role="status"` y clases de `warning` en `className`, y el borde `secondary-foreground` de
     «Reintentar» (PD-189) va con variantes `[&_button]:`, `[&_h2]:`, `[&_p]:` y `[&_svg]:` (solo tokens, sin valores
-    arbitrarios). No se tocó `components/nimbo/state-view.tsx`.
-  - La baldosa del ícono del tipo es neutra (`bg-muted`, `text-secondary-foreground`, como «Accesos rápidos»), no del
-    color del tipo del mockup: los colores por tipo de `file-type-chip.tsx` no se exportan y no hay utilidades
-    `file-*` en `globals.css`. Exponerlos tocaría `components/nimbo` fuera del plan.
+    arbitrarios). No se tocó `components/nimbo/state-view.tsx`: queda en PD-189 sumarle `tone="warning"` y un estilo
+    de acción, y quitar entonces esos selectores de la página (decisión de Fátima, 2026-11-08).
+  - La baldosa del ícono del tipo lleva el color del tipo, como el mockup (decisión de Fátima, 2026-11-08):
+    `file-type-chip.tsx` exporta `fileTypeColors(fileType)`, el color y el fondo del mapa del chip como `style` (son
+    variables de `globals.css`, sin utilidades `file-*`). `FileTypeChip` y `FileTypeIcon` no cambian. Contraste del
+    ícono sobre la baldosa (sobre `card`): docx 5.12, xlsx 4.78, pptx 4.77, pdf 4.77, img 5.48, otro 5.02 (AA).
   - El fixture `PUBLIC_LINK_DETAILS` de T-06 pasó de 2 516 582 a 2 400 000 bytes: `formatBytes` usa unidades decimales
     y daba «2,5 MB», no el «2,4 MB» de CA-1. Ninguna prueba anterior leía el tamaño.
   - El bloque de axe de la página pide cero violaciones (no solo las graves, como los de 012b), en los 11 HTML del

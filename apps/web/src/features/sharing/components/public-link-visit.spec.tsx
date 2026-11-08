@@ -76,6 +76,21 @@ describe('PublicLinkVisitView (013b §6)', () => {
     expect(screen.queryByLabelText(PASSWORD_LABEL)).toBeNull();
   });
 
+  it.each([
+    ['Informe_trimestral_Q3.docx', 'docx'],
+    ['Presupuesto.xlsx', 'xlsx'],
+    ['Contrato.pdf', 'pdf'],
+    ['notas.zip', 'other'],
+  ])('CA-1: la baldosa de «%s» lleva el color de su tipo, como el chip', async (name, type) => {
+    renderVisit(fakeApi({ ...PUBLIC_LINK_DETAILS, name }));
+    await shareHeading();
+
+    const tile = screen.getByText(name).closest('div')?.previousElementSibling as HTMLElement;
+    expect(tile.style.color).toBe(`var(--file-${type})`);
+    expect(tile.style.backgroundColor).toBe(`var(--file-${type}-bg)`);
+    expect(tile.querySelector('svg')).not.toBeNull();
+  });
+
   it('CA-2: con contraseña: la misma ficha sin escribir nada y el campo con su ayuda asociada', async () => {
     const api = fakeApi(WITH_PASSWORD);
     renderVisit(api);
