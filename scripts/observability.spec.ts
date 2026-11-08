@@ -913,4 +913,48 @@ describe('022d: grupos de los módulos en el tablero de operación', () => {
       expectQueueSignals('Optimizador', OPTIMIZATION);
     });
   });
+
+  describe('T-04: grupo «Agente» (CA-11)', () => {
+    const ASK = 'route="POST /api/v1/agent/ask"';
+
+    it('CA-11: la fila «Agente» muestra las consultas por minuto', () => {
+      expect(
+        findExpr('Agente', `${HTTP_COUNT}{job="api",${ASK}}`, /^sum\(rate\(/, / \* 60$/),
+      ).toBeDefined();
+    });
+
+    it('CA-11: la fila «Agente» muestra la latencia total p50 y p95', () => {
+      for (const quantile of ['0.5', '0.95']) {
+        expect(
+          findExpr(
+            'Agente',
+            `histogram_quantile(${quantile},`,
+            `nimbo_http_request_duration_seconds_bucket{job="api",${ASK}}`,
+            'by (le)',
+          ),
+        ).toBeDefined();
+      }
+    });
+
+    it('CA-11: la proporción de respuestas con error cuenta todo lo que no es 2xx (incluido el 429) y muestra 0 sin errores', () => {
+      expect(
+        findExpr(
+          'Agente',
+          `${ASK},status!~"2.."`,
+          'or vector(0)) / ',
+          `${HTTP_COUNT}{job="api",${ASK}}`,
+        ),
+      ).toBeDefined();
+    });
+
+    it('CA-11: el grupo no desglosa por plan ni por ninguna etiqueta fuera de route, status y le (PD-192)', () => {
+      const labels = groupPanels('Agente').flatMap((panel) =>
+        (panel.targets ?? []).flatMap((target) => labelsOf(target.expr, target.legendFormat)),
+      );
+      expect(labels.length).toBeGreaterThan(0);
+      expect(labels.filter((label) => !['job', 'route', 'status', 'le'].includes(label))).toEqual(
+        [],
+      );
+    });
+  });
 });
