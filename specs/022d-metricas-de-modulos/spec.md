@@ -1,118 +1,113 @@
-# Spec 022d — Métricas de los módulos, tablero de negocio y grupo del agente
+# Spec 022d — Grupos de los módulos en el tablero de operación
 
-> Qué y por qué, en ≤ 150 líneas. El cómo va en `./plan.md` (obligatorio; no se escribe hasta resolver P-1, §9).
+> Qué y por qué, en ≤ 150 líneas. El cómo va en `./plan.md`. Alcance recortado a solo tableros el 2026-11-08 (§9).
 
 | Campo | Valor |
 |---|---|
 | Estado | Borrador |
 | Dueño | Abel |
 | Fase | 3 (prevista; calendario pendiente de reprogramación) |
-| Requisitos | RNF-18 (métricas y tableros de los módulos); RNF-17 (privacidad de las series); RF-05 (acceso a tableros). Observa sin cambiar: RF-01, RF-03, RF-09, RF-12, RF-13, RF-20, RF-22, RF-23, RF-26, RF-30, RF-32, RF-34, RF-35 |
-| Depende de | 022 (núcleo: registro de métricas, exposición privada, Prometheus, Grafana y tablero de operación). No depende de 022c |
-| Última actualización | 2026-11-02 |
+| Requisitos | RNF-18 (tableros de los módulos); RNF-17 (privacidad de los tableros); RF-05 (acceso a tableros); RNF-12 (arranque aprovisionado, como 022 CA-10). Observa sin cambiar: RF-01, RF-02, RF-03, RF-04, RF-08, RF-09, RF-30, RF-32, RF-34, RF-35, RF-36 |
+| Depende de | 022 (PR #78) **integrada en `main`** antes de `/implement`: series, Prometheus, Grafana y el tablero «Operación». No depende de 022c |
+| Última actualización | 2026-11-08 |
 
 ## 1. Contexto y objetivo
-El 2026-11-02, al planificar la 022 con todos los grupos de su RN-3, el inventario no cabía en 12 filas y se aplicó
-el corte que Adrián autorizó en el PR #78: la 022 conserva el núcleo (HTTP, colas, sistema, tablero de operación y
-las seis alertas) y la instrumentación de los módulos pasa a esta spec. Aquí cada módulo de negocio informa sus
-señales como agregados, el Operador ve una tendencia del negocio por periodo que complementa el panel de 011, y el
-tablero de operación suma los grupos de los módulos, de la auditoría y del agente. Ninguna serie identifica a una
-cuenta, archivo, documento, usuario ni sesión (022 RN-2).
+El 2026-11-02 la instrumentación de los módulos salió de 022 por tamaño (PR #78) y vino aquí. Planificada completa,
+no cabía (P-1: ≈ 9,5 días y 58 archivos). El 2026-11-08 el dueño propone recortarla a **solo tableros**: el tablero de
+operación de 022 suma grupos de **Identidad, Almacenamiento, Indexación, Optimizador y Agente**, que leen las series
+que 022 ya expone (HTTP por plantilla de ruta y código, colas y dependencias). No se toca código de `apps/`, ni
+módulos de negocio, ni `shared`. Lo que esas series no permiten ver pasa a `pendientes.md` (§7). El Operador ubica en
+qué módulo está un problema sin entrar al servidor, y ningún panel identifica a una cuenta, archivo ni sesión.
 
 ## 2. Historias de usuario
-- **HU-1** Como Operador, quiero que cada módulo informe sus señales agregadas (identidad, almacenamiento, versiones, edición, canal en vivo, indexación, optimizador y auditoría), para ubicar en qué módulo está un problema.
-- **HU-2** Como Operador, y como Administrador en solo lectura, quiero un tablero de negocio con tendencias por periodo, para ver cómo evolucionan registros, contrataciones, renovaciones, vencimientos y cuentas en solo lectura.
-- **HU-3** Como Operador, quiero un grupo del agente en el tablero de operación, para vigilar su uso por plan, su latencia y lo que recupera.
-- La privacidad de las series es la de 022 HU-6, sin historia nueva (CA-12).
+- **HU-1** Como Operador, quiero un grupo por módulo (identidad, almacenamiento, indexación y optimizador) en el tablero de operación, para ubicar en qué módulo está un problema.
+- **HU-2** → PD-191 (tablero de negocio con tendencias por periodo).
+- **HU-3** Como Operador, quiero un grupo del agente en el tablero de operación, para vigilar su uso, su latencia y sus errores.
+- La privacidad es la de 022 HU-6, sin historia nueva (CA-12).
 
 ## 3. Criterios de aceptación
-Equivalencias con la spec 022 anterior al corte (022, «Traslados»):
+> «El grupo muestra» = una fila con ese nombre en el tablero «Operación» de 022, con paneles que leen solo las series
+> de 022 (plan 022 §4). Las rutas aparecen por su plantilla (`POST /api/v1/auth/login`), nunca con valores reales.
 
-| 022 (original) | 022d | Nota |
+### Grupos de los módulos (HU-1)
+- **CA-1** (HU-1, RNF-18 · Identidad) Dado tráfico de registro, reenvío y verificación del correo, inicio de sesión, renovación y cierre de sesión, pedido y restablecimiento de contraseña, cambio de contraseña y cierre de las otras sesiones, cuando el Operador abre el grupo «Identidad», entonces ve la tasa de cada ruta por código de respuesta, los inicios de sesión separados en exitosos, fallidos (`401`) y limitados o bloqueados (`429`), y las denegaciones (`403`) de todo el `api` por ruta.
+- **CA-2** (HU-1, RNF-18 · Almacenamiento) Dadas cargas iniciadas, reanudadas y completadas, y enlaces de descarga de archivos y de versiones, cuando el Operador abre el grupo «Almacenamiento», entonces ve las cargas por ruta y código (completadas `2xx` frente a rechazadas `4xx`), los enlaces de descarga emitidos y los límites de frecuencia (`429`) por ruta.
+- **CA-7** (HU-1, RNF-18 · Indexación) Dados trabajos de `indexing` e `index-reconcile`, cuando el Operador abre el grupo «Indexación», entonces ve, por cola, los completados, los intentos fallidos por número de intento, la profundidad por estado y el p95 de ejecución.
+- **CA-8** (HU-1, RNF-18 · Optimizador) Dadas estimaciones y optimizaciones de JPEG o PNG, cuando el Operador abre el grupo «Optimizador», entonces ve las solicitudes de estimar y de optimizar por código, y de la cola `optimization` los completados, los intentos fallidos por número de intento y el p95 de ejecución.
+
+### Grupo del agente (HU-3)
+- **CA-11** (HU-3, RNF-18, RF-34 · Agente) Dadas preguntas al agente, cuando el Operador abre el grupo «Agente», entonces ve las consultas por minuto, la latencia total p50 y p95 y la proporción de respuestas con error (incluido el `429` del límite del plan), en 0 si no hay errores; no muestra consultas por plan, fragmentos por consulta, primer fragmento ni consumo (§7).
+
+### Privacidad, arranque y acceso
+- **CA-12** (HU-1, HU-3, RNF-17; aplica 022 CA-5) — privacidad: Dados los paneles nuevos, cuando se inspeccionan sus consultas y leyendas, entonces solo usan las etiquetas cerradas `job`, `route`, `status`, `queue`, `state`, `attempts_made` y `le`, cada ruta citada existe como plantilla en el `api` y ninguno contiene correos, nombres de archivo, UUID ni identificadores.
+- **CA-14** (HU-1, HU-3, RF-05; aplica 022 CA-9) — error: Dado alguien sin cuenta de Grafana (anónimo, Cliente o Soporte), cuando intenta abrir el tablero con los grupos nuevos, entonces no ve ningún dato; el Administrador los ve en solo lectura y no puede cambiarlos. Los grupos viven en el mismo tablero aprovisionado de 022, sin otro tablero.
+- **CA-15** (HU-1, HU-3, RNF-12; aplica 022 CA-10) Dado el compose local levantado desde volúmenes vacíos, cuando termina de arrancar, entonces el tablero «Operación» ya trae los cinco grupos sin pasos manuales.
+
+### Equivalencias con el borrador del 2026-11-02
+| Antes | Ahora | Nota |
 |---|---|---|
-| HU-1 (señales de módulo, vía CA-4) | HU-1 | Procesos, HTTP, colas y sistema siguen en 022 |
-| HU-2 (tablero de negocio) | HU-2 | P-7 |
-| HU-2 (grupo del agente) | HU-3 | P-8 |
-| CA-4 | CA-1 a CA-8 | Dividido: un CA por grupo de RN-3 para verificarlo por separado |
-| CA-17 | CA-9 | Igual; la alerta sigue en PD-67 |
-| CA-7 | CA-10 | Sin «sujeto a P-7»: tendencias por periodo, no conteos actuales |
-| CA-8 | CA-11 | Reescrito con el alcance de P-8 |
-| RN-3 «En 022d» y «Agente (P-8)» | RN-1, RN-3 | Mismos grupos y fuentes |
-| — | CA-12, CA-13, CA-14 | Nuevos: aplican 022 CA-5, RN-6 y CA-9 a lo que agrega 022d; no añaden comportamiento |
-| CA-16 | — | Se queda en 022 (métricas de la cola `subscription-renewal`, sin tocar `billing`) |
-
-> «Su serie cambia» = tras el evento, el valor agregado correspondiente aumenta en la recolección siguiente y se lee en
-> el tablero de operación, sin identificadores (RN-2). Las fuentes de cada grupo están en RN-1.
-
-### Señales de los módulos (HU-1)
-- **CA-1** (HU-1, RNF-18; antes CA-4 · Identidad y acceso) Dados un registro, una verificación, un correo enviado o fallido, un inicio de sesión exitoso, fallido o bloqueado, un reúso de token de refresco o una denegación de acceso, cuando ocurren, entonces cambia su serie por resultado o motivo.
-- **CA-2** (HU-1, RNF-18; antes CA-4 · Almacenamiento) Dadas una carga completada o rechazada, un enlace de descarga emitido, un límite de frecuencia alcanzado, una pasada de limpieza de cargas o un error de MinIO, cuando ocurren, entonces cambian sus series (cargas por resultado, rechazos por motivo, bytes cargados, enlaces, límites por operación, duración y fallos de la limpieza, errores de MinIO por operación).
-- **CA-3** (HU-1, RNF-18; antes CA-4 · Almacenamiento, P-11) Dado el espacio usado por las cuentas, cuando se recalcula (S-3), entonces el tablero muestra el espacio total y por plan, nunca por cuenta.
-- **CA-4** (HU-1, RNF-18; antes CA-4 · Versiones de 014) Dadas una versión registrada, restaurada o podada, o una poda fallida, cuando ocurren, entonces cambia su serie.
-- **CA-5** (HU-1, RNF-18; antes CA-4 · Edición, P-11) Dadas sesiones de edición, cuando se abren, generan una versión, fallan al guardar o cambian de participantes, entonces cambian sus series, y los editores concurrentes se ven como máximo y como distribución, sin identificar el documento.
-- **CA-6** (HU-1, RNF-18; antes CA-4 · Canal en vivo) Dado el canal en vivo, cuando una conexión se abre, se cierra o se rechaza, o falla una publicación, entonces se ven las conexiones activas, los rechazos por motivo y los fallos de publicación.
-- **CA-7** (HU-1, RNF-18; antes CA-4 · Indexación) Dado un trabajo de indexación, cuando termina como indexado, no indexable, fallido o descartado, o se reintenta, entonces cambia su serie por resultado (la espera y la ejecución de la cola son de 022 CA-1).
-- **CA-8** (HU-1, RNF-18; antes CA-4 · Optimizador) Dada una optimización de JPEG o PNG, cuando se solicita, se estima (no conviene o no disponible) o termina (completada, descartada, fallida o caducada), entonces cambia su serie por resultado y, si existen, los bytes antes y después; no hay series de PDF, GIF ni WebP.
-- **CA-9** (HU-1, RNF-18, PD-67; antes CA-17) Dada la auditoría de mejor esfuerzo, cuando se pierde un evento (`audit.record_failed`), entonces su contador sube por motivo y se ve en el tablero de operación; no dispara ninguna alerta (RN-5).
-
-### Tableros (HU-2, HU-3)
-- **CA-10** (HU-2, RNF-18, P-7; antes CA-7) Dado el tablero de negocio, cuando el Operador o el Administrador lo abre, entonces ve, por periodo y como totales agregados (por plan donde aplique), los registros, contrataciones, renovaciones, vencimientos y cuentas que pasan a solo lectura; no muestra cuántas cuentas hay hoy en cada estado (PD-122, 022b) ni repite el panel de 011.
-- **CA-11** (HU-3, RNF-18, RF-34, P-8; antes CA-8) Dado el tablero de operación, cuando se abre, entonces su grupo «Agente» muestra consultas por plan, latencia total (p50 y p95) y la distribución de fragmentos recuperados por consulta; no muestra latencia hasta el primer fragmento ni consumo o costo (PD-168).
-
-### Privacidad, degradación y acceso
-- **CA-12** (HU-1 a HU-3, RNF-17; aplica 022 CA-5) — privacidad: Dado tráfico sintético con correos, nombres de archivo y UUID en entradas y rutas, cuando se inspeccionan las series y los tableros de 022d, entonces ninguno contiene esos valores ni identificadores; las etiquetas solo toman valores de conjuntos cerrados (resultado, motivo, operación, plan).
-- **CA-13** (HU-1, RNF-18, RN-6; aplica 022 RN-6) — error: Dado que registrar una métrica falla, cuando un módulo hace su operación (cargar, renovar, preguntar al agente, guardar una edición), entonces la operación responde igual que sin métricas y queda una línea técnica sin datos sensibles.
-- **CA-14** (HU-2, RF-05; aplica 022 CA-9) — error: Dado alguien sin cuenta de Grafana (anónimo, Cliente o Soporte), cuando intenta abrir el tablero de negocio, entonces no ve ningún dato; el Administrador lo abre en solo lectura y no puede cambiarlo.
+| HU-1 (señales de cada módulo) | HU-1 | Parcial: solo lo que dan HTTP y colas |
+| HU-2, CA-10 (tablero de negocio) | PD-191 | Sin tablero de negocio (antigua P-4) |
+| HU-3, CA-11 (agente por plan, fragmentos) | HU-3, CA-11 | Parcial: total, latencia y errores; por plan → PD-192; fragmentos → PD-190 |
+| CA-1 (identidad) | CA-1 | Parcial: correos, reúso de token y motivo del bloqueo → PD-190 |
+| CA-2 (almacenamiento) | CA-2 | Parcial: motivo de rechazo, bytes, limpieza y errores de MinIO → PD-190 |
+| CA-3 (espacio total y por plan) | PD-191 | — |
+| CA-4, CA-5, CA-6 (versiones, edición, canal en vivo) | PD-190 | Sin serie en 022 |
+| CA-7 (indexación) | CA-7 | Parcial: resultado detallado (no indexable, descartado) → PD-190 |
+| CA-8 (optimizador) | CA-8 | Parcial: resultado detallado y bytes antes y después → PD-190 |
+| CA-9 (`audit.record_failed`, PD-67) | PD-190 | — |
+| CA-12, CA-14 | CA-12, CA-14 | Adaptados a paneles; CA-14 sobre el tablero de operación |
+| CA-13 (degradación) | — | No aplica: no se instrumenta código (RN-4) |
+| — | CA-15 | Nuevo: aplica 022 CA-10 a los grupos |
 
 ### Trazabilidad
-RNF-18 → CA-1 a CA-11, CA-13 · RNF-17 → CA-12 · RF-05 → CA-14 · RF-34 → CA-11 · PD-67 → CA-9 · PD-168 → fuera (§7).
+RNF-18 → CA-1, CA-2, CA-7, CA-8, CA-11, CA-15 · RNF-17 → CA-12 · RF-05 → CA-14 · RF-34 → CA-11 · RNF-12 → CA-15 ·
+PD-67, PD-168 → fuera (§7; PD-190, PD-192).
 
 ## 4. Reglas de negocio
-- **RN-1** Grupos (022 RN-3, «En 022d»): Identidad y acceso (001, 002 y 003 plan §7) → CA-1 · Almacenamiento (005 plan §7; espacio total y por plan; error de MinIO) → CA-2, CA-3 · Versiones (014 plan) → CA-4 · Edición (016) → CA-5 · Canal en vivo (015 §7) → CA-6 · Indexación (019) → CA-7 · Optimizador (021, solo JPEG/PNG) → CA-8 · Auditoría (PD-67) → CA-9 · Negocio (P-7) → CA-10 · Agente (P-8) → CA-11.
-- **RN-2** Igual que 022 RN-2: solo agregados y distribuciones. «Por plan» usa el plan del catálogo (tabla `plan`), nunca la cuenta.
-- **RN-3** Agente (P-8): consultas por plan, latencia total y fragmentos por consulta, como grupo del tablero de operación; sin tercer tablero. Primer fragmento y consumo/costo: PD-168.
-- **RN-4** Negocio (P-7): complementa el panel de 011, que sigue mostrando el estado actual; aquí solo tendencias por periodo. No se modifica ni se consulta `MetricsService` de 011.
-- **RN-5** Igual que 022 RN-1: exactamente las seis alertas de `product-context.md` §7. `audit.record_failed` (PD-67) y las candidatas de 001, 002 y 003 (PD-167 (a)) no son alertas.
-- **RN-6** Igual que 022 RN-6, y además instrumentar no cambia el comportamiento de ningún módulo (condición del PR #78).
-- **RN-7** Igual que 022 RN-7: los tableros solo leen series del recolector; no hay consultas nuevas sin `actor` (condición del PR #78).
+- **RN-1** Fuentes: solo `nimbo_http_request_duration_seconds` (`route`, `status`), `nimbo_queue_*` (`queue`, `state`, `attempts_made`) y `nimbo_dependency_up` de 022. Ninguna serie nueva.
+- **RN-2** Igual que 022 RN-2: solo agregados y distribuciones; las rutas por plantilla, nunca con ids.
+- **RN-3** Igual que 022 RN-1: exactamente las seis alertas de `product-context.md` §7. 022d no agrega ni cambia reglas.
+- **RN-4** No se modifica código de `apps/` ni `packages/`, módulos de negocio ni `shared`: no hacen falta las autorizaciones de módulos del PR #78 (antigua P-2) y no hay degradación nueva que probar (022 RN-6 sigue igual).
+- **RN-5** Igual que 022 RN-7: los paneles solo leen Prometheus; ninguna consulta toca PostgreSQL ni datos de clientes.
 
 ## 5. Seguridad y privacidad
-- **¿Toca datos de un cliente?** No como lectura nueva: las series son agregados sin identificadores (RN-2) y los tableros no consultan datos de clientes (RN-7). Sin pruebas de aislamiento propias, igual que 022 §5; CA-12 revisa series, etiquetas y tableros.
-- **No van a métricas, bitácoras ni tableros**: contenido, nombres de archivo, correos, contraseñas, tokens, claves de enlaces, claves de objeto, preguntas o respuestas del agente, fragmentos ni identificadores (RNF-17).
-- **Roles** (igual que 022 §5, P-6): «Ver métricas agregadas» es de Administrador (*Viewer*) y Operador (*Editor*); Cliente y Soporte no tienen cuenta de Grafana. El tablero de negocio sigue la misma regla (CA-14). No hay suplantación ni vista de contenido para ningún rol interno.
-- **Auditoría (RF-07)**: no aplica; métricas y tableros no son acciones sobre cuentas.
-- **Superficie**: igual que 022 CA-2; 022d no agrega puertos, rutas ni hosts.
+- **¿Toca datos de un cliente?** No. Los paneles leen agregados de Prometheus sin identificadores (RN-2, RN-5). Sin pruebas de aislamiento, igual que 022 §5; CA-12 revisa consultas y leyendas.
+- **No van a tableros**: contenido, nombres de archivo, correos, contraseñas, tokens, claves de enlaces, claves de objeto, preguntas o respuestas del agente ni identificadores (RNF-17).
+- **Roles** igual que 022 §5 (P-6): Operador *Editor*, Administrador *Viewer*; Cliente y Soporte sin cuenta de Grafana. Ningún rol interno ve contenido; no hay suplantación.
+- **Auditoría (RF-07)**: no aplica; un tablero no es una acción sobre cuentas.
+- **Superficie**: igual que 022 CA-2; 022d no agrega puertos, rutas, hosts ni tableros.
 
 ## 6. Experiencia de usuario
-- Sin interfaz en `apps/web`: los tableros son de Grafana y no siguen Cielo Sereno (igual que 022 §6; no hay fila en `ui-guidelines.md` §7). No requiere mockup.
+- Sin interfaz en `apps/web`: los paneles son de Grafana y no siguen Cielo Sereno (igual que 022 §6; no hay fila en `ui-guidelines.md` §7). No requiere mockup.
 
 ## 7. Fuera de alcance
-- Núcleo de 022: procesos, HTTP, colas (incluidas espera y ejecución de `indexing` y `optimization`), sistema, dependencias, las seis alertas y CA-16.
-- Latencia hasta el primer fragmento y consumo/costo del agente (PD-168); un tercer tablero para el agente (P-8).
-- Conteos al momento de cuentas por estado y la pantalla de trabajos (022b, PD-74, PD-122); cambios o consultas al panel de 011.
-- Alertas nuevas (RN-5): `audit.record_failed` (PD-67) y las candidatas de PD-167 (a).
-- Métricas de `storage/search` (018) y de `sharing` (012, 013): esos módulos no se tocan. Papelera (006), búsqueda y backoffice no están en 022 RN-3.
-- Métricas por cuenta, archivo, documento o sesión (P-11). Métricas del frontend.
-- Optimización de PDF, GIF o WebP (021 solo entrega JPEG/PNG). Pruebas de carga (023).
+- Toda señal que exija instrumentar código (PD-190): correos enviados o fallidos, reúso de token de refresco, motivo del bloqueo de inicio de sesión, motivo de rechazo y bytes de las cargas, errores de MinIO por operación, limpieza de cargas, versiones (014), edición (016), canal en vivo (015), resultado detallado de indexación y optimizador, `audit.record_failed` (PD-67), fragmentos por consulta y buckets HTTP por encima de 10 s.
+- Tablero de negocio con tendencias por periodo, retención mayor a 15 días, y espacio total y por plan (PD-191).
+- Consultas del agente por plan (PD-192); primer fragmento y consumo o costo (PD-168).
+- Alertas nuevas (RN-3; PD-67, PD-167 (a)). El núcleo de 022 (paneles 1 a 15, seis reglas) no cambia.
+- Conteos al momento y pantalla de trabajos (022b, PD-74, PD-122); el panel de 011. Ruido de PD-172 (exige código).
+- Grupos de versiones, edición, canal en vivo, búsqueda (018), compartición (012, 013), papelera y backoffice.
+- Métricas por cuenta, archivo, documento o sesión (P-11). Optimización de PDF, GIF o WebP. Pruebas de carga (023).
 
 ## 8. Supuestos
-- **S-1** (discutible) Definiciones de CA-10: *registro* = registro de cliente aceptado; *contratación* = pago aprobado al contratar un plan de pago; *renovación* = periodo renovado con pago, automática o manual por separado; *vencimiento* = periodo de pago que termina sin renovarse (sin cobro o con cobro rechazado); *solo lectura* = cuenta que entra en solo lectura. La bajada programada a Personal no es una de las cinco tendencias de P-7.
-- **S-2** «Por plan» muestra el nombre del plan del catálogo. Un plan nuevo del catálogo aparece como un valor más.
-- **S-3** (discutible) El espacio total y por plan se actualiza con la conciliación diaria de espacio (007), no en tiempo real; así no hay consultas nuevas sin `actor`.
-- **S-4** Los editores concurrentes se ven como máximo simultáneo y como distribución del número de editores por sesión, sin el documento.
-- **S-5** El mecanismo para emitir métricas lo fija el plan; si cambia la arquitectura de `shared` o agrega un puerto entre módulos, lo revisa `architect` antes de Adrián.
-- **S-6** Se demuestra en local con el compose y el corpus sintético, igual que 022 P-2.
+- **S-1** (discutible) Códigos leídos de los controladores y errores del `api` (2026-11-08): el inicio de sesión fallido es `401` (`IDENTITY_INVALID_CREDENTIALS`); el bloqueo por correo (`IDENTITY_LOGIN_LOCKED`) y el límite por IP comparten `429`, así que el panel los muestra juntos. El reúso de un token de refresco es un `401` más de `session/refresh`.
+- **S-2** (discutible) «Denegaciones» = todo `403` del `api`: incluye roles internos en rutas de cliente (`SHARED_FORBIDDEN`) y cuentas en solo lectura (`STORAGE_ACCOUNT_READ_ONLY`). Se ven por ruta, no por motivo.
+- **S-3** (discutible) «Carga rechazada» = respuesta `4xx` al iniciar o completar (límites y tipo `422`, partes faltantes `409`, vencida `410`, cuota `422`); el motivo exacto es de PD-190.
+- **S-4** (discutible) La latencia del agente es la de la respuesta completa (flujo SSE). Un error que llega dentro del flujo, después del primer evento, sale como `200` y no cuenta como error. El histograma HTTP de 022 llega a 10 s: una respuesta más larga satura el p95 en 10 s (PD-190).
+- **S-5** Se demuestra en local con el compose y tráfico sintético desde la web y el runbook, igual que 022 P-2.
 
 ## 9. Preguntas
-- [ABIERTA] **P-1 Tamaño y partición** — bloquea: sí. El inventario da 16 filas, 58 archivos (38 de autor, 20 pruebas) y ≈ 9,5 días-persona: no cabe en ≤ 12 filas ni en ~3 días (`workflow.md` §4.1, ADR-0034). Propuesta (recomendada): **022d** «mecanismo, negocio, auditoría y optimizador» (CA-8, CA-9, CA-10, CA-12 a CA-14; ≈ 3,75 días); **022d-2** «identidad y almacenamiento» (CA-1 a CA-4; ≈ 3,25 días); **022d-3** «edición, canal, indexación y agente» (CA-5 a CA-7, CA-11; ≈ 3,5 días); CA-12 y CA-13 se verifican en cada parte sobre sus series. Alternativas: dos partes (≈ 5,75 y ≈ 4,25 días) o excepción de tamaño como en 021. ¿Cuál se aplica y qué números reciben las partes nuevas? (022e ya lo propone el plan de 022).
-- [ABIERTA] **P-2 Autorizaciones** — bloquea: sí. Confirmar que las autorizaciones de módulos del PR #78 se aplican a 022d. Literal: Abel puede modificar, «solo en los archivos que nombre el plan oficial aprobado» y «sin cambiar el comportamiento de los módulos»: `shared` (puerto y adaptador de métricas, servidor privado, middleware HTTP, montaje en `app.module`, `worker.module` y los tres `main`, `env.schema` y `secret-keys`); `identity`, `notifications`, `storage`, `audit`, `editing`, `realtime` e `intelligence` «solo para emitir métricas», vía preferida el punto de logging con el catálogo dentro del módulo; `billing` solo en «los servicios de suscripción y renovación, y `renewal.processor`», vía `billing-logger`, y «Adrián revisa esos cambios dentro del PR de 022». Condiciones: sin consultas nuevas sin `actor`, ninguna etiqueta con datos sensibles, una falla de métricas no afecta la operación (RN-6) y Adrián revisa todo cambio en el PR. `storage/search` y `sharing` no se tocan; `optimizer` es de Abel. Puntos a confirmar: el PR es el de 022d y no el de 022; el logger de `shared` y los `*.module.ts` de cada módulo (para registrar su catálogo) no están en la lista literal.
-- [ABIERTA] **P-3 Consultas del agente por plan** — bloquea: sí (CA-11). Hoy el agente no conoce el plan de quien pregunta: obtenerlo exige leerlo de otro módulo (sin cambiar contratos, con el actor de la pregunta) o ampliar un contrato de `billing`. ¿Se acepta la lectura sin cambiar contratos, o CA-11 entrega el total sin plan hasta decidirlo?
-- [ABIERTA] **P-4 Alcance de «por periodo»** — bloquea: sí (CA-10). El plan de 022 limita la retención de Prometheus a 15 días: las tendencias serían por día o semana dentro de esa ventana. ¿Basta así, o se pide ver meses (amplía la retención de 022, con más disco y memoria)?
-- [RESUELTA] P-7 → complementa 011 con tendencias por periodo; no toca ni consulta `MetricsService` (2026-11-02, Adrián, PR #78).
-- [RESUELTA] P-8 → consultas por plan, latencia total y fragmentos por consulta como grupo del tablero de operación; primer fragmento y costo, PD-168 (2026-11-02, Adrián).
+- [RESUELTA] P-1 → recorte a solo tableros (≈ 1 día, 3 archivos de autor); cabe en tamaño sin partir (2026-11-08, propuesta del dueño, pendiente de aprobación de Adrián).
+- [RESUELTA] P-2 → no se modifican módulos ni `shared` (RN-4); no hacen falta las autorizaciones del PR #78. Se retoman con PD-190 (2026-11-08, propuesta del dueño, pendiente de aprobación de Adrián).
+- [RESUELTA] P-3 → sin desglose por plan; el total va en CA-11 y el desglose a PD-192 (2026-11-08, propuesta del dueño, pendiente de aprobación de Adrián).
+- [RESUELTA] P-4 → sin tablero de negocio; la retención y las tendencias van a PD-191 (2026-11-08, propuesta del dueño, pendiente de aprobación de Adrián).
+- [RESUELTA] P-7 → complementa 011 con tendencias por periodo (2026-11-02, Adrián, PR #78). Con el recorte, va a PD-191.
+- [RESUELTA] P-8 → grupo del agente en el tablero de operación; primer fragmento y costo, PD-168 (2026-11-02, Adrián). Con el recorte, el desglose por plan va a PD-192 y los fragmentos a PD-190.
 - [RESUELTA] P-11 → solo agregados y distribuciones, sin identificadores (2026-11-02, Adrián).
 
 ## 10. Registro de cambios
 | Fecha | Cambio | Motivo | Aprobó |
 |---|---|---|---|
 | 2026-11-02 | Creación en Borrador desde 022 CA-4, CA-7, CA-8, CA-17, HU-2 (negocio y agente) y los grupos de módulo de RN-3; sin plan ni tareas por P-1 (inventario fuera de tamaño) | Corte de 022 por tamaño (PR #78) | — |
+| 2026-11-08 | Recorte a solo tableros: grupos Identidad, Almacenamiento, Indexación, Optimizador y Agente sobre las series de 022. CA-1, CA-2, CA-7, CA-8, CA-11, CA-12 y CA-14 reescritos; CA-15 nuevo; CA-3 a CA-6, CA-9, CA-10 y CA-13 y HU-2 salen (PD-190 a PD-192). P-1 a P-4 resueltas; plan y tareas escritos | Petición del dueño; P-1 sin otra salida en tamaño | Pendiente de Adrián |
