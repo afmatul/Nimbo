@@ -459,7 +459,6 @@ describe('aislamiento de enlaces públicos por HTTP (013 CA-17, CA-11, CA-16)', 
   });
 });
 
-/** Un enlace sobre un archivo nuevo de la cuenta, con la contraseña si se da su hash. */
 interface SeededLink {
   readonly ownerId: string;
   readonly fileId: string;
@@ -482,6 +481,7 @@ describe('aislamiento del techo global de fallos por enlace (013b CA-15)', () =>
   let ofB: SeededLink;
   let openOfA: SeededLink;
 
+  /** Un enlace sobre un archivo nuevo de la cuenta, con la contraseña si se da su hash. */
   const seedLink = async (ownerId: string, hash?: string): Promise<SeededLink> => {
     const file = await insertCommittedFile(sharing.storage.owner, ownerId, {
       name: `Techo-${randomUUID()}.pdf`,
@@ -499,7 +499,9 @@ describe('aislamiento del techo global de fallos por enlace (013b CA-15)', () =>
 
   const downloadFromNewNetwork = (body: Record<string, unknown>): Promise<Response> =>
     sharing
-      .visitor({ 'X-Forwarded-For': `2001:db8:${randomUUID().slice(0, 4)}::1` })
+      .visitor({
+        'X-Forwarded-For': `2001:db8:${randomUUID().slice(0, 4)}:${randomUUID().slice(0, 4)}::1`,
+      })
       .download(body);
 
   const expectServes = async (link: SeededLink, password?: string): Promise<void> => {
