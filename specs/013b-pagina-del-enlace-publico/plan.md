@@ -59,7 +59,7 @@
 | B | web/storage (de Adrián, P-C) | `features/storage/components/file-row-menu.tsx`, `components/shared-file-detail.tsx`, `hooks/use-version-download.ts` | Usan `usePreparingDownload` y envuelven lo suyo en quien llama (§1): `file-row-menu` hace `onNotice(null)` y `setOpen(false)` solo si `download` arrancó (N-1); `use-version-download` guarda la versión en `preparing`. `shared-file-detail` gana «una petición a la vez» (cambio de comportamiento declarado). `file-row-menu.tsx` deja de definir y exportar `PREPARING_DELAY_MS` y `openInBrowser`, sin reexportarlos (m-2) |
 | B | web (solo imports, P-C) | `features/storage/components/file-detail-view.tsx`, `own-file-detail.tsx`, `quick-access-sidebar.tsx`; `features/sharing/components/received-shares-view.tsx` | Importan `openInBrowser` de `lib/use-preparing-download.ts`; nada más cambia. Las pruebas `storage/a11y.spec.tsx`, `file-detail-view.spec.tsx` y `file-row-menu.spec.tsx` importan `PREPARING_DELAY_MS` del mismo sitio |
 | B | web/app | `apps/web/src/app/(public)/enlace/page.tsx` | `export const metadata` con `title` «Archivo compartido · Nimbo» y `robots: { index: false }` (CA-8, S-5); monta `PublicLinkVisit` con `env.API_PUBLIC_URL` |
-| B | web/sharing (cliente y textos) | `features/sharing/public-link-visitor-api.ts`, `public-link-messages.ts`, `index.ts` | `createPublicLinkVisitorApi(apiPublicUrl)` (detalle abajo). Catálogo `code` → `{ title, tone }` como `ShareMessage` (Art. VI): `SHARING_LINK_UNAVAILABLE`, `SHARING_LINK_PASSWORD_INVALID`, red/5xx y `SHARED_TOO_MANY_REQUESTS` con texto neutro propio (M-2). `index.ts` exporta `PublicLinkVisit` |
+| B | web/sharing (cliente y textos) | `features/sharing/public-link-visitor-api.ts`, `public-link-messages.ts`, `index.ts` | `createPublicLinkVisitorApi(apiPublicUrl)` (detalle abajo). Catálogo `code` → `{ title, tone }` como `ShareMessage` (Art. VI): `SHARING_LINK_UNAVAILABLE`, `SHARING_LINK_PASSWORD_INVALID`, red/5xx al abrir y al descargar (dos textos, CA-7) y `SHARED_TOO_MANY_REQUESTS` con texto neutro propio (M-2). `index.ts` exporta `PublicLinkVisit` |
 | B | web/sharing (estado y vista) | `features/sharing/hooks/use-public-link-visit.ts`, `components/public-link-visit.tsx`, `public-link-password-form.tsx` | Hook, vista y formulario (detalle abajo). Solo tokens de `ui-guidelines.md` |
 | B | diseño (T-05, `ui-designer`) | `docs/design/mockups/sharing/enlace-publico/` (generador `_generadores/enlace-publico/generar.js` sobre `marco/marco.js`), `docs/design/capturas/sharing/enlace-publico/`, `ui-guidelines.md` §7 | 9 estados a 360 y 1440 px (18 PNG). El HTML actual pasa a `--propuesta` y el README se corrige (spec §6). La fila 302 se parte en «Enlace público (página)» y «Enlace público (diálogo)» |
 
@@ -200,7 +200,8 @@ Cada tarea de lógica empieza por su prueba en rojo, y ningún CA se prueba en t
 - **`429` del límite general (N-4):** es por red, no por enlace, y aun así dice «con este enlace». Adrián lo
   aceptó por RN-1.
 - **Pendientes:** PD-175 se cierra con PR-A. PD-188 (N-3): `plan-and-billing.tsx:179` tiene su propia copia de
-  `openInBrowser`; `billing` pasa a usar la de `lib` en su próximo cambio.
+  `openInBrowser`; `billing` pasa a usar la de `lib` en su próximo cambio. PD-189 (T-05): el borde de «Reintentar»
+  `outline` no llega a 3:1 sobre advertencia y error; la página lo corrige solo para sí en T-08.
 - **ADR:** ninguno.
 
 **Preguntas para Adrián:**
