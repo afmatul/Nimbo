@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En curso (2026-11-07) |
+| Estado | En revisión (2026-11-07) |
 | Dueño | Juan Marcos (2) |
 | Fase | 2 |
 | Requisitos | RF-15 (contenido; nombre, tipo y fecha son de 018); aplican RF-05, RF-07, RF-11, RF-30, RNF-01, RNF-05, RNF-09, RNF-13, RNF-17 |
