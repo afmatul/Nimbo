@@ -11,7 +11,7 @@
 - [ ] **T-03** Aislamiento: el techo de un enlace de A no frena otro enlace de A, uno de B ni uno sin contraseña — CA: CA-15 — Prueba: aislamiento (`public-links.iso-spec.ts`) — Depende: T-01
 
 **PR-B (web)**
-- [ ] **T-04** `usePreparingDownload` y `expiresAtLabel` en `lib/` (P-C); los usan `file-row-menu`, `shared-file-detail` (gana «una petición a la vez») y `use-version-download`, con imports actualizados; `download` devuelve si arrancó (N-1); commits `refactor(storage): … [013b T-04]` y `fix(storage): … [013b T-04]` para `shared-file-detail` (N-2) — CA: CA-3, CA-1 (fecha) — Prueba: unitaria primero (`use-preparing-download.spec.ts`, `format-date.spec.ts`, doble clic en `shared-file-detail.spec.tsx` y en `file-row-menu.spec.tsx`) y suites de `storage` en verde sin cambiar aserciones
+- [x] **T-04** `usePreparingDownload` y `expiresAtLabel` en `lib/` (P-C); los usan `file-row-menu`, `shared-file-detail` (gana «una petición a la vez») y `use-version-download`, con imports actualizados; `download` devuelve si arrancó (N-1); commits `refactor(storage): … [013b T-04]` y `fix(storage): … [013b T-04]` para `shared-file-detail` (N-2) — CA: CA-3, CA-1 (fecha) — Prueba: unitaria primero (`use-preparing-download.spec.ts`, `format-date.spec.ts`, doble clic en `shared-file-detail.spec.tsx` y en `file-row-menu.spec.tsx`) y suites de `storage` en verde sin cambiar aserciones
 - [ ] **T-05** Mockup de los 9 estados de la página con `/mockup` (`ui-designer`): generador `_generadores/enlace-publico/generar.js`, 18 PNG, README corregido, fila 302 de `ui-guidelines.md` §7 partida en página y diálogo; aprobación de Adrián — CA: CA-1 a CA-7 — Prueba: axe y capturas a 360 y 1440 px
 - [ ] **T-06** Cliente del visitante sin sesión contra `API_PUBLIC_URL` y prueba de que nada en `web` reenvía `/public-links` — CA: CA-9, CA-10 — Prueba: unitaria web primero (`public-link-visitor-api.spec.ts`, `no-public-link-proxy.arch.spec.ts`)
 - [ ] **T-07** Hook `use-public-link-visit` (fragmento crudo, vacío sin API, `StrictMode` sin repetir `POST /open`, descarga con `usePreparingDownload`) y catálogo `public-link-messages.ts` con el `429` neutro — CA: CA-3, CA-5, CA-6, CA-7, CA-8 — Prueba: unitaria web primero (`use-public-link-visit.spec.ts`) — Depende: T-04, T-06
@@ -19,3 +19,14 @@
 - [ ] **T-09** **(humana)** Recorrido de la demo en local (sin y con contraseña, incorrecta, techo bajado por entorno, revocado → «No disponible», sesión de Soporte) y revisión manual de CA-11 (360 px sin desplazamiento horizontal, contraste AA a 360 y 1440 px, «reducir movimiento»); nota en el PR — CA: los visibles, CA-11 — Depende: T-01, T-08
 
 ## Notas del developer
+
+- **T-04** (2026-11-07):
+  - `file-row-menu` y `shared-file-detail` limpian el aviso dentro de la `requestUrl` que pasan al hook, no tras
+    `await download()`: así solo ocurre si arrancó (N-1) y antes de pedir la URL, como hoy; hacerlo después borraría
+    el aviso de fallo. `setOpen(false)` sí va tras `download` cuando devuelve `true`.
+  - «Reintentar» usa el `retry` que da el hook (la regla `react-hooks/immutability` no deja usar `download` antes de
+    declararlo); el menú ya está cerrado al reintentar, así que no cambia nada visible.
+  - `useVersionDownload` conserva `download: Promise<void>` (envuelve el `boolean` del hook) para no tocar
+    `VersionActions` ni `use-version-actions.ts`.
+  - En el worktree (`.claude/…`), Jest no encuentra pruebas con el `testMatch` de `<rootDir>` porque la ruta tiene una
+    carpeta con punto; se corrió con `--testMatch "**/src/**/*.spec.{ts,tsx}"`. En el repositorio normal no pasa.

@@ -7,7 +7,7 @@ import * as React from 'react';
 
 import { FileTypeChip } from '../../../components/nimbo/file-type-chip';
 import { Button, buttonVariants } from '../../../components/ui/button';
-import { PREPARING_DELAY_MS } from '../../../lib/use-preparing-download';
+import { usePreparingDownload } from '../../../lib/use-preparing-download';
 import { editorPath } from '../../editing/routes';
 import { LEVEL_LABELS, SHARED_WITH_ME_LABEL, SHARED_WITH_ME_PATH } from '../../sharing';
 import type { StorageApi } from '../api';
@@ -22,29 +22,24 @@ export interface SharedFileDetailProps {
   readonly openUrl: (url: string) => void;
 }
 
-/** «Descargar» de la versión actual (012 CA-12): «Preparando…» pasados 2 s y el aviso por `code` si falla. */
+/** «Descargar» de la versión actual (012 CA-12): una petición a la vez, «Preparando…» a los 2 s y aviso por `code`. */
 function useSharedDownload({ detail, api, openUrl }: SharedFileDetailProps) {
-  const [preparing, setPreparing] = React.useState(false);
   const [notice, setNotice] = React.useState<DownloadNotice | null>(null);
-  const timer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  React.useEffect(() => () => clearTimeout(timer.current), []);
-  const download = async (): Promise<void> => {
-    setNotice(null);
-    timer.current = setTimeout(() => setPreparing(true), PREPARING_DELAY_MS);
-    try {
-      openUrl((await api.downloadUrl(detail.file.id)).url);
-    } catch (error) {
-      const actions = {
-        retry: () => void download(),
-        refresh: () => window.location.assign(SHARED_WITH_ME_PATH),
-      };
-      setNotice(downloadFailureNotice(detail.file.name, error, actions));
-    } finally {
-      clearTimeout(timer.current);
-      setPreparing(false);
-    }
+  const refresh = (): void => window.location.assign(SHARED_WITH_ME_PATH);
+  const flow = usePreparingDownload<FileDetailResponse['file']>(
+    (file) => {
+      setNotice(null);
+      return api.downloadUrl(file.id);
+    },
+    (file, error, retry) => setNotice(downloadFailureNotice(file.name, error, { retry, refresh })),
+    openUrl,
+  );
+  return {
+    preparing: flow.preparing !== null,
+    notice,
+    download: () => flow.download(detail.file),
+    dismiss: () => setNotice(null),
   };
-  return { preparing, notice, download, dismiss: () => setNotice(null) };
 }
 
 function SharedFileActions(props: SharedFileDetailProps): React.JSX.Element {
