@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Lista |
+| Estado | En curso |
 | Dueño | Abel |
 | Fase | 3 (prevista; calendario pendiente de reprogramación) |
 | Requisitos | RNF-18 (tableros de los módulos); RNF-17 (privacidad de los tableros); RF-05 (acceso a tableros); RNF-12 (arranque aprovisionado, como 022 CA-10). Observa sin cambiar: RF-01, RF-02, RF-03, RF-04, RF-08, RF-09, RF-30, RF-32, RF-34, RF-35, RF-36 |
