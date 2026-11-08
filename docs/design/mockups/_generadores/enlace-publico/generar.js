@@ -71,6 +71,7 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + `
   .input[aria-invalid="true"] { border-color: var(--destructive); }
   .pw-toggle { position: absolute; top: 0; right: 0; bottom: 0; display: inline-flex; align-items: center; justify-content: center; width: 44px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--muted-foreground); cursor: pointer; }
   .pw-toggle:hover { color: var(--foreground); }
+  .field-hint { margin: 0; font-size: 13px; color: var(--muted-foreground); }
   .field-error { display: flex; align-items: flex-start; gap: 6px; margin: 0; font-size: 13.5px; font-weight: 500; color: var(--destructive); }
   .field-error .ico { margin-top: 2px; }
 
@@ -82,6 +83,9 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + `
   .alert { display: flex; align-items: flex-start; gap: 10px; margin: 0; padding: 12px 16px; border: 1px solid; border-radius: var(--radius-md); font-size: 14px; line-height: 1.5; }
   .alert .ico { margin-top: 2px; }
   .alert p { margin: 0; }
+  .alert-body { display: grid; justify-items: start; gap: 10px; min-width: 0; }
+  /* Sobre el fondo warning al 10 % (y de error al 12 %) el borde input da 2.87 (2.73): se usa secondary-foreground (no texto, ≥ 3:1) */
+  .alert-warning .btn-outline, .state-warning .btn-outline, .state-error .btn-outline { color: var(--foreground); border-color: var(--secondary-foreground); }
   .alert-warning { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 10%, var(--card)); color: var(--warning-foreground); }
   .alert-success { border-color: var(--success); background: color-mix(in srgb, var(--success) 10%, var(--card)); color: var(--foreground); }
   .alert-success .ico { color: var(--success-foreground); }
@@ -129,6 +133,7 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + `
     .ficha-meta [aria-hidden="true"] { display: none; }
     .state { padding: 32px 16px; }
     .state .btn { width: 100%; min-height: 44px; }
+    .alert .btn { min-height: 44px; }
   }
 `;
 
@@ -161,8 +166,10 @@ const ficha = () => `
             </div>
           </div>`;
 
-const alerta = (tono, ic, texto) => `
-          <div class="alert alert-${tono}" role="status">${icon(ic, 18)}<p>${texto}</p></div>`;
+// accion: botón outline dentro del aviso (red al descargar, CA-7: «Reintentar»).
+const alerta = (tono, ic, texto, accion = "") => `
+          <div class="alert alert-${tono}" role="status">${icon(ic, 18)}<div class="alert-body"><p>${texto}</p>${accion ? `
+            <button class="btn btn-outline btn-sm" type="button">${icon("retry", 14)}<span>${accion}</span></button>` : ""}</div></div>`;
 
 // «Descargar» (CA-1, CA-3). preparando: texto de CA-3, aria-disabled y aria-busy; el anuncio va en una región aparte.
 function botonDescargar({ preparando = false, submit = false } = {}) {
@@ -174,19 +181,23 @@ function botonDescargar({ preparando = false, submit = false } = {}) {
           <p class="sr-only" role="status">Preparando descarga…</p>`;
 }
 
-// Campo «Contraseña del enlace» (CA-2, CA-4): con error, vacío, aria-invalid, mensaje role="alert" y foco.
-function formulario({ error = '', valor = '', extra = '' } = {}) {
-  const inv = error ? ' aria-invalid="true" aria-describedby="pw-error" autofocus' : '';
+// Campo «Contraseña del enlace» (CA-2, CA-4): siempre vacío al mostrarse (también tras un 429, decisión de Fátima);
+// con error: aria-invalid, mensaje role="alert" y foco. La ayuda va siempre asociada con aria-describedby.
+const AYUDA_CONTRASENA = "No es la de tu cuenta: te la da quien compartió el enlace.";
+function formulario({ error = '' } = {}) {
+  const desc = error ? "pw-error pw-hint" : "pw-hint";
+  const inv = error ? ' aria-invalid="true" autofocus' : '';
   return `
           <form class="form" novalidate>
             <div class="field">
               <label for="pw">Contraseña del enlace</label>
               <div class="pw">
-                <input class="input${error ? ' is-focus' : ''}" id="pw" name="password" type="password" autocomplete="off" maxlength="128"${valor ? ` value="${valor}"` : ''}${inv}>
+                <input class="input${error ? ' is-focus' : ''}" id="pw" name="password" type="password" autocomplete="off" maxlength="128" aria-describedby="${desc}"${inv}>
                 <button class="pw-toggle" type="button" aria-label="Mostrar contraseña">${icon('eye', 18)}</button>
-              </div>${error ? `
+              </div>
+              <p class="field-hint" id="pw-hint">${AYUDA_CONTRASENA}</p>${error ? `
               <p class="field-error" id="pw-error" role="alert">${icon('alert', 16)}<span>${error}</span></p>` : ''}
-            </div>${extra}${botonDescargar({ submit: true })}
+            </div>${botonDescargar({ submit: true })}
           </form>`;
 }
 
@@ -272,12 +283,16 @@ const ESTADOS = [
   },
   {
     estado: 'bloqueado', titulo: '429 al descargar: aviso neutro sobre la ficha, sin motivo ni cuenta regresiva (CA-5, CA-12)',
-    cuerpo: () => tarjeta({ conContrasena: true, aviso: alerta('warning', 'clock', TEXTO_429.join(' ')), form: { valor: 'contrasena' } }),
+    cuerpo: () => tarjeta({ conContrasena: true, aviso: alerta('warning', 'clock', TEXTO_429.join(' ')), form: {} }),
   },
   { estado: 'descargando', titulo: 'pasados 2 s: «Preparando descarga…» y sin otro clic (CA-3)', cuerpo: () => tarjeta({ preparando: true }) },
   {
     estado: 'descarga-iniciada', titulo: 'aviso de éxito anunciado y «Descargar» disponible otra vez (CA-3)',
     cuerpo: () => tarjeta({ aviso: alerta('success', 'ok', 'Tu descarga comenzó. Si no empieza, vuelve a intentarlo.') }),
+  },
+  {
+    estado: 'descarga-error-red', titulo: 'la red falla al descargar: aviso de advertencia sobre la ficha con «Reintentar» (CA-7)',
+    cuerpo: () => tarjeta({ aviso: alerta('warning', 'alert', 'No pudimos iniciar la descarga. Revisa tu conexión e inténtalo de nuevo.', 'Reintentar') }),
   },
   {
     estado: 'no-disponible', titulo: 'un solo mensaje para todo motivo, sin ficha (CA-6, RN-1)',

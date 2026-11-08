@@ -165,6 +165,7 @@
   .input[aria-invalid="true"] { border-color: var(--destructive); }
   .pw-toggle { position: absolute; top: 0; right: 0; bottom: 0; display: inline-flex; align-items: center; justify-content: center; width: 44px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--muted-foreground); cursor: pointer; }
   .pw-toggle:hover { color: var(--foreground); }
+  .field-hint { margin: 0; font-size: 13px; color: var(--muted-foreground); }
   .field-error { display: flex; align-items: flex-start; gap: 6px; margin: 0; font-size: 13.5px; font-weight: 500; color: var(--destructive); }
   .field-error .ico { margin-top: 2px; }
 
@@ -176,6 +177,9 @@
   .alert { display: flex; align-items: flex-start; gap: 10px; margin: 0; padding: 12px 16px; border: 1px solid; border-radius: var(--radius-md); font-size: 14px; line-height: 1.5; }
   .alert .ico { margin-top: 2px; }
   .alert p { margin: 0; }
+  .alert-body { display: grid; justify-items: start; gap: 10px; min-width: 0; }
+  /* Sobre el fondo warning al 10 % (y de error al 12 %) el borde input da 2.87 (2.73): se usa secondary-foreground (no texto, ≥ 3:1) */
+  .alert-warning .btn-outline, .state-warning .btn-outline, .state-error .btn-outline { color: var(--foreground); border-color: var(--secondary-foreground); }
   .alert-warning { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 10%, var(--card)); color: var(--warning-foreground); }
   .alert-success { border-color: var(--success); background: color-mix(in srgb, var(--success) 10%, var(--card)); color: var(--foreground); }
   .alert-success .ico { color: var(--success-foreground); }
@@ -223,6 +227,7 @@
     .ficha-meta [aria-hidden="true"] { display: none; }
     .state { padding: 32px 16px; }
     .state .btn { width: 100%; min-height: 44px; }
+    .alert .btn { min-height: 44px; }
   }
 </style>
 </head>
@@ -253,7 +258,7 @@
               <p class="ficha-meta"><span>2,4 MB</span><span aria-hidden="true">·</span><span>Vence el 14 nov 2026, 14:30</span></p>
             </div>
           </div>
-          <div class="alert alert-success" role="status"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg><p>Tu descarga comenzó. Si no empieza, vuelve a intentarlo.</p></div>
+          <div class="alert alert-success" role="status"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg><div class="alert-body"><p>Tu descarga comenzó. Si no empieza, vuelve a intentarlo.</p></div></div>
           <button class="btn btn-primary btn-block" type="button"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg><span>Descargar</span></button>
         </div>
       </section>

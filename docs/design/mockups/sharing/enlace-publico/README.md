@@ -9,11 +9,12 @@
 - **Estados incluidos** (spec 013b §6):
   - cargando (`enlace-publico--cargando.html`): esqueleto con la forma de la ficha y «Cargando el archivo compartido…» con `role="status"` (CA-1)
   - sin-contrasena (`enlace-publico--sin-contrasena.html`): ficha y «Descargar», nada más (CA-1)
-  - con-contrasena (`enlace-publico--con-contrasena.html`): la misma ficha, sin escribir nada, y el campo «Contraseña del enlace» antes de «Descargar» (CA-2, RN-2)
+  - con-contrasena (`enlace-publico--con-contrasena.html`): la misma ficha, sin escribir nada, y el campo «Contraseña del enlace» con su ayuda antes de «Descargar» (CA-2, RN-2)
   - contrasena-incorrecta (`enlace-publico--contrasena-incorrecta.html`): `403`, campo vacío, `aria-invalid`, mensaje con `role="alert"` y foco en el campo (CA-4)
-  - bloqueado (`enlace-publico--bloqueado.html`): `429` al descargar, aviso neutro `Alert` warning con `role="status"` sobre la ficha (CA-5, CA-12)
+  - bloqueado (`enlace-publico--bloqueado.html`): `429` al descargar, aviso neutro `Alert` warning con `role="status"` sobre la ficha; el campo queda vacío, igual que con una incorrecta (CA-5, CA-12)
   - descargando (`enlace-publico--descargando.html`): pasados 2 s, «Preparando descarga…», `aria-disabled` y anuncio (CA-3)
   - descarga-iniciada (`enlace-publico--descarga-iniciada.html`): `Alert` success con `role="status"` y «Descargar» disponible otra vez (CA-3)
+  - descarga-error-red (`enlace-publico--descarga-error-red.html`): la red falla al descargar; `Alert` warning con `role="status"` sobre la ficha, «No pudimos iniciar la descarga. Revisa tu conexión e inténtalo de nuevo.» y «Reintentar» (CA-7)
   - no-disponible (`enlace-publico--no-disponible.html`): un solo mensaje para todo motivo, sin ficha (CA-6, RN-1)
   - error-carga (`enlace-publico--error-carga.html`): red o 5xx al abrir, con «Reintentar» (CA-7)
   - error-carga-limite (`enlace-publico--error-carga-limite.html`): variante de error-carga para el `429` al abrir, en tono de advertencia, con «Reintentar» (CA-5; spec §6)
@@ -31,9 +32,15 @@
   compartir cuando no; es un apoyo, no el único indicador (el campo lo dice con texto).
 - **Avisos sobre la ficha**: el `429` al descargar y la descarga iniciada van entre la ficha y la acción, en un
   `Alert` con `role="status"` (warning y success). La ficha se queda visible (CA-5). El `429` no dice el motivo ni
-  cuenta regresiva; {n} sale de `retryAfterSeconds` hacia arriba (en el mockup, 15 minutos). Si la red falla al
-  descargar (CA-7), se usa el mismo diseño del aviso de «bloqueado» con «No pudimos cargar el archivo compartido.
-  Revisa tu conexión e inténtalo de nuevo.» y un botón «Reintentar»; no tiene captura propia.
+  cuenta regresiva; {n} sale de `retryAfterSeconds` hacia arriba (en el mockup, 15 minutos). Tras el `429` el campo
+  de contraseña queda vacío, igual que con una incorrecta (decisión de Fátima, 2026-11-07). Si la red falla al
+  descargar (CA-7), el aviso usa el mismo diseño de advertencia con «No pudimos iniciar la descarga. Revisa tu
+  conexión e inténtalo de nuevo.» y un botón «Reintentar» dentro del aviso (estado descarga-error-red; decisión de
+  Fátima, 2026-11-07). El botón `outline` sobre un fondo de advertencia o de error lleva el borde
+  `secondary-foreground`: con el borde `input` daría 2.87 (2.73 sobre el de error), por debajo de 3:1.
+- **Ayuda del campo** (decisión de Fátima, 2026-11-07): bajo el campo va «No es la de tu cuenta: te la da quien
+  compartió el enlace.», asociada con `aria-describedby` en todos los estados que muestran el campo (con el error,
+  `aria-describedby="pw-error pw-hint"`). Evita que el visitante la confunda con la de su cuenta de Nimbo.
 - **Campo vacío** (CA-4): «Escribe la contraseña del enlace.» con el mismo diseño de contrasena-incorrecta y sin
   llamar a la API; no tiene captura propia.
 - **Sin ficha** (no-disponible y error-carga): `StateView` en la misma columna. La página lleva un `h1` oculto
@@ -47,7 +54,7 @@
 - **Correcciones a la propuesta** (spec 013b §6): «Ver archivo» → «Descargar»; «clave» → «contraseña»; ya no pide la
   contraseña antes de mostrar el archivo; botón primario con el token corregido (`primary`, DF-41); se quitó «Crear
   cuenta» de la cabecera (la real tiene «Planes» e «Iniciar sesión»); «Expirado» y «Revocado» pasan a no-disponible.
-- **Accesibilidad** (CA-11): axe sin violaciones en los 10 HTML a 360 y 1440 px, sin desplazamiento horizontal a
+- **Accesibilidad** (CA-11): axe sin violaciones en los 11 HTML a 360 y 1440 px, sin desplazamiento horizontal a
   360 px y objetivos táctiles de 44 px (cabecera, mostrar contraseña, «Descargar», «Reintentar»). Animaciones quietas
   con «reducir movimiento».
 
