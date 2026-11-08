@@ -58,5 +58,5 @@
   360 px y objetivos táctiles de 44 px (cabecera, mostrar contraseña, «Descargar», «Reintentar»). Animaciones quietas
   con «reducir movimiento».
 
-## Pendiente
-- Aprobación de Adrián (T-05). La implementación es T-08.
+## Estado
+- Aprobado por Adrián (2026-11-08, T-05). La implementación es T-08.
