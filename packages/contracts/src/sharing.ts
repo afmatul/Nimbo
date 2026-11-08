@@ -31,7 +31,7 @@ export const SHARING_FIELD_MESSAGES: Readonly<Record<SharingFieldIssueReason, st
   INVALID_EMAIL: 'Escribe un correo válido, por ejemplo nombre@dominio.com.',
   INVALID_NODE: 'Elige un archivo o una carpeta válidos y vuelve a intentarlo.',
   INVALID_EXPIRY: 'Elige un vencimiento de 1, 7 o 30 días.',
-  INVALID_PASSWORD: 'Escribe una contraseña de 8 a 128 caracteres o deja el campo vacío.',
+  INVALID_PASSWORD: 'Escribe una contraseña de 8 a 128 caracteres.',
 };
 
 /** Niveles que se asignan; `OWNER` nace de la propiedad y no se asigna (RN-2, DF-31). */
