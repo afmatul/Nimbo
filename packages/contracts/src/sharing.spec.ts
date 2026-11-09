@@ -243,6 +243,15 @@ describe('contratos de enlaces públicos (plan 013 §4)', () => {
     });
   });
 
+  it('CA-16 (013b): el mensaje de una contraseña inválida pide de 8 a 128 caracteres, sin «deja el campo vacío»', () => {
+    const result = createPublicLinkSchema.safeParse({ fileId: NODE_ID, password: '' });
+
+    expect(SHARING_FIELD_MESSAGES.INVALID_PASSWORD).toBe(
+      'Escribe una contraseña de 8 a 128 caracteres.',
+    );
+    expect(result.error?.issues[0]?.message).toBe(SHARING_FIELD_MESSAGES.INVALID_PASSWORD);
+  });
+
   it('CA-2: la contraseña admite de 8 a 128 caracteres (S-2)', () => {
     expect(PUBLIC_LINK_PASSWORD_MIN_LENGTH).toBe(8);
     expect(PUBLIC_LINK_PASSWORD_MAX_LENGTH).toBe(128);
