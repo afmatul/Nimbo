@@ -129,8 +129,10 @@ no hay código ni datos de clientes (spec §5). No se repite en la demo lo que l
   Cambiarlo es código de `shared`: va a PD-200. El panel lo dice en su descripción.
 - **R-5 Errores dentro del flujo SSE.** Salen como `200`; el panel 35 los omite (S-4). Medirlos exige instrumentar
   `intelligence` (PD-200).
-- **R-6 Demo del agente y del optimizador.** Necesitan la clave de Gemini, un corpus indexado y una imagen JPEG o PNG.
-  Sin clave, el agente responde `503` y el panel 35 lo muestra como error, que también es evidencia. El runbook lo indica.
+- **R-6 Demo del agente y del optimizador.** El optimizador solo necesita una imagen JPEG o PNG. Las respuestas del
+  modelo necesitan la clave de Gemini y un corpus indexado. Sin archivos indexados, el agente responde `200` sin llamar
+  al modelo (020 CA-7) y el panel 35 queda en 0 %; sus errores se ven con `401`, `404`, `422` o el `429` de tasa, y el
+  `503` exige archivos indexados y el proveedor caído (corregido tras la demo T-06, H-9).
 - **R-7 Un tablero más largo.** 35 paneles; las filas permiten plegarlas a mano en la vista, sin guardar (aprovisionado).
 - **Desviaciones de los diagramas:** ninguna. DF-28 (e) y DF-29 siguen como los dejó 022.
 - **Pendientes que deja fuera** (filas nuevas en `pendientes.md`): **PD-200** señales que exigen instrumentar código
