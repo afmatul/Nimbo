@@ -1,0 +1,162 @@
+CA-12 — 8/11/2026, 18:19:10 (hora de Guatemala)
+
+[A] Consultas y leyendas de los paneles 16 a 35
+  OK  los 20 paneles existen en el repositorio y en Grafana
+  OK  Grafana sirve las mismas consultas y leyendas que el repositorio
+  panel 16 (row) Identidad — consultas=0 etiquetas=-
+  panel 17 (timeseries) Identidad: respuestas por ruta y código — consultas=1 etiquetas=job,route,status
+  panel 18 (timeseries) Inicios de sesión por resultado (2xx, 401, 429) — consultas=1 etiquetas=job,route,status
+  panel 19 (timeseries) Accesos denegados (403) por ruta — consultas=1 etiquetas=job,route,status
+  panel 20 (row) Almacenamiento — consultas=0 etiquetas=-
+  panel 21 (timeseries) Cargas por ruta y código — consultas=1 etiquetas=job,route,status
+  panel 22 (timeseries) Enlaces de descarga emitidos — consultas=1 etiquetas=job,route,status
+  panel 23 (timeseries) Límite de frecuencia (429) por ruta — consultas=1 etiquetas=job,route,status
+  panel 24 (row) Indexación — consultas=0 etiquetas=-
+  panel 25 (timeseries) Indexación: completados y fallidos por intento — consultas=2 etiquetas=attempts_made,queue
+  panel 26 (timeseries) Indexación: profundidad por estado — consultas=1 etiquetas=queue,state
+  panel 27 (timeseries) Indexación: ejecución p95 — consultas=1 etiquetas=le,queue
+  panel 28 (row) Optimizador — consultas=0 etiquetas=-
+  panel 29 (timeseries) Optimizador: solicitudes por ruta y código — consultas=1 etiquetas=job,route,status
+  panel 30 (timeseries) Cola optimization: completados y fallidos por intento — consultas=2 etiquetas=attempts_made,queue
+  panel 31 (timeseries) Cola optimization: ejecución p95 — consultas=1 etiquetas=le,queue
+  panel 32 (row) Agente — consultas=0 etiquetas=-
+  panel 33 (timeseries) Agente: consultas por minuto — consultas=1 etiquetas=job,route
+  panel 34 (timeseries) Agente: latencia total (p50, p95) — consultas=2 etiquetas=job,le,route
+  panel 35 (timeseries) Agente: proporción de respuestas con error — consultas=1 etiquetas=job,route,status
+  consultas totales: 18; métricas: nimbo_http_request_duration_seconds_bucket, nimbo_http_request_duration_seconds_count, nimbo_queue_job_failures_total, nimbo_queue_job_run_seconds_bucket, nimbo_queue_jobs, nimbo_queue_jobs_completed_total
+  leyendas: consultas por minuto ; error ; p50 ; p95 ; {{queue}} ; {{queue}} · completados ; {{queue}} · {{attempts_made}} intentos fallidos ; {{queue}} · {{state}} ; {{route}} ; {{route}} · {{status}} ; {{status}}
+  OK  solo etiquetas cerradas (job, route, status, queue, state, attempts_made, le) — usadas: attempts_made, job, le, queue, route, state, status
+  OK  solo métricas RN-1
+  OK  títulos, descripciones, consultas y leyendas sin correos
+  OK  títulos, descripciones, consultas y leyendas sin UUID
+  OK  títulos, descripciones, consultas y leyendas sin nombres de archivo
+  OK  títulos, descripciones, consultas y leyendas sin tokens y credenciales
+  OK  sin variables de plantilla, enlaces ni anotaciones propias con datos — variables=0 enlaces=0
+  OK  ningún panel 16-35 tiene enlaces ni transformaciones
+  OK  PD-202: las consultas del Agente no usan plan, usuario ni cuenta
+  OK  cada ruta citada existe como plantilla en un controlador — citadas=18 declaradas=90 ausentes=0
+
+[B] Series reales desde las 14:30 hasta ahora: nimbo_*=991; resto=1862
+  metricas nimbo_*: 13; etiquetas: attempts_made, dependency, instance, job, le, queue, route, state, status
+  OK  etiquetas nimbo_* sin plan, usuario, cuenta, archivo, sesión ni correo
+
+[C] Valores por dimensión (nimbo_*)
+  status: 200, 201, 202, 204, 401, 403, 404, 409, 422, 429
+  queue: editing-save, index-reconcile, index-status, indexing, invoice-retry, mail, optimization, ping, subscription-reconcile, subscription-renewal, trash-purge, upload-cleanup, usage-reconcile
+  state: active, delayed, prioritized, waiting
+  attempts_made: 1, 2, 3+
+  dependency: minio, postgres, redis
+  job: api, worker, worker-optimizer
+  instance: api:29464, worker-optimizer:23003, worker:23001
+  le: 17 valores; numéricos o +Inf: true
+  route: 33 valores
+    DELETE /api/v1/uploads/:uploadId
+    GET /api/v1/agent/status
+    GET /api/v1/backoffice/plans
+    GET /api/v1/files/:fileId/indexing
+    GET /api/v1/files/:fileId/optimization
+    GET /api/v1/files/:fileId/versions
+    GET /api/v1/folders/contents
+    GET /api/v1/health/live
+    GET /api/v1/health/ready
+    GET /api/v1/quick-access
+    GET /api/v1/storage/summary
+    GET /api/v1/trash/summary
+    GET <sin patrón>
+    POST /api/v1/agent/ask
+    POST /api/v1/auth/change-password
+    POST /api/v1/auth/forgot-password
+    POST /api/v1/auth/login
+    POST /api/v1/auth/register
+    POST /api/v1/auth/resend-verification
+    POST /api/v1/auth/reset-password
+    POST /api/v1/auth/reset-password/check
+    POST /api/v1/auth/session/logout
+    POST /api/v1/auth/session/refresh
+    POST /api/v1/auth/verify-email
+    POST /api/v1/files/:fileId/download-url
+    POST /api/v1/files/:fileId/optimization/estimate
+    POST /api/v1/files/:fileId/optimization/run
+    POST /api/v1/files/:fileId/versions/:versionId/download-url
+    POST /api/v1/quick-access/recents/:nodeType/:nodeId
+    POST /api/v1/sessions/revoke-others
+    POST /api/v1/uploads
+    POST /api/v1/uploads/:uploadId/complete
+    POST /api/v1/uploads/:uploadId/resume
+  OK  todo valor de route es una plantilla (sin ids, números, hex ni consulta)
+  rutas observadas que el lector de controladores no reconoce: 2 (GET /api/v1/health/live ; GET /api/v1/health/ready)
+  OK  status solo códigos de 3 dígitos
+  OK  attempts_made cerrado en 1, 2, 3+
+  OK  state cerrado en cuatro estados
+  OK  valores nimbo_* sin correos — coincidencias=0
+  OK  valores nimbo_* sin UUID — coincidencias=0
+  OK  valores nimbo_* sin nombres de archivo — coincidencias=0
+  OK  valores nimbo_* sin tokens — coincidencias=0
+  otras series (cAdvisor y sistema): etiquetas boot_id, cadvisorRevision, cadvisorVersion, cpu, device, failure_type, id, image, instance, job, kernelVersion, kind, le, major, minor, mode, name, osVersion, patch, quantile, scope, space, type, version
+    correos: 0 {}
+    UUID: 1 {"boot_id":1}
+    nombres de archivo: 0 {}
+    tokens: 0 {}
+
+[D] Canarios sintéticos del ensayo (sin imprimir): usuario.id=6, usuario.correo=6, usuario.nombre=6, archivo.id=12, archivo.nombre=12, carga.id=17, carga.clave_objeto=17, version.id=15, version.clave_objeto=15, sesion.id=12, indexacion.id=3, optimizacion.id=3, evento.id=391, cliente.correo=6, cliente.clave=6, grafana.clave=2, env.secreto=5
+  OK  valores de etiquetas de Prometheus sin canarios
+  OK  /metrics api sin canarios
+    /metrics api: 34725 bytes; correos=false UUID=false archivos=false
+  OK  /metrics worker sin canarios
+    /metrics worker: 29629 bytes; correos=false UUID=false archivos=false
+  OK  /metrics worker-optimizer sin canarios
+    /metrics worker-optimizer: 11490 bytes; correos=false UUID=false archivos=false
+  OK  JSON del tablero servido por Grafana sin canarios
+
+[E] Evidencias
+  OK  03-apps-y-prometheus-20261108-151944.txt sin canarios
+  OK  06-h2-grafana-oom-20261108-152513.txt sin canarios
+  OK  08-grafana-512mib-estabilidad-20261108-154927.txt sin canarios
+  OK  15-identidad-almacenamiento-trafico-20261108-163612.txt sin canarios
+  OK  16-monitor-grafana-trafico-20261108-163612.csv sin canarios
+  OK  29-indexacion-optimizador-agente-20261108-165935.txt sin canarios
+  OK  30-monitor-grafana-modulos-20261108-165935.csv sin canarios
+  OK  37-ca14-acceso-20261108-181559.txt sin canarios
+  01-ca15-tablero-arranque-limpio-20261108-145116.png | 281745 B | 1600x6400 | difHora=1s | texto=no
+  02-ca15-grupos-de-modulos-20261108-145116.png | 110848 B | 1600x3567 | difHora=1s | texto=no
+  03-apps-y-prometheus-20261108-151944.txt | 5727 B | difHora=15s | patrones=no | canarios=no
+  04-apps-tablero-con-metricas-reales-20261108-152439.png | 516281 B | 1600x6400 | difHora=1s | texto=no
+  05-h2-grafana-falla-al-cargar-tras-oom-20261108-151944.png | 69022 B | 1600x6400 | difHora=1s | texto=no
+  06-h2-grafana-oom-20261108-152513.txt | 989 B | difHora=1s | patrones=no | canarios=no
+  07-grafana-512mib-tablero-20261108-154754.png | 511519 B | 1600x6400 | difHora=1s | texto=no
+  08-grafana-512mib-estabilidad-20261108-154927.txt | 8283 B | difHora=13s | patrones=no | canarios=no
+  09-ca01-identidad-paneles-16-19-20261108-163151.png | 95745 B | 1600x646 | difHora=1s | texto=no
+  10-ca01-panel-17-registros-20261108-163423.png | 170794 B | 1600x1100 | difHora=1s | texto=no
+  11-ca01-panel-18-401-429-20261108-163439.png | 109881 B | 1600x1100 | difHora=1s | texto=no
+  12-ca02-almacenamiento-paneles-20-23-20261108-163151.png | 88079 B | 1600x646 | difHora=1s | texto=no
+  13-ca02-panel-21-etiqueta-cargas-r3-20261108-163455.png | 120744 B | 1600x1100 | difHora=0s | texto=no
+  14-ca02-panel-22-descargas-20261108-163511.png | 101955 B | 1600x1100 | difHora=0s | texto=no
+  15-identidad-almacenamiento-trafico-20261108-163612.txt | 13401 B | difHora=1s | patrones=no | canarios=no
+  16-monitor-grafana-trafico-20261108-163612.csv | 5722 B | difHora=-28s | patrones=no | canarios=no
+  17-ca07-indexacion-paneles-24-27-20261108-165542.png | 81561 B | 1600x646 | difHora=0s | texto=no
+  18-ca08-optimizador-paneles-28-31-20261108-165542.png | 77607 B | 1600x646 | difHora=0s | texto=no
+  19-ca11-agente-paneles-32-35-20261108-165542.png | 34581 B | 1600x340 | difHora=0s | texto=no
+  20-ca07-panel-25-completados-fallidos-20261108-165557.png | 130460 B | 1600x1100 | difHora=1s | texto=no
+  21-ca07-panel-26-profundidad-20261108-165613.png | 79779 B | 1600x1100 | difHora=0s | texto=no
+  22-ca07-panel-27-p95-20261108-165629.png | 87264 B | 1600x1100 | difHora=0s | texto=no
+  23-ca08-panel-29-solicitudes-20261108-165644.png | 119500 B | 1600x1100 | difHora=1s | texto=no
+  24-ca08-panel-30-cola-20261108-165700.png | 115854 B | 1600x1100 | difHora=0s | texto=no
+  25-ca08-panel-31-p95-20261108-165716.png | 84637 B | 1600x1100 | difHora=0s | texto=no
+  26-ca11-panel-33-consultas-20261108-165731.png | 87244 B | 1600x1100 | difHora=1s | texto=no
+  27-ca11-panel-34-latencia-20261108-165747.png | 85170 B | 1600x1100 | difHora=0s | texto=no
+  28-ca11-panel-35-errores-20261108-165803.png | 84479 B | 1600x1100 | difHora=0s | texto=no
+  29-indexacion-optimizador-agente-20261108-165935.txt | 17031 B | difHora=2s | patrones=no | canarios=no
+  30-monitor-grafana-modulos-20261108-165935.csv | 2884 B | difHora=-27s | patrones=no | canarios=no
+  31-ca14-anonimo-redirige-a-login-20261108-181440.png | 777120 B | 1600x1000 | difHora=0s | texto=no
+  32-ca14-viewer-barra-del-tablero-20261108-181514.png | 29056 B | 1600x150 | difHora=0s | texto=no
+  33-ca14-viewer-cinco-grupos-20261108-181514.png | 375109 B | 1600x3294 | difHora=1s | texto=no
+  34-ca14-editor-barra-del-tablero-20261108-181552.png | 31071 B | 1600x150 | difHora=1s | texto=no
+  35-ca14-editor-cinco-grupos-20261108-181552.png | 375109 B | 1600x3294 | difHora=1s | texto=no
+  36-ca14-editor-tablero-temporal-guardado-20261108-181558.png | 46870 B | 1600x900 | difHora=1s | texto=no
+  37-ca14-acceso-20261108-181559.txt | 3031 B | difHora=0s | patrones=no | canarios=no
+  archivos idénticos: 33-ca14-viewer-cinco-grupos-20261108-181514.png = 35-ca14-editor-cinco-grupos-20261108-181552.png (misma vista, ventana y datos; el rol se distingue en 32, 34 y 37)
+  total: 37 archivos, 4936152 B
+
+RESULTADO: sin fallos
+Cuentas de Grafana en el servidor: administrador, nimbo-admin, operador
+Paneles sin series en la ventana de las capturas de CA-14: 15 (Disco usado por contenedor)

@@ -1,0 +1,253 @@
+022d T-06: cobertura adicional de Indexacion, Optimizador y Agente. Generado 2026-11-08 19:38:58 (hora de Guatemala, UTC-6)
+rama: ccr-8a865a6f-771ym2 HEAD: 5a5dc5c8
+Datos sinteticos. GEMINI_API_KEY vacia. API y workers sin --watch. Sin tocar colas, Redis ni workers.
+
+== Contadores antes
+[antes] indexacion 19:11:13
+  completados por cola:
+    queue=index-reconcile = 30
+    queue=indexing = 3
+  intentos fallidos por cola e intento:
+    (sin series)
+  ejecuciones registradas por cola:
+    queue=index-reconcile = 30
+    queue=indexing = 3
+  profundidad por cola y estado (> 0):
+    queue=index-reconcile state=delayed = 1
+  HTTP por ruta y código:
+    route=POST /api/v1/uploads status=201 = 6
+    route=POST /api/v1/uploads/:uploadId/complete status=200 = 6
+[antes] optimizador 19:11:14
+  completados por cola:
+    queue=optimization = 6
+  intentos fallidos por cola e intento:
+    (sin series)
+  ejecuciones registradas por cola:
+    queue=optimization = 6
+  profundidad por cola y estado (> 0):
+    (sin series)
+  HTTP por ruta y código:
+    route=POST /api/v1/files/:fileId/optimization/estimate status=202 = 3
+    route=POST /api/v1/files/:fileId/optimization/run status=202 = 3
+[antes] agente 19:11:14
+  HTTP por ruta y código:
+    route=POST /api/v1/agent/ask status=200 = 6
+    route=POST /api/v1/agent/ask status=422 = 2
+
+== Trafico (19:11 a 19:27)
+19:11:16 === Optimizador
+19:11:16 POST /api/v1/auth/login -> 200 153 ms
+19:11:36 --- PNG 1: 1800x1200, 3 canales, 6491651 bytes
+19:11:37   carga: 200 tipo=imagen bytes=6491651
+19:11:37 POST /api/v1/files/:fileId/optimization/estimate -> 202 57 ms
+19:11:37   estado inicial: estimando
+19:11:38   estimación: estimada tras 1 s motivo=null
+19:11:38   estimados=28011 ahorro=6463640 (99.5 %)
+19:11:58 POST /api/v1/files/:fileId/optimization/run -> 202 86 ms
+19:11:59   optimización: completada tras 1 s motivo=null
+19:11:59   resultado=28011 ahorro=6463640 (99.5 %)
+19:11:59   integridad: formato=png 1800x1200 canales=3 alfa=false bytes=28011 coincide_resultBytes=true menor=true pixeles_identicos=true
+19:11:59   versiones del archivo: 2
+19:12:19 --- PNG 2: 1600x1000, 4 canales, 6411311 bytes
+19:12:19   carga: 200 tipo=imagen bytes=6411311
+19:12:20 POST /api/v1/files/:fileId/optimization/estimate -> 202 49 ms
+19:12:20   estado inicial: estimando
+19:12:21   estimación: estimada tras 1 s motivo=null
+19:12:21   estimados=27748 ahorro=6383563 (99.5 %)
+19:12:41 POST /api/v1/files/:fileId/optimization/run -> 202 65 ms
+19:12:42   optimización: completada tras 1 s motivo=null
+19:12:42   resultado=27748 ahorro=6383563 (99.5 %)
+19:12:42   integridad: formato=png 1600x1000 canales=4 alfa=true bytes=27748 coincide_resultBytes=true menor=true pixeles_identicos=true
+19:12:42   versiones del archivo: 2
+19:13:02 --- PNG truncado: firma y cabecera válidas, sin datos completos (lo que subiría un cliente con un archivo dañado)
+19:13:02   carga: 200 tipo=imagen bytes=1623089
+19:13:02 POST /api/v1/files/:fileId/optimization/estimate -> 202 65 ms
+19:13:03   estimación del PNG truncado: no_disponible tras 1 s motivo=ilegible
+19:13:23 --- códigos controlados
+19:13:23   carga: 200 tipo=docx bytes=938
+19:13:23 POST /api/v1/files/:fileId/optimization/estimate -> 401 SHARED_UNAUTHENTICATED 4 ms
+19:13:23 POST /api/v1/files/:fileId/optimization/estimate -> 422 OPTIMIZER_UNSUPPORTED_TYPE 46 ms
+19:13:24 POST /api/v1/files/:fileId/optimization/run -> 409 OPTIMIZER_ESTIMATE_STALE 40 ms
+19:13:44 POST /api/v1/files/:fileId/optimization/estimate -> 401 SHARED_UNAUTHENTICATED 6 ms
+19:13:44 POST /api/v1/files/:fileId/optimization/estimate -> 422 OPTIMIZER_UNSUPPORTED_TYPE 57 ms
+19:13:44 POST /api/v1/files/:fileId/optimization/run -> 409 OPTIMIZER_ESTIMATE_STALE 96 ms
+19:15:14 --- ráfaga acotada A: 12 estimaciones de un archivo inexistente (límite 10 por minuto; no encola trabajos)
+19:15:14   {"404 STORAGE_NODE_NOT_FOUND":10,"429 SHARED_TOO_MANY_REQUESTS":2}
+19:16:24 --- ráfaga acotada B: 12 estimaciones de un archivo inexistente (límite 10 por minuto; no encola trabajos)
+19:16:24   {"404 STORAGE_NODE_NOT_FOUND":10,"429 SHARED_TOO_MANY_REQUESTS":2}
+19:17:54 === Indexación
+19:17:54 POST /api/v1/auth/login -> 200 73 ms
+19:18:14 --- tanda 1: 6 DOCX ya subidos; se completan juntos justo antes de una recolección del worker
+19:18:33   disparo de los seis complete
+19:18:33   complete: 200; próxima recolección en 571 ms
+19:19:08   profundidad máxima vista por Prometheus (90 s): {"waiting":0,"active":0}
+19:19:08   estados finales: {"fallido/proveedor_no_disponible":6}
+19:19:08 --- tanda 2: 6 DOCX ya subidos; se completan juntos justo antes de una recolección del worker
+19:19:18   disparo de los seis complete
+19:19:18   complete: 200; próxima recolección en 478 ms
+19:19:53   profundidad máxima vista por Prometheus (90 s): {"waiting":0,"active":1}
+19:19:53   estados finales: {"fallido/proveedor_no_disponible":6}
+19:19:53   profundidad observada; no hace falta otra tanda
+19:20:13 --- DOCX sin document.xml: ZIP válido pero no es un documento
+19:20:13   carga: 422 STORAGE_INVALID_FILE_TYPE
+19:20:33 === Agente
+19:20:33 POST /api/v1/auth/login -> 200 63 ms
+19:20:33 GET /api/v1/agent/status -> 200 33 ms
+19:20:33   estado: used=0 limit=20 hasIndexedFiles=false
+19:20:53 POST /api/v1/agent/ask -> 401 SHARED_UNAUTHENTICATED 4 ms
+19:21:13 POST /api/v1/agent/ask -> 422 AGENT_INVALID_QUESTION 9 ms
+19:21:13   motivo: {"reason":"too_long"}
+19:21:33 POST /api/v1/agent/ask -> 404 AGENT_SCOPE_NOT_FOUND 20 ms
+19:21:54 POST /api/v1/agent/ask -> 200 41 ms
+19:21:54   flujo: text/event-stream; event=(sin campo event); tipos en data=delta,done; lineas=2
+19:22:14 POST /api/v1/agent/ask -> 401 SHARED_UNAUTHENTICATED 3 ms
+19:22:34 POST /api/v1/agent/ask -> 422 AGENT_INVALID_QUESTION 9 ms
+19:22:34   motivo: {"reason":"too_long"}
+19:22:54 POST /api/v1/agent/ask -> 404 AGENT_SCOPE_NOT_FOUND 27 ms
+19:23:14 POST /api/v1/agent/ask -> 200 27 ms
+19:23:14   flujo: text/event-stream; event=(sin campo event); tipos en data=delta,done; lineas=2
+19:24:44 --- ráfaga acotada A: 12 preguntas (límite 10 por minuto y cuenta; es el 429 de tasa, no el de cuota del plan)
+19:24:44   {"200":10,"429 SHARED_TOO_MANY_REQUESTS":2}
+19:25:54 --- ráfaga acotada B: 12 preguntas (límite 10 por minuto y cuenta; es el 429 de tasa, no el de cuota del plan)
+19:25:54   {"200":10,"429 SHARED_TOO_MANY_REQUESTS":2}
+19:27:04 GET /api/v1/agent/status -> 200 23 ms
+19:27:04   estado final: used=0 limit=20 hasIndexedFiles=false
+
+DISCREPANCIAS (1):
+POST /api/v1/uploads/:uploadId/complete: esperado 200, real 422 STORAGE_INVALID_FILE_TYPE
+Nota: la discrepancia es de la expectativa del ensayo; complete rechazo con 422 un ZIP que no era un DOCX. No se ejercito no_indexable.
+
+== Contadores despues
+[despues] indexacion 19:38:58
+  completados por cola:
+    queue=index-reconcile = 35
+    queue=indexing = 16
+  intentos fallidos por cola e intento:
+    (sin series)
+  ejecuciones registradas por cola:
+    queue=index-reconcile = 35
+    queue=indexing = 16
+  profundidad por cola y estado (> 0):
+    queue=index-reconcile state=delayed = 1
+  HTTP por ruta y código:
+    route=POST /api/v1/uploads status=201 = 23
+    route=POST /api/v1/uploads/:uploadId/complete status=200 = 22
+    route=POST /api/v1/uploads/:uploadId/complete status=422 = 1
+[despues] optimizador 19:38:59
+  completados por cola:
+    queue=optimization = 11
+  intentos fallidos por cola e intento:
+    (sin series)
+  ejecuciones registradas por cola:
+    queue=optimization = 11
+  profundidad por cola y estado (> 0):
+    (sin series)
+  HTTP por ruta y código:
+    route=POST /api/v1/files/:fileId/optimization/estimate status=202 = 6
+    route=POST /api/v1/files/:fileId/optimization/estimate status=401 = 2
+    route=POST /api/v1/files/:fileId/optimization/estimate status=404 = 20
+    route=POST /api/v1/files/:fileId/optimization/estimate status=422 = 2
+    route=POST /api/v1/files/:fileId/optimization/estimate status=429 = 4
+    route=POST /api/v1/files/:fileId/optimization/run status=202 = 5
+    route=POST /api/v1/files/:fileId/optimization/run status=409 = 2
+[despues] agente 19:38:59
+  HTTP por ruta y código:
+    route=POST /api/v1/agent/ask status=200 = 28
+    route=POST /api/v1/agent/ask status=401 = 2
+    route=POST /api/v1/agent/ask status=404 = 2
+    route=POST /api/v1/agent/ask status=422 = 4
+    route=POST /api/v1/agent/ask status=429 = 4
+
+== Eventos acumulados desde 16:43 (sin identificadores)
+eventos distintos: 4
+  x1 16:43:48-16:43:48 level=30 event=index.reconcile_scheduled
+  x35 16:44:52-19:34:52 level=30 event=index.reconcile_completed
+  x16 16:45:17-19:19:18 level=30 event=indexing.started attempt=1
+  x16 16:45:17-19:19:18 level=40 event=indexing.failed reason=proveedor_no_disponible state=fallido attempt=1
+eventos distintos: 3
+  x5 16:48:07-19:12:20 level=30 event=optimization.estimated
+  x5 16:48:29-19:12:41 level=30 event=optimization.completed reason=null
+  x1 19:13:02-19:13:02 level=30 event=optimization.unavailable reason=ilegible
+eventos distintos: 3
+  x28 16:51:13-19:25:54 level=30 event=agent.asked outcome=no_indexed
+  x6 16:53:14-19:22:54 level=30 event=agent.asked outcome=invalid
+  x4 19:24:44-19:25:54 level=30 event=agent.asked outcome=rate_limited
+
+== Estado en BD de la indexacion (estado | motivo | total)
+fallido | proveedor_no_disponible | 16
+
+== Estado en BD de la optimizacion (estado | motivo | total)
+completada | - | 5
+no_disponible | ilegible | 1
+
+== Consultas reales de los paneles
+ventana: últimos 45 min, hasta Sun Nov 08 2026 19:39:00 GMT-0600 (hora estándar central)
+
+Panel 26: Indexación: profundidad por estado
+  index-reconcile · active                                               mín=0.0000 máx=0.0000 puntos=91 NaN=0
+  index-reconcile · delayed                                              mín=1.0000 máx=1.0000 puntos=91 NaN=0
+  index-reconcile · prioritized                                          mín=0.0000 máx=0.0000 puntos=91 NaN=0
+  index-reconcile · waiting                                              mín=0.0000 máx=0.0000 puntos=91 NaN=0
+  indexing · active                                                      mín=0.0000 máx=1.0000 puntos=91 NaN=0
+  indexing · delayed                                                     mín=0.0000 máx=0.0000 puntos=91 NaN=0
+  indexing · prioritized                                                 mín=0.0000 máx=0.0000 puntos=91 NaN=0
+  indexing · waiting                                                     mín=0.0000 máx=0.0000 puntos=91 NaN=0
+
+Panel 27: Indexación: ejecución p95
+  index-reconcile                                                        mín=0.0950 máx=0.4800 puntos=82 NaN=9
+  indexing                                                               mín=0.3800 máx=0.4800 puntos=20 NaN=71
+
+Panel 29: Optimizador: solicitudes por ruta y código
+  POST /api/v1/files/:fileId/optimization/estimate · 202                 mín=0.0000 máx=0.0105 puntos=91 NaN=0
+  POST /api/v1/files/:fileId/optimization/estimate · 401                 mín=0.0000 máx=0.0047 puntos=51 NaN=0
+  POST /api/v1/files/:fileId/optimization/estimate · 404                 mín=0.0000 máx=0.0403 puntos=47 NaN=0
+  POST /api/v1/files/:fileId/optimization/estimate · 422                 mín=0.0000 máx=0.0047 puntos=51 NaN=0
+  POST /api/v1/files/:fileId/optimization/estimate · 429                 mín=0.0000 máx=0.0081 puntos=47 NaN=0
+  POST /api/v1/files/:fileId/optimization/run · 202                      mín=0.0000 máx=0.0070 puntos=91 NaN=0
+  POST /api/v1/files/:fileId/optimization/run · 409                      mín=0.0000 máx=0.0047 puntos=51 NaN=0
+
+Panel 30: Cola optimization: completados y fallidos por intento
+  optimization · completados                                             mín=0.0000 máx=0.0175 puntos=91 NaN=0
+  optimization · 1 intentos fallidos                                     mín=0.0000 máx=0.0000 puntos=91 NaN=0
+  optimization · 2 intentos fallidos                                     mín=0.0000 máx=0.0000 puntos=91 NaN=0
+  optimization · 3+ intentos fallidos                                    mín=0.0000 máx=0.0000 puntos=91 NaN=0
+
+Panel 31: Cola optimization: ejecución p95
+  optimization                                                           mín=0.4800 máx=0.9500 puntos=13 NaN=78
+
+Panel 33: Agente: consultas por minuto
+  consultas por minuto                                                   mín=0.0000 máx=5.9570 puntos=91 NaN=0
+
+Panel 34: Agente: latencia total (p50, p95)
+  p50                                                                    mín=0.0073 máx=0.0175 puntos=19 NaN=72
+  p95                                                                    mín=0.0097 máx=0.0475 puntos=19 NaN=72
+
+Panel 35: Agente: proporción de respuestas con error
+  error                                                                  mín=0.0882 máx=1.0000 puntos=19 NaN=72
+
+Contadores acumulados por ruta y código
+  GET /api/v1/files/:fileId/indexing                                   200 = 18
+  GET /api/v1/files/:fileId/optimization                               200 = 22
+  GET /api/v1/files/:fileId/versions                                   200 = 5
+  POST /api/v1/files/:fileId/download-url                              200 = 5
+  POST /api/v1/files/:fileId/optimization/estimate                     202 = 6
+  POST /api/v1/files/:fileId/optimization/estimate                     401 = 2
+  POST /api/v1/files/:fileId/optimization/estimate                     404 = 20
+  POST /api/v1/files/:fileId/optimization/estimate                     422 = 2
+  POST /api/v1/files/:fileId/optimization/estimate                     429 = 4
+  POST /api/v1/files/:fileId/optimization/run                          202 = 5
+  POST /api/v1/files/:fileId/optimization/run                          409 = 2
+
+Valores de la etiqueta route: 33; con UUID o @: 0
+
+== Privacidad de etiquetas tras el trafico nuevo
+series nimbo_* en 2 h: 725; etiquetas: attempts_made, dependency, instance, job, le, queue, route, state, status
+  queue: editing-save, index-reconcile, index-status, indexing, invoice-retry, mail, optimization, ping, subscription-reconcile, subscription-renewal, trash-purge, upload-cleanup, usage-reconcile
+  state: active, delayed, prioritized, waiting
+  status: 200, 201, 202, 401, 404, 409, 422, 429
+  attempts_made: 1, 2, 3+
+  dependency: minio, postgres, redis
+  job: api, worker, worker-optimizer
+  route: 14 plantillas
+  plan u otra etiqueta por cuenta: (ninguna)
+valores con datos prohibidos: 0
