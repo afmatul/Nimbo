@@ -5,6 +5,7 @@ import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import type { JSX } from 'react';
 import { useWatch } from 'react-hook-form';
 
+import { PasswordField } from '../../../components/nimbo/password-field';
 import { TextLink } from '../../../components/nimbo/text-link';
 import { Alert } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
@@ -20,7 +21,6 @@ import {
 
 import { FieldError } from './field-error';
 import { RESET_PASSWORD_HREF } from './login-alert';
-import { PasswordField } from './password-field';
 import { PasswordRequirements } from './password-requirements';
 import { ServerErrorAlert } from './server-error-alert';
 

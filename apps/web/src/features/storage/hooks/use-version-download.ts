@@ -1,9 +1,8 @@
 'use client';
 
 import type { DownloadUrlResponse, FileVersionSummary } from '@nimbo/contracts';
-import * as React from 'react';
 
-import { PREPARING_DELAY_MS } from '../components/file-row-menu';
+import { usePreparingDownload } from '../../../lib/use-preparing-download';
 
 export interface VersionDownload {
   /** Versión cuya URL tarda más de 2 s: su botón dice «Preparando…» (RNF-14). */
@@ -20,26 +19,11 @@ export function useVersionDownload(
   openUrl: (url: string) => void,
   onFailure: (version: FileVersionSummary, error: unknown, retry: () => void) => void,
 ): VersionDownload {
-  const [preparingId, setPreparingId] = React.useState<string | null>(null);
-  const inFlight = React.useRef(false);
-  const preparingTimer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
-  React.useEffect(() => () => clearTimeout(preparingTimer.current), []);
-
-  const download = async (version: FileVersionSummary): Promise<void> => {
-    if (inFlight.current) return;
-    inFlight.current = true;
-    preparingTimer.current = setTimeout(() => setPreparingId(version.id), PREPARING_DELAY_MS);
-    try {
-      openUrl((await requestUrl(version)).url);
-    } catch (error) {
-      onFailure(version, error, () => void download(version));
-    } finally {
-      clearTimeout(preparingTimer.current);
-      inFlight.current = false;
-      setPreparingId(null);
-    }
+  const { preparing, download } = usePreparingDownload(requestUrl, onFailure, openUrl);
+  return {
+    preparingId: preparing?.id ?? null,
+    download: async (version) => {
+      await download(version);
+    },
   };
-
-  return { preparingId, download };
 }

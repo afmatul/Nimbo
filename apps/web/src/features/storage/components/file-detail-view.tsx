@@ -3,6 +3,7 @@
 import * as React from 'react';
 
 import { AppLayout, type AppLayoutProps } from '../../../components/nimbo/app-layout';
+import { openInBrowser } from '../../../lib/use-preparing-download';
 import type { IndexingApi } from '../../intelligence/indexing-api';
 import type { OptimizerApi } from '../../optimizer/optimizer-api';
 import { ShareDialog, type ShareTarget, type SharingApi } from '../../sharing';
@@ -12,7 +13,7 @@ import { useSharedFile } from '../hooks/use-shared-file';
 import { useTrashCount } from '../hooks/use-trash-count';
 import { useUploads } from '../hooks/use-upload-manager';
 
-import { openInBrowser, type DownloadNotice } from './file-row-menu';
+import type { DownloadNotice } from './file-row-menu';
 import { OwnFileDetail, type SidebarNotice } from './own-file-detail';
 import { useQuickAccessSidebar } from './quick-access-sidebar';
 import { ReadOnlyNotice } from './read-only-notice';

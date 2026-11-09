@@ -7,6 +7,7 @@ import { StateView } from '../../../components/nimbo/state-view';
 import { Alert } from '../../../components/ui/alert';
 import { toApiClientError } from '../../../lib/api-error';
 import { messageForCode } from '../../../lib/error-catalog';
+import { openInBrowser } from '../../../lib/use-preparing-download';
 import type { AuthFetch } from '../../identity/session/auth-fetch';
 import { useAuthFetch } from '../../identity/session/use-auth-fetch';
 import { useSpace, type SpaceSummaryState } from '../../storage/components/space-provider';
@@ -174,9 +175,6 @@ export function PlanAndBillingView(props: PlanAndBillingViewProps): React.JSX.El
     </BillingPageLayout>
   );
 }
-
-/** Abre la URL firmada en la pestaña: el navegador descarga el PDF (`attachment`). */
-const openInBrowser = (url: string): void => window.location.assign(url);
 
 export interface PlanAndBillingProps {
   readonly apiPublicUrl: string;
