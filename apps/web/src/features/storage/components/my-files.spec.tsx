@@ -23,8 +23,6 @@ import { MyFiles } from './my-files';
 import { UploadsSpaceProvider } from './space-provider';
 import { UploadsProvider } from './uploads-provider';
 
-jest.mock('../../identity/components/sign-out-button', () => ({ SignOutButton: () => null }));
-
 const AT = '2026-09-30T10:00:00.000Z';
 const ALPHA: FolderRef = { id: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d', name: 'Proyecto Alpha' };
 const FASE3: FolderRef = { id: '2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e', name: 'Fase 3' };

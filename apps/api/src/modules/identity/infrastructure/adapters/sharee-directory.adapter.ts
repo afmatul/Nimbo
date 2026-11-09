@@ -9,6 +9,13 @@ import { UsuarioOrmEntity } from '../persistence/usuario.orm-entity';
 
 import { UserDirectoryAdapter } from './user-directory.adapter';
 
+/** 012 RN-3, 013 CA-11: solo un cliente verificado y activo recibe accesos o comparte un enlace público. */
+const ACTIVE_CLIENT = {
+  rol: Role.CLIENT,
+  estado: AccountStatus.ACTIVE,
+  correoVerificado: true,
+} as const;
+
 /**
  * `IShareeDirectory` de `sharing` (012 CA-3, RN-3, RN-8, DF-84). El destinatario es un cliente verificado y activo;
  * el filtro va en la consulta, así no existe, interna, sin verificar y suspendida dan el mismo `null`. Lee `usuario`
@@ -25,12 +32,7 @@ export class ShareeDirectoryAdapter implements IShareeDirectory {
   async findClientByEmail(email: string): Promise<Sharee | null> {
     const row = await this.context.manager().findOne(UsuarioOrmEntity, {
       select: { id: true, nombre: true, correo: true },
-      where: {
-        correo: EmailAddress.of(email).value,
-        rol: Role.CLIENT,
-        estado: AccountStatus.ACTIVE,
-        correoVerificado: true,
-      },
+      where: { correo: EmailAddress.of(email).value, ...ACTIVE_CLIENT },
     });
     return row === null ? null : { id: row.id, displayName: row.nombre, email: row.correo };
   }
@@ -49,5 +51,14 @@ export class ShareeDirectoryAdapter implements IShareeDirectory {
 
   displayNames(userIds: readonly string[]): Promise<ReadonlyMap<string, string>> {
     return this.users.displayNames(userIds);
+  }
+
+  /** 013 CA-9, CA-11: con el filtro de `findClientByEmail` en la consulta; suspendida o interna dan `null`. */
+  async activeDisplayName(userId: string): Promise<string | null> {
+    const row = await this.context.manager().findOne(UsuarioOrmEntity, {
+      select: { nombre: true },
+      where: { id: userId, ...ACTIVE_CLIENT },
+    });
+    return row?.nombre ?? null;
   }
 }

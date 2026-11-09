@@ -1,4 +1,5 @@
 import { AUDIT_TRIGGERS, INDEXING_REASONS, INTERNAL_ROLES } from '@nimbo/contracts';
+import type { AuditTrigger } from '@nimbo/contracts';
 
 import type { AttributeRules } from '../domain/attribute-sanitizer';
 import type { AuditAttributes, AuditResourceType } from '../domain/audit-entry';
@@ -28,6 +29,18 @@ const ON_SHARE = {
   resourceType: fromAttribute('nodeType'),
   attributes: { nodeType: NODE_TYPES, level: SHARE_LEVELS },
 } as const;
+/**
+ * Enlace público (013 CA-15): solo el archivo, cómo se protegió y por qué dejó de servir. `expiresInDays` es un número
+ * (1, 7 o 30 lo garantiza `PublicLink`): las listas cerradas del saneo son de texto.
+ */
+const PUBLIC_LINK_PROTECTIONS = ['password', 'none'] as const;
+const PUBLIC_LINK_REVOKE_REASONS = ['revoked', 'replaced'] as const;
+/** Lo que hace un visitante de un enlace (013 CA-18): sobre el archivo y solo con `trigger`, siempre `public_link`. */
+const PUBLIC_LINK_TRIGGERS = ['public_link'] as const satisfies readonly AuditTrigger[];
+const ON_PUBLIC_LINK_VISIT = {
+  resourceType: 'file',
+  attributes: { trigger: PUBLIC_LINK_TRIGGERS },
+} as const;
 const NODE_ATTRIBUTES = { nodeType: NODE_TYPES, itemCount: 'number', sizeBytes: 'number' } as const;
 const ON_ACCOUNT = { resourceType: 'account', attributes: {} } as const;
 const ON_PLAN = { resourceType: 'plan', attributes: {} } as const;
@@ -51,8 +64,8 @@ const OPTIMIZATION_ATTRIBUTES = {
  * acciones de 005 y 006 (D-1) con los atributos que emiten hoy, las dos de versiones de 014 (plan §5; un reemplazo
  * reutiliza `file.upload_completed` con `replaced`, `versionId` y `versionNumber`), las siete internas de 011 (plan
  * §2), que no guardan nombres ni correos, las tres de edición de 016 (plan §5), las nueve de la suscripción de 010
- * (plan §2, sin datos de tarjeta), las cuatro de indexación de 019 (D-6), los ajustes de cuenta de 011b (plan §4) y las tres de compartición de 012
- * (plan §5).
+ * (plan §2, sin datos de tarjeta), las cuatro de indexación de 019 (D-6), los ajustes de cuenta de 011b (plan §4), las tres de compartición de 012
+ * (plan §5) y las de enlaces públicos de 013 (plan §2).
  * Cada spec agrega las suyas. Una acción del enum sin entrada no compila.
  */
 export const AUDIT_CATALOG = {
@@ -170,6 +183,16 @@ export const AUDIT_CATALOG = {
   [AuditAction.SHARE_GRANTED]: ON_SHARE,
   [AuditAction.SHARE_LEVEL_CHANGED]: ON_SHARE,
   [AuditAction.SHARE_REVOKED]: ON_SHARE,
+  [AuditAction.PUBLIC_LINK_CREATED]: {
+    resourceType: 'file',
+    attributes: { expiresInDays: 'number', protection: PUBLIC_LINK_PROTECTIONS },
+  },
+  [AuditAction.PUBLIC_LINK_REVOKED]: {
+    resourceType: 'file',
+    attributes: { reason: PUBLIC_LINK_REVOKE_REASONS },
+  },
+  [AuditAction.PUBLIC_LINK_DOWNLOADED]: ON_PUBLIC_LINK_VISIT,
+  [AuditAction.PUBLIC_LINK_LOCKED]: ON_PUBLIC_LINK_VISIT,
   [AuditAction.FILE_OPTIMIZED]: {
     resourceType: 'file',
     attributes: { ...OPTIMIZATION_ATTRIBUTES, versionId: 'uuid' },

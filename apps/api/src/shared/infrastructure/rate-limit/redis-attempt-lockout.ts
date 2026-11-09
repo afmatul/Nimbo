@@ -3,14 +3,16 @@ import { randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import type { Redis } from 'ioredis';
 
-import { I_CLOCK, REDIS_CLIENT } from '../../../shared';
-import type { IClock } from '../../../shared';
 import type {
   AttemptReservation,
+  FailureRecord,
   IAttemptLockout,
   LockoutPolicy,
   LockState,
-} from '../application/ports/i-attempt-lockout.port';
+} from '../../application/rate-limit/i-attempt-lockout.port';
+import { I_CLOCK } from '../../domain/i-clock.port';
+import type { IClock } from '../../domain/i-clock.port';
+import { REDIS_CLIENT } from '../redis/redis-client.provider';
 
 const MS_PER_SECOND = 1000;
 /** Margen del TTL del bloqueo: Redis solo limpia; el vencimiento lo decide el valor frente a `now` (plan §6.4). */
@@ -78,9 +80,11 @@ export class RedisAttemptLockout implements IAttemptLockout {
     return toLockState(lockUntil - this.clock.now().getTime());
   }
 
-  async recordFailure(key: string, policy: LockoutPolicy): Promise<LockState> {
-    const { remainingMs } = await this.countFailure(key, policy);
-    return toLockState(remainingMs);
+  /** `engagedLock` sale del script atómico: solo el fallo que cruza el máximo lo recibe en `true` (013b CA-14). */
+  async recordFailure(key: string, policy: LockoutPolicy): Promise<FailureRecord> {
+    const { engagedLock, remainingMs } = await this.countFailure(key, policy);
+    const state = toLockState(remainingMs);
+    return state.locked ? { ...state, engagedLock } : state;
   }
 
   /** El mismo recuento que `recordFailure`, antes de verificar: solo se rechaza si el bloqueo ya estaba vigente. */

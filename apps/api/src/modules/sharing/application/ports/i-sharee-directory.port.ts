@@ -28,6 +28,11 @@ export interface IShareeDirectory {
   profiles(userIds: readonly string[]): Promise<ReadonlyMap<string, Sharee>>;
   /** CA-22: `id → nombre visible`; un id sin cuenta no aparece en el mapa. */
   displayNames(userIds: readonly string[]): Promise<ReadonlyMap<string, string>>;
+  /**
+   * 013 CA-9, CA-11: el nombre visible de quien comparte un enlace público si es un cliente verificado y activo (el
+   * mismo filtro de `findClientByEmail`); `null` si no existe, es interno, no verificó su correo o está suspendido.
+   */
+  activeDisplayName(userId: string): Promise<string | null>;
 }
 
 export const I_SHAREE_DIRECTORY = Symbol('IShareeDirectory');

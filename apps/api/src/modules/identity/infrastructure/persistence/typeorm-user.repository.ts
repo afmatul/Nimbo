@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { Repository } from 'typeorm';
 
 import { Role, TransactionContext } from '../../../../shared';
+import type { PasswordHash } from '../../../../shared';
 import type { IAdminRosterRepository } from '../../application/ports/i-admin-roster.repository.port';
 import type { IUserRepository } from '../../application/ports/i-user-repository.port';
 import { AccountStatus } from '../../domain/account-status.enum';
@@ -9,7 +10,6 @@ import type { ClientUser } from '../../domain/client-user.entity';
 import type { EmailAddress } from '../../domain/email-address.vo';
 import type { EmployeeCode } from '../../domain/employee-code.vo';
 import { InternalUser } from '../../domain/internal-user.entity';
-import type { PasswordHash } from '../../domain/password-hash.vo';
 import type { User } from '../../domain/user.entity';
 
 import { toInternalUsuarioRow, toUserDomain, toUsuarioRow } from './user.mapper';

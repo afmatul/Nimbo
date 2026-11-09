@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { argon2id, hash, verify } from 'argon2';
 
-import type { IPasswordHasher } from '../application/ports/i-password-hasher.port';
-import { PasswordHash } from '../domain/password-hash.vo';
+import type { IPasswordHasher } from '../../application/security/i-password-hasher.port';
+import { PasswordHash } from '../../domain/password-hash.vo';
 
 /** 19 MiB: mínimo de OWASP que fija RN-3. Se sube solo con la medición de staging a la vista (ADR-0017). */
 export const ARGON2ID_MEMORY_COST_KIB = 19_456;

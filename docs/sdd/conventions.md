@@ -5,6 +5,7 @@
 - Tablas y columnas: **español** `snake_case`, igual que el diagrama E-R. El mapeo vive solo en las entidades TypeORM.
 - UI, mensajes de error al usuario, specs, ADRs, manuales, descripción de commits y PRs: **español**.
 - Nombres de clases, puertos y métodos: los de `docs/sdd/design-model.md`. Si necesitas uno nuevo, agrégalo también al diagrama.
+- Fechas en specs, pendientes, hallazgos y ADRs: `AAAA-MM-DD` en hora local de Guatemala (UTC−6), no la hora UTC de GitHub.
 
 ## TypeScript
 - `strict: true`, `noUncheckedIndexedAccess: true`. Sin `any` implícito.
@@ -15,6 +16,7 @@
 - Clases `PascalCase`; funciones y variables `camelCase`; constantes de módulo `SCREAMING_SNAKE_CASE`.
 - Interfaces de **puertos** con prefijo `I`, como en los diagramas: `IObjectStorage`, `IClock`. Viven en `application/ports/*.port.ts` del módulo que los declara (decisión de Adrián en la revisión de la 009, 2026-10-14). Token de inyección: `I_OBJECT_STORAGE` (símbolo exportado junto a la interfaz). El prefijo es **solo** para puertos (contratos que la infraestructura implementa); tipos de datos, DTOs, props y contratos zod van sin `I` (`Actor`, `HealthReadyResponse`, `Env`).
 - Servicios de aplicación como en los diagramas (`FileService`, `UploadService`…): métodos públicos por caso de uso, con `actor: Actor` como primer parámetro cuando actúan sobre datos de un usuario. Si un servicio supera ~7 métodos públicos o mezcla razones de cambio, se divide (SRP) y se actualiza el diagrama.
+- Inyección (decisión de Adrián en el PR #98, 2026-11-04): los puertos (`I_*`) completos; la configuración del módulo con `Pick<…Config, …>` de lo que la clase usa; las clases de otros módulos con `Pick<…>` de los métodos que llama (ISP, Art. IV).
 - Retornos explícitos en funciones exportadas.
 - Nada de lógica en constructores ni en decoradores.
 

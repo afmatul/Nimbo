@@ -6,6 +6,8 @@ import { useState } from 'react';
 import { AppLayout, DEFAULT_NAV_ITEMS } from '../../../components/nimbo/app-layout';
 import { InternalAreaLayout } from '../../access/components/internal-area-layout';
 import { CLIENT_ROLES } from '../../access/home-path';
+import { SidebarQuota } from '../../storage/components/sidebar-quota';
+import { useSpace } from '../../storage/components/space-provider';
 import { useSessionsActions } from '../hooks/use-sessions-actions';
 import { useSession } from '../session/session-provider';
 import { useAuthFetch } from '../session/use-auth-fetch';
@@ -16,8 +18,14 @@ import { SessionsCard } from './sessions-card';
 /** «Seguridad» no tiene entrada en la barra lateral (D-16): ninguna queda activa. */
 const NAV_ITEMS = DEFAULT_NAV_ITEMS.map((item) => ({ ...item, active: false }));
 
+/** La tarjeta de espacio al pie de la barra, como en el resto de las pantallas del cliente. */
+function ClientQuota(): JSX.Element {
+  return <SidebarQuota state={useSpace().state} />;
+}
+
 /**
- * Marco de cada rol: el cliente ve la página dentro de su `AppLayout`; los roles internos, dentro del marco de su área
+ * Marco de cada rol: el cliente ve la página dentro de su `AppLayout`, con la misma barra lateral
+ * (Agente Nimbo y espacio) que en sus otras pantallas; los roles internos, dentro del marco de su área
  * (011 CA-17, B-1), sin ninguna entrada activa.
  */
 function SecurityFrame({ children }: { readonly children: ReactNode }): JSX.Element | null {
@@ -25,7 +33,7 @@ function SecurityFrame({ children }: { readonly children: ReactNode }): JSX.Elem
   if (user === null) return null;
   if (CLIENT_ROLES.includes(user.role)) {
     return (
-      <AppLayout navItems={NAV_ITEMS} userEmail={user.email}>
+      <AppLayout navItems={NAV_ITEMS} quotaCard={<ClientQuota />}>
         {children}
       </AppLayout>
     );

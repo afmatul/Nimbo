@@ -1,9 +1,9 @@
+import type { PasswordHash } from '../../../shared/domain/password-hash.vo';
 import { Role } from '../../../shared/domain/role.enum';
 
 import { AccountStatus } from './account-status.enum';
 import type { EmailAddress } from './email-address.vo';
 import type { EmployeeCode } from './employee-code.vo';
-import type { PasswordHash } from './password-hash.vo';
 import { User } from './user.entity';
 import type { UserProps } from './user.entity';
 

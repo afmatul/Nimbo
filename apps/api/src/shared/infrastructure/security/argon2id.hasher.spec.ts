@@ -1,4 +1,4 @@
-import type { IPasswordHasher } from '../application/ports/i-password-hasher.port';
+import type { IPasswordHasher } from '../../application/security/i-password-hasher.port';
 
 import {
   ARGON2ID_MEMORY_COST_KIB,

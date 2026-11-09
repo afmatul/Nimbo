@@ -166,5 +166,5 @@ solas al recuperarla, y la de renovación 15 min después del último fallo.
   (Linux) y, si tampoco hay datos, se retira el panel (PD-173).
 - Los enlaces de los correos de alerta usan `GF_SERVER_ROOT_URL` (`http://localhost:${GRAFANA_PORT}/`); en staging
   funcionan con el túnel SSH de §2.
-- Tras restaurar Redis, el `api` puede tardar en responder unos instantes sin reiniciarse (demo T-09, PD-174).
+- Tras restaurar Redis, el `api` puede tardar en responder unos instantes sin reiniciarse (demo T-09, PD-189).
 - Candidata a regla futura «caída de un proceso propio o de Prometheus» (`up == 0`), fuera de las seis (PD-167 (a)).

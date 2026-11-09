@@ -195,7 +195,7 @@ El `[FIRING]` llegó unos 6 min después de empezar los errores, como correspond
 
 - «Dependencia caída (postgres)» es el comportamiento esperado de la regla 5 con Postgres detenido.
 - «Fallo del proceso de renovación» no tenía `[RESOLVED]` a las 07:05. Su regla se resuelve sola 15 min después del último fallo.
-- Tras restaurar Postgres, el api respondió `200` (registro 17). No se midió si hubo una recuperación tardía como la de H-7, que sigue sin caracterizar (PD-174).
+- Tras restaurar Postgres, el api respondió `200` (registro 17). No se midió si hubo una recuperación tardía como la de H-7, que sigue sin caracterizar (PD-189).
 
 ![Panel 3: la tasa de 5xx pasa de 0 % a 50 %](14-ca11-panel-3-tasa-5xx-50.png)
 
@@ -217,7 +217,7 @@ Las demos no cambiaron nada. Las correcciones llegaron en commits aparte (`e8765
 | H-4 | ✅ Corregido y verificado |
 | H-5 | Correcto según CA-3; sin acción |
 | H-6 | ✅ Corregido y verificado |
-| H-7 | ⏳ Abierto, registrado como PD-174 (reproducir y medir) |
+| H-7 | ⏳ Abierto, registrado como PD-189 (reproducir y medir) |
 | PD-172 | ⏳ Abierto, confirmado y cuantificado en la demo |
 
 Detalle tal como se observó en la primera ronda:
@@ -235,10 +235,10 @@ Detalle tal como se observó en la primera ronda:
 
 ## Decisiones pendientes (Matul)
 
-Ya resuelto por las decisiones del 2026-11-04 y verificado: H-1, H-4 y H-6 se corrigieron en 022; H-2 pasó a PD-173 y H-7 a PD-174; CA-11 se ejecutó y fue aprobada. Queda por decidir:
+Ya resuelto por las decisiones del 2026-11-04 y verificado: H-1, H-4 y H-6 se corrigieron en 022; H-2 pasó a PD-173 y H-7 a PD-189; CA-11 se ejecutó y fue aprobada. Queda por decidir:
 
 1. **CA-3 con PD-173 abierto:** si se acepta que el «disco por contenedor» se compruebe en staging Linux, o si bloquea la T-09.
-2. **PD-174 (H-7):** si se puede cerrar la T-09 con PD-174 abierto.
+2. **PD-189 (H-7):** si se puede cerrar la T-09 con PD-189 abierto.
 3. **Cierre de la T-09:** si con lo anterior puede marcarse completada en `tasks.md`.
 
 ## Estado final de los servicios

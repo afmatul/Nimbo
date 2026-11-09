@@ -3,6 +3,7 @@
 import { STORAGE_ERROR_CODES, type QuickAccessList } from '@nimbo/contracts';
 import * as React from 'react';
 
+import { useViewCache } from '../../../lib/view-cache';
 import type { QuickAccessApi, QuickAccessNodeType } from '../quick-access-api';
 import { StorageRequestError } from '../storage-request-error';
 
@@ -52,6 +53,7 @@ export interface QuickAccess {
   readonly dismissLimit: () => void;
 }
 
+const CACHE_KEY = 'quick-access';
 const LOADING: QuickAccessState = { status: 'loading' };
 const FAILED: QuickAccessState = { status: 'error' };
 const ignore = (): void => undefined;
@@ -79,19 +81,24 @@ function withoutPinned(state: QuickAccessState, node: QuickAccessNode): QuickAcc
 
 /** `GET /quick-access` con turno: una respuesta vieja no pisa a una nueva. */
 function useQuickAccessList(api: QuickAccessApi) {
-  const [state, setState] = React.useState<QuickAccessState>(LOADING);
+  const cache = useViewCache();
+  const [state, setState] = React.useState<QuickAccessState>(
+    () => cache.get<QuickAccessState>(CACHE_KEY) ?? LOADING,
+  );
   const lastTurn = React.useRef(0);
   const reload = React.useCallback(() => {
     lastTurn.current += 1;
     const turn = lastTurn.current;
     const settle = (next: QuickAccessState): void => {
-      if (lastTurn.current === turn) setState(next);
+      if (lastTurn.current !== turn) return;
+      if (next.status === 'ready') cache.set(CACHE_KEY, next);
+      setState(next);
     };
     attempt(() => api.quickAccess()).then(
       (list) => settle({ status: 'ready', list }),
       () => settle(FAILED),
     );
-  }, [api]);
+  }, [api, cache]);
   return { state, setState, reload };
 }
 

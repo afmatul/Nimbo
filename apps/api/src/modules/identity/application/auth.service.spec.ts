@@ -7,23 +7,23 @@ import {
   SUPPORT_CONTACT_EMAIL,
 } from '@nimbo/contracts';
 
+import { PasswordHash } from '../../../shared';
+import type {
+  AttemptReservation,
+  IAttemptLockout,
+  LockoutPolicy,
+  LockState,
+  IPasswordHasher,
+} from '../../../shared';
 import {
   AccountSuspendedError,
   EmailNotVerifiedError,
   InvalidCredentialsError,
   LoginLockedError,
 } from '../domain/errors';
-import { PasswordHash } from '../domain/password-hash.vo';
 
 import { AuthService } from './auth.service';
 import type { ClientContext } from './client-context';
-import type {
-  AttemptReservation,
-  IAttemptLockout,
-  LockoutPolicy,
-  LockState,
-} from './ports/i-attempt-lockout.port';
-import type { IPasswordHasher } from './ports/i-password-hasher.port';
 import type { OpenedSession } from './session.service';
 import { aClientUser } from './testing/client-user.builder';
 import { InMemoryUserRepository } from './testing/in-memory-user.repository';
@@ -141,7 +141,11 @@ describe('AuthService.login: bloqueo y credenciales inválidas (plan 002 §6.3)'
     const ctx = await setup();
     const user = activeUser().build();
     ctx.users.seed(user);
-    ctx.lockout.recordFailure.mockResolvedValue({ locked: true, retryAfterSeconds: 900 });
+    ctx.lockout.recordFailure.mockResolvedValue({
+      locked: true,
+      retryAfterSeconds: 900,
+      engagedLock: true,
+    });
 
     await expect(
       ctx.service.login({ email: EMAIL, password: 'otra-contraseña' }, CLIENT),
