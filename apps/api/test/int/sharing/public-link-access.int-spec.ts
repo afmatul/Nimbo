@@ -18,8 +18,13 @@ import { PROBE_CLOCK_START } from '../../support/probe.module';
 import { insertCommittedFile, otherBytes } from '../storage/storage-http';
 import type { StorageClient } from '../storage/storage-http';
 
-import { createSharingHttpApp } from './sharing-http';
-import type { PublicLinkVisitor, SharingHttpApp } from './sharing-http';
+import {
+  createSharingHttpApp,
+  downloadFromNewNetwork,
+  insertLinkedFile,
+  randomNetwork64,
+} from './sharing-http';
+import type { LinkedFile, PublicLinkVisitor, SharingHttpApp } from './sharing-http';
 import { insertPublicLink } from './sharing-test-db';
 
 /** `WEB_PUBLIC_URL` del arnés (`global-setup.ts`) y la ruta web del enlace (la página es la 013b). */
@@ -54,34 +59,11 @@ const visibleErrorOf = (response: Response) => ({
 const tokenOf = (response: Response): string =>
   createdPublicLinkSchema.parse(response.body).url.slice(LINK_URL_PREFIX.length);
 
-/** Un /64 al azar, para que cada caso cuente con su propia red. */
-const randomNetwork64 = (): string =>
-  `2001:db8:${randomUUID().slice(0, 4)}:${randomUUID().slice(0, 4)}`;
-
-interface ProtectedLink {
-  readonly fileId: string;
-  readonly linkId: string;
-  readonly token: string;
-}
-
-/** Un enlace con contraseña (su hash Argon2id) sobre un archivo nuevo del propietario. */
-const insertProtectedLink = async (
-  sharing: SharingHttpApp,
-  ownerId: string,
-  passwordHash: string,
-): Promise<ProtectedLink> => {
-  const { fileId } = await insertCommittedFile(sharing.storage.owner, ownerId, {
-    name: `${FILE_PREFIX}-${randomUUID()}.pdf`,
-    sizeBytes: SIZE_BYTES,
-  });
-  const token = LinkToken.generate();
-  const { id } = await insertPublicLink(sharing.storage.owner, {
-    ownerId,
-    fileId,
-    tokenHash: token.hash(),
-    passwordHash,
-  });
-  return { fileId, linkId: id, token: token.toString() };
+/** Otro /64 del mismo /48: cambia el último grupo de la red. */
+const neighbourOf = (network64: string): string => {
+  const cut = network64.lastIndexOf(':');
+  const last = Number.parseInt(network64.slice(cut + 1), 16);
+  return `${network64.slice(0, cut)}:${(last ^ 1).toString(16)}`;
 };
 
 /** El hash Argon2id de `PASSWORD` con el hasher de la app. */
@@ -484,11 +466,9 @@ describe('POST /public-links/open y /download: límite por red (013 CA-13, RN-7)
     sharing.visitor({ 'X-Forwarded-For': ip }).open({ token: LinkToken.generate().toString() });
   const downloadFrom = (ip: string): Promise<Response> =>
     sharing.visitor({ 'X-Forwarded-For': ip }).download({ token: LinkToken.generate().toString() });
-  const randomNetwork = (): string =>
-    `2001:db8:${Math.floor(Math.random() * 0xffff).toString(16)}:1`;
 
   it('CA-13: dos IPv6 del mismo /64 comparten el límite (429 con la espera); otra red no', async () => {
-    const network = randomNetwork();
+    const network = randomNetwork64();
     for (let attempt = 0; attempt < LIMIT; attempt += 1) {
       expect((await openFrom(`${network}::${attempt + 1}`)).status).toBe(404);
     }
@@ -499,11 +479,11 @@ describe('POST /public-links/open y /download: límite por red (013 CA-13, RN-7)
     expect((blocked.body as ErrorBody).code).toBe('SHARED_TOO_MANY_REQUESTS');
     expect(Number(blocked.headers['retry-after'])).toBeGreaterThan(0);
     expect(JSON.stringify(blocked.body)).not.toMatch(/\d+ intentos?/);
-    expect((await openFrom(`${network.replace(/:1$/, ':2')}::1`)).status).toBe(404);
+    expect((await openFrom(`${neighbourOf(network)}::1`)).status).toBe(404);
   });
 
   it('CA-13: abrir y descargar comparten el mismo límite por red', async () => {
-    const network = randomNetwork();
+    const network = randomNetwork64();
     expect((await openFrom(`${network}::1`)).status).toBe(404);
     expect((await downloadFrom(`${network}::2`)).status).toBe(404);
 
@@ -543,8 +523,7 @@ describe('POST /public-links/download: contraseña y bloqueo por enlace + red (0
     await sharing?.close();
   });
 
-  const protectedLink = (): Promise<ProtectedLink> =>
-    insertProtectedLink(sharing, ana.id, passwordHash);
+  const protectedLink = (): Promise<LinkedFile> => insertLinkedFile(sharing, ana.id, passwordHash);
 
   const downloadFrom = (ip: string, body: Record<string, unknown>): Promise<Response> =>
     sharing.visitor({ 'X-Forwarded-For': ip }).download(body);
@@ -694,13 +673,6 @@ const createCeilingApp = (clock: FixedClock): Promise<SharingHttpApp> =>
     overrides: [{ provide: I_CLOCK, useValue: clock }],
   });
 
-/** Desde un /64 nuevo cada vez: ninguna red llega a su propio bloqueo. */
-const downloadFromNewNetwork = (
-  sharing: SharingHttpApp,
-  body: Record<string, unknown>,
-): Promise<Response> =>
-  sharing.visitor({ 'X-Forwarded-For': `${randomNetwork64()}::1` }).download(body);
-
 const failFromNetworks = async (
   sharing: SharingHttpApp,
   token: string,
@@ -743,7 +715,7 @@ describe('POST /public-links/download: techo global de fallos por enlace (013b C
   });
 
   it('CA-13, RN-3: un acierto antes del techo no reinicia la cuenta', async () => {
-    const { token } = await insertProtectedLink(sharing, ana.id, passwordHash);
+    const { token } = await insertLinkedFile(sharing, ana.id, passwordHash);
     await failFromNetworks(sharing, token, CEILING - 1);
     expect((await downloadFromNewNetwork(sharing, { token, password: PASSWORD })).status).toBe(200);
 
@@ -753,7 +725,7 @@ describe('POST /public-links/download: techo global de fallos por enlace (013b C
   });
 
   it('CA-14: con fallos simultáneos desde varias redes en el umbral, `public_link.locked` una sola vez en «Mi actividad»', async () => {
-    const { fileId, token } = await insertProtectedLink(sharing, bea.id, passwordHash);
+    const { fileId, token } = await insertLinkedFile(sharing, bea.id, passwordHash);
 
     const responses = await Promise.all(
       Array.from({ length: CEILING + 2 }, () =>
@@ -773,7 +745,7 @@ describe('POST /public-links/download: techo global de fallos por enlace (013b C
   });
 
   it('CA-14: si el mismo intento activa el techo y el bloqueo por red, `public_link.locked` una sola vez', async () => {
-    const { fileId, token } = await insertProtectedLink(sharing, ana.id, passwordHash);
+    const { fileId, token } = await insertLinkedFile(sharing, ana.id, passwordHash);
     const network = randomNetwork64();
     for (let failure = 0; failure < CEILING; failure += 1) {
       const response = await sharing
@@ -805,7 +777,7 @@ describe('POST /public-links/download: el techo global de fallos dura una hora (
   });
 
   it('CA-12, CA-13: al techo desde varias redes, 429 para todos aunque sea la correcta o falte; la ficha se abre; pasada la hora vuelve', async () => {
-    const { token } = await insertProtectedLink(sharing, ana.id, passwordHash);
+    const { token } = await insertLinkedFile(sharing, ana.id, passwordHash);
     await failFromNetworks(sharing, token, CEILING);
 
     const correct = await downloadFromNewNetwork(sharing, { token, password: PASSWORD });
