@@ -16,7 +16,7 @@
 - [x] **T-06** Cliente del visitante sin sesión contra `API_PUBLIC_URL` y prueba de que nada en `web` reenvía `/public-links` — CA: CA-9, CA-10 — Prueba: unitaria web primero (`public-link-visitor-api.spec.ts`, `no-public-link-proxy.arch.spec.ts`)
 - [x] **T-07** Hook `use-public-link-visit` (fragmento crudo, vacío sin API, `StrictMode` sin repetir `POST /open`, descarga con `usePreparingDownload`) y catálogo `public-link-messages.ts` con el `429` neutro — CA: CA-3, CA-5, CA-6, CA-7, CA-8 — Prueba: unitaria web primero (`use-public-link-visit.spec.ts`) — Depende: T-04, T-06
 - [x] **T-08** Ruta `/enlace` (`metadata` con título genérico y `noindex`) y vista `PublicLinkVisit` con formulario de contraseña y sus 9 estados (`PasswordField` movido a `components/nimbo/` en un commit propio, P-B (a)) — CA: CA-1, CA-2, CA-4, CA-6, CA-7, CA-8, CA-11 (axe y anuncios) — Prueba: componente (`public-link-visit.spec.tsx`, `page.spec.tsx`) y axe (`a11y.spec.tsx`) — Depende: T-05, T-07
-- [ ] **T-09** **(humana)** Recorrido de la demo en local (sin y con contraseña, incorrecta, techo bajado por entorno, revocado → «No disponible», sesión de Soporte) y revisión manual de CA-11 (360 px sin desplazamiento horizontal, contraste AA a 360 y 1440 px, «reducir movimiento»); nota en el PR — CA: los visibles, CA-11 — Depende: T-01, T-08
+- [x] **T-09** **(humana)** Recorrido de la demo en local (sin y con contraseña, incorrecta, techo bajado por entorno, revocado → «No disponible», sesión de Soporte) y revisión manual de CA-11 (360 px sin desplazamiento horizontal, contraste AA a 360 y 1440 px, «reducir movimiento»); nota en el PR — CA: los visibles, CA-11 — Depende: T-01, T-08
 
 ## Notas del developer
 - **T-01 (2026-11-07):** además de los 8 archivos de prueba y fixtures del plan §2, cambian
@@ -126,3 +126,9 @@
       `public-link-password-form.tsx` quedan al 100 %.
     - S-4: todos los que llaman a `usePreparingDownload` ya pasaban `openUrl`, así que ninguna prueba cambió.
       `openInBrowser` sigue exportado: lo usan otras 5 vistas.
+- **T-09 (2026-11-08, Fátima):** recorrido en local con las dos ramas juntas y `PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR=5`.
+  Todo ✅: sin contraseña (ficha y descarga); con contraseña (ayuda, campo vacío, incorrecta con foco, correcta);
+  techo con fallos desde redes distintas (`X-Forwarded-For` directo al puerto 3000): `429` aun con la correcta, ficha
+  visible, campo vacío y el otro enlace sin afectarse; revocado y fragmento vacío → «No disponible»; sesión de
+  Soporte igual que un visitante anónimo («Iniciar sesión» en la cabecera, CA-10). CA-11 a mano: sin desplazamiento
+  horizontal a 360 px, contraste AA a 360 y 1440 px (Lighthouse) y sin animación con «reducir movimiento».
