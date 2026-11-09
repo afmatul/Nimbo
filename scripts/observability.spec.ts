@@ -155,7 +155,7 @@ const routeTemplate = (method: string, prefix: string, path: string): string => 
 /** Rutas que declaran los controladores del `api` con decoradores de cadena literal (022d R-2). */
 const declaredRoutes = (): Set<string> => {
   const files = readdirSync(join(ROOT, CONTROLLERS_ROOT), { recursive: true, encoding: 'utf8' })
-    .filter((file) => /(^|\/)presentation\/[^/]+\.controller\.ts$/.test(file))
+    .filter((file) => /(^|[\\/])presentation[\\/][^\\/]+\.controller\.ts$/.test(file))
     .map((file) => read(join(CONTROLLERS_ROOT, file)));
   const routes = new Set<string>();
   for (const source of files) {
