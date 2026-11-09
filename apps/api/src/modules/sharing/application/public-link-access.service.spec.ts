@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 
+import { sharingConfigWith } from '../../../../test/support/sharing-config';
 import type { IRateLimiter, ITransactionRunner, RateLimitDecision } from '../../../shared';
 import { PasswordHash, RateLimitExceededError } from '../../../shared';
 import type { IAuditLogger } from '../../audit';
@@ -13,7 +14,6 @@ import type { IPublicLinkRepository } from './ports/i-public-link.repository.por
 import type { IShareeDirectory } from './ports/i-sharee-directory.port';
 import { PublicLinkAccessService } from './public-link-access.service';
 import type { PasswordCheck, PublicLinkPasswordGate } from './public-link-password-gate';
-import type { SharingConfig } from './sharing-config';
 
 const TOKEN = LinkToken.generate().toString();
 const IP = '2001:db8:aa:bb:1:2:3:4';
@@ -108,7 +108,7 @@ const setup = (options: SetupOptions = {}) => {
     recordInTransaction: jest.fn(),
   };
   const logger = { info: jest.fn(), warn: jest.fn() };
-  const config = { publicLinkRequestsPerMinute: REQUESTS_PER_MINUTE } as SharingConfig;
+  const config = sharingConfigWith({ publicLinkRequestsPerMinute: REQUESTS_PER_MINUTE });
   const service = new PublicLinkAccessService(
     transactions,
     resolver,
