@@ -1,7 +1,5 @@
-import {
-  publicLinkCeilingOf,
-  type SharingConfig,
-} from '../../src/modules/sharing/application/sharing-config';
+import { publicLinkCeilingOf } from '../../src/modules/sharing/application/sharing-config';
+import type { SharingConfig } from '../../src/modules/sharing/application/sharing-config';
 
 /**
  * Un `SharingConfig` completo para las pruebas unitarias de `sharing` (PD-192): los valores de `.env.example` con los
@@ -9,7 +7,7 @@ import {
  */
 export const sharingConfigWith = (overrides: Partial<SharingConfig> = {}): SharingConfig => ({
   shareAttemptsPerMinute: 20,
-  webPublicUrl: 'https://nimbo.test',
+  webPublicUrl: 'http://localhost',
   publicLinkRequestsPerMinute: 30,
   publicLinkLockout: { maxFailures: 5, windowSeconds: 900, lockSeconds: 900 },
   publicLinkCeiling: publicLinkCeilingOf(100),
