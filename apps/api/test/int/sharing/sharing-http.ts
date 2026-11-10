@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { Global, Module } from '@nestjs/common';
 import request from 'supertest';
 import type { Response } from 'supertest';
@@ -5,8 +7,11 @@ import type { Response } from 'supertest';
 import { AuditHttpModule } from '../../../src/modules/audit';
 import { ShareeDirectoryAdapter, UserDirectoryAdapter } from '../../../src/modules/identity';
 import { I_SHAREE_DIRECTORY, SharingModule } from '../../../src/modules/sharing';
-import { createStorageHttpApp } from '../storage/storage-http';
+import { LinkToken } from '../../../src/modules/sharing/domain/link-token';
+import { createStorageHttpApp, insertCommittedFile } from '../storage/storage-http';
 import type { StorageClient, StorageHttpApp, StorageHttpOptions } from '../storage/storage-http';
+
+import { insertPublicLink } from './sharing-test-db';
 
 const API_PREFIX = '/api/v1';
 
@@ -151,3 +156,40 @@ export const createSharingHttpApp = async (
     close: () => storage.close(),
   };
 };
+
+/** Un /64 al azar (dos grupos), para que cada caso o petición cuente con su propia red. */
+export const randomNetwork64 = (): string =>
+  `2001:db8:${randomUUID().slice(0, 4)}:${randomUUID().slice(0, 4)}`;
+
+/** Un enlace público insertado por la *fixture*, con su archivo y el token en claro que recibe el visitante. */
+export interface LinkedFile {
+  readonly ownerId: string;
+  readonly fileId: string;
+  readonly versionId: string;
+  readonly linkId: string;
+  readonly token: string;
+}
+
+/** Un enlace sobre un archivo nuevo de la cuenta, con contraseña si se da su hash Argon2id. */
+export const insertLinkedFile = async (
+  sharing: SharingHttpApp,
+  ownerId: string,
+  passwordHash?: string,
+): Promise<LinkedFile> => {
+  const file = await insertCommittedFile(sharing.storage.owner, ownerId);
+  const token = LinkToken.generate();
+  const { id } = await insertPublicLink(sharing.storage.owner, {
+    ownerId,
+    fileId: file.fileId,
+    tokenHash: token.hash(),
+    ...(passwordHash === undefined ? {} : { passwordHash }),
+  });
+  return { ownerId, ...file, linkId: id, token: token.toString() };
+};
+
+/** `POST /public-links/download` desde un /64 nuevo cada vez: ninguna red llega a su propio bloqueo. */
+export const downloadFromNewNetwork = (
+  sharing: SharingHttpApp,
+  body: Record<string, unknown>,
+): Promise<Response> =>
+  sharing.visitor({ 'X-Forwarded-For': `${randomNetwork64()}::1` }).download(body);

@@ -52,6 +52,7 @@ flowchart TB
   end
   subgraph Obs["Observabilidad"]
     PR[Prometheus] --> GR[Grafana]
+    CA[cAdvisor] -.-> PR
   end
   W & S -->|HTTPS / WSS| T
   T -->|REST + WebSocket| Logica
@@ -68,6 +69,14 @@ flowchart TB
 
 Diferencias con el diagrama entregado: ver **DF-28** (flecha Pino→Gemini, embedding de consultas, módulos faltantes,
 SMTP, observabilidad, rutas vía Traefik y worker separado).
+
+**Observabilidad (propuesto en el plan de 022, ADR-0040 `Propuesto`; nada de esto está implementado todavía).** Cada
+proceso expone `/metrics` (`prom-client`) en un puerto interno: el `api`, en un servidor aparte en `METRICS_PORT`, fuera
+de `/api/v1` y de Traefik; los `worker`, en su puerto de salud. Prometheus (sin `ports:`) recolecta los tres procesos y
+cAdvisor (sin `ports:`), y los distingue por `job`. Grafana escucha solo en `127.0.0.1` (túnel SSH en staging), muestra el
+tablero de operación y evalúa las seis alertas de `product-context.md` §7 con Grafana Alerting y su SMTP propio (P-3),
+sin la cola `mail`. Es la única excepción a «solo Traefik publica puertos», y solo en la interfaz de bucle local.
+Ninguna caída de esta pila afecta a la app (Art. XII).
 
 ## 2. Estructura del monorepo
 
@@ -98,7 +107,7 @@ No hay paquete `domain` aparte salvo que un ADR lo justifique.
 
 | Módulo | Diagrama | Responsabilidad | Puede depender de |
 |---|---|---|---|
-| `shared` | T1 (DF-49) | `Actor`, `IClock`, `DomainError` + `DomainExceptionFilter`, logger Pino con redacción, `correlationId`, validación de entorno, `DataSource`, salud (`HealthModule`, `IHealthIndicator`, indicadores Postgres/Redis/MinIO), paginación. Con 001: `IRateLimiter` → `RedisRateLimiter`, `TooManyRequestsError` (429), `ITransactionRunner` + `TransactionContext`, `ZodValidationPipe` (ADR-0020), `configureHttpApp` (solo JSON, CORS, `trust proxy`) y el proveedor `REDIS_CLIENT`. Con 003: guards globales (`JwtAuthGuard`, `RolesGuard`, `@Public`, `@Roles`), el puerto token→`Actor` que implementa `identity` (002 D-14, 003 D-2) y `withActor` (ADR-0005). Con 013 (plan 013 D-2, regla 8): `IPasswordHasher` → `Argon2idHasher`, `PasswordHash`, `IAttemptLockout` → `RedisAttemptLockout`, movidos desde `identity` sin cambio de firma | — |
+| `shared` | T1 (DF-49) | `Actor`, `IClock`, `DomainError` + `DomainExceptionFilter`, logger Pino con redacción, `correlationId`, validación de entorno, `DataSource`, salud (`HealthModule`, `IHealthIndicator`, indicadores Postgres/Redis/MinIO), paginación. Con 001: `IRateLimiter` → `RedisRateLimiter`, `TooManyRequestsError` (429), `ITransactionRunner` + `TransactionContext`, `ZodValidationPipe` (ADR-0020), `configureHttpApp` (solo JSON, CORS, `trust proxy`) y el proveedor `REDIS_CLIENT`. Con 003: guards globales (`JwtAuthGuard`, `RolesGuard`, `@Public`, `@Roles`), el puerto token→`Actor` que implementa `identity` (002 D-14, 003 D-2) y `withActor` (ADR-0005). Con 013 (plan 013 D-2, regla 8): `IPasswordHasher` → `Argon2idHasher`, `PasswordHash`, `IAttemptLockout` → `RedisAttemptLockout`, movidos desde `identity` sin cambio de firma. Con 022 (propuesto en su plan, ADR-0040): `MetricsModule` (un registro de `prom-client` por aplicación, entra por `SharedModule`), el middleware HTTP por `routePatternOf`, los recolectores de colas (descubrimiento de `WorkerHost` compartido con `WorkerDrain`) y de dependencias (reutiliza `HealthService.ready()`) y `OnlyOfficeProbe` (solo métricas, fuera de `ready`; no importa `editing`) | — |
 | `audit` | T2 (extraído de M8, DF-03) | `AuditService`, `AuditEntry`; declara e implementa `IAuditLogger` (ADR-0010). 005 creó el puerto y el catálogo cerrado `AuditAction`; 004 lo implementa con `AuditService`, persistente en `evento_auditoria` (solo adición, RLS por afectado), con el catálogo `AUDIT_CATALOG` (lista blanca de atributos por acción) y el repositorio interno `IAuditRepository`. `AuditModule` (escritura; lo cargan `api` y `worker`) y `AuditHttpModule` (solo `api`: `GET /audit/my-events`, la actividad propia para los cuatro roles) | shared |
 | `notifications` | T4 (DF-34) | Correo y notificaciones; declara e implementa `IMailer` e `INotifier` (ADR-0010). El `api` encola en `mail` y el `worker` entrega por SMTP con nodemailer (ADR-0018) | shared, realtime |
 | `realtime` | T3 (generalizado desde M5, DF-30) | Único gateway Socket.IO, salas por usuario y documento; valida el token del handshake con el puerto token→`Actor` de `shared`; declara `IRealtimePublisher` e `IDocumentRooms` y el evento `realtime.document-left` (ADR-0010, ADR-0019, 015) | shared |
@@ -200,7 +209,7 @@ modules/storage/
 | `IOptimizer` | `PdfOptimizer`, `ImageOptimizer` (vía `BaseOptimizer`) | optimizer |
 | `IIntegrityValidator` | `DefaultIntegrityValidator` | optimizer |
 | `ICommandRunner` | `ChildProcessRunner` (sin shell, tiempo límite y salida acotada) | **interno** de `intelligence` desde 019 (Ghostscript para PDF; DF-80, ADR-0033 b); 021b (PDF) lo mueve a `shared` al ser el segundo consumidor (`optimizer`) |
-| `IHealthIndicator` | `PostgresHealthIndicator`, `RedisHealthIndicator`, `MinioHealthIndicator` (shared); ~~`OnlyOfficeHealthIndicator` (editing, DF-29)~~ omitido (PD-113): `editing` revisa ONLYOFFICE con `IDocumentEditor.isAvailable` al abrir | shared (DF-49); cada módulo puede aportar un indicador y la raíz de composición lo registra en `HealthModule.forRoot({ indicators })` |
+| `IHealthIndicator` | `PostgresHealthIndicator`, `RedisHealthIndicator`, `MinioHealthIndicator` (shared); ~~`OnlyOfficeHealthIndicator` (editing, DF-29)~~ omitido (PD-113): `editing` revisa ONLYOFFICE con `IDocumentEditor.isAvailable` al abrir; con 022 (propuesto en su plan) la caída se mide con `OnlyOfficeProbe` en `shared`, que no es `IHealthIndicator` ni entra en `ready` (DF-29) | shared (DF-49); cada módulo puede aportar un indicador y la raíz de composición lo registra en `HealthModule.forRoot({ indicators })` |
 | `IQueueInspector` | `BullMqInspector` | backoffice |
 | `INodeMetadataReader` | `SqlNodeMetadataReader` (solo columnas de `archivo`, dentro de `withActor` y con RLS) | storage (lo **declara e implementa**; lo consume `backoffice`, arista `backoffice → storage`; sin `storage → backoffice`, cierra PD-31). Plan 011, Propuesto |
 | Repositorios `I*Repository` | TypeORM | cada módulo. `storage` (005) agrega `IUploadSessionRepository`, `IQuotaRepository` (único punto que toca `usuario`, regla 6 de §3) e `IExpiredUploadScanner` (único acceso sin actor, §6 punto 6). `sharing` (013) agrega `IPublicLinkRepository` e `IPublicLinkResolver` (único acceso sin actor del módulo, función `enlace_por_token`, §6 punto 11, ADR-0039) |
@@ -366,3 +375,4 @@ apps/web/src/
 | 0030 | Socket.IO en el `api` sin adaptador de Redis (Aceptado) |
 | 0038 | El optimizador corre en `worker-optimizer` (misma imagen glibc, otro comando); enmienda 0001 y 0037 (Aceptado) |
 | 0039 | Visitante de un enlace público: función `SECURITY DEFINER` de identificadores + `withActor` del propietario; amplía 0021 (spec 013; Propuesto) |
+| 0040 | Observabilidad con `prom-client`, Prometheus, Grafana Alerting por SMTP y cAdvisor (spec 022; Propuesto) |

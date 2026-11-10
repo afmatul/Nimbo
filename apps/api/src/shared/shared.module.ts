@@ -1,5 +1,6 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Global, Module } from '@nestjs/common';
+import { DiscoveryModule } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import type { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import type { QueueOptions } from 'bullmq';
@@ -13,6 +14,8 @@ import { SystemClock } from './infrastructure/clock/system.clock';
 import { ENV } from './infrastructure/config/env.module';
 import type { SharedEnvBase } from './infrastructure/config/env.schema';
 import { createLoggerModule } from './infrastructure/logging/logger.module';
+import { MetricsModule } from './infrastructure/metrics/metrics.module';
+import { QueueMetricsCollector } from './infrastructure/metrics/queue-metrics.collector';
 import { buildDataSourceOptions } from './infrastructure/persistence/data-source';
 import { DatabaseRoleCheck } from './infrastructure/persistence/database-role.check';
 import { TransactionContext } from './infrastructure/persistence/transaction-context';
@@ -35,11 +38,14 @@ const DB_RETRY_DELAY_MS = 3000;
  * `I_TRANSACTION_RUNNER`, `TransactionContext`, `I_PASSWORD_HASHER` e `I_ATTEMPT_LOCKOUT` (plan 013 D-2) sin
  * importarlo; las pruebas sustituyen `I_CLOCK` con `FixedClock`.
  * `DatabaseRoleCheck` impide arrancar si la conexión no es la de `nimbo_app` (003 plan §6.4).
+ * `QueueMetricsCollector` (022) cuenta las colas que consume cada proceso en el registro de `MetricsModule`.
  */
 @Global()
 @Module({
   imports: [
     createLoggerModule(),
+    MetricsModule,
+    DiscoveryModule,
     TypeOrmModule.forRootAsync({
       inject: [ENV],
       useFactory: (env: SharedEnvBase): TypeOrmModuleOptions => ({
@@ -65,6 +71,7 @@ const DB_RETRY_DELAY_MS = 3000;
     TransactionContext,
     { provide: I_TRANSACTION_RUNNER, useClass: TypeOrmTransactionRunner },
     DatabaseRoleCheck,
+    QueueMetricsCollector,
   ],
   exports: [
     I_CLOCK,

@@ -43,6 +43,7 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0037 | [Las imágenes se recomprimen con `sharp` (libvips) dentro del `worker`](0037-recompresion-de-imagenes-con-sharp.md) (spec 021; enmendado por ADR-0038) | Aceptado |
 | 0038 | [El optimizador corre en un proceso `worker-optimizer` propio, sobre una imagen glibc](0038-optimizador-en-worker-dedicado-glibc.md) (spec 021 T-08/T-10; **enmienda ADR-0001 y ADR-0037**; cierra PD-128) | Aceptado |
 | 0039 | [El visitante de un enlace público llega a su archivo por una función `SECURITY DEFINER` de identificadores y actúa como el propietario](0039-visitante-de-enlace-publico-sin-actor.md) (spec 013; amplía ADR-0021, excepción nombrada a «el servicio recibe `actor`»; DF-09, DF-86) | Aceptado |
+| 0040 | [Observabilidad con `prom-client`, Prometheus, Grafana Alerting por SMTP y cAdvisor](0040-observabilidad-con-prometheus-grafana-y-cadvisor.md) (spec 022; DF-28 (e), DF-29) | Aceptado |
 | 0041 | [Respaldos cifrados con `gpg` asimétrico, programados por un contenedor del compose y una regla ILM en MinIO](0041-cifrado-y-programacion-de-respaldos.md) (spec 022c, RNF-21; si la imagen no trae `gpg`, `age` con imagen mínima; 0040 reservado para la 022) | Aceptado |
 
 Estados: `Pendiente` (sin redactar) · `Propuesto` (redactado, falta acuerdo del equipo) · `Aceptado` · `Reemplazado por`.
@@ -74,5 +75,7 @@ ADR-0038 (2026-10-27) lo redactó Abel con la evidencia de la T-08 de 021 y dos 
 El 2026-10-28, después de `7f9285ff`, Matul/Adrián aceptó las dos decisiones pendientes de 021: runtime concreto
 Trixie + sharp 0.35.5/libvips 8.18.7 (Ghostscript de Trixie y arenas 2) y entorno físico mínimo del optimizador.
 La segunda queda implementada con 17 claves explícitas y PD-159 cerrado; no cambia CA-19 de 000.
+
+ADR-0040 (2026-11-02) lo redactó el `architect` con el plan de la spec 022 como `Propuesto`; Adrián lo aceptó el 2026-11-03 al aprobar el plan. Ningún paquete ni imagen de 022 entra antes. El número 0041 queda reservado para la 022c.
 
 Usa `/adr <decisión>` para redactar uno.

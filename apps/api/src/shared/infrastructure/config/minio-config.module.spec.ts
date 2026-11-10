@@ -12,6 +12,7 @@ const API_ENV: Env = {
   DATABASE_URL: 'postgres://nimbo:nimbo@localhost:5432/nimbo',
   REDIS_URL: 'redis://localhost:6379',
   PORT: 3000,
+  METRICS_PORT: 9464,
   WORKER_PORT: 3001,
   MINIO_ENDPOINT: 'http://localhost:9000',
   MINIO_ACCESS_KEY: 'nimbo',
