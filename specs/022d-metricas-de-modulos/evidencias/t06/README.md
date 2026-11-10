@@ -4,7 +4,7 @@
 |---|---|
 | Fecha | 2026-11-08, de 14:51 a 19:43 (hora de Guatemala, UTC−6), sobre `5a5dc5c8` |
 | Ejecutó | Abel, con apoyo de Claude Code. La demo no cambió ningún archivo versionado; las correcciones posteriores se listan abajo |
-| Estado | **Verificada con cobertura parcial en CA-7 y CA-11, pendiente de la decisión de Matul.** La T-06 sigue sin marcar en `tasks.md` |
+| Estado | **Cerrada (Adrián, 2026-11-10).** CA-7 y CA-11 parciales; T-06 marcada en `tasks.md`. Ver «Decisiones» |
 | Hallazgo principal | **H-2:** con el límite versionado de 256 MiB, Grafana sufrió un OOM. La demo solo fue estable con una adaptación local a 512 MiB |
 
 Todas las horas de este documento son de Guatemala (UTC−6). Las de cada archivo están en su nombre, con el formato `AAAAMMDD-HHMMSS`. La numeración tiene huecos porque se quitaron archivos redundantes (ver «Archivos no incluidos»).
@@ -244,7 +244,7 @@ Resultados completos en el [registro 38](38-ca12-privacidad-20261108-181913.txt)
 
 ## Hallazgos
 
-La demo no cambió nada. Después de ella solo se aplicaron las dos correcciones de ownership claro de 022d indicadas en H-5 y H-9. No se modificaron el runbook, los límites versionados ni el código de `apps/`.
+La demo no cambió nada. Después de ella solo se aplicaron las dos correcciones de ownership claro de 022d indicadas en H-5 y H-9. No se modificaron el runbook, los límites versionados ni el código de `apps/`. Tras la decisión de Adrián (2026-11-10) se aplicaron H-2 (`compose.yml`, ADR-0040) y H-9 (runbook §4); el código de `apps/` no cambió.
 
 ### H-2: OOM de Grafana con 256 MiB (prioritario)
 
@@ -277,7 +277,7 @@ Medidas con 512 MiB ([registro 08](08-grafana-512mib-estabilidad-20261108-154927
 
 | # | Hallazgo | Evidencia | Impacto | Tipo | Estado | Recomendación |
 |---|---|---|---|---|---|---|
-| **H-2** | OOM de Grafana con 256 MiB | 05, 06, 08, 46 | **Alto** | Defecto probable de capacidad | ⚠️ Mitigado solo en local | Medir y decidir el límite |
+| **H-2** | OOM de Grafana con 256 MiB | 05, 06, 08, 46 | **Alto** | Defecto probable de capacidad | ✅ Resuelto: `mem_limit: 768m` y `GOMEMLIMIT=690MiB` (plan R-8) | Medir en staging (PD-203) |
 | H-1 | El runbook §2 borra volúmenes con nombres fijos (`nimbo_grafana_data`). Hoy no coincide con ninguno, pero coincidiría con un proyecto llamado `nimbo` | Runbook §2 y listado de volúmenes | Bajo | Discrepancia documental | ⏳ Pendiente; cambio preparado | Línea de 022: variable con el nombre del proyecto |
 | H-3 | Grafana registra un error por no existir `provisioning/plugins`, una vez por arranque (15:41:15). No afecta al tablero | Registro de Grafana, no incluido | Bajo | Defecto menor | ⏳ Pendiente | Infra de 022: crear el directorio o aceptarlo |
 | H-4 | Los paneles 1 y 2 muestran contenedores de otros proyectos de la máquina | Capturas 01, 04 y 07, no incluidas por esos nombres | Bajo | Limitación del ensayo | Sin acción | No aparece con un solo proyecto |
@@ -285,7 +285,7 @@ Medidas con 512 MiB ([registro 08](08-grafana-512mib-estabilidad-20261108-154927
 | H-6 | Reinicios en cadena con `nest start --watch`. **Causa no demostrada** | 15, 29 | Medio | Limitación del ensayo, causa sin determinar | ⚠️ Mitigado solo en local | Reproducir fuera de OneDrive |
 | H-7 | Un evento único no eleva `rate()` (`session/refresh · 401` en 0) | 10, 15 | Bajo | Observación | Mitigado en el ensayo; cambio preparado | Avisar en el runbook §4 |
 | H-8 | «Completados» de BullMQ incluye documentos que terminan en `fallido` | 20, 29, 45; plan 019, línea 41 | Bajo | **Observación de diseño, no defecto** | Documentado; cambio preparado | Aclararlo en el runbook; detalle en PD-200 |
-| H-9 | El runbook §4 dice `503` o `422` sin clave o sin corpus, y el plan R-6 dice `503` sin clave; sin archivos indexados lo real es `200 no_indexed` | 26 a 29, 42 a 45; spec 020, CA-7 | Medio | **Discrepancia documental** | ✅ R-6 corregido; ⏳ runbook con cambio preparado | Aplicar el cambio del runbook §4 |
+| H-9 | El runbook §4 dice `503` o `422` sin clave o sin corpus, y el plan R-6 dice `503` sin clave; sin archivos indexados lo real es `200 no_indexed` | 26 a 29, 42 a 45; spec 020, CA-7 | Medio | **Discrepancia documental** | ✅ R-6 y runbook §4 corregidos | — |
 | H-10 | El runbook §5 cita el estado `failed` en el panel 7; el colector solo mide `waiting`, `prioritized`, `active` y `delayed` | 38 | Bajo | **Discrepancia documental** | ⏳ Pendiente; cambio preparado | Línea de 022: corregir la fila |
 
 **H-5.** Fallaban dos casos de 022d («CA-12: cada ruta citada…» y «R-2: el lector de controladores…») y cuatro de 022 T-01 («CA-10: Grafana monta el aprovisionamiento…» y «Prometheus lee su configuración…», en `base` y en `local`). Todos por el separador `\` de Windows.
@@ -305,12 +305,12 @@ Medidas con 512 MiB ([registro 08](08-grafana-512mib-estabilidad-20261108-154927
 2. **Tarea humana:** la validación automatizada de esta demo cuenta como la demo de T-06.
 3. **Cierre parcial:** CA-7 y CA-11 se cierran parciales; lo no comprobado (§«Qué quedó sin comprobar») se debe a la
    falta de clave de Gemini, que el plan R-6 permite.
-4. **Integración:** 022 ya está en `main` (#78). La rama `feat/022d-metricas-de-modulos` se rehízo sobre `main` con
+4. **Integración:** 022 ya está en `main` (#78). La rama se rehízo (`feat/022d-tableros-de-modulos`, PR #106) sobre `main` con
    solo los commits de 022d y va en un PR propio; el #92 queda reemplazado. Los pendientes de 022d pasan a PD-200 a
    PD-202 (el registro 38 conserva el número con el que se capturó).
 5. **T-06:** completada en `tasks.md`.
 
-Sin decidir y fuera del cierre: H-1, H-3, H-5 (los 4 casos de 022), H-7, H-8 y H-10, con cambios preparados por Abel.
+Sin decidir y fuera del cierre: H-1, H-3, H-5 (los 4 casos de 022), H-7, H-8 y H-10, con cambios preparados por Abel (PD-204).
 H-9 se corrigió en el runbook §4 junto con H-2.
 
 ## Archivos no incluidos

@@ -16,7 +16,8 @@ Optimizador y Agente**, con 15 paneles de series temporales en PromQL sobre las 
 - **Prueba primero:** `scripts/observability.spec.ts` (la de 022) suma un bloque `022d` que localiza cada grupo por el
   título de su fila y exige sus consultas, las etiquetas permitidas (CA-12) y que cada ruta citada exista como plantilla
   en los controladores del `api`. Así, cambiar o borrar una ruta rompe la prueba y no deja un panel vacío sin aviso.
-- **Tamaño:** 3 archivos de autor (1 JSON, 1 prueba, 1 documento) y **≈ 1 día-persona** (suma de `tasks.md`), dentro
+- **Tamaño:** 3 archivos de autor (1 JSON, 1 prueba, 1 documento), más `compose.yml` y una nota en ADR-0040 por H-2 de
+  T-06 (R-8), y **≈ 1 día-persona** (suma de `tasks.md`), dentro
   de los 12 archivos y ~3 días de ADR-0034. Resuelve P-1 sin partir la spec.
 - **Precondición:** 022 (PR #78) integrada en `main`. Los tres archivos que se cambian nacen en esa rama (R-1).
 
@@ -88,7 +89,7 @@ Eventos y Socket.IO: no aplica.
 - **Etiquetas permitidas (CA-12):** `job`, `route`, `status`, `queue`, `state`, `attempts_made` y `le`. Las leyendas
   solo interpolan `{{route}}`, `{{status}}`, `{{queue}}`, `{{state}}` y `{{attempts_made}}`. Los valores de `route` son
   plantillas declaradas en código, así que no pueden traer UUID, correos ni nombres.
-- **Acceso (CA-14):** sin cambios en `compose.yml`, `dashboards.yml` ni la fuente: los grupos heredan de 022 el
+- **Acceso (CA-14):** sin cambios de acceso en `compose.yml` (solo la memoria de Grafana, R-8), `dashboards.yml` ni la fuente: los grupos heredan de 022 el
   aprovisionamiento con `allowUiUpdates: false`, Grafana sin anónimo ni registro y *Viewer* sin edición. No se crea otro
   archivo en `infra/grafana/dashboards/`.
 - **Alertas:** `alertas.json` no cambia; la prueba de 022 sigue exigiendo exactamente seis reglas (RN-3).

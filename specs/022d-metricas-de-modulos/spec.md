@@ -9,7 +9,7 @@
 | Fase | 3 (prevista; calendario pendiente de reprogramación) |
 | Requisitos | RNF-18 (tableros de los módulos); RNF-17 (privacidad de los tableros); RF-05 (acceso a tableros); RNF-12 (arranque aprovisionado, como 022 CA-10). Observa sin cambiar: RF-01, RF-02, RF-03, RF-04, RF-08, RF-09, RF-30, RF-32, RF-34, RF-35, RF-36 |
 | Depende de | 022 (PR #78) **integrada en `main`** antes de `/implement`: series, Prometheus, Grafana y el tablero «Operación». No depende de 022c |
-| Última actualización | 2026-11-08 |
+| Última actualización | 2026-11-10 |
 
 ## 1. Contexto y objetivo
 El 2026-11-02 la instrumentación de los módulos salió de 022 por tamaño (PR #78) y vino aquí. Planificada completa,
