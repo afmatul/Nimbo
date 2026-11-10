@@ -17,8 +17,8 @@ export interface PreparingDownload<T> {
 
 /**
  * Descarga con el patrón de 005: una petición a la vez, «Preparando…» pasados 2 s y la URL firmada abierta con
- * `openUrl`. Si falla pedir la URL, `onFailure` decide el aviso y recibe cómo reintentar; un fallo de `openUrl` no es
- * un error de descarga y sigue de largo.
+ * `openUrl`. Si falla pedir la URL, `onFailure` decide el aviso y recibe cómo reintentar; un fallo de `openUrl` no se
+ * informa como error de descarga: rechaza la promesa de `download` y llega a quien llamó.
  */
 export function usePreparingDownload<T>(
   requestUrl: (arg: T) => Promise<{ readonly url: string }>,

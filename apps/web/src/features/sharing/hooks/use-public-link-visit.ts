@@ -80,33 +80,53 @@ interface OpenRequest {
   readonly token: string;
 }
 
+/** El pedido del fragmento con su ficha y su aviso: otro pedido los vuelve a `loading` e `idle` (CA-8). */
+interface VisitSnapshot {
+  readonly request: OpenRequest | null;
+  readonly state: PublicLinkVisitState;
+  readonly outcome: PublicLinkDownloadOutcome;
+}
+
+type VisitChange = Partial<Pick<VisitSnapshot, 'state' | 'outcome'>>;
+
+const FIRST_VISIT: VisitSnapshot = { request: null, state: LOADING, outcome: IDLE };
+
+const freshVisit = (token: string): VisitSnapshot => ({
+  request: { token },
+  state: LOADING,
+  outcome: IDLE,
+});
+
+interface VisitRequest {
+  readonly snapshot: VisitSnapshot;
+  readonly reload: () => void;
+  /** Cambia la ficha o el aviso solo si su pedido sigue vigente: una respuesta vieja no pisa al pedido actual. */
+  readonly change: (change: VisitChange) => void;
+}
+
 /**
  * El `#token` de la barra: se lee al montar y con `hashchange` si cambió; «Reintentar» pide el mismo de nuevo. Cada
- * pedido es un objeto nuevo: la ficha y el aviso del pedido anterior dejan de valer.
+ * pedido es un objeto nuevo y deja sin efecto lo que llegue del anterior.
  */
-function useFragmentRequest(): readonly [OpenRequest | null, () => void] {
-  const [request, setRequest] = useState<OpenRequest | null>(null);
+function useVisitRequest(): VisitRequest {
+  const [snapshot, setSnapshot] = useState(FIRST_VISIT);
   useEffect(() => {
     const follow = (): void => {
       const token = readFragment();
-      setRequest((current) => (current?.token === token ? current : { token }));
+      setSnapshot((current) => (current.request?.token === token ? current : freshVisit(token)));
     };
     follow();
     window.addEventListener('hashchange', follow);
     return () => window.removeEventListener('hashchange', follow);
   }, []);
-  const reload = useCallback(() => setRequest({ token: readFragment() }), []);
-  return [request, reload];
-}
-
-/** Un valor del pedido actual: con otro pedido vuelve a `initial` sin un `setState` más (CA-8). */
-function useRequestState<T>(
-  request: OpenRequest | null,
-  initial: T,
-): readonly [T, (value: T) => void] {
-  const [held, setHeld] = useState({ request, value: initial });
-  const set = useCallback((value: T) => setHeld({ request, value }), [request]);
-  return [held.request === request ? held.value : initial, set];
+  const reload = useCallback(() => setSnapshot(freshVisit(readFragment())), []);
+  const { request } = snapshot;
+  const change = useCallback(
+    (next: VisitChange) =>
+      setSnapshot((current) => (current.request === request ? { ...current, ...next } : current)),
+    [request],
+  );
+  return { snapshot, reload, change };
 }
 
 /**
@@ -170,16 +190,20 @@ export function usePublicLinkVisit(
   api: PublicLinkVisitorApi,
   openUrl: (url: string) => void,
 ): PublicLinkVisit {
-  const [request, reload] = useFragmentRequest();
-  const [state, setState] = useRequestState(request, LOADING);
-  const [outcome, setOutcome] = useRequestState(request, IDLE);
+  const { snapshot, reload, change } = useVisitRequest();
+  const { request } = snapshot;
+  const setState = useCallback((state: PublicLinkVisitState) => change({ state }), [change]);
+  const setOutcome = useCallback(
+    (outcome: PublicLinkDownloadOutcome) => change({ outcome }),
+    [change],
+  );
   useOpenDetails(api, request, setState);
   const token = request?.token ?? '';
   const prepared = useVisitDownload({ api, openUrl, token, setState, setOutcome });
 
   return {
-    state,
-    outcome,
+    state: snapshot.state,
+    outcome: snapshot.outcome,
     preparing: prepared.preparing !== null,
     reload,
     download: (password = '') => prepared.download(password),

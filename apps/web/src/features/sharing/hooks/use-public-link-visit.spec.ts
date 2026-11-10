@@ -313,6 +313,23 @@ describe('usePublicLinkVisit (013b CA-3, CA-5 a CA-8)', () => {
     await waitFor(() => expect(hook.result.current.state.status).toBe('ready'));
   });
 
+  it('CA-6, CA-8: un `404` tardío de la descarga del enlace anterior no deja el nuevo en carga', async () => {
+    const api = fakeApi();
+    let failDownload: (error: unknown) => void = () => undefined;
+    api.download.mockReturnValueOnce(new Promise((_resolve, reject) => (failDownload = reject)));
+    const { hook } = await renderReady(api);
+    act(() => void hook.result.current.download());
+
+    pasteLink('#otro-token');
+    await waitFor(() => expect(api.open).toHaveBeenLastCalledWith('otro-token'));
+    await waitFor(() => expect(hook.result.current.state.status).toBe('ready'));
+    await act(async () =>
+      failDownload(apiError(SHARING_ERROR_CODES.SHARING_LINK_UNAVAILABLE, 404)),
+    );
+
+    expect(hook.result.current.state.status).toBe('ready');
+  });
+
   it('no guarda nada en el almacenamiento del navegador (spec §5)', async () => {
     window.localStorage.clear();
     window.sessionStorage.clear();
