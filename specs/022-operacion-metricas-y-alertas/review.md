@@ -4,9 +4,9 @@
 
 | Campo | Valor |
 |---|---|
-| Fecha | 2026-11-05 |
-| Rango revisado | `main...HEAD` (PR #78, cabeza `117419f`; 62 archivos) |
-| CI | No consultado desde esta sesión. Local: `lint`, `typecheck`, `test` (110 pruebas de `scripts/`, 3188 de api) y `env:check` en verde. `test:int` no se ejecutó aquí (sin Docker): se apoya en lo documentado en `tasks.md` y `evidencias/t09/` |
+| Fecha | 2026-11-10 |
+| Rango revisado | `main...HEAD` (PR #78, cabeza `64e5e16` tras integrar `main`; segunda pasada el 2026-11-10) |
+| CI | No consultado desde esta sesión. Local tras integrar `main`: `lint`, `typecheck`, `test` (api 3325, scripts 110, contracts 661, config 255; web 2216/2217: `file-row-menu.spec.tsx` falló una vez y pasa aislado 23/23, archivo ajeno a 022) y `env:check` en verde. `test:int` no ejecutado aquí (sin Docker) |
 | Veredicto | ✅ Aprobar (sin bloqueantes; 4 importantes; CA-3 parcial aceptado por Adrián) |
 
 ## Verificación
@@ -45,7 +45,7 @@
 - **[I-2]** DF-29 nombra `metrics-server.ts`, que no existe (es `metrics.module.ts`). Al integrar: DF-29 a Resuelto y PD-166 a Cerrados.
 - **[I-3]** Anotar en la spec «CA-3 parcial hasta PD-173; si staging tampoco da datos, se retira el panel 15».
 - **[I-4]** `evidencias/t09/README.md:8` y cabecera de `spec.md` desactualizados (T-09 ya está `[x]`; fecha 2026-11-03).
-- **[S-1]** reflujar el comentario de `startWorker` en `worker-bootstrap.ts`. **[S-2]** `health.ready` cada 15 s con una dependencia caída (PD-174). **[S-3]** `queue-metrics.collector.ts` sin prueba unitaria propia.
+- **[S-1]** reflujar el comentario de `startWorker` en `worker-bootstrap.ts`. **[S-2]** `health.ready` cada 15 s con una dependencia caída (PD-189, antes PD-174). **[S-3]** `queue-metrics.collector.ts` sin prueba unitaria propia.
 
 ## DF y pendientes
-- DF-29 sigue Abierto (I-2). Sin DF nuevos. `pendientes.md`: PD-165 a 169, 172 a 174 abiertos; PD-170 y 171 cerrados. Excepción de tamaño del plan aceptada (aprobada 2026-11-03).
+- DF-29 sigue Abierto (I-2). Sin DF nuevos. `pendientes.md`: PD-165 a 169, 172, 173 y 189 abiertos (PD-174 pasó a PD-189 al integrar main); PD-170 y 171 cerrados. Excepción de tamaño del plan aceptada (aprobada 2026-11-03).
