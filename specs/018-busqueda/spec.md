@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En revisión (2026-10-29): plan aprobado por Adrián (2026-10-27) y mockup aprobado (2026-10-28) |
+| Estado | Hecha (2026-10-31): aprobada por Adrián; PR #81 fusionado |
 | Dueño | Juan Marcos (2) |
 | Fase | 2 |
 | Requisitos | RF-15 (nombre, tipo y fecha; el contenido pasa a 018b); aplican RF-05, RF-07, RF-10, RF-11, RNF-05, RNF-13, RNF-14, RNF-17 |

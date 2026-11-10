@@ -46,21 +46,27 @@ const criteriaOf = (query: SearchQuery): NodeSearchCriteria => ({
 const withoutParent = (summary: NodeSummary): NodeSummary =>
   summary.type === 'folder' ? { ...summary, parentId: null } : { ...summary, folderId: null };
 
-/** `shared`: el nodo es de otra cuenta (012). Sin ubicación visible no lleva el id de su carpeta (CA-2, CA-13). */
+/**
+ * `shared`: el nodo es de otra cuenta (012). Sin ubicación visible no lleva el id de su carpeta (CA-2, CA-13). Solo
+ * los archivos dicen por qué aparecen (018b RN-3).
+ */
 const toSearchHit =
   (actor: Actor) =>
-  ({ node, location }: NodeSearchHit): SearchHit => {
+  ({ node, location, matchedBy }: NodeSearchHit): SearchHit => {
     const summary = toNodeSummary(node);
-    return {
-      ...(location === null ? withoutParent(summary) : summary),
+    const extras = {
       location: location === null ? null : { id: location.id, name: location.name },
       shared: node.ownerId !== actor.id,
     };
+    const visible = location === null ? withoutParent(summary) : summary;
+    return visible.type === 'folder'
+      ? { ...visible, ...extras }
+      : { ...visible, ...extras, matchedBy };
   };
 
 /**
- * Búsqueda por nombre, tipo y fecha (spec 018, DF-15) entre los nodos vivos que el actor ve. Leer metadatos propios:
- * sin auditoría ni bitácora propia, y nunca registra el texto buscado (CA-15).
+ * Búsqueda por nombre o contenido, tipo y fecha (specs 018 y 018b, DF-15) entre los nodos vivos que el actor ve.
+ * Leer metadatos propios: sin auditoría ni bitácora propia, y nunca registra el texto buscado (CA-15).
  */
 @Injectable()
 export class SearchService {

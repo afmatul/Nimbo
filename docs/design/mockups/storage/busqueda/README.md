@@ -1,7 +1,9 @@
 # Mockup: Búsqueda
 
 - **Spec**: [018](../../../../../specs/018-busqueda/spec.md) (búsqueda por **nombre**, **tipo** y **fecha** de última
-  modificación; RF-15 parcial; CA-1…CA-15, §6 y §7). La búsqueda por contenido es la 018b.
+  modificación; RF-15 parcial; CA-1…CA-15, §6 y §7). La búsqueda por contenido es la
+  [018b](../../../../../specs/018b-busqueda-por-contenido/spec.md) (CA-8, §6): un estado nuevo,
+  `resultados-por-contenido`, **Aprobado** por Adrián (2026-11-07; ver «Estado de 018b»).
 - **Estado**: **Aprobado** por Adrián (2026-10-28, auditoría del PR #81), con observaciones (ver «Aprobación»). Dueño de la spec: Juan Marcos. Alineado con
   la spec el 2026-10-26 (decisiones del dueño: entrada por la navegación, sin resaltado, filtro de fecha con atajos).
 - **Origen**:
@@ -9,8 +11,9 @@
     explorador, estados de lista y barra lateral de 007, «Cargar más» de 007 y el patrón de filtros de
     `audit/mi-actividad`). No se editan a mano: se cambia el generador y se regenera
     (`node docs/design/mockups/_generadores/busqueda/generar.js "$(pwd)"`).
-  - `busqueda--resultados.html`: paquete de la propuesta (p. 13), búsqueda por contenido. **Queda como referencia de
-    018b**; no aplica a 018 y no se genera. Su botón `#6B8DD6` incumple AA (DF-41).
+  - `busqueda--resultados.html`: paquete de la propuesta (p. 13), búsqueda por contenido. **No se usa tal cual** ni
+    en 018 ni en 018b: muestra fragmentos, relevancia y conteos (fuera de alcance) y su botón `#6B8DD6` incumple AA
+    (DF-41). No se genera. El estado de 018b es `resultados-por-contenido`.
 - Son referencia visual; `apps/web` no los importa. Colores: valores de `ui-guidelines.md` §3 (botón primario `#4A6FA5`).
 - **Capturas**: `docs/design/capturas/storage/busqueda/` (`busqueda--<estado>--<360|1440>.png`), con
   `_generadores/pw/capturar-rutas.js` (es-GT, hora de Guatemala, movimiento reducido). `menu-movil` solo a 360 (a
@@ -38,6 +41,38 @@ Fuera de alcance de 018 y ausente a propósito: campo fijo en la barra superior,
 coincidencias, orden elegible, búsqueda mientras se escribe, «En comentarios», texto OCR, «Preguntar al agente»,
 «Resumir con citas», «Incluir papelera», «Solo indexados», % de relevancia, «Ámbito de la búsqueda» y fragmentos de
 contenido (spec §6 y §7).
+
+## Estado de 018b (Aprobado por Adrián, 2026-11-07)
+
+| Estado | Archivo | Qué muestra | Spec |
+|---|---|---|---|
+| resultados-por-contenido | `busqueda--resultados-por-contenido.html` | «camion» con una sola lista en el orden de 018 (carpetas y luego archivos, del más reciente al más antiguo), sin total, relevancia, pestañas, fragmento ni resaltado. Coinciden solo por contenido y llevan la marca «Coincide en el contenido»: «Acta_reunion_logistica.docx», «Contrato_arrendamiento_flota.pdf», «Informe_entregas_septiembre.docx» (**Compartido contigo**, 012) y «Minuta_comite_operaciones.docx». «Mantenimiento_camion_C-12.docx» coincide por nombre y contenido: una vez y sin marca. Las carpetas y la imagen nunca la llevan. Nota de alcance bajo el título de la lista | CA-1, CA-4, CA-8, CA-9, CA-10, RN-2, RN-3 |
+
+Decisiones visuales (aprobadas por Adrián, 2026-11-07):
+
+1. **Marca = `StatusBadge` tono `neutral`** (§4 de `ui-guidelines.md`): ícono lucide `TextSearch` + texto «Coincide en
+   el contenido», `secondary-foreground` sobre `card` (8.09:1), borde `border`. No hay token ni par de colores nuevo. El
+   tono neutral evita que parezca un éxito, un aviso o un enlace (no es interactiva).
+2. **Posición**: bajo el nombre, dentro de la celda «Nombre», a 360 y 1440 px (no columna nueva). El lector de pantalla
+   la lee justo después del nombre del archivo; el nombre del enlace no cambia.
+3. **Nota de alcance**: bajo «Resultados para «…»», con ícono `Info` en `primary` y texto `secondary-foreground`
+   (13 px), asociada a la tabla con `aria-describedby`. Texto ajustado: «También buscamos dentro de los documentos ya
+   indexados. Los que aún se están procesando, y los que no tienen texto (como las imágenes), solo aparecen por su
+   nombre.» Se agrega «los que no tienen texto (como las imágenes)» porque CA-6 incluye `no_indexable` y `fallido`, y la
+   imagen aparece en la lista sin marca. Si se prefiere el texto corto de la spec §6, se cambia la constante
+   `NOTA_ALCANCE`.
+4. **Textos del encabezado** (solo en este estado; en la app se aplican a toda `/buscar`): subtítulo «Encuentra archivos
+   y carpetas por su nombre, y documentos por las palabras que contienen. Sin distinguir mayúsculas ni acentos.»,
+   etiqueta «Nombre o palabras del documento» y formulario «Buscar por nombre o contenido». Los de 018 dicen «por su
+   nombre» y quedarían inexactos.
+5. **Sin resultados** (CA-8): no se dibuja otro estado; en la app la misma nota va bajo el mensaje de
+   `sin-resultados` y `sin-resultados-sin-filtros`. Los HTML aprobados de 018 no se regeneran con cambios (el CSS de
+   018b solo entra en los estados de 018b).
+
+Verificación (2026-11-06): axe-core 4 (`pw/axe-seguridad.js`) a 360 y 1440 px sobre `resultados-por-contenido`: **sin
+violaciones**; sin desplazamiento horizontal a 360 px; ningún objetivo menor de 24 px. Foco visible: la marca no es
+interactiva y los enlaces conservan el anillo de 018. Capturas: `busqueda--resultados-por-contenido--360.png` y
+`--1440.png`.
 
 ## Decisiones de UX (aprobadas por Adrián, 2026-10-28)
 

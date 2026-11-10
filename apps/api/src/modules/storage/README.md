@@ -6,7 +6,7 @@
 - **Puede depender de**: shared, access, audit, realtime. **No** de `billing` (DF-51, opción A: `storage` declara
   `IPlanLimitsProvider` y `billing` lo implementa) ni de `identity` (DF-59). Lo hace cumplir
   `packages/config/eslint/boundaries.js`.
-- **Specs que lo construyen**: 005, 006, 007, 014, 017, 018.
+- **Specs que lo construyen**: 005, 006, 007, 014, 017, 018, 018b.
 
 ## Capas (`docs/sdd/architecture.md` §4)
 
@@ -335,3 +335,16 @@ ambientes (rol dueño de las migraciones) está en `docs/operations/ambientes.md
   (`GET /files/:fileId/versions`) sigue siendo solo del propietario (CA-14). No se audita.
 - Pruebas: `test/isolation/storage-shared-writes.iso-spec.ts` recorre todas las rutas de escritura como Lector y Editor;
   `test/int/storage/shared-access.int-spec.ts`, lo que el destinatario abre.
+
+## Búsqueda (018, 018b)
+
+- `GET /search` (`SearchController`, solo `CLIENT`) → `SearchService.search(actor, query)` dentro de `withActor` →
+  `INodeSearchRepository` → `TypeOrmNodeSearchRepository`: dos consultas (carpetas y luego archivos), cada una con
+  `accessibleNodes(actor)` en el `WHERE` y en el `JOIN` de la ubicación, orden por fecha de modificación y cursor del
+  explorador. Sin auditoría ni bitácora propia; el texto buscado nunca se registra.
+- Contenido (018b, DF-95): `storage` **declara** `IContentMatchReader` (`search/application/ports/`, token
+  `I_CONTENT_MATCH_READER` en `index.ts`) y no importa `intelligence`, que lo implementa (`SqlContentMatchReader`). El
+  enlace vive en la raíz (`ContentMatchBindingModule`, global, solo `api`); `StorageModule` no lo enlaza. La consulta de
+  archivos usa «nombre ∨ contenido» con la condición del puerto (rutas `archivo.id` y `archivo.versionActualId`) y
+  selecciona si coincidió el nombre: `matchedBy = 'content'` solo cuando no (RN-3). Las carpetas, solo por nombre.
+  El parámetro `contentText` es del puerto: la consulta de `storage` no usa ese nombre.

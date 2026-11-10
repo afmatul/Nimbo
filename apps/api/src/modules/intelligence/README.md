@@ -18,9 +18,16 @@
   lanza una vez con `pnpm --filter api index:reconcile` (resultado en la bitácora del `worker`:
   `index.reconcile_completed`); `pnpm seed`, cuando exista el corpus (D-5), usa el mismo gancho
   (`requestIndexReconcile` de `index.ts`, la única pieza de infraestructura que se exporta, solo para scripts).
-- **Specs que lo construyen**: 019 (indexación, completa), 020; 018 consume el índice de texto (`texto_busq`) sin modificarlo (PD-127).
+- **Specs que lo construyen**: 019 (indexación, completa), 020; 018b implementa `IContentMatchReader` de `storage`
+  (`SqlContentMatchReader`, DF-95), que consume `texto_busq` y su índice GIN sin modificar la migración de 019 (PD-127).
+- **Implementa hacia fuera** (018b): `IContentMatchReader` → `SqlContentMatchReader` (`infrastructure/persistence/`,
+  exportado por `index.ts` solo para la raíz `ContentMatchBindingModule`). Devuelve la condición
+  `(archivo, versión vigente) IN (fragmentos con texto_busq @@ plainto_tsquery('spanish', :contentText))` con las
+  rutas de columna que pasa `storage` (validadas como `alias.propiedad`); no ejecuta nada ni lee `archivo`. Un
+  fragmento de la versión vigente solo existe con su `indexacion` en `indexado` (`IndexingService.swap`, una
+  transacción; `indexado` es final), así que la condición respeta 018b RN-4 sin leer `indexacion`.
 
-## Puertos (todos internos: ninguno cruza módulos)
+## Puertos internos (ninguno cruza módulos; `IContentMatchReader` es de `storage`)
 
 | Puerto                                                                             | Implementación                                                                          |
 | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |

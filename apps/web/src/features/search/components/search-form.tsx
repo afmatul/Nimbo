@@ -7,7 +7,7 @@ import * as React from 'react';
 import { Button } from '../../../components/ui/button';
 import { Label } from '../../../components/ui/label';
 
-const FIELD_LABEL = 'Nombre del archivo o carpeta';
+const FIELD_LABEL = 'Nombre o palabras del documento';
 const HELP = 'Se buscan todas las palabras que escribas, en cualquier orden.';
 
 export interface SearchFormProps {
@@ -81,7 +81,7 @@ export function SearchForm({ initialText, onSubmit }: SearchFormProps): React.JS
   return (
     <form
       role="search"
-      aria-label="Buscar archivos y carpetas"
+      aria-label="Buscar por nombre o contenido"
       onSubmit={submit}
       className="space-y-1.5"
     >

@@ -3,6 +3,7 @@ import type { SearchResponse } from '@nimbo/contracts';
 import type { Response } from 'supertest';
 
 import { Role } from '../../../src/shared';
+import { insertChunk, insertIndexing } from '../intelligence/intelligence-test-db';
 
 import { createStorageHttpApp } from './storage-http';
 import type { StorageClient, StorageHttpApp } from './storage-http';
@@ -13,6 +14,10 @@ const FOLDER_NAME = 'Camiones-reservado-8d1c';
 const FILE_NAME = 'Informe del Camión-privado-3a9f.docx';
 const TYPED_TEXT = 'camion informe-zz71';
 const MIDDLE = '2026-10-02T09:00:00.000Z';
+/** Archivo indexado cuyo nombre no comparte palabras con su texto (018b). */
+const CONTENT_FILE_NAME = 'Acta-privada-5e2b.docx';
+const CONTENT_TEXT = 'Los contenedores zafiro llegaron al puerto';
+const CONTENT_WORD = 'zafiro';
 
 interface ErrorBody {
   readonly code: string;
@@ -26,12 +31,13 @@ const expectQueryError = (response: Response, field: string, reason: string): vo
   expect(body.fields).toEqual([expect.objectContaining({ field, reason })]);
 };
 
-/** `GET /search` por HTTP con Postgres real (spec 018 CA-6, CA-9, CA-14, CA-15 y el caso feliz). */
-describe('GET /search (018)', () => {
+/** `GET /search` por HTTP con Postgres real (spec 018 CA-6, CA-9, CA-14, CA-15 y el caso feliz; 018b CA-4, CA-5, CA-12). */
+describe('GET /search (018, 018b)', () => {
   let storage: StorageHttpApp;
   let ana: StorageClient;
   let folderId: string;
   let fileId: string;
+  let contentFileId: string;
 
   const bodyOf = (response: Response): SearchResponse => {
     expect(response.status).toBe(200);
@@ -52,6 +58,12 @@ describe('GET /search (018)', () => {
       'docx',
       MIDDLE,
     ]);
+    contentFileId = await storage.owner.transaction(async (manager) => {
+      const version = await insertFileWithVersion(manager, ana.id, { name: CONTENT_FILE_NAME });
+      await insertIndexing(manager, version, { state: 'indexado' });
+      await insertChunk(manager, version, { text: CONTENT_TEXT });
+      return version.fileId;
+    });
   });
 
   afterAll(async () => {
@@ -91,6 +103,31 @@ describe('GET /search (018)', () => {
       expect(first.items.map((item) => item.id)).toEqual([folderId]);
       expect(second.items.map((item) => item.id)).toEqual([fileId]);
       expect(second.nextCursor).toBeNull();
+    });
+  });
+
+  describe('por contenido (018b)', () => {
+    it('CA-1, CA-8: un archivo que coincide solo por su texto sale con `matchedBy: content`', async () => {
+      const body = bodyOf(await ana.search({ q: 'Zafiro' }));
+
+      expect(body.items).toEqual([
+        expect.objectContaining({ type: 'file', id: contentFileId, matchedBy: 'content' }),
+      ]);
+    });
+
+    it('CA-4: por nombre sale `matchedBy: name`; la carpeta no lleva `matchedBy`', async () => {
+      const body = bodyOf(await ana.search({ q: 'camion' }));
+
+      expect(body.items[0]).not.toHaveProperty('matchedBy');
+      expect(body.items[1]).toMatchObject({ id: fileId, matchedBy: 'name' });
+    });
+
+    it('CA-5: un texto solo de palabras vacías no es error: busca solo por nombre', async () => {
+      const body = bodyOf(await ana.search({ q: 'de los' }));
+
+      expect(
+        body.items.filter((item) => item.type === 'file' && item.matchedBy === 'content'),
+      ).toEqual([]);
     });
   });
 
@@ -139,12 +176,14 @@ describe('GET /search (018)', () => {
   });
 
   describe('bitácoras (CA-15)', () => {
-    it('CA-15: con resultados, sin ellos y con error, ninguna línea lleva el texto, la consulta ni nombres; no se audita', async () => {
+    it('CA-15, 018b CA-12: con resultados (por nombre y por contenido), sin ellos, con solo palabras vacías y con error, ninguna línea lleva el texto, la consulta, nombres ni texto del archivo; no se audita', async () => {
       storage.testApp.logs.clear();
 
       expect((await ana.search({ q: TYPED_TEXT })).status).toBe(200);
       expect((await ana.search({ q: 'Camiones-reservado' })).status).toBe(200);
       expect((await ana.search({ q: TYPED_TEXT, from: 'ayer' })).status).toBe(400);
+      expect((await ana.search({ q: CONTENT_WORD })).status).toBe(200);
+      expect((await ana.search({ q: 'de los' })).status).toBe(200);
 
       const lines = storage.testApp.logs.lines();
       const dump = JSON.stringify(lines);
@@ -156,6 +195,10 @@ describe('GET /search (018)', () => {
         FOLDER_NAME,
         FILE_NAME,
         '?q=',
+        CONTENT_WORD,
+        CONTENT_TEXT,
+        CONTENT_FILE_NAME,
+        'stop words',
       ]) {
         expect(dump).not.toContain(forbidden);
       }

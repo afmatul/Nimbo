@@ -6,7 +6,7 @@ import { FILE_NAME_MAX_LENGTH } from './parameters';
 import { field, optionField, pageQuerySchema, timestamp } from './schema-fields';
 import { fileSummarySchema } from './schemas';
 
-/** Esquemas de la búsqueda por nombre, tipo y fecha (spec 018, plan §4). */
+/** Esquemas de la búsqueda por nombre, tipo, fecha (spec 018, plan §4) y contenido (spec 018b). */
 
 /** Filtro de tipo: las categorías del resumen de espacio (007 CA-2), espejo de `FileCategory` de `api` (RN-3). */
 export const SEARCH_TYPES = ['documents', 'images', 'other'] as const;
@@ -63,10 +63,18 @@ export const searchQuerySchema = pageQuerySchema
  */
 const searchExtras = { location: folderRefSchema.nullable(), shared: z.boolean() };
 
-/** Resultado: un `NodeSummary` del explorador más su ubicación (CA-2). */
+/** Por qué aparece un archivo (018b RN-3): `content` = coincide por su contenido indexado y no por su nombre. */
+export const SEARCH_MATCHES = ['name', 'content'] as const;
+export type SearchMatch = (typeof SEARCH_MATCHES)[number];
+
+/** Resultado: un `NodeSummary` del explorador más su ubicación (CA-2); las carpetas no tienen contenido (018b RN-3). */
 export const searchHitSchema = z.discriminatedUnion('type', [
   folderSummarySchema.extend({ type: z.literal('folder'), ...searchExtras }),
-  fileSummarySchema.extend({ type: z.literal('file'), ...searchExtras }),
+  fileSummarySchema.extend({
+    type: z.literal('file'),
+    ...searchExtras,
+    matchedBy: z.enum(SEARCH_MATCHES),
+  }),
 ]);
 
 /** Página de resultados: carpetas y luego archivos, del modificado más reciente al más antiguo; sin total (RN-6). */
