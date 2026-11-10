@@ -5,6 +5,7 @@ import { TEST_CARDS } from '@nimbo/contracts';
 import request from 'supertest';
 import type { DataSource } from 'typeorm';
 
+import { ContentMatchBindingModule } from '../../src/content-match-binding.module';
 import { BillingHttpModule } from '../../src/modules/billing';
 import { StorageModule } from '../../src/modules/storage';
 import { PlanLimitsBindingModule } from '../../src/plan-limits-binding.module';
@@ -193,6 +194,7 @@ describe('aislamiento de la renovación por cuenta (spec 010 CA-23, CA-24; ADR-0
       modules: [
         ...composition.modules,
         PlanLimitsBindingModule,
+        ContentMatchBindingModule,
         storage,
         BillingHttpModule.forRoot(env, storage),
       ],

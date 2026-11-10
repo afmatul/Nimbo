@@ -42,6 +42,7 @@ import { QuickAccessController } from './presentation/quick-access.controller';
 import { SpaceController } from './presentation/space.controller';
 import { TrashController } from './presentation/trash.controller';
 import { UploadsController } from './presentation/uploads.controller';
+import { I_CONTENT_MATCH_READER } from './search/application/ports/i-content-match-reader.port';
 import { I_NODE_SEARCH_REPOSITORY } from './search/application/ports/i-node-search.repository.port';
 import { SearchService } from './search/application/search.service';
 import { TypeOrmNodeSearchRepository } from './search/infrastructure/typeorm-node-search.repository';
@@ -138,6 +139,11 @@ describe('StorageModule', () => {
       useClass: TypeOrmNodeSearchRepository,
     });
     expect(module.exports).not.toContain(SearchService);
+  });
+
+  it('018b D-1: no enlaza `I_CONTENT_MATCH_READER` (lo hace la raíz de composición con `intelligence`)', () => {
+    expect(providers.map(tokenOf)).not.toContain(I_CONTENT_MATCH_READER);
+    expect(module.exports).not.toContain(I_CONTENT_MATCH_READER);
   });
 
   it('014 CA-5, CA-13: registra el registro y la poda de versiones con su repositorio', () => {

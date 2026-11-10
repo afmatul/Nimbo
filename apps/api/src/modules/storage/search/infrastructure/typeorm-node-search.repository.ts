@@ -1,4 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
+import type { SearchMatch } from '@nimbo/contracts';
 import type { ObjectLiteral, SelectQueryBuilder } from 'typeorm';
 
 import { escapeLike, TransactionContext } from '../../../../shared';
@@ -17,6 +18,8 @@ import { toFile, toFolder } from '../../infrastructure/persistence/node-mappers'
 import { afterCondition, orderByOf } from '../../infrastructure/persistence/node-order-sql';
 import { nodesIn } from '../../infrastructure/persistence/node-sql';
 import type { Condition, NodeTable } from '../../infrastructure/persistence/node-sql';
+import { I_CONTENT_MATCH_READER } from '../application/ports/i-content-match-reader.port';
+import type { IContentMatchReader } from '../application/ports/i-content-match-reader.port';
 import type {
   INodeSearchRepository,
   NodeSearchCriteria,
@@ -29,6 +32,8 @@ import type {
 const ORDER = NodeOrder.of('updated', 'desc');
 const FILE_ALIAS = 'archivo';
 const LOCATION_ALIAS = 'ubicacion';
+/** Columna seleccionada: el nodo coincide por nombre (018b RN-3); si no, coincidió por contenido. */
+const NAME_MATCH = 'coincide_nombre';
 
 /**
  * Plegado de D-1, aplicado igual al nombre y a cada palabra: vocales con tilde, grave, circunflejo o diéresis y la
@@ -49,6 +54,23 @@ const nameMatches = (alias: string, terms: readonly string[]): Condition => {
     return `${folded(`${alias}.nombre`)} LIKE '%' || ${folded(`:term${String(index)}`)} || '%' ESCAPE '\\'`;
   });
   return { sql: clauses.join(' AND '), parameters };
+};
+
+/**
+ * Nombre ∨ contenido (018b RN-2): la condición de contenido la da el dueño de `fragmento` con las rutas de propiedad
+ * del archivo y su versión vigente (D-2, H-7); el texto son las mismas palabras de 018 unidas por espacios.
+ */
+const nameOrContent = (reader: IContentMatchReader, criteria: NodeSearchCriteria): Condition => {
+  const name = nameMatches(FILE_ALIAS, criteria.terms);
+  const content = reader.matchCondition({
+    text: criteria.terms.join(' '),
+    fileIdColumn: `${FILE_ALIAS}.id`,
+    versionIdColumn: `${FILE_ALIAS}.versionActualId`,
+  });
+  return {
+    sql: `((${name.sql}) OR ${content.sql})`,
+    parameters: { ...name.parameters, ...content.parameters },
+  };
 };
 
 /** Fecha de modificación dentro del rango (RN-4): `from` inclusivo y `to` exclusivo, cada extremo solo si viene. */
@@ -76,37 +98,35 @@ interface SearchGroup<T extends ObjectLiteral> {
   /** Propiedad con la carpeta que contiene el nodo (su ubicación). */
   readonly parentProperty: string;
   readonly toNode: (row: T) => StorageNode;
-  /** Condiciones propias del grupo además del nombre y la fecha. */
-  readonly filters: (criteria: NodeSearchCriteria) => readonly Condition[];
+  /** Cómo coincide el grupo y sus filtros propios, además de la fecha. */
+  readonly conditions: (criteria: NodeSearchCriteria) => readonly Condition[];
 }
 
+/** Las carpetas no tienen contenido: solo por nombre (018b RN-3). */
 const FOLDERS: SearchGroup<CarpetaOrmEntity> = {
   entity: CarpetaOrmEntity,
   alias: 'carpeta',
   table: 'carpeta',
   parentProperty: 'carpetaPadreId',
   toNode: toFolder,
-  filters: () => [],
+  conditions: (criteria) => [nameMatches('carpeta', criteria.terms)],
 };
 
-const FILES: SearchGroup<ArchivoOrmEntity> = {
+/** Los archivos, por nombre o por contenido (con el lector inyectado) y por tipo. */
+const filesMatching = (reader: IContentMatchReader): SearchGroup<ArchivoOrmEntity> => ({
   entity: ArchivoOrmEntity,
   alias: FILE_ALIAS,
   table: 'archivo',
   parentProperty: 'carpetaId',
   toNode: toFile,
-  filters: kindIn,
-};
+  conditions: (criteria) => [nameOrContent(reader, criteria), ...kindIn(criteria)],
+});
 
-/** Todo lo que acota un grupo: el nombre, la fecha y lo propio del grupo. */
+/** Todo lo que acota un grupo: su coincidencia, sus filtros y la fecha. */
 const conditionsOf = <T extends ObjectLiteral>(
   group: SearchGroup<T>,
   criteria: NodeSearchCriteria,
-): readonly Condition[] => [
-  nameMatches(group.alias, criteria.terms),
-  ...updatedWithin(group.alias, criteria),
-  ...group.filters(criteria),
-];
+): readonly Condition[] => [...group.conditions(criteria), ...updatedWithin(group.alias, criteria)];
 
 /** Página pedida a un grupo: los criterios (con el `limit` que le queda) a partir de `after` (exclusivo). */
 interface GroupPage {
@@ -114,14 +134,20 @@ interface GroupPage {
   readonly after: NodeListPosition | null;
 }
 
-/** Fila cruda de `getRawAndEntities`: el id del nodo y su ubicación (nula si no hay o el actor no la ve). */
-type LocationRow = Readonly<Record<string, string | null>>;
+/**
+ * Fila cruda de `getRawAndEntities`: el id del nodo, su ubicación (nula si no hay o el actor no la ve) y si coincidió
+ * por nombre.
+ */
+type HitRow = Readonly<Record<string, string | boolean | null>>;
 
-const locationOf = (row: LocationRow | undefined): SearchLocation | null => {
+const locationOf = (row: HitRow | undefined): SearchLocation | null => {
   const id = row?.[`${LOCATION_ALIAS}_id`] ?? null;
   const name = row?.[`${LOCATION_ALIAS}_nombre`] ?? null;
-  return id === null || name === null ? null : { id, name };
+  return typeof id === 'string' && typeof name === 'string' ? { id, name } : null;
 };
+
+const matchedByOf = (row: HitRow | undefined): SearchMatch =>
+  row?.[NAME_MATCH] === false ? 'content' : 'name';
 
 /** Página con `nextCursor` (emitido con `ORDER`) en el último resultado si quedan más. */
 const pageOf = (hits: readonly NodeSearchHit[], hasMore: boolean): SearchPage => {
@@ -146,12 +172,20 @@ const ordered = <T extends ObjectLiteral>(
 /**
  * `INodeSearchRepository` sobre Postgres (plan 018 §3): dos consultas, carpetas y luego archivos, cada una con
  * `accessibleNodes(actor)` dentro del `WHERE` y del `JOIN` de la ubicación, sobre el `EntityManager` de
- * `requireActorScope(actor)`; la RLS es la segunda barrera. Un cursor de archivos o un filtro de tipo (las carpetas no
+ * `requireActorScope(actor)`; la RLS es la segunda barrera. Los archivos coinciden por nombre o por contenido en la
+ * misma consulta (018b, D-1): sin `UNION`, así que cada nodo sale una vez con el orden y el cursor de 018. Un cursor de archivos o un filtro de tipo (las carpetas no
  * tienen tipo, RN-3) saltan las carpetas.
  */
 @Injectable()
 export class TypeOrmNodeSearchRepository implements INodeSearchRepository {
-  constructor(@Inject(TransactionContext) private readonly context: TransactionContext) {}
+  private readonly files: SearchGroup<ArchivoOrmEntity>;
+
+  constructor(
+    @Inject(TransactionContext) private readonly context: TransactionContext,
+    @Inject(I_CONTENT_MATCH_READER) contentMatch: IContentMatchReader,
+  ) {
+    this.files = filesMatching(contentMatch);
+  }
 
   async search(actor: Actor, criteria: NodeSearchCriteria): Promise<SearchPage> {
     const { limit, cursor } = criteria;
@@ -160,7 +194,7 @@ export class TypeOrmNodeSearchRepository implements INodeSearchRepository {
     const folders = skipFolders ? [] : await this.hits(actor, FOLDERS, { criteria, after });
     if (folders.length > limit) return pageOf(folders.slice(0, limit), true);
     const room = limit - folders.length;
-    const files = await this.hits(actor, FILES, {
+    const files = await this.hits(actor, this.files, {
       criteria: { ...criteria, limit: room },
       after: after?.group === 'file' ? after : null,
     });
@@ -173,18 +207,17 @@ export class TypeOrmNodeSearchRepository implements INodeSearchRepository {
     page: GroupPage,
   ): Promise<NodeSearchHit[]> {
     const builder = this.liveRowsWithLocation(actor, group);
+    const name = nameMatches(group.alias, page.criteria.terms);
+    builder.addSelect(`(${name.sql})`, NAME_MATCH).setParameters(name.parameters);
     conditionsOf(group, page.criteria).forEach((condition) =>
       builder.andWhere(condition.sql, condition.parameters),
     );
-    const { entities, raw } = await ordered(
-      builder,
-      group.alias,
-      page,
-    ).getRawAndEntities<LocationRow>();
+    const { entities, raw } = await ordered(builder, group.alias, page).getRawAndEntities<HitRow>();
     const rowById = new Map(raw.map((row) => [row[`${group.alias}_id`], row]));
     return entities.map((entity) => {
       const node = group.toNode(entity);
-      return { node, location: locationOf(rowById.get(node.id)) };
+      const row = rowById.get(node.id);
+      return { node, location: locationOf(row), matchedBy: matchedByOf(row) };
     });
   }
 

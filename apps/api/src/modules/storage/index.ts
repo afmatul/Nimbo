@@ -51,3 +51,10 @@ export type { SupportRestoreView, SupportTrashPage } from './application/support
 export type { SupportRestoreCommand } from './application/ports/i-support-trash.repository.port';
 // El cursor ilegible de esa papelera: `backoffice` lo responde con su `400 BACKOFFICE_INVALID_QUERY` (CA-12).
 export { InvalidQueryError } from './domain/errors';
+// 018b (D-1, DF-95): el puerto de la coincidencia por contenido; lo implementa `intelligence` y lo enlaza la raíz.
+export { I_CONTENT_MATCH_READER } from './search/application/ports/i-content-match-reader.port';
+export type {
+  ContentMatchCondition,
+  ContentMatchRequest,
+  IContentMatchReader,
+} from './search/application/ports/i-content-match-reader.port';

@@ -79,6 +79,18 @@ describe('Accesibilidad de la búsqueda (018 CA-11)', () => {
     await expectNoBlockingViolations();
   });
 
+  it('018b CA-8: resultados con la marca de contenido y la nota de alcance, sin violaciones a 360 y 1440 px', async () => {
+    const byContent = searchPage([
+      folderHit(1, 'Camiones'),
+      fileHit(2, 'Camión_Ventas.docx'),
+      { ...fileHit(3, 'Acta.docx'), matchedBy: 'content' },
+    ]);
+    await renderSearch('q=camion', () => Promise.resolve(byContent));
+
+    expect(screen.getByText('Coincide en el contenido')).toBeTruthy();
+    await expectNoBlockingViolations();
+  });
+
   it.each<[string, () => Promise<SearchResponse>]>([
     ['cargando', () => new Promise(() => undefined)],
     ['sin resultados', () => Promise.resolve(searchPage([]))],

@@ -1,6 +1,7 @@
 // Genera los estados de la spec 018 en storage/busqueda: búsqueda por NOMBRE con filtros de TIPO y FECHA de última
-// modificación (RF-15 parcial). La búsqueda por contenido es de 018b: `busqueda--resultados.html` es el paquete de la
-// propuesta (p. 13), queda como referencia de 018b y no se genera.
+// modificación (RF-15 parcial), y el estado `resultados-por-contenido` de la 018b (marca «Coincide en el contenido» y
+// nota de alcance; CA-8). `busqueda--resultados.html` es el paquete de la propuesta (p. 13): no se genera ni se usa tal
+// cual (fragmentos, relevancia, conteos y un botón que incumple AA, DF-41).
 // Uso: node generar.js <ruta-del-worktree>
 // Entrada: ítem «Buscar» de la navegación (barra lateral y cajón móvil) que abre /buscar, con su propio campo; no hay
 // campo fijo en la barra superior (spec 018 §7, CA-12). Sin resaltado de la coincidencia ni total de coincidencias.
@@ -29,6 +30,8 @@ const icon = S.crearIcon({
   ...C.P, ...Q.P,
   search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
   users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  // lucide `text-search`: líneas de texto con una lupa (la marca de coincidencia por contenido, 018b CA-8)
+  textSearch: '<path d="M21 6H3"/><path d="M10 12H3"/><path d="M10 18H3"/><circle cx="17" cy="15" r="3"/><path d="m21 19-1.9-1.9"/>',
   searchX: '<path d="m13.5 8.5-5 5"/><path d="m8.5 8.5 5 5"/><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
 });
 
@@ -128,6 +131,18 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.MQ_900 +
   }
 `;
 
+// Solo en los estados de 018b: los HTML aprobados de 018 no cambian.
+const CSS_018B = `
+  /* 018b: marca «Coincide en el contenido» = StatusBadge tono neutral (ui-guidelines §4): ícono + texto,
+     secondary-foreground sobre card (8.09:1), borde border. Bajo el nombre a 360 y 1440 px; sin fragmento ni resaltado. */
+  .match { display: flex; width: fit-content; align-items: center; gap: 5px; margin-top: 4px; padding: 1px 8px 1px 6px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--card); color: var(--secondary-foreground); font-size: 12px; font-weight: 600; line-height: 1.5; white-space: nowrap; }
+  .match .ico { flex: none; color: var(--secondary-foreground); }
+  /* 018b: nota de alcance fija junto a los resultados (y en «sin resultados» en la app, CA-8) */
+  .scope-note { display: flex; gap: 8px; align-items: flex-start; max-width: 720px; margin: 6px 0 0; font-size: 13px; color: var(--secondary-foreground); }
+  .scope-note .ico { flex: none; margin-top: 2px; color: var(--primary); }
+  .scope-note + .files { margin-top: 12px; }
+`;
+
 // ---------- Datos de ejemplo (hoy: lunes 26 oct 2026, hora de Guatemala; plan Personal: 50 MB por archivo) ----------
 // [tipo, nombre, carpeta que lo contiene (o «Mis archivos»), tamaño, modificado, días desde la modificación, categoría]
 // Orden fijo (CA-2): carpetas primero y después archivos, cada grupo del modificado más reciente al más antiguo.
@@ -145,6 +160,23 @@ const RESULTADOS = [
   ['archivo', 'Cotizacion_camion_usado.pdf', 'Finanzas', '640 KB', '3 sep', 53, 'documents'],
   ['archivo', 'Plan_de_ruta_camion_compartido.docx', COMPARTIDO, '88 KB', '18 ago', 70, 'documents'],
   ['archivo', 'Recorrido_camion_ruta_sur.mp4', 'Camiones', '38.6 MB', '12 jun', 136, 'other'],
+  ['archivo', 'Inventario_camiones_2025.xlsx', 'Logística', '214 KB', '14 nov 2025', 346, 'documents'],
+];
+// 018b: mezcla de coincidencias. Columna 8: 'contenido' si coincide solo por contenido (lleva la marca, RN-3);
+// 'ambos' si coincide por nombre y contenido (una sola vez y sin marca). Las carpetas nunca llevan la marca.
+// «camion» encuentra por contenido «camión» y «camiones» (palabra completa con variantes, CA-1 y CA-2).
+const RESULTADOS_CONTENIDO = [
+  ['carpeta', 'Camiones', 'Logística', '', '22 oct', 4, null],
+  ['carpeta', 'Seguro del camión', 'Finanzas', '', '30 sep', 26, null],
+  ['archivo', 'Camión_Ventas.xlsx', 'Reportes 2026', '1.2 MB', 'hoy · 08:40', 0, 'documents'],
+  ['archivo', 'Acta_reunion_logistica.docx', 'Logística', '34 KB', 'ayer', 1, 'documents', 'contenido'],
+  ['archivo', 'Mantenimiento_camion_C-12.docx', 'Camiones', '96 KB', '23 oct', 3, 'documents', 'ambos'],
+  ['archivo', 'Contrato_arrendamiento_flota.pdf', 'Finanzas', '1.6 MB', '20 oct', 6, 'documents', 'contenido'],
+  ['archivo', 'Ruta_CAMIONES_zona_norte.pdf', 'Logística', '2.4 MB', '15 oct', 11, 'documents'],
+  ['archivo', 'Foto_camión_entrega.jpg', 'Camiones', '3.8 MB', '9 oct', 17, 'images'],
+  ['archivo', 'Informe_entregas_septiembre.docx', COMPARTIDO, '120 KB', '28 sep', 28, 'documents', 'contenido'],
+  ['archivo', 'Cotizacion_camion_usado.pdf', 'Finanzas', '640 KB', '3 sep', 53, 'documents'],
+  ['archivo', 'Minuta_comite_operaciones.docx', 'Mis archivos', '52 KB', '21 ago', 66, 'documents', 'contenido'],
   ['archivo', 'Inventario_camiones_2025.xlsx', 'Logística', '214 KB', '14 nov 2025', 346, 'documents'],
 ];
 const CONSULTA = 'camion';
@@ -190,12 +222,16 @@ const ubicacion = (carpeta) => carpeta === COMPARTIDO
   : `<a class="loc" href="#">${icon('folder', 14)}<span>${carpeta}</span></a>`;
 
 // Fila de resultado: el nombre es el enlace (carpeta → explorador, 006; archivo → su ficha, 014; CA-10). Sin resaltado.
-function filaResultado([tipo, nombre, carpeta, tam, fecha]) {
+// 018b: la marca va bajo el nombre, dentro de la celda (el lector la lee después del nombre); nunca en carpetas (RN-3).
+const marcaContenido = (tipo, coincide) => tipo !== 'carpeta' && coincide === 'contenido'
+  ? `<span class="match">${icon('textSearch', 14)}<span>Coincide en el contenido</span></span>` : '';
+
+function filaResultado([tipo, nombre, carpeta, tam, fecha, , , coincide]) {
   const esCarpeta = tipo === 'carpeta';
   const meta = esCarpeta ? `Carpeta · ${fecha}` : `${tam} · ${fecha}`;
   return `
             <tr>
-              <td><div class="fname">${tileDe(tipo, nombre)}<div class="fname-text"><a class="fname-link" href="#">${nombre}</a><span class="floc-m"><span class="sr-only">Ubicación: </span>${ubicacion(carpeta)}</span><span class="fmeta-m">${meta}</span></div></div></td>
+              <td><div class="fname">${tileDe(tipo, nombre)}<div class="fname-text"><a class="fname-link" href="#">${nombre}</a>${marcaContenido(tipo, coincide)}<span class="floc-m"><span class="sr-only">Ubicación: </span>${ubicacion(carpeta)}</span><span class="fmeta-m">${meta}</span></div></div></td>
               <td class="c-loc">${ubicacion(carpeta)}</td>
               <td class="c-size">${esCarpeta ? '<span aria-hidden="true">—</span><span class="sr-only">Carpeta, sin tamaño</span>' : tam}</td>
               <td class="c-date">${fecha}</td>
@@ -203,11 +239,16 @@ function filaResultado([tipo, nombre, carpeta, tam, fecha]) {
 }
 
 // Lista de resultados con su título (sin total de coincidencias, RN-6). busy: «Cargar más» en curso.
-function resultados(items, { consulta = CONSULTA, busy = false } = {}) {
+// nota: la nota de alcance de 018b (CA-8) bajo el título de la lista.
+const NOTA_ALCANCE = 'También buscamos dentro de los documentos ya indexados. Los que aún se están procesando, y los que no tienen texto (como las imágenes), solo aparecen por su nombre.';
+const notaAlcance = () => `
+        <p class="scope-note" id="nota-alcance">${icon('info', 15)}<span>${NOTA_ALCANCE}</span></p>`;
+
+function resultados(items, { consulta = CONSULTA, busy = false, nota = false } = {}) {
   return `
-        <h2 class="results-t" id="t-resultados">Resultados para «<span class="q">${consulta}</span>»</h2>
+        <h2 class="results-t" id="t-resultados">Resultados para «<span class="q">${consulta}</span>»</h2>${nota ? notaAlcance() : ''}
         <div class="files"${busy ? ' aria-busy="true"' : ''}>
-          <table aria-labelledby="t-resultados">
+          <table aria-labelledby="t-resultados"${nota ? ' aria-describedby="nota-alcance"' : ''}>
             <caption class="sr-only">Carpetas primero y luego archivos, del modificado más reciente al más antiguo</caption>
             <thead><tr><th scope="col">Nombre</th><th scope="col" class="c-loc">Ubicación</th><th scope="col" class="c-size">Tamaño</th><th scope="col" class="c-date">Modificado</th></tr></thead>
             <tbody>${items.map(filaResultado).join('')}
@@ -236,7 +277,17 @@ function cargarMas(estado = 'listo') {
 
 // Encabezado y formulario de la página (role="search"). Se busca al enviar (Enter o «Buscar»), no mientras se escribe.
 // entrada: campo vacío con foco y la invitación a escribir (CA-6, CA-12). maxlength=255 (RN-5).
-function cabeceraBuscar({ valor = '', entrada = false, deshabilitado = false } = {}) {
+// contenido (018b): subtítulo, etiqueta y nombre del formulario dicen que también se busca en el contenido.
+const TEXTOS_018 = {
+  sub: 'Encuentra archivos y carpetas por su nombre, en cualquier carpeta. Sin distinguir mayúsculas ni acentos.',
+  label: 'Nombre del archivo o carpeta', form: 'Buscar por nombre',
+};
+const TEXTOS_018B = {
+  sub: 'Encuentra archivos y carpetas por su nombre, y documentos por las palabras que contienen. Sin distinguir mayúsculas ni acentos.',
+  label: 'Nombre o palabras del documento', form: 'Buscar por nombre o contenido',
+};
+function cabeceraBuscar({ valor = '', entrada = false, deshabilitado = false, contenido = false } = {}) {
+  const t = contenido ? TEXTOS_018B : TEXTOS_018;
   const dis = deshabilitado ? ' disabled' : '';
   const borrar = valor && !deshabilitado ? `
                 <button class="icon-btn search-clear" type="button" aria-label="Borrar el texto">${icon('x', 18)}</button>` : '';
@@ -244,11 +295,11 @@ function cabeceraBuscar({ valor = '', entrada = false, deshabilitado = false } =
         <div class="page-head">
           <div>
             <h1>Buscar</h1>
-            <p class="page-sub">Encuentra archivos y carpetas por su nombre, en cualquier carpeta. Sin distinguir mayúsculas ni acentos.</p>
+            <p class="page-sub">${t.sub}</p>
           </div>
         </div>
-        <form class="search" role="search" action="#" aria-label="Buscar por nombre">
-          <label for="q">Nombre del archivo o carpeta</label>
+        <form class="search" role="search" action="#" aria-label="${t.form}">
+          <label for="q">${t.label}</label>
           <div class="search-row">
             <div class="search-box">
               ${icon('search', 18, 'search-ico')}
@@ -323,15 +374,17 @@ function page(v) {
   return C.conLogo(`${M.cabecera({
     titulo: `Buscar · Nimbo — ${v.titulo}`,
     comentarios: [
-      `Mockup de referencia (spec 018: búsqueda por nombre, tipo y fecha; RF-15 parcial). Estado: ${v.estado}.`,
+      v.spec === '018b'
+        ? `Mockup de referencia (spec 018b: búsqueda por contenido sobre la 018; CA-8). Estado: ${v.estado}.`
+        : `Mockup de referencia (spec 018: búsqueda por nombre, tipo y fecha; RF-15 parcial). Estado: ${v.estado}.`,
       'Colores: valores de ui-guidelines.md §3 (tonos AA; botón primario #4A6FA5, DF-41). La implementación usa tokens, components/ui y components/nimbo.',
       'Generado con _generadores/busqueda/generar.js (marco, carpetas, estados y espacio). No editar a mano.',
     ],
-    css: CSS,
+    css: v.spec === '018b' ? CSS + CSS_018B : CSS,
   })}
 <body>
 
-<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">018</span> <strong>Búsqueda por nombre, tipo y fecha</strong> <span class="file">${file}</span> <span>plan Personal (ejemplo) · estado: ${v.titulo}</span></aside>
+<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">${v.spec || '018'}</span> <strong>${v.spec === '018b' ? 'Búsqueda por nombre y contenido' : 'Búsqueda por nombre, tipo y fecha'}</strong> <span class="file">${file}</span> <span>plan Personal (ejemplo) · estado: ${v.titulo}</span></aside>
 
 <div class="canvas">
   <div class="app">
@@ -408,6 +461,11 @@ const ESTADOS = [
     estado: 'cargar-mas-error',
     titulo: 'falló la página siguiente (patrón de 007): aviso con «Reintentar» debajo de la lista',
     cuerpo: () => conTexto() + filtros(TODO) + resultados(RESULTADOS) + cargarMas('error'),
+  },
+  {
+    estado: 'resultados-por-contenido', spec: '018b',
+    titulo: '«camion» por nombre y por contenido: la marca solo en archivos que no coinciden por nombre, con la nota de alcance',
+    cuerpo: () => conTexto({ contenido: true }) + filtros(TODO) + resultados(RESULTADOS_CONTENIDO, { nota: true }),
   },
   {
     estado: 'menu-movil', cajon: true,

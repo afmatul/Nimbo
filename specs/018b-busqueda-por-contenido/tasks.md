@@ -1,0 +1,68 @@
+# Tareas 018b — Búsqueda por contenido
+
+> Spec: `./spec.md` · Plan: `./plan.md`
+> 5 a 12 tareas verticales, de medio día a un día, un commit cada una (`feat(<modulo>): … [018b T-xx]`).
+> Cada tarea es una línea: criterio, prueba y de qué depende. Los archivos viven en `plan.md`. Sin tareas de «cierre».
+> `/implement` exige el plan `Aprobado` y la spec en `Lista` (P-1 a P-4 y P-6 resueltas).
+
+- [x] **T-01** (`ui-designer`) Estado `resultados-por-contenido` en `storage/busqueda` con `/mockup` (marca y nota de alcance) y capturas a 360 y 1440 px, aprobado por Adrián — CA: CA-8 — Prueba: axe del mockup sin violaciones — Depende: P-4, P-6
+- [x] **T-02** Contrato `matchedBy` en `searchHitSchema` y puerto `IContentMatchReader` exportado por `storage/index.ts` (JSDoc del contrato, parámetro `contentText`) — CA: CA-4, CA-8 — Prueba: unitaria de contratos y `storage.module.spec.ts` (no enlaza el token; rojas primero) — Depende: —
+- [x] **T-03** `SqlContentMatchReader` en `intelligence`, `ContentMatchBindingModule` en la raíz, y `architecture.md` (§3 patrón «condición SQL que da el dueño de la tabla» junto a `accessibleNodes`; §5 fila del puerto) y `design-model.md` M2/M6 al día — CA: CA-1, CA-2, CA-3, CA-5, CA-7 — Prueba: integración `content-match.int-spec.ts` y unitaria del enlace (rojas primero) — Depende: T-02
+- [x] **T-04** Repositorio de búsqueda con «nombre ∨ contenido» y `coincide_nombre` — CA: CA-4, CA-6, CA-7, CA-9 — Prueba: integración `search.repository.int-spec.ts` (roja primero) — Depende: T-03
+- [x] **T-05** `SearchService` con `matchedBy` y `GET /search` de punta a punta — CA: CA-4, CA-5, CA-12 — Prueba: unitaria del servicio + integración HTTP (feliz, `400`, bitácora sin texto) — Depende: T-04
+- [x] **T-06** Aislamiento: B no encuentra el texto de A; un compartido que coincide solo por contenido aparece con `shared` (`fragmento_compartido`) y desaparece al revocarse; actor interno sin filas — CA: CA-10, CA-11 — Prueba: aislamiento `storage-search.iso-spec.ts` — Depende: T-04
+- [x] **T-07** Web: marca «Coincide en el contenido», nota de alcance y textos del encabezado y del formulario (`search-form.tsx`) según el mockup de T-01 — CA: CA-8 — Prueba: componente `search-view.spec.tsx` (con la etiqueta nueva) + axe a 360 y 1440 px — Depende: T-01, T-05
+- [x] **T-08** **(humana, Juan Marcos)** Recorrido de la demo en local: subir un `.docx` y un PDF, esperar su indexación, buscar por una frase, ver la marca, compartir y revocar con otra cuenta; nota en el PR — CA: CA-1, CA-4, CA-6, CA-8, CA-10 — Depende: T-06, T-07
+  - 2026-11-07, **parcial**: sin `GEMINI_API_KEY` local, la indexación (019) quedó `fallido` (`proveedor_no_disponible`). Visto en local: CA-6 (solo por nombre mientras no hay texto), nota de alcance en resultados y en «sin resultados» (CA-8), textos de H-8, CA-5 (palabras vacías y errores), CA-9 (filtros), aislamiento por nombre entre cuentas, 360 px y CA-12 (13 búsquedas en la bitácora de `api`, sin texto ni nombres). **No visto en demo**: marca por contenido (CA-1, CA-8), nombre + contenido sin duplicar (CA-4) y compartir/revocar por contenido (CA-10). Hoy los cubren `content-match.int-spec.ts`, la integración de búsqueda y `storage-search.iso-spec.ts`; queda repetir la demo con clave antes de la exposición.
+
+## Notas del developer
+
+- T-02: para que cada commit quede verde, `NodeSearchHit.matchedBy` y su copia en `SearchService` entran con el contrato
+  (el repositorio responde `name` hasta T-04); T-05 suma las pruebas del mapeo y el HTTP. `contracts` exporta
+  `SEARCH_MATCHES` y `SearchMatch` para tipar `matchedBy` en `api` y `web` sin repetir los literales.
+- T-03: la condición es la no correlacionada de H-3 (plan D-2, §3 y R-1 al día; DF-95 también). H-4: el invariante
+  queda en D-2 y en `content-match.int-spec.ts` (el `swap` interrumpido no deja texto que coincida; `indexado` es
+  final). H-6: `SqlContentMatchReader` lanza `TypeError` si una columna no es `alias.propiedad` (error de programación;
+  el JSDoc del puerto lo dice) y una prueba muestra que reutilizar `contentText` pisa el texto. R-1: `@@`
+  (`ts_match_vq`) no es *leakproof* en Postgres 17, así que con la RLS de `fragmento` el uso del GIN no está
+  garantizado; se mide en 023. PD-127 pasa a «Implementado en la rama»; se cierra al fusionar.
+- T-04: el grupo de archivos se arma en el constructor con el lector inyectado (`filesMatching`, H-7) y pasa
+  `archivo.id`/`archivo.versionActualId`; las dos consultas seleccionan `coincide_nombre` (en carpetas siempre
+  verdadero), así que no hace falta una rama por grupo. Los arneses de prueba que montan `StorageModule` sin
+  `AppModule` (`storage-http.ts`, `billing-http.ts`, `upload-cleanup`, `billing.iso-spec.ts`,
+  `billing-renewal.iso-spec.ts`) suman `ContentMatchBindingModule`, como ya hacían con `PlanLimitsBindingModule`.
+- T-05: el mapeo de `matchedBy` en `SearchService` ya entró en T-02 (para mantener el contrato verde), así que sus
+  pruebas unitarias nacen verdes; la integración HTTP suma el caso por contenido, la carpeta sin `matchedBy`, las
+  palabras vacías y la bitácora (sin la palabra, el texto ni el nombre del archivo indexado, ni el `NOTICE` de
+  Postgres, R-4).
+- T-07: marca con `StatusBadge` neutral e ícono `TextSearch` bajo el nombre (decisiones 1 y 2), nota con `Info` en
+  `primary` bajo el título y `aria-describedby` en la tabla (decisión 3), textos del encabezado y del formulario en toda
+  `/buscar` (decisión 4, H-8: «Buscar por nombre o contenido») y la nota también bajo «sin resultados» (decisión 5).
+  Desviación: la nota usa `text-sm` (14 px) y no los 13 px del mockup, porque no hay token de 13 px y la guía prohíbe
+  valores arbitrarios.
+
+## Hallazgos de la auditoría de la rama (2026-11-07), a atender en este PR
+
+Resueltos con Adrián (2026-11-07): `search-form.tsx` entra al plan y la excepción de 13 archivos queda aprobada (H-1);
+el mockup `resultados-por-contenido` queda aprobado, así que T-01 está hecha (H-2). Pendientes, en la tarea indicada:
+
+- [x] **H-3** (medio, T-03/T-04) Forma de la condición de contenido: preferir la no correlacionada
+  `(archivo.id, archivo.version_actual_id) IN (SELECT f.archivo_id, f.version_archivo_id FROM fragmento f WHERE
+  f.texto_busq @@ plainto_tsquery('spanish', :contentText))`, que usa `idx_fragmento_texto_busq` (GIN), en lugar del
+  `EXISTS` por archivo de plan D-2 y §3 (que evalúa `@@` y la RLS de `fragmento_compartido` fila por fila). Actualizar
+  D-2, §3 y R-1.
+- [x] **H-4** (menor, T-03) RN-4 exige estado `indexado`, pero la condición solo mira fragmentos de la versión vigente.
+  Hoy equivale porque `IndexingService.swap` escribe fragmentos y marca `indexado` en una transacción; al reindexar la
+  misma versión los fragmentos viejos siguen mientras el estado es `pendiente`. Anotar el invariante en D-2 (o ajustar
+  RN-4) y fijarlo en `content-match.int-spec.ts`.
+- [x] **H-5** (menor, cierre) La rama incluye el cierre de la 018 (`f6dd5dc`); mencionarlo en la descripción del PR.
+- [x] **H-6** (menor, T-03) Contrato del puerto: `SqlContentMatchReader` valida que `fileIdColumn`/`versionIdColumn`
+  sean identificadores (`alias.propiedad`) y una prueba demuestra que un choque con el parámetro `contentText` falla
+  (TypeORM pisa parámetros con el mismo nombre sin avisar, R-5).
+- [x] **H-7** (menor, T-04) Las columnas que recibe el puerto son rutas de propiedad del *query builder*
+  (`archivo.versionActualId`), no nombres de columna; y `FILES` deja de ser una constante de módulo para usar el reader
+  inyectado (se arma en el repositorio).
+- [x] **H-8** (menor, T-07) Mockup frente a código: el nombre del formulario del mockup («Buscar por nombre o
+  contenido») y el actual («Buscar archivos y carpetas») difieren: se usa el del mockup aprobado. Los 11 estados de 018
+  conservan los textos viejos (decisión 4 del README) y la nota en «sin resultados» no está dibujada (decisión 5): la
+  web aplica ambas.

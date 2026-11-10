@@ -67,7 +67,10 @@ async function renderView(initial: string, load: LoadSearch): Promise<jest.Mock>
 }
 
 const searchField = (): HTMLInputElement =>
-  screen.getByRole('searchbox', { name: 'Nombre del archivo o carpeta' });
+  screen.getByRole('searchbox', { name: 'Nombre o palabras del documento' });
+
+const SCOPE_NOTE =
+  'También buscamos dentro de los documentos ya indexados. Los que aún se están procesando, y los que no tienen texto (como las imágenes), solo aparecen por su nombre.';
 
 const results = (): HTMLElement => screen.getByRole('table', { name: /Resultados para/ });
 
@@ -170,6 +173,45 @@ describe('SearchView: pantalla /buscar (018 CA-2, CA-6, CA-9 a CA-12)', () => {
     expect(within(row).getAllByText('Compartido contigo').length).toBeGreaterThan(0);
     expect(within(row).queryByRole('link', { name: 'Compartido contigo' })).toBeNull();
     expect(within(row).queryByRole('link', { name: 'Mis archivos' })).toBeNull();
+  });
+
+  it('018b CA-8: el archivo que coincide solo por contenido lleva la marca con texto; el resto, no', async () => {
+    const byContent = { ...fileHit(3, 'Acta.docx'), matchedBy: 'content' as const };
+    await renderView(
+      'q=camion',
+      loadOf(searchPage([folderHit(1, 'Camiones'), fileHit(2, 'Camión.docx'), byContent])),
+    );
+
+    const [, folderRow, nameRow, contentRow] = within(results()).getAllByRole(
+      'row',
+    ) as HTMLElement[];
+    expect(within(contentRow as HTMLElement).getByText('Coincide en el contenido')).toBeTruthy();
+    expect(within(folderRow as HTMLElement).queryByText('Coincide en el contenido')).toBeNull();
+    expect(within(nameRow as HTMLElement).queryByText('Coincide en el contenido')).toBeNull();
+    expect(within(contentRow as HTMLElement).getByRole('link', { name: 'Acta.docx' })).toBeTruthy();
+  });
+
+  it('018b CA-8: la nota de alcance va junto a los resultados y describe la lista', async () => {
+    await renderView('q=camion', loadOf(searchPage([fileHit(2)])));
+    expect(results().getAttribute('aria-describedby')).toBe('buscar-alcance');
+    expect(document.getElementById('buscar-alcance')?.textContent).toBe(SCOPE_NOTE);
+  });
+
+  it('018b CA-8: sin resultados también explica qué documentos se buscan por dentro', async () => {
+    await renderView('q=camion', loadOf(searchPage([])));
+
+    expect(screen.getByText(SCOPE_NOTE)).toBeTruthy();
+  });
+
+  it('018b §6: encabezado y formulario hablan de nombre y contenido', async () => {
+    await renderView('', loadOf());
+
+    expect(
+      screen.getByText(
+        'Encuentra archivos y carpetas por su nombre, y documentos por las palabras que contienen. Sin distinguir mayúsculas ni acentos.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByRole('search', { name: 'Buscar por nombre o contenido' })).toBeTruthy();
   });
 
   it('CA-11: mientras busca se anuncia «Buscando «texto»…»', async () => {

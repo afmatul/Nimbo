@@ -5,6 +5,7 @@ import { I_NODE_SEARCH_REPOSITORY } from '../../src/modules/storage/search/appli
 import type { INodeSearchRepository } from '../../src/modules/storage/search/application/ports/i-node-search.repository.port';
 import { createActor, I_TRANSACTION_RUNNER, Role } from '../../src/shared';
 import type { ITransactionRunner } from '../../src/shared';
+import { insertChunk, insertIndexing } from '../int/intelligence/intelligence-test-db';
 import { insertShare } from '../int/sharing/sharing-test-db';
 import { createStorageHttpApp, insertCommittedFile } from '../int/storage/storage-http';
 import type { StorageClient, StorageHttpApp } from '../int/storage/storage-http';
@@ -24,6 +25,15 @@ const NEARLY = { a: 'Informe trimestral 2026.txt', b: 'Informe trimestral 2025.t
 const FOREIGN_FOLDER_NAME = 'Informes privados de A';
 const SHARED_WITH_B_NAME = 'Plan reservado.txt';
 const PAGE_LIMIT = '1';
+/** Texto indexado casi idéntico de A y B (018b CA-10): solo cambia la piedra. Ningún nombre comparte esas palabras. */
+const CONTENT = {
+  a: 'Contrato de arriendo firmado con la cláusula esmeralda',
+  b: 'Contrato de arriendo firmado con la cláusula granate',
+};
+const CONTENT_NAMES = { a: 'Documento-a7.txt', b: 'Documento-b7.txt' };
+/** Texto de un archivo que A comparte con B; su nombre no coincide (018b CA-10). */
+const SHARED_CONTENT = 'Anexo de confidencialidad con la piedra ópalo';
+const SHARED_CONTENT_NAME = 'Anexo-c9.txt';
 
 /** Nodos de un cliente que coinciden con «informe», con la carpeta que contiene a los anidados. */
 interface ClientNodes {
@@ -34,12 +44,12 @@ interface ClientNodes {
 const idsOf = (body: SearchResponse): string[] => body.items.map((item) => item.id);
 
 /**
- * Aislamiento de la búsqueda como `nimbo_app` (spec 018 CA-13, CA-14; RNF-05): con nombres casi idénticos, B solo
+ * Aislamiento de la búsqueda como `nimbo_app` (spec 018 CA-13, CA-14; 018b CA-10, CA-11; RNF-05): con nombres casi idénticos, B solo
  * recibe nodos propios, en cualquier página y con cualquier cursor; la ubicación nunca nombra una carpeta que B no ve;
  * un texto que solo coincide con A responde igual que uno que no coincide con nada; los roles internos no llegan a la
  * ruta y, en el repositorio, reciben 0 filas.
  */
-describe('aislamiento de la búsqueda (018 CA-13, CA-14)', () => {
+describe('aislamiento de la búsqueda (018 CA-13, CA-14; 018b CA-10, CA-11)', () => {
   let world: IsolationWorld;
   let storage: StorageHttpApp;
   let a: WorldAccount;
@@ -74,6 +84,20 @@ describe('aislamiento de la búsqueda (018 CA-13, CA-14)', () => {
     };
   };
 
+  /** Archivo de `account` con su versión vigente `indexado` y un fragmento de `text` (019). */
+  const indexedFile = (
+    account: WorldAccount,
+    name: string,
+    text: string,
+    folderId: string | null = null,
+  ): Promise<string> =>
+    storage.owner.transaction(async (manager) => {
+      const version = await insertFileWithVersion(manager, account.id, { name, folderId });
+      await insertIndexing(manager, version, { state: 'indexado' });
+      await insertChunk(manager, version, { text });
+      return version.fileId;
+    });
+
   const searchAs = async (
     client: StorageClient,
     query: Record<string, string>,
@@ -81,6 +105,14 @@ describe('aislamiento de la búsqueda (018 CA-13, CA-14)', () => {
     const response = await client.search(query);
     expect(response.status).toBe(200);
     return searchResponseSchema.parse(response.body);
+  };
+
+  /** El repositorio de la búsqueda con el actor dado, dentro de `withActor` (debajo de `RolesGuard`). */
+  const repositorySearch = (id: string, role: Role, terms: readonly string[]) => {
+    const runner = storage.testApp.app.get<ITransactionRunner>(I_TRANSACTION_RUNNER);
+    const repository = storage.testApp.app.get<INodeSearchRepository>(I_NODE_SEARCH_REPOSITORY);
+    const actor = createActor(id, role);
+    return runner.withActor(actor, () => repository.search(actor, { terms, limit: 100 }));
   };
 
   /** Ids de todas las páginas de `limit` 1, siguiendo `nextCursor` (desde `cursor`, si se da). */
@@ -219,20 +251,80 @@ describe('aislamiento de la búsqueda (018 CA-13, CA-14)', () => {
     it.each(INTERNAL_ROLES)(
       'CA-13: como %s, el repositorio de la búsqueda da 0 filas (A sí ve las suyas)',
       async (role) => {
-        const runner = storage.testApp.app.get<ITransactionRunner>(I_TRANSACTION_RUNNER);
-        const repository = storage.testApp.app.get<INodeSearchRepository>(I_NODE_SEARCH_REPOSITORY);
-        const searchAsActor = (id: string, actorRole: Role) => {
-          const actor = createActor(id, actorRole);
-          return runner.withActor(actor, () =>
-            repository.search(actor, { terms: ['informe'], limit: 100 }),
-          );
-        };
-
-        expect(await searchAsActor(world.internals[role].id, role)).toEqual({
+        expect(await repositorySearch(world.internals[role].id, role, ['informe'])).toEqual({
           hits: [],
           nextCursor: null,
         });
-        expect((await searchAsActor(a.id, Role.CLIENT)).hits.length).toBeGreaterThan(0);
+        expect(
+          (await repositorySearch(a.id, Role.CLIENT, ['informe'])).hits.length,
+        ).toBeGreaterThan(0);
+      },
+    );
+  });
+
+  describe('por contenido (018b CA-10, CA-11)', () => {
+    let contentA: string;
+    let contentB: string;
+
+    beforeAll(async () => {
+      contentA = await indexedFile(a, CONTENT_NAMES.a, CONTENT.a);
+      contentB = await indexedFile(b, CONTENT_NAMES.b, CONTENT.b);
+    });
+
+    it('CA-10: con texto casi idéntico, cada cliente encuentra solo su archivo por contenido', async () => {
+      const ofB = await searchAs(clientB, { q: 'arriendo' });
+      const ofA = await searchAs(clientA, { q: 'arriendo' });
+
+      expect(ofB.items.map((item) => [item.id, item.type === 'file' && item.matchedBy])).toEqual([
+        [contentB, 'content'],
+      ]);
+      expect(idsOf(ofA)).toEqual([contentA]);
+    });
+
+    it('CA-10: una palabra que solo está en el texto de A responde a B igual que una que no está en ningún lado', async () => {
+      const onlyA = await clientB.search({ q: 'esmeralda' });
+      const nothing = await clientB.search({ q: 'zz-sin-coincidencias' });
+
+      expect(searchResponseSchema.parse(onlyA.body)).toEqual({ items: [], nextCursor: null });
+      expect(comparable(onlyA)).toEqual(comparable(nothing));
+      expect(idsOf(await searchAs(clientA, { q: 'esmeralda' }))).toEqual([contentA]);
+    });
+
+    it('CA-10: un archivo que A comparte con B, cuyo nombre no coincide, aparece por contenido `shared` y deja de aparecer al revocarse', async () => {
+      const fileId = await indexedFile(a, SHARED_CONTENT_NAME, SHARED_CONTENT, foreignFolder.id);
+      const shareId = await insertShare(storage.owner, {
+        ownerId: a.id,
+        granteeId: b.id,
+        node: { fileId },
+      });
+
+      const shared = await searchAs(clientB, { q: 'opalo' });
+
+      expect(shared.items).toEqual([
+        expect.objectContaining({
+          id: fileId,
+          matchedBy: 'content',
+          shared: true,
+          folderId: null,
+          location: null,
+        }),
+      ]);
+      expect(JSON.stringify(shared)).not.toContain(foreignFolder.id);
+
+      await storage.owner.query('DELETE FROM comparticion WHERE id = $1', [shareId]);
+      expect(await searchAs(clientB, { q: 'opalo' })).toEqual({ items: [], nextCursor: null });
+    });
+
+    it.each(INTERNAL_ROLES)(
+      'CA-11: como %s, el repositorio no devuelve ningún archivo por contenido (A sí)',
+      async (role) => {
+        expect(await repositorySearch(world.internals[role].id, role, ['esmeralda'])).toEqual({
+          hits: [],
+          nextCursor: null,
+        });
+        expect((await repositorySearch(a.id, Role.CLIENT, ['esmeralda'])).hits).toEqual([
+          expect.objectContaining({ matchedBy: 'content' }),
+        ]);
       },
     );
   });

@@ -1,11 +1,12 @@
 'use client';
 
 import { formatBytes, type SearchHit } from '@nimbo/contracts';
-import { Folder, Users } from 'lucide-react';
+import { Folder, Info, TextSearch, Users } from 'lucide-react';
 import Link from 'next/link';
 import type * as React from 'react';
 
 import { FileTypeChip } from '../../../components/nimbo/file-type-chip';
+import { StatusBadge } from '../../../components/nimbo/status-badge';
 import { dayLabel } from '../../../lib/format-date';
 import { cn } from '../../../lib/utils';
 import { CHIP_TYPE_BY_KIND } from '../../storage/components/node-rows';
@@ -16,9 +17,28 @@ const LINK_CLASSES =
 /** Ubicación de un resultado de otra cuenta cuya carpeta no se ve (012, spec 018 CA-2). */
 const SHARED_LABEL = 'Compartido contigo';
 const HEAD_CLASSES = 'px-2 py-2 text-xs font-medium uppercase tracking-wide';
+/** Marca de un archivo que coincide por contenido y no por nombre (018b CA-8, RN-3). */
+const CONTENT_MATCH_LABEL = 'Coincide en el contenido';
+/** Nota de alcance (018b CA-8): describe la lista y acompaña «sin resultados». */
+const SCOPE_NOTE_ID = 'buscar-alcance';
+const SCOPE_NOTE =
+  'También buscamos dentro de los documentos ya indexados. Los que aún se están procesando, y los que no tienen texto (como las imágenes), solo aparecen por su nombre.';
 
 /** «Resultados para «texto»», sin total de coincidencias (RN-6). */
 export const resultsTitle = (q: string): string => `Resultados para «${q}»`;
+
+/** Qué documentos se buscan por dentro (018b CA-8, mockup `resultados-por-contenido`, decisión 3). */
+export function ScopeNote(): React.JSX.Element {
+  return (
+    <p
+      id={SCOPE_NOTE_ID}
+      className="flex max-w-3xl items-start gap-2 text-sm text-secondary-foreground"
+    >
+      <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+      <span>{SCOPE_NOTE}</span>
+    </p>
+  );
+}
 
 function HitDate({ value }: { readonly value: string }): React.JSX.Element {
   return <time dateTime={value}>{dayLabel(value)}</time>;
@@ -78,6 +98,11 @@ function NameCell({ hit }: { readonly hit: SearchHit }): React.JSX.Element {
           >
             {hit.name}
           </Link>
+          {hit.type === 'file' && hit.matchedBy === 'content' ? (
+            <span className="flex">
+              <StatusBadge tone="neutral" icon={TextSearch} label={CONTENT_MATCH_LABEL} />
+            </span>
+          ) : null}
           <span className="flex min-w-0 text-xs sm:hidden">
             <HitLocation hit={hit} />
           </span>
@@ -147,7 +172,7 @@ export function SearchResults({
 }): React.JSX.Element {
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
-      <table className="w-full table-fixed text-sm">
+      <table className="w-full table-fixed text-sm" aria-describedby={SCOPE_NOTE_ID}>
         <caption className="sr-only">{resultsTitle(q)}</caption>
         <ResultsHead />
         <tbody className="divide-y divide-border">

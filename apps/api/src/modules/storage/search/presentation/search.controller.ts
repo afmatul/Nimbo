@@ -8,8 +8,8 @@ import { storageQueryValidationError } from '../../presentation/storage-validati
 import { SearchService } from '../application/search.service';
 
 /**
- * Búsqueda por nombre, tipo y fecha (spec 018, DF-15). Solo `CLIENT`: los roles internos reciben `403` antes del
- * servicio (CA-14). Un `400` lleva los motivos, nunca el texto buscado (CA-15).
+ * Búsqueda por nombre o contenido, tipo y fecha (specs 018 y 018b, DF-15). Solo `CLIENT`: los roles internos
+ * reciben `403` antes del servicio (CA-14). Un `400` lleva los motivos, nunca el texto buscado (CA-15).
  */
 @Roles(Role.CLIENT)
 @Controller('search')

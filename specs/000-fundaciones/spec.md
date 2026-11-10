@@ -65,7 +65,7 @@ Estas decisiones son entrada de la spec, no preguntas. Cambiarlas requiere ADR o
 | D-8 | **Ambientes**: `local` / `test` (CI) / `staging` / `production`; `NODE_ENV` ∈ {`development`, `test`, `production`} y una variable propia `APP_ENV` ∈ {`local`, `test`, `staging`, `production`}. `.env.example` obligatorio y validado al arranque con esquema (zod o class-validator; lo fija el plan). |
 | D-9 | `ThrottlerModule` lo introduce la spec **001**, que lo usa primero para el límite por IP del registro (001 D-15), y la 002 lo reutiliza (002 D-11). No entra en esta spec. |
 | D-10 | **gitleaks** como paso del job `lint` en CI y una pasada sobre el historial completo al activar el CI (y de nuevo si algún día el repositorio se hace público). Requiere un **ADR menor** (dependencia significativa de CI). |
-| D-11 | Postgres en contenedor en staging con volumen persistente. El respaldo diario (RNF-21) se define en la spec 022. |
+| D-11 | Postgres en contenedor en staging con volumen persistente. El respaldo diario (RNF-21) se define en la spec **022c** (partición de la 022 del 2026-11-02, PR #78). |
 | D-12 | La herramienta de lint de fronteras la decide `architect` en el plan (ADR-0008). Es dependencia del plan, no pregunta bloqueante de la spec. |
 | D-13 | Mapeo `DomainError → HTTP`: `code` estable por error y `status` por clase de error; el detalle lo fija el plan. |
 | D-14 | `synchronize: false` fijo en el código de la fuente de datos de TypeORM, sin leer variable de entorno alguna. |
@@ -382,7 +382,7 @@ No hay reglas de negocio de producto en esta spec. Reglas técnicas transversale
 - Tabla `plan`, `PlanLimits`, `IPlanLimitsProvider`: spec **006a**.
 - `JwtAuthGuard`, `RolesGuard`, construcción del `Actor` desde el JWT, `accessibleNodes`, RLS: specs **002/003**.
 - `ThrottlerModule` y límites de tasa: **001** (límite por IP del registro); 002 lo reutiliza.
-- Métricas Prometheus, `/metrics`, Grafana, alertas, respaldo diario y restauración: **022**.
+- Métricas Prometheus, `/metrics`, Grafana y alertas: **022**. Respaldo diario y restauración: **022c**.
 - Ambiente de **producción** (Droplet, dominio final, despliegue manual por etiqueta): **Fase 4**; aquí solo quedan compose y job parametrizados.
 - Integración de ONLYOFFICE en código (JWT, callback, indicador de salud): **016/022**. Aquí solo el servicio en compose bajo perfil.
 - Pruebas E2E con Playwright y de carga con k6: solo la carpeta y el script marcador; contenido en **000b/023**.
@@ -434,3 +434,4 @@ No hay reglas de negocio de producto en esta spec. Reglas técnicas transversale
 | 2026-09-26 | Calendario: la entrega de Fase 1 pasa al 30/09/2026 y los bloques 3 a 6 se implementan desde esa fecha (D-4 dice «desde el 30/09/2026»). CA-26 agrega la excepción permanente del diseñador principal (`workflow.md` §7.1): puede mergear sin aprobación ajena, nunca sin los checks. T-33 se configura con dos rulesets | Decisión del diseñador principal | Adrián |
 | 2026-09-26 | D-9, §9 («¿Qué operaciones requieren límite de tasa?») y §11: el `ThrottlerModule` entra con la **001** (límite por IP del registro, 001 D-15) y la 002 lo reutiliza. Sin cambio de criterios de aceptación ni del alcance de esta spec | Spec 002 D-11 | Adrián |
 | 2026-10-07 | CA-24, CA-11, CA-12, CA-25 y CA-26: los jobs `int`, `isolation` y `migrations` se unen en un solo job `integration` (cuatro checks en lugar de seis) para no agotar los 3 000 min/mes de Actions del repositorio privado: cada job paga su propia instalación y sus contenedores. CA-11 recorre toda la cadena de migraciones, no solo la primera. Límite del workflow: 30 min. Los bloques 5 y 6 (imágenes, staging; CA-28 a CA-32) se difieren a una fase posterior: la Fase 2 se demuestra en local (`workflow.md` §7.2) | Cuota de Actions y calendario del Avance 2 | Adrián |
+| 2026-11-10 | D-11 y §11 («Fuera de alcance»): el respaldo diario y la restauración remiten a la **022c**, no a la 022. Sin cambio de criterios de aceptación ni del alcance de esta spec (PD-172) | Partición de la 022 (PR #78) y revisión de 022c | Adrián |

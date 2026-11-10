@@ -4,6 +4,7 @@ import type { DynamicModule } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule } from '@nestjs/throttler';
 
+import { ContentMatchBindingModule } from './content-match-binding.module';
 import { AccessModule } from './modules/access';
 import { AuditHttpModule } from './modules/audit';
 import { BackofficeModule } from './modules/backoffice';
@@ -48,7 +49,8 @@ import { UserDirectoryBindingModule } from './user-directory-binding.module';
  * mismas instancias de `StorageModule` (`IndexableFileGateway`) y de `RealtimeModule` (aviso en vivo);
  * `IUserDirectory` lo enlaza `UserDirectoryBindingModule` con la de `IdentityModule`, e `IShareeDirectory` (012),
  * `ShareeDirectoryBindingModule` con la misma, que usa la compartición (012) junto con la misma instancia de `StorageModule`. El optimizador (021) recibe la misma instancia de
- * `StorageModule` (`OptimizableFileGateway`).
+ * `StorageModule` (`OptimizableFileGateway`). La búsqueda por contenido (018b) recibe `I_CONTENT_MATCH_READER` de
+ * `ContentMatchBindingModule`, que lo enlaza con el lector de `intelligence` (`storage` no conoce a `intelligence`).
  */
 @Module({})
 export class AppModule {
@@ -75,6 +77,7 @@ export class AppModule {
         identity,
         AccessModule,
         PlanLimitsBindingModule,
+        ContentMatchBindingModule,
         UserDirectoryBindingModule.forRoot(identity),
         ShareeDirectoryBindingModule.forRoot(identity),
         storage,

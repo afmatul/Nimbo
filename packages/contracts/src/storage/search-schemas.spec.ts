@@ -46,6 +46,7 @@ const fileHit = {
   updatedAt: AT,
   location: { id: FOLDER_ID, name: 'Informes' },
   shared: false,
+  matchedBy: 'name',
 };
 
 describe('searchQuerySchema', () => {
@@ -152,6 +153,18 @@ describe('searchResponseSchema', () => {
 
     expect(searchHitSchema.parse(shared)).toEqual(shared);
     expect(searchHitSchema.safeParse({ ...fileHit, shared: undefined }).success).toBe(false);
+  });
+
+  it('018b CA-4, CA-8: un archivo dice si coincidió por nombre o solo por contenido', () => {
+    const byContent = { ...fileHit, matchedBy: 'content' };
+
+    expect(searchHitSchema.parse(byContent)).toEqual(byContent);
+    expect(searchHitSchema.safeParse({ ...fileHit, matchedBy: undefined }).success).toBe(false);
+    expect(searchHitSchema.safeParse({ ...fileHit, matchedBy: 'fragment' }).success).toBe(false);
+  });
+
+  it('018b RN-3: una carpeta no lleva `matchedBy` (no tiene contenido)', () => {
+    expect(searchHitSchema.safeParse({ ...folderHit, matchedBy: 'name' }).success).toBe(false);
   });
 
   it('CA-3: la página lleva resultados y cursor, sin total', () => {
