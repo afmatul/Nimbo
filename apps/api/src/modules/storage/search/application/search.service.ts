@@ -65,8 +65,8 @@ const toSearchHit =
   };
 
 /**
- * Búsqueda por nombre, tipo y fecha (spec 018, DF-15) entre los nodos vivos que el actor ve. Leer metadatos propios:
- * sin auditoría ni bitácora propia, y nunca registra el texto buscado (CA-15).
+ * Búsqueda por nombre o contenido, tipo y fecha (specs 018 y 018b, DF-15) entre los nodos vivos que el actor ve.
+ * Leer metadatos propios: sin auditoría ni bitácora propia, y nunca registra el texto buscado (CA-15).
  */
 @Injectable()
 export class SearchService {

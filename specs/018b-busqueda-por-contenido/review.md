@@ -27,7 +27,7 @@ Cobertura de lógica de 018b (unit + int): 100 % de líneas en `SqlContentMatchR
 
 ## Seguridad
 - Datos de cliente: sí (texto indexado). Aislamiento: `storage-search.iso-spec.ts` ✅ dentro de las 34/674. `actor` + `accessibleNodes`: ✅. La condición de contenido va dentro de la misma consulta (`typeorm-node-search.repository.ts`, `nameOrContent`), sobre el `EntityManager` de `requireActorScope`; la RLS `fragmento_cliente`/`fragmento_compartido` es la segunda barrera. No se filtra después de consultar.
-- El puerto valida que las columnas sean `alias.propiedad` (`sql-content-match.reader.ts:136`) y el texto viaja solo como `:contentText` (probado contra inyección).
+- El puerto valida que las columnas sean `alias.propiedad` (`sql-content-match.reader.ts:10-14`) y el texto viaja solo como `:contentText` (probado contra inyección).
 - Roles internos: 403 y 0 filas ✅. Bitácoras sin texto, nombres, tokens ni contraseñas ✅. La respuesta no trae texto del archivo, solo `matchedBy`.
 - Hallazgos: ninguno. No requiere `security-auditor`.
 
@@ -39,16 +39,20 @@ Cobertura de lógica de 018b (unit + int): 100 % de líneas en `SqlContentMatchR
 - Ninguno.
 
 ## Importantes y sugerencias
-- **[I-1]** `eslint.config.mjs:30-31` y `packages/config/eslint/base.js:10-11` no ignoran `**/dist-worker-optimizer/**` (build de 021, sí está en `.gitignore`): `pnpm lint` falla en cualquier equipo que haya corrido `start:all --prod`. No es de 018b → **PD-189**.
+- **[I-1]** `eslint.config.mjs:30-31` y `packages/config/eslint/base.js:10-11` no ignoran `**/dist-worker-optimizer/**` (build de 021, sí está en `.gitignore`): `pnpm lint` falla en cualquier equipo que haya corrido `start:all --prod`. No es de 018b → **PD-197**.
 - **[I-2]** PD-153 describía la condición como `OR EXISTS`; tras H-3 es `IN (SELECT …)` no correlacionada, y faltaba R-1 (`@@` no es leakproof; con RLS no está garantizado el uso del GIN). **Corregido** en `pendientes.md`; se mide en 023.
-- **[I-3]** T-08 parcial: sin `GEMINI_API_KEY`, CA-1, CA-4, la marca de CA-8 y CA-10 por contenido no se vieron en demo. Los cubren integración y aislamiento sobre Postgres real con RLS; no bloquea → **PD-188** (repetir la demo con indexación real antes de la exposición).
-- **[S-1]** `apps/api/src/modules/storage/storage.module.spec.ts:144`: la prueba dice «018b CA-1» pero verifica el enlace D-1. Renombrar a «018b D-1».
-- **[S-2]** `apps/api/test/int/storage/search.repository.int-spec.ts:416`: «al indexarse» inserta el fragmento sin pasar la indexación a `indexado` (queda `fallido` con texto, estado que H-4 hace imposible). Marcar `indexado` en ese paso.
-- **[S-3]** `apps/web/src/features/search/components/search-results.tsx:175`: `aria-describedby` apunta a un id que renderiza el padre (`search-view.tsx:107`). Si `SearchResults` se usa sin `ScopeNote`, la referencia queda colgando. Pasar el id por prop o documentarlo.
+- **[I-3]** T-08 parcial: sin `GEMINI_API_KEY`, CA-1, CA-4, la marca de CA-8 y CA-10 por contenido no se vieron en demo. Los cubren integración y aislamiento sobre Postgres real con RLS; no bloquea → **PD-196** (repetir la demo con indexación real antes de la exposición).
+- **[S-1]** `apps/api/src/modules/storage/storage.module.spec.ts:144`: la prueba dice «018b CA-1» pero verifica el enlace D-1. Renombrar a «018b D-1». **Aplicado.**
+- **[S-2]** `apps/api/test/int/storage/search.repository.int-spec.ts:416`: «al indexarse» inserta el fragmento sin pasar la indexación a `indexado` (queda `fallido` con texto, estado que H-4 hace imposible). Marcar `indexado` en ese paso. **Aplicado** (M-3 de Adrián): fragmento e `indexado` en la misma transacción, como el swap.
+- **[S-3]** `apps/web/src/features/search/components/search-results.tsx:175`: `aria-describedby` apunta a un id que renderiza el padre (`search-view.tsx:107`). Si `SearchResults` se usa sin `ScopeNote`, la referencia queda colgando. Pasar el id por prop o documentarlo → **PD-198**.
 
 ## DF y pendientes
 - DF-95 aceptado y reflejado en `architecture.md` §3/§5, `design-model.md` M2/M6 y los README de `storage` e `intelligence`. DF-15 actualizado.
-- Pendientes: PD-185 (redibujo de M2/M6), PD-186 (búsqueda semántica sin spec), PD-187 (diéresis en el contenido), PD-188 (demo con indexación real), PD-189 (ignore de ESLint). PD-127 se cierra al fusionar. PD-153 ampliado con R-1.
+- Pendientes: PD-185 (redibujo de M2/M6), PD-186 (búsqueda semántica sin spec), PD-187 (diéresis en el contenido), PD-196 (demo con indexación real), PD-197 (ignore de ESLint), PD-198 (pulido de la auditoría de Adrián). PD-127 se cierra al fusionar. PD-153 ampliado con R-1.
+
+## Auditoría de Adrián (PR #101, 2026-11-10)
+- Sin bloqueantes de código; ~87 %. Aplicado antes del merge: **M-1** (merge de `main`; DF-91 de `main` + DF-95), **M-2** (PD-188/PD-189 renumerados a PD-196/PD-197, ya existían en `main`), **M-3** (= S-2) y **menor 1** (docstrings de `NodeSearchCriteria`, `INodeSearchRepository`, `SearchService` y `SearchController` con «nombre o contenido»); también S-1 y la referencia de la línea del puerto (menor 7).
+- M-4 (R-1) ya está en PD-153 para 023. Menores 2, 3, 4, 8 y S-3 → PD-198. Menor 5 (el puerto devuelve SQL) queda como observación aceptada en DF-95.
 
 ## Lo que está bien hecho
 - Puerto mínimo y bien documentado. La condición la escribe el dueño de `fragmento`, sin arista nueva ni excepción a la propiedad de tablas, y con el contrato probado (columnas inválidas y choque de `contentText`).

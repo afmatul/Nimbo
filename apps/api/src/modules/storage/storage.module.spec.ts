@@ -141,7 +141,7 @@ describe('StorageModule', () => {
     expect(module.exports).not.toContain(SearchService);
   });
 
-  it('018b CA-1: no enlaza `I_CONTENT_MATCH_READER` (lo hace la raíz de composición con `intelligence`)', () => {
+  it('018b D-1: no enlaza `I_CONTENT_MATCH_READER` (lo hace la raíz de composición con `intelligence`)', () => {
     expect(providers.map(tokenOf)).not.toContain(I_CONTENT_MATCH_READER);
     expect(module.exports).not.toContain(I_CONTENT_MATCH_READER);
   });

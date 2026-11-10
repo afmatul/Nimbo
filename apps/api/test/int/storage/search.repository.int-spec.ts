@@ -419,7 +419,7 @@ describe('TypeOrmNodeSearchRepository · por nombre (018 CA-1 a CA-5)', () => {
         const version = await owner.transaction((manager) =>
           insertFileWithVersion(manager, ana.id, { name: 'Acta.docx' }),
         );
-        await insertIndexing(owner, version, {
+        const indexingId = await insertIndexing(owner, version, {
           state,
           reason: { fallido: 'proveedor_no_disponible', no_indexable: 'sin_texto' }[state] ?? null,
         });
@@ -427,7 +427,14 @@ describe('TypeOrmNodeSearchRepository · por nombre (018 CA-1 a CA-5)', () => {
         expect(await found(ana, ['camion'])).toEqual([]);
         expect(await found(ana, ['acta'])).toEqual([['Acta.docx', 'name']]);
 
-        await insertChunk(owner, version, { text: 'El camión llegó tarde' });
+        // Como el swap de 019 (H-4): el fragmento y `indexado` entran en la misma transacción (RN-4).
+        await owner.transaction(async (manager) => {
+          await insertChunk(manager, version, { text: 'El camión llegó tarde' });
+          await manager.query(
+            `UPDATE indexacion SET estado = 'indexado', motivo = NULL, actualizado_en = now() WHERE id = $1`,
+            [indexingId],
+          );
+        });
         expect(await found(ana, ['camion'])).toEqual([['Acta.docx', 'content']]);
       },
     );
