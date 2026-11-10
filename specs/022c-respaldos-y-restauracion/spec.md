@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En curso |
+| Estado | En revisión |
 | Dueño | Abel |
 | Fase | 3 |
 | Requisitos | RNF-21 (con RNF-16 para los datos de las pruebas) |
 | Depende de | 000 (compose, volúmenes, `minio-init`, `migration:run`, `/api/v1/health/ready`) |
-| Última actualización | 2026-11-04 |
+| Última actualización | 2026-11-10 |
 
 ## 1. Contexto y objetivo
 El 2026-11-02 Adrián partió la spec 022 en el PR #78: la 022 se queda con RNF-18, la 022c cubre RNF-21 y la vuelta

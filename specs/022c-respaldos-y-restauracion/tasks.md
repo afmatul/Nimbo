@@ -49,4 +49,4 @@
   `applied: []`; los demás llamadores no cambian.
 - **Pendientes del plan §7:** ya están en `docs/sdd/pendientes.md`: copia externa antes de producción (RN-6) → PD-170;
   objetos de MinIO sin copia fuera de su volumen → PD-171; rol del volcado en staging (R-2) y ensayo en staging (P-2)
-  → PD-173. Queda sin fila la nota de la D-11 de la spec 000 que todavía remite a la 022 (la agrega el dueño en el PR).
+  → PD-173. La D-11 de la spec 000 que remitía a la 022 ya tenía fila (PD-172); se corrigió en `/review` (2026-11-10, a pedido de Adrián) y PD-172 quedó cerrado.
