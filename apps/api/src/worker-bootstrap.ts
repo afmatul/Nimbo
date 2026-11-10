@@ -6,6 +6,7 @@ import { Logger } from 'nestjs-pino';
 import type { z } from 'zod';
 
 import {
+  attachMetricsRoute,
   CorrelationContext,
   CorrelationIdMiddleware,
   errorClassOf,
@@ -58,6 +59,9 @@ const bootstrap = async <TEnv extends WorkerBaseEnv>(
   // la salud del worker explícitamente no lo es (CA-23).
   const correlation = new CorrelationIdMiddleware();
   app.use(correlation.use.bind(correlation));
+  // `/metrics` del proceso (022 T-02): mismo puerto interno de salud, sin prefijo y nunca publicado. Antes de `listen`,
+  // que inicializa la app y registra el manejador de no encontrados.
+  attachMetricsRoute(app);
 
   await app.listen(worker.port(env));
   logger.log({
@@ -83,7 +87,8 @@ export const reportStartFailure = (name: WorkerName, error: unknown): void => {
 /**
  * Arranque común de los procesos `worker` (plan 000 §6.3, ADR-0038): cargar el `.env` de la raíz si existe → validar
  * su entorno → `config.invalid` + exit 1 si falla → Nest con Pino y cierre ordenado → escuchar en su puerto interno
- * (nunca publicado, sin prefijo `/api/v1`: su salud no es API pública, CA-23). El arranque también lleva
+ * (nunca publicado, sin prefijo `/api/v1`: su salud no es API pública, CA-23), donde también sirve `/metrics` (022).
+ * El arranque también lleva
  * `correlationId` (RNF-17).
  */
 export const startWorker = <TEnv extends WorkerBaseEnv>(

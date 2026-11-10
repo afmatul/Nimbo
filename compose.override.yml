@@ -35,6 +35,19 @@ services:
     mem_limit: 128m
     restart: unless-stopped
 
+  # Local (022, R3): las apps corren en el anfitrión con `pnpm dev`, así que `api`, `worker` y `worker-optimizer`
+  # se resuelven hacia el anfitrión. El mismo nombre de servicio sirve en staging, donde no hace falta.
+  prometheus:
+    extra_hosts:
+      - 'api:host-gateway'
+      - 'worker:host-gateway'
+      - 'worker-optimizer:host-gateway'
+
+  # Correo de alertas de Grafana (022, P-3): Mailpit en local, sin cola `mail` ni `SMTP_*` del worker.
+  grafana:
+    environment:
+      GF_SMTP_HOST: mailpit:1025
+
   api:
     profiles: [apps]
     build:

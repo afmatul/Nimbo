@@ -1,0 +1,231 @@
+{
+  "apiVersion": 1,
+  "groups": [
+    {
+      "orgId": 1,
+      "name": "operacion",
+      "folder": "Nimbo",
+      "interval": "1m",
+      "rules": [
+        {
+          "uid": "nimbo-5xx",
+          "title": "Tasa de errores 5xx del api",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": { "from": 600, "to": 0 },
+              "datasourceUid": "prometheus",
+              "model": {
+                "refId": "A",
+                "instant": true,
+                "expr": "sum(rate(nimbo_http_request_duration_seconds_count{job=\"api\",status=~\"5..\"}[1m])) / sum(rate(nimbo_http_request_duration_seconds_count{job=\"api\"}[1m]))"
+              }
+            },
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [{ "evaluator": { "type": "gt", "params": [0.02] } }]
+              }
+            }
+          ],
+          "for": "5m",
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "annotations": {
+            "summary": "Más del 2 % de las respuestas del api son 5xx desde hace 5 minutos. Revisar el tablero «Operación» y las bitácoras del api."
+          }
+        },
+        {
+          "uid": "nimbo-latencia-p95",
+          "title": "Latencia p95 del api",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": { "from": 600, "to": 0 },
+              "datasourceUid": "prometheus",
+              "model": {
+                "refId": "A",
+                "instant": true,
+                "expr": "histogram_quantile(0.95, sum by (le) (rate(nimbo_http_request_duration_seconds_bucket{job=\"api\",route!~\"POST /api/v1/agent/ask|GET /api/v1/editing/content/:token\"}[1m])))"
+              }
+            },
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [{ "evaluator": { "type": "gt", "params": [0.3] } }]
+              }
+            }
+          ],
+          "for": "10m",
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "annotations": {
+            "summary": "El p95 de las consultas de UI del api supera 300 ms desde hace 10 minutos (RNF-01). Revisar el panel de latencia por ruta."
+          }
+        },
+        {
+          "uid": "nimbo-dependencia-caida",
+          "title": "Dependencia caída",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": { "from": 600, "to": 0 },
+              "datasourceUid": "prometheus",
+              "model": {
+                "refId": "A",
+                "instant": true,
+                "expr": "min by (dependency) (nimbo_dependency_up)"
+              }
+            },
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [{ "evaluator": { "type": "lt", "params": [1] } }]
+              }
+            }
+          ],
+          "for": "1m",
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "annotations": {
+            "summary": "La dependencia {{ .Labels.dependency }} no responde desde hace 1 minuto. Revisar su contenedor y el panel de disponibilidad del tablero «Operación»."
+          }
+        },
+        {
+          "uid": "nimbo-disco",
+          "title": "Uso del disco del anfitrión",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": { "from": 600, "to": 0 },
+              "datasourceUid": "prometheus",
+              "model": {
+                "refId": "A",
+                "instant": true,
+                "expr": "max((container_fs_usage_bytes{id=\"/\",device=~\"/dev/.+\",device!~\"/dev/(loop|shm).*\"} / container_fs_limit_bytes{id=\"/\",device=~\"/dev/.+\",device!~\"/dev/(loop|shm).*\"}) and on (device) topk(1, container_fs_limit_bytes{id=\"/\",device=~\"/dev/.+\",device!~\"/dev/(loop|shm).*\"}))"
+              }
+            },
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [{ "evaluator": { "type": "gt", "params": [0.8] } }]
+              }
+            }
+          ],
+          "for": "1m",
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "annotations": {
+            "summary": "El disco de mayor capacidad del anfitrión supera el 80 % de uso. Revisar el panel de disco y liberar espacio (imágenes y volúmenes de Docker o la retención de Prometheus)."
+          }
+        },
+        {
+          "uid": "nimbo-colas",
+          "title": "Cola con trabajos pendientes o reintentados",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": { "from": 600, "to": 0 },
+              "datasourceUid": "prometheus",
+              "model": {
+                "refId": "A",
+                "instant": true,
+                "expr": "max by (queue) ((sum by (queue) (nimbo_queue_jobs{state=~\"waiting|prioritized\"}) > bool 50) or (sum by (queue, attempts_made) (increase(nimbo_queue_job_failures_total{attempts_made=\"3+\"}[5m])) > bool 0))"
+              }
+            },
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [{ "evaluator": { "type": "gt", "params": [0] } }]
+              }
+            }
+          ],
+          "for": "1m",
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "annotations": {
+            "summary": "La cola {{ .Labels.queue }} tiene más de 50 trabajos pendientes o un trabajo con tres intentos fallidos en los últimos 5 minutos. Revisar los paneles de colas del tablero «Operación» y las bitácoras del proceso que la consume."
+          }
+        },
+        {
+          "uid": "nimbo-renovacion",
+          "title": "Fallo del proceso de renovación",
+          "condition": "C",
+          "data": [
+            {
+              "refId": "A",
+              "relativeTimeRange": { "from": 1200, "to": 0 },
+              "datasourceUid": "prometheus",
+              "model": {
+                "refId": "A",
+                "instant": true,
+                "expr": "sum(increase(nimbo_queue_job_failures_total{queue=\"subscription-renewal\"}[15m]))"
+              }
+            },
+            {
+              "refId": "C",
+              "datasourceUid": "__expr__",
+              "model": {
+                "refId": "C",
+                "type": "threshold",
+                "expression": "A",
+                "conditions": [{ "evaluator": { "type": "gt", "params": [0] } }]
+              }
+            }
+          ],
+          "for": "0s",
+          "noDataState": "OK",
+          "execErrState": "Error",
+          "annotations": {
+            "summary": "Falló una pasada de la renovación de suscripciones en los últimos 15 minutos. Revisar las bitácoras del worker y el panel de fallos de la renovación; la alerta se resuelve sola tras 15 minutos sin fallos nuevos."
+          }
+        }
+      ]
+    }
+  ],
+  "contactPoints": [
+    {
+      "orgId": 1,
+      "name": "correo-equipo",
+      "receivers": [
+        {
+          "uid": "correo-equipo",
+          "type": "email",
+          "settings": { "addresses": "$ALERT_EMAIL_TO" }
+        }
+      ]
+    }
+  ],
+  "policies": [
+    {
+      "orgId": 1,
+      "receiver": "correo-equipo",
+      "group_by": ["grafana_folder", "alertname"]
+    }
+  ]
+}

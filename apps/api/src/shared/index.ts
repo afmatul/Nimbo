@@ -108,4 +108,5 @@ export { DomainExceptionFilter } from './presentation/domain-exception.filter';
 export { VersionHeaderMiddleware } from './presentation/version-header.middleware';
 export { ZodValidationPipe } from './presentation/zod-validation.pipe';
 export type { InvalidInputFactory } from './presentation/zod-validation.pipe';
+export { attachMetricsRoute, startMetricsServer } from './infrastructure/metrics/metrics.module';
 export { SharedModule } from './shared.module';
