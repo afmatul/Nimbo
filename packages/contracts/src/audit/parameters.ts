@@ -9,8 +9,9 @@ export const AUDIT_ORIGINS = ['self', 'staff'] as const;
 export type AuditOrigin = (typeof AUDIT_ORIGINS)[number];
 
 /**
- * Quién disparó la acción: el cliente (`manual`) o un ciclo programado (`scheduled`): la purga de la papelera (CA-7) y
- * la renovación automática de la suscripción (010).
+ * Quién disparó la acción: el cliente (`manual`), un ciclo programado (`scheduled`: la purga de la papelera, CA-7, y la
+ * renovación automática de la suscripción, 010) o alguien con el enlace público del propietario (`public_link`: la
+ * descarga y el bloqueo, 013 CA-18, ADR-0039 regla 5).
  */
-export const AUDIT_TRIGGERS = ['manual', 'scheduled'] as const;
+export const AUDIT_TRIGGERS = ['manual', 'scheduled', 'public_link'] as const;
 export type AuditTrigger = (typeof AUDIT_TRIGGERS)[number];

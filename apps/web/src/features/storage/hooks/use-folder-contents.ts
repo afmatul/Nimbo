@@ -7,6 +7,7 @@ import {
 } from '@nimbo/contracts';
 import * as React from 'react';
 
+import { useViewCache, type ViewCache } from '../../../lib/view-cache';
 import type { FolderPageQuery } from '../folders-api';
 import { DEFAULT_NODE_ORDER, sameOrder, type NodeOrder } from '../node-order';
 import { StorageRequestError } from '../storage-request-error';
@@ -50,6 +51,13 @@ export interface ListControls {
 }
 
 const LOADING: FolderListing = { status: 'loading' };
+
+const cacheKeyOf = (folderId: string | null): string => `folder:${folderId ?? ''}`;
+
+/** Lo último leído de la carpeta en el orden por defecto: se pinta al volver a ella mientras se relee. */
+function cachedListing(cache: ViewCache, folderId: string | null): FolderListing {
+  return cache.get<FolderListing>(cacheKeyOf(folderId)) ?? LOADING;
+}
 
 /** `location` = carpeta e intento: cambiarla vuelve a «cargando»; cambiar el orden no (CA-12). */
 interface ContentsState {
@@ -160,9 +168,13 @@ function useFirstPage(
   setState: SetContents,
 ): void {
   const { load, folderId, order, location, refreshes, loaded } = request;
+  const cache = useViewCache();
   React.useEffect(() => {
     let current = true;
     const settle = (listing: FolderListing): void => {
+      if (listing.status === 'ready' && sameOrder(order, DEFAULT_NODE_ORDER)) {
+        cache.set(cacheKeyOf(folderId), listing);
+      }
       if (current) setState({ location, listing, ...IDLE });
     };
     const pages = { load, folderId, order };
@@ -175,7 +187,7 @@ function useFirstPage(
     return () => {
       current = false;
     };
-  }, [load, folderId, order, location, refreshes, loaded, setState]);
+  }, [load, folderId, order, location, refreshes, loaded, setState, cache]);
 }
 
 function requestNextPage(
@@ -240,7 +252,11 @@ export function useFolderContents(
     listing: LOADING,
     ...IDLE,
   });
-  const current = state.location === location ? state : { location, listing: LOADING, ...IDLE };
+  const cache = useViewCache();
+  const current =
+    state.location === location
+      ? state
+      : { location, listing: cachedListing(cache, folderId), ...IDLE };
   const loaded = useLoadedCount(loadedCountOf(current, order));
   useFirstPage(
     { load, folderId, order, location, refreshes: counters.refreshes, loaded },

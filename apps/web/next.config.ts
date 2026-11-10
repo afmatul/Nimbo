@@ -15,7 +15,8 @@ if (existsSync(REPO_DOTENV)) {
 
 const nextConfig: NextConfig = {
   // Imagen mínima (`server.js` + `.next/static`), CA-28/CA-29. Nada se hornea: no hay `NEXT_PUBLIC_*`.
-  output: 'standalone',
+  // `pnpm start:all --prod` lo apaga en local: en Windows copiar los archivos trazados necesita symlinks.
+  ...(process.env['NIMBO_WEB_STANDALONE'] === 'off' ? {} : { output: 'standalone' as const }),
   outputFileTracingRoot: REPO_ROOT,
   reactStrictMode: true,
   // El lint corre con `pnpm lint` (flat config raíz), no dentro de `next build`.

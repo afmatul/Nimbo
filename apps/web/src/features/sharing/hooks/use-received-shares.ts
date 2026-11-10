@@ -3,6 +3,7 @@
 import type { ReceivedShare } from '@nimbo/contracts';
 import * as React from 'react';
 
+import { useViewCache, type ViewCache } from '../../../lib/view-cache';
 import type { SharingApi } from '../sharing-api';
 
 /** «Compartidos conmigo»: cargando, error de carga o la lista (más recientes primero, 012 CA-22). */
@@ -25,14 +26,22 @@ export interface ReceivedSharesState {
 
 type SetListing = React.Dispatch<React.SetStateAction<ReceivedListing>>;
 
+const CACHE_KEY = 'received-shares';
 const LOADING: ReceivedListing = { status: 'loading' };
 
 /** Pide la lista y la deja en `setListing`; la función devuelta descarta la respuesta si llega tarde. */
-function requestReceived(api: SharingApi, now: () => number, setListing: SetListing): () => void {
+function requestReceived(
+  api: SharingApi,
+  now: () => number,
+  setListing: SetListing,
+  cache: ViewCache,
+): () => void {
   let current = true;
   api.listReceived().then(
     ({ entries }) => {
-      if (current) setListing({ status: 'ready', entries, loadedAt: now() });
+      const ready: ReceivedListing = { status: 'ready', entries, loadedAt: now() };
+      cache.set(CACHE_KEY, ready);
+      if (current) setListing(ready);
     },
     () => {
       if (current) setListing({ status: 'error' });
@@ -57,10 +66,13 @@ export function useReceivedShares(
   api: SharingApi,
   now: () => number = Date.now,
 ): ReceivedSharesState {
-  const [listing, setListing] = React.useState<ReceivedListing>(LOADING);
+  const cache = useViewCache();
+  const [listing, setListing] = React.useState<ReceivedListing>(
+    () => cache.get<ReceivedListing>(CACHE_KEY) ?? LOADING,
+  );
   const [attempt, setAttempt] = React.useState(0);
 
-  React.useEffect(() => requestReceived(api, now, setListing), [api, attempt, now]);
+  React.useEffect(() => requestReceived(api, now, setListing, cache), [api, attempt, now, cache]);
 
   const reload = React.useCallback(() => {
     setListing((previous) => (previous.status === 'error' ? LOADING : previous));
@@ -70,9 +82,13 @@ export function useReceivedShares(
   const leave = React.useCallback(
     async (shareId: string) => {
       await api.leave(shareId);
-      setListing((previous) => withoutShare(previous, shareId));
+      setListing((previous) => {
+        const next = withoutShare(previous, shareId);
+        cache.set(CACHE_KEY, next);
+        return next;
+      });
     },
-    [api],
+    [api, cache],
   );
 
   return { listing, reload, leave };

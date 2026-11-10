@@ -4,6 +4,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 
 import {
+  consumeOrThrow,
   I_CLOCK,
   I_RATE_LIMITER,
   I_TRANSACTION_RUNNER,
@@ -29,7 +30,6 @@ import { SHARING_CONFIG } from './sharing-config';
 import type { SharingConfig } from './sharing-config';
 import type { SharingLogger } from './sharing-logger';
 
-const RATE_LIMIT_WINDOW_SECONDS = 60;
 /** Clave del límite de CA-7: una por propietario (plan §5). */
 const SHARE_RATE_KEY_PREFIX = 'sharing:share:';
 
@@ -211,12 +211,15 @@ export class SharingService {
 
   /** CA-7: antes de resolver el nodo o el correo, así el `429` no revela nada (plan §5). */
   private async assertWithinRate(actor: Actor): Promise<void> {
-    const decision = await this.rateLimiter.consume(`${SHARE_RATE_KEY_PREFIX}${actor.id}`, [
-      { limit: this.config.shareAttemptsPerMinute, windowSeconds: RATE_LIMIT_WINDOW_SECONDS },
-    ]);
-    if (decision.allowed) return;
-    this.logger.warn({ event: 'sharing.rate_limited', actorId: actor.id });
-    throw new RateLimitExceededError(decision.retryAfterSeconds);
+    const key = `${SHARE_RATE_KEY_PREFIX}${actor.id}`;
+    try {
+      await consumeOrThrow(this.rateLimiter, key, this.config.shareAttemptsPerMinute);
+    } catch (error) {
+      if (error instanceof RateLimitExceededError) {
+        this.logger.warn({ event: 'sharing.rate_limited', actorId: actor.id });
+      }
+      throw error;
+    }
   }
 
   private logChange({ access, change }: ShareOutcome, nodeId: string): void {

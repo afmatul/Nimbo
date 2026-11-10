@@ -144,23 +144,35 @@ migración (`ENABLE` + `FORCE ROW LEVEL SECURITY`, `USING (… = nimbo_actor_id(
 `identity` (002) y `sharing` (contraseña y bloqueo de los enlaces públicos, 013), y la regla 1 no admite
 `sharing → identity` porque ya existe `identity → sharing` (DF-84). Es el primer caso de la regla 8.
 
-| Pieza                                                           | Dónde                                                   | Para qué                                                                                                                                                                                                                          |
-| --------------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PasswordHash`                                                  | `domain/password-hash.vo.ts`                            | PHC opaco: `toString` y `toJSON` dan `[REDACTED]`; solo el hasher y los repositorios llaman `reveal()`                                                                                                                            |
-| `IPasswordHasher` (`I_PASSWORD_HASHER`) → `Argon2idHasher`      | `application/security/`, `infrastructure/security/`     | `hash(plain)` y `verify(hash, plain)` con Argon2id m=19456, t=2, p=1 (RN-3 de 001, ADR-0017)                                                                                                                                      |
-| `IAttemptLockout` (`I_ATTEMPT_LOCKOUT`) → `RedisAttemptLockout` | `application/rate-limit/`, `infrastructure/rate-limit/` | `check`, `recordFailure`, `reserveAttempt` y `clear` con un script Lua atómico; `now` sale de `IClock` y si Redis falla, lanza (falla cerrado). Los tipos `LockoutPolicy`, `LockState` y `AttemptReservation` también se exportan |
+| Pieza                                                           | Dónde                                                   | Para qué                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| --------------------------------------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PasswordHash`                                                  | `domain/password-hash.vo.ts`                            | PHC opaco: `toString` y `toJSON` dan `[REDACTED]`; solo el hasher y los repositorios llaman `reveal()`                                                                                                                                                                                                                                                                                                                                         |
+| `IPasswordHasher` (`I_PASSWORD_HASHER`) → `Argon2idHasher`      | `application/security/`, `infrastructure/security/`     | `hash(plain)` y `verify(hash, plain)` con Argon2id m=19456, t=2, p=1 (RN-3 de 001, ADR-0017)                                                                                                                                                                                                                                                                                                                                                   |
+| `IAttemptLockout` (`I_ATTEMPT_LOCKOUT`) → `RedisAttemptLockout` | `application/rate-limit/`, `infrastructure/rate-limit/` | `check`, `recordFailure`, `reserveAttempt` y `clear` con un script Lua atómico; `now` sale de `IClock` y si Redis falla, lanza (falla cerrado). `recordFailure` devuelve `FailureRecord`, un `LockState` que, bloqueado, suma `engagedLock`: `true` solo en el fallo que cruza el máximo, también con fallos simultáneos (013b CA-14, P-A). Los tipos `LockoutPolicy`, `LockState`, `FailureRecord` y `AttemptReservation` también se exportan |
 
 `SharedModule` (global) provee y exporta los dos tokens. Las **claves** de bloqueo y los **valores** de
 `LockoutPolicy` no viven aquí: los pone cada consumidor (`identity-limit-keys.ts` en `identity`). Las pruebas de
 contrato contra la librería y Redis reales están en `test/int/shared/password-hash.int-spec.ts` y
 `test/int/shared/redis-attempt-lockout.int-spec.ts`.
 
+### `consumeOrThrow` (013 M-2, auditoría del PR #93)
+
+| Pieza                                          | Dónde                                        | Para qué                                                                                                                                                                                                           |
+| ---------------------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `consumeOrThrow(limiter, key, limitPerMinute)` | `application/rate-limit/consume-or-throw.ts` | Consume `key` con una sola regla (`limitPerMinute` en `RATE_LIMIT_WINDOW_SECONDS`) y, si se rechaza, lanza `RateLimitExceededError` con `retryAfterSeconds`. Si el almacén falla, propaga su error (falla cerrado) |
+| `RATE_LIMIT_WINDOW_SECONDS`                    | `application/rate-limit/consume-or-throw.ts` | La ventana única de 60 s de los límites «por minuto»                                                                                                                                                               |
+
+Entra por la regla 8 (lo usan ≥ 3 módulos: hoy `sharing`; `storage`, `optimizer` e `intelligence` tienen su copia y
+pasan a usarlo con PD-176). No tiene reglas de negocio: la **clave**, el **límite** y la **bitácora** del rechazo los
+pone cada consumidor; para registrar el `429`, el consumidor captura `RateLimitExceededError`, escribe su bitácora y
+vuelve a lanzar (así `sharing` conserva `sharing.rate_limited` con `actorId` del propietario y sin datos del visitante).
+
 ## Capas
 
 ```
 shared/
 ├─ domain/          # sin Nest, TypeORM ni zod (incluye PasswordHash)
-├─ application/     # HealthService, puertos (IHealthIndicator, IRateLimiter, IAttemptLockout, IPasswordHasher, ITransactionRunner, IAccessTokenVerifier, IDomainEventPublisher)
+├─ application/     # HealthService, puertos (IHealthIndicator, IRateLimiter, IAttemptLockout, IPasswordHasher, ITransactionRunner, IAccessTokenVerifier, IDomainEventPublisher), consumeOrThrow
 ├─ infrastructure/  # config, logging, correlation, persistence, queue, health, clock, redis, rate-limit, security, events
 ├─ presentation/    # HealthController, DomainExceptionFilter, VersionHeaderMiddleware, ZodValidationPipe, configureHttpApp, auth/ (guards y decoradores)
 ├─ shared.module.ts  health.module.ts

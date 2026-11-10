@@ -1,12 +1,12 @@
 'use client';
 
 import type { EditMode } from '@nimbo/contracts';
-import { ArrowLeft, Eye, Pencil } from 'lucide-react';
-import Link from 'next/link';
+import { Eye, Pencil } from 'lucide-react';
 import * as React from 'react';
 
+import { BrandLogo } from '../../../components/nimbo/brand-logo';
 import { FileTypeChip } from '../../../components/nimbo/file-type-chip';
-import { Button, buttonVariants } from '../../../components/ui/button';
+import { Button } from '../../../components/ui/button';
 import { cn } from '../../../lib/utils';
 import { MY_FILES_LABEL, MY_FILES_PATH } from '../../storage/routes';
 
@@ -25,17 +25,11 @@ export interface EditorHeaderProps {
   readonly presence: PresenceToggle | null;
 }
 
-/** Barra del editor (mockup `editing/editor`): volver, tipo, nombre, modo y, en móvil, la presencia. */
+/** Barra del editor (mockup `editing/editor`): el logo, que vuelve a Mis archivos, tipo, nombre, modo y, en móvil, la presencia. */
 export function EditorHeader({ title, mode, presence }: EditorHeaderProps): React.JSX.Element {
   return (
     <header className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
-      <Link
-        href={MY_FILES_PATH}
-        aria-label={`Volver a ${MY_FILES_LABEL}`}
-        className={buttonVariants({ variant: 'ghost', size: 'icon', className: 'shrink-0' })}
-      >
-        <ArrowLeft className="h-5 w-5" aria-hidden="true" />
-      </Link>
+      <BrandLogo compact href={MY_FILES_PATH} label={`Volver a ${MY_FILES_LABEL}`} />
       <FileTypeChip fileType="docx" className="shrink-0" />
       <h1 className="min-w-0 flex-1 truncate text-base font-semibold text-foreground">{title}</h1>
       {mode ? <ModeBadge mode={mode} /> : null}

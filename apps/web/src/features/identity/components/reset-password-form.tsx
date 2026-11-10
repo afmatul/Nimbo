@@ -8,6 +8,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 
 import { IdentityCard } from '../../../components/nimbo/identity-card';
+import { PasswordField } from '../../../components/nimbo/password-field';
 import { Button } from '../../../components/ui/button';
 import { Label } from '../../../components/ui/label';
 import { toApiClientError, type ApiClientError } from '../../../lib/api-error';
@@ -18,7 +19,6 @@ import { forgetSession } from '../session/session-memory';
 
 import { FieldError } from './field-error';
 import type { LinkProblem } from './link-problem-card';
-import { PasswordField } from './password-field';
 import { PasswordRequirements } from './password-requirements';
 import { ServerErrorAlert } from './server-error-alert';
 
