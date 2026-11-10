@@ -1,0 +1,19 @@
+# Prometheus (022, CA-1): un trabajo por proceso, con su nombre de servicio en la red interna de Compose.
+# Los puertos son fijos aquí porque Prometheus no lee variables de entorno: deben coincidir con `.env.example`
+# (`WORKER_PORT`, `WORKER_OPTIMIZER_PORT`) y con `METRICS_PORT` del `api` (T-02). Ningún puerto se publica (CA-2).
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: api
+    static_configs:
+      - targets: ['api:9464']
+  - job_name: worker
+    static_configs:
+      - targets: ['worker:3001']
+  - job_name: worker-optimizer
+    static_configs:
+      - targets: ['worker-optimizer:3003']
+  - job_name: cadvisor
+    static_configs:
+      - targets: ['cadvisor:8080']

@@ -106,6 +106,7 @@ const RUNTIME_EXPORTS_BY_TASK = {
   '018 T-03': ['escapeLike'],
   '013 T-01': ['PasswordHash', 'I_PASSWORD_HASHER', 'I_ATTEMPT_LOCKOUT'],
   '013 M-2': ['consumeOrThrow', 'RATE_LIMIT_WINDOW_SECONDS'],
+  '022 T-02': ['attachMetricsRoute', 'startMetricsServer'],
 } as const;
 
 const ALL_RUNTIME_EXPORTS: readonly string[] = Object.values(RUNTIME_EXPORTS_BY_TASK).flat();
@@ -223,6 +224,9 @@ describe('shared/index.ts (CA-17)', () => {
   it('CA-13: exporta `consumeOrThrow` y la ventana única de 60 s de los límites por minuto (013 M-2)', () => {
     expectExportsOf('013 M-2');
     expect(shared.RATE_LIMIT_WINDOW_SECONDS).toBe(60);
+  });
+  it('022 CA-2: exporta el servidor privado de métricas del `api` y la ruta `/metrics` de los `worker` (022 T-02, PD-171)', () => {
+    expectExportsOf('022 T-02');
   });
   it('CA-17: exporta exactamente la lista del plan §6.2 al cerrar el bloque 2 (T-26)', () => {
     expect(exportedKeys()).toEqual([...ALL_RUNTIME_EXPORTS].sort());
