@@ -33,7 +33,7 @@ CA-12 — 8/11/2026, 18:19:10 (hora de Guatemala)
   OK  títulos, descripciones, consultas y leyendas sin tokens y credenciales
   OK  sin variables de plantilla, enlaces ni anotaciones propias con datos — variables=0 enlaces=0
   OK  ningún panel 16-35 tiene enlaces ni transformaciones
-  OK  PD-202: las consultas del Agente no usan plan, usuario ni cuenta
+  OK  PD-192: las consultas del Agente no usan plan, usuario ni cuenta
   OK  cada ruta citada existe como plantilla en un controlador — citadas=18 declaradas=90 ausentes=0
 
 [B] Series reales desde las 14:30 hasta ahora: nimbo_*=991; resto=1862

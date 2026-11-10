@@ -168,7 +168,7 @@ plegar en la vista sin guardar (el tablero está aprovisionado). Las rutas apare
 | 30 | Cola optimization: completados y fallidos por intento | Como el panel 25 para la cola `optimization` |
 | 31 | Cola optimization: ejecución p95 | Como el panel 27 para la cola `optimization` |
 | 32 | Agente | Fila del grupo del agente (022d CA-11) |
-| 33 | Agente: consultas por minuto | Preguntas por minuto, todas las cuentas juntas (sin desglose por plan, PD-192) |
+| 33 | Agente: consultas por minuto | Preguntas por minuto, todas las cuentas juntas (sin desglose por plan, PD-202) |
 | 34 | Agente: latencia total (p50, p95) | Hasta el final de la respuesta en flujo; se satura en 10 s (§8) |
 | 35 | Agente: proporción de respuestas con error | Todo lo que no es `2xx`, incluido el `429` del límite del plan; 0 % sin errores |
 
@@ -220,7 +220,7 @@ solas al recuperarla, y la de renovación 15 min después del último fallo.
 - Tras restaurar Redis, el `api` puede tardar en responder unos instantes sin reiniciarse (demo T-09, PD-196).
 - Candidata a regla futura «caída de un proceso propio o de Prometheus» (`up == 0`), fuera de las seis (PD-167 (a)).
 - **Grupos de los módulos (022d).** Solo ven lo que dan las series HTTP y de colas de 022; el resto exige instrumentar
-  código (PD-190):
+  código (PD-200):
   - El panel 18 no distingue el bloqueo por correo (`IDENTITY_LOGIN_LOCKED`) del límite por IP: ambos son `429`. El
     reúso de un token de refresco es un `401` más de `session/refresh` (022d S-1).
   - El panel 19 cuenta todo `403` del `api` por ruta, no por motivo (S-2).

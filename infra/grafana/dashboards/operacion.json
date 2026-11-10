@@ -564,7 +564,7 @@
       "id": 18,
       "type": "timeseries",
       "title": "Inicios de sesión por resultado (2xx, 401, 429)",
-      "description": "Exitosos (2xx), fallidos por credenciales (401) y limitados o bloqueados (429). El 429 junta el bloqueo por correo y el límite por IP: el motivo exige instrumentar código (PD-190).",
+      "description": "Exitosos (2xx), fallidos por credenciales (401) y limitados o bloqueados (429). El 429 junta el bloqueo por correo y el límite por IP: el motivo exige instrumentar código (PD-200).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -643,7 +643,7 @@
       "id": 21,
       "type": "timeseries",
       "title": "Cargas por ruta y código",
-      "description": "Inicio, reanudación y cierre de cargas. 2xx = completadas; 4xx = rechazadas (422 límites, tipo o cuota; 409 partes faltantes; 410 vencida). El motivo exacto exige instrumentar código (PD-190).",
+      "description": "Inicio, reanudación y cierre de cargas. 2xx = completadas; 4xx = rechazadas (422 límites, tipo o cuota; 409 partes faltantes; 410 vencida). El motivo exacto exige instrumentar código (PD-200).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1030,7 +1030,7 @@
       "id": 34,
       "type": "timeseries",
       "title": "Agente: latencia total (p50, p95)",
-      "description": "Hasta el final de la respuesta en flujo. El histograma llega a 10 s: una respuesta más larga satura el p95 en 10 s (PD-190).",
+      "description": "Hasta el final de la respuesta en flujo. El histograma llega a 10 s: una respuesta más larga satura el p95 en 10 s (PD-200).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -1072,7 +1072,7 @@
       "id": 35,
       "type": "timeseries",
       "title": "Agente: proporción de respuestas con error",
-      "description": "Respuestas distintas de 2xx, incluido el 429 del límite del plan; 0 % si no hay errores. Un error dentro del flujo, después del primer evento, sale como 200 y no cuenta (PD-190).",
+      "description": "Respuestas distintas de 2xx, incluido el 429 del límite del plan; 0 % si no hay errores. Un error dentro del flujo, después del primer evento, sale como 200 y no cuenta (PD-200).",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"

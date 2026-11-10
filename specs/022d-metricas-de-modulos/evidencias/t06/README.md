@@ -235,7 +235,7 @@ Resultados completos en el [registro 38](38-ca12-privacidad-20261108-181913.txt)
 | Series `nimbo_*` desde las 14:30 | 991, sin correos, UUID, nombres de archivo ni tokens (el registro 45 cuenta 725, porque su ventana es de 2 h) |
 | Valores de `route` | 33: 32 plantillas y `GET <sin patrón>` |
 | Canarios del ensayo (IDs, correos, nombres, claves de objeto y secretos locales) | Sin coincidencias en etiquetas, `/metrics`, tablero ni registros |
-| PD-202 (el registro 38 lo cita con su número anterior, PD-202) | Sin desglose por plan en consultas ni etiquetas |
+| PD-202 (el registro 38 lo cita con su número anterior, PD-192) | Sin desglose por plan en consultas ni etiquetas |
 
 **Limitaciones:**
 - Se ejercitaron 33 rutas de las 90 declaradas.
