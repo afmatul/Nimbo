@@ -16,13 +16,14 @@ import {
 import { PasswordField } from '../../../components/nimbo/password-field';
 import { Label } from '../../../components/ui/label';
 import type { PublicLinkDownloadOutcome } from '../hooks/use-public-link-visit';
-import { publicLinkMessage } from '../public-link-messages';
+import { messageText, publicLinkMessage } from '../public-link-messages';
 
 /** Evita que el visitante la confunda con la de su cuenta de Nimbo (013b CA-2). */
 const PASSWORD_HINT = 'No es la de tu cuenta: te la da quien compartió el enlace.';
 const PASSWORD_MISSING = 'Escribe la contraseña del enlace.';
-const INVALID = publicLinkMessage(SHARING_ERROR_CODES.SHARING_LINK_PASSWORD_INVALID);
-const PASSWORD_INVALID = `${INVALID.title} ${INVALID.description}`;
+const PASSWORD_INVALID = messageText(
+  publicLinkMessage(SHARING_ERROR_CODES.SHARING_LINK_PASSWORD_INVALID),
+);
 
 export interface PublicLinkPasswordFormProps {
   readonly outcome: PublicLinkDownloadOutcome;

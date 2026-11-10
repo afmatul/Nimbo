@@ -126,6 +126,7 @@ function SharedFileCard({
 }
 
 export interface PublicLinkVisitViewProps {
+  /** Debe ser estable entre renders (`useMemo`): uno nuevo vuelve a pedir la ficha con `POST /open`. */
   readonly api: PublicLinkVisitorApi;
   readonly openUrl: (url: string) => void;
 }

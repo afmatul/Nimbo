@@ -8,16 +8,20 @@ import { Alert } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../lib/utils';
 import type { PublicLinkDownloadOutcome } from '../hooks/use-public-link-visit';
-import { PUBLIC_LINK_DOWNLOAD_FAILED, publicLinkMessage } from '../public-link-messages';
+import {
+  messageText,
+  PUBLIC_LINK_DOWNLOAD_FAILED,
+  publicLinkMessage,
+} from '../public-link-messages';
 
-import { RETRY_ON_TINT } from './public-link-states';
+import { RETRY_ON_TINT } from './public-link-tint';
 
 const DOWNLOAD_STARTED = 'Tu descarga comenzó. Si no empieza, vuelve a intentarlo.';
 
 interface NoticeAlertProps {
   /**
-   * `warning`: el tono que el catálogo da al `429` y a la red al descargar (`public-link-messages.spec.ts`); `success`
-   * no es del catálogo: es el resultado de la descarga.
+   * `warning`: el tono del catálogo para los dos avisos sobre la ficha (el `429` y la red al descargar); `success` no
+   * es del catálogo: es el resultado de la descarga.
    */
   readonly variant: 'warning' | 'success';
   readonly icon: ReactNode;
@@ -52,27 +56,26 @@ function RateLimitedNotice({
 }: {
   readonly retryAfterSeconds: number | undefined;
 }): JSX.Element {
-  const { title, description } = publicLinkMessage(
-    SHARED_ERROR_CODES.TOO_MANY_REQUESTS,
-    retryAfterSeconds,
+  const text = messageText(
+    publicLinkMessage(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, retryAfterSeconds),
   );
   return (
     <NoticeAlert variant="warning" icon={<Clock aria-hidden="true" className={iconClass} />}>
-      <p>{`${title} ${description}`}</p>
+      <p>{text}</p>
     </NoticeAlert>
   );
 }
 
 /** La red falla al descargar: el diseño de «bloqueado» con «Reintentar» (CA-7). */
 function DownloadFailedNotice({ retry }: { readonly retry: () => void }): JSX.Element {
-  const { title, description } = publicLinkMessage(PUBLIC_LINK_DOWNLOAD_FAILED);
+  const text = messageText(publicLinkMessage(PUBLIC_LINK_DOWNLOAD_FAILED));
   return (
     <NoticeAlert
       variant="warning"
       icon={<AlertCircle aria-hidden="true" className={iconClass} />}
       className={RETRY_ON_TINT}
     >
-      <p>{`${title} ${description}`}</p>
+      <p>{text}</p>
       <Button
         type="button"
         variant="outline"

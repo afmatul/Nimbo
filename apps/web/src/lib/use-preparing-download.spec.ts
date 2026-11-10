@@ -114,7 +114,7 @@ describe('usePreparingDownload (RNF-14, 013b CA-3)', () => {
     expect(openUrl).toHaveBeenCalledWith(SIGNED.url);
   });
 
-  it('un fallo de «openUrl» no se informa como error de descarga y libera el botón', async () => {
+  it('un fallo de «openUrl» llega a «onFailure» sin rechazar «download» y libera el botón', async () => {
     const { hook, onFailure, openUrl } = renderDownload(() => Promise.resolve(SIGNED));
     const blocked = new Error('navegación bloqueada');
     openUrl.mockImplementationOnce(() => {
@@ -122,10 +122,10 @@ describe('usePreparingDownload (RNF-14, 013b CA-3)', () => {
     });
 
     await act(async () => {
-      await expect(hook.result.current.download('f-1')).rejects.toBe(blocked);
+      await expect(hook.result.current.download('f-1')).resolves.toBe(true);
     });
 
-    expect(onFailure).not.toHaveBeenCalled();
+    expect(onFailure).toHaveBeenCalledWith('f-1', blocked, expect.any(Function));
     expect(hook.result.current.preparing).toBeNull();
     await act(async () => {
       await expect(hook.result.current.download('f-1')).resolves.toBe(true);

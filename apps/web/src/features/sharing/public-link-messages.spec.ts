@@ -4,10 +4,8 @@ import {
   PUBLIC_LINK_DOWNLOAD_FAILED,
   PUBLIC_LINK_OPEN_FAILED,
   publicLinkMessage,
-  type PublicLinkMessage,
+  messageText,
 } from './public-link-messages';
-
-const textOf = ({ title, description }: PublicLinkMessage): string => `${title} ${description}`;
 
 describe('mensajes de la página del enlace público (013b §6, RN-1)', () => {
   it.each([
@@ -38,13 +36,13 @@ describe('mensajes de la página del enlace público (013b §6, RN-1)', () => {
   ] as const)('%s: %s', (_ca, key, title, tone) => {
     const message = publicLinkMessage(key);
 
-    expect(textOf(message)).toBe(title);
+    expect(messageText(message)).toBe(title);
     expect(message.tone).toBe(tone);
   });
 
   it('CA-7: la red al abrir y al descargar tienen textos distintos', () => {
-    expect(textOf(publicLinkMessage(PUBLIC_LINK_OPEN_FAILED))).not.toBe(
-      textOf(publicLinkMessage(PUBLIC_LINK_DOWNLOAD_FAILED)),
+    expect(messageText(publicLinkMessage(PUBLIC_LINK_OPEN_FAILED))).not.toBe(
+      messageText(publicLinkMessage(PUBLIC_LINK_DOWNLOAD_FAILED)),
     );
   });
 
@@ -73,19 +71,19 @@ describe('mensajes de la página del enlace público (013b §6, RN-1)', () => {
     ['con menos de un minuto de espera', 30],
     ['sin `Retry-After`', undefined],
   ])('CA-5: %s, dice «1 minuto» en singular', (_caso, seconds) => {
-    expect(textOf(publicLinkMessage(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, seconds))).toBe(
+    expect(messageText(publicLinkMessage(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, seconds))).toBe(
       'Hubo demasiados intentos con este enlace. Espera 1 minuto e inténtalo de nuevo.',
     );
   });
 
   it('CA-5: con más de un minuto dice «minutos» en plural', () => {
-    expect(textOf(publicLinkMessage(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, 61))).toBe(
+    expect(messageText(publicLinkMessage(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, 61))).toBe(
       'Hubo demasiados intentos con este enlace. Espera 2 minutos e inténtalo de nuevo.',
     );
   });
 
   it('CA-5, RN-1: el `429` no usa el texto genérico ni dice el motivo', () => {
-    const text = textOf(publicLinkMessage(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, 900));
+    const text = messageText(publicLinkMessage(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, 900));
 
     expect(text).not.toMatch(/Hiciste|contraseña|red|techo/);
   });

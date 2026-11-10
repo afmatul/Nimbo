@@ -14,12 +14,9 @@ import {
   type PublicLinkMessageTone,
 } from '../public-link-messages';
 
+import { RETRY_ON_TINT } from './public-link-tint';
+
 const PAGE_TITLE = 'Archivo compartido';
-/**
- * PD-189: sobre advertencia y error el borde `input` del `outline` no llega a 3:1; `secondary-foreground` sí. Va en el
- * contenedor de «Reintentar» y el texto queda en `foreground` aunque el contenedor lo tiña.
- */
-export const RETRY_ON_TINT = '[&_button]:border-secondary-foreground [&_button]:text-foreground';
 
 /** Tono del catálogo → `StateView` sin ficha; `warning` es el diseño de error-carga en tono de advertencia (CA-5). */
 const STATE_VIEW_BY_TONE: Readonly<

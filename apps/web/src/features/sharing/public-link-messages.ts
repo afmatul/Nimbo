@@ -23,6 +23,10 @@ export interface PublicLinkMessage {
   readonly tone: PublicLinkMessageTone;
 }
 
+/** El mensaje en una sola frase, para los avisos y el campo de contraseña. */
+export const messageText = ({ title, description }: PublicLinkMessage): string =>
+  `${title} ${description}`;
+
 type FixedKey = Exclude<PublicLinkMessageKey, typeof SHARED_ERROR_CODES.TOO_MANY_REQUESTS>;
 
 /** Un solo texto por motivo: nunca se dice por qué no está disponible ni cuántos intentos quedan (RN-1). */
