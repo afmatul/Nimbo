@@ -76,7 +76,7 @@
 - **Hook `use-public-link-visit.ts`:**
   - lee el fragmento crudo y escucha `hashchange`;
   - con el fragmento vacío pasa a `unavailable` sin llamar a la API (CA-6);
-  - el `POST /open` en curso vive en un `ref`, así el doble montaje de `StrictMode` no lo repite;
+  - cada pedido del fragmento (montaje, `hashchange` o «Reintentar») vive en un estado con su ficha y su aviso, y un solo `useEffect` hace el `POST /open`; llega después de montar, así el doble montaje de `StrictMode` no lo repite, y nada de un pedido anterior (ni su `/open` ni su descarga) se aplica (PD-194);
   - estados: `loading`, `ready`, `unavailable`, `rate-limited`, `load-error`;
   - `download(password?)` usa `usePreparingDownload` y termina en `started` o en el error.
 - **Vista `public-link-visit.tsx`:** los 9 estados de spec §6, con:

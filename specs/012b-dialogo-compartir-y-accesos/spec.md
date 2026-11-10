@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En revisión (2026-11-02; plan y mockup aprobados por Adrián, 2026-10-30) |
+| Estado | Hecha (2026-11-09; integrada en `main` por el PR #90 el 2026-11-02; plan y mockup aprobados por Adrián, 2026-10-30) |
 | Dueño | Fátima |
 | Fase | 2 |
 | Requisitos | RF-16, RF-18; RNF-13, RNF-14 |
 | Depende de | 012 (API, incluidos CA-22 y CA-23), 000b (sistema de diseño), 006 (explorador) |
-| Última actualización | 2026-10-30 |
+| Última actualización | 2026-11-09 |
 
 ## 1. Contexto y objetivo
 La 012 entrega la API de compartición. Esta spec le pone las pantallas: (a) un diálogo «Compartir» que se abre desde el
