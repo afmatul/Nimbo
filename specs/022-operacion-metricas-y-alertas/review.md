@@ -45,7 +45,7 @@
 - ~~**[I-2]**~~ ✅ resuelto 2026-11-10 · DF-29 nombra `metrics-server.ts`, que no existe (es `metrics.module.ts`). Nombre corregido; al integrar: DF-29 a Resuelto y PD-166 a Cerrados.
 - ~~**[I-3]**~~ ✅ resuelto 2026-11-10 · Anotar en la spec «CA-3 parcial hasta PD-173; si staging tampoco da datos, se retira el panel 15».
 - ~~**[I-4]**~~ ✅ resuelto 2026-11-10 · `evidencias/t09/README.md:8` y cabecera de `spec.md` desactualizados (T-09 ya está `[x]`; fecha 2026-11-03).
-- **[S-1]** reflujar el comentario de `startWorker` en `worker-bootstrap.ts`. **[S-2]** `health.ready` cada 15 s con una dependencia caída (PD-189, antes PD-174). **[S-3]** `queue-metrics.collector.ts` sin prueba unitaria propia.
+- **[S-1]** reflujar el comentario de `startWorker` en `worker-bootstrap.ts`. **[S-2]** `health.ready` cada 15 s con una dependencia caída (PD-196). **[S-3]** `queue-metrics.collector.ts` sin prueba unitaria propia.
 
 ## DF y pendientes
-- DF-29 sigue Abierto (I-2). Sin DF nuevos. `pendientes.md`: PD-165 a 169, 172, 173 y 189 abiertos (PD-174 pasó a PD-189 al integrar main); PD-170 y 171 cerrados. Excepción de tamaño del plan aceptada (aprobada 2026-11-03).
+- DF-29 sigue Abierto (I-2). Sin DF nuevos. `pendientes.md`: PD-165 a 169, 172, 173 y 189 abiertos (PD-174 pasó a PD-196 al integrar main); PD-170 y 171 cerrados. Excepción de tamaño del plan aceptada (aprobada 2026-11-03).
