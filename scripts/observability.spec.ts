@@ -951,7 +951,7 @@ describe('022d: grupos de los módulos en el tablero de operación', () => {
       ).toBeDefined();
     });
 
-    it('CA-11: el grupo no desglosa por plan ni por ninguna etiqueta fuera de route, status y le (PD-202)', () => {
+    it('CA-11: el grupo no desglosa por plan ni por ninguna etiqueta fuera de route, status y le (PD-203)', () => {
       const labels = groupPanels('Agente').flatMap((panel) =>
         (panel.targets ?? []).flatMap((target) => labelsOf(target.expr, target.legendFormat)),
       );

@@ -81,6 +81,20 @@ describe('usePublicLinkVisit (013b CA-3, CA-5 a CA-8)', () => {
       expect(api.open).toHaveBeenCalledTimes(1);
     });
 
+    it('CA-5, CA-8: el resultado de un pedido anterior no pisa al de «Reintentar»', async () => {
+      const api = fakeApi();
+      let failFirst: (error: unknown) => void = () => undefined;
+      api.open.mockReturnValueOnce(new Promise((_resolve, reject) => (failFirst = reject)));
+      const { hook } = renderVisit(api);
+      await waitFor(() => expect(api.open).toHaveBeenCalledTimes(1));
+
+      act(() => hook.result.current.reload());
+      await waitFor(() => expect(hook.result.current.state.status).toBe('ready'));
+      await act(async () => failFirst(apiError(SHARING_ERROR_CODES.SHARING_LINK_UNAVAILABLE, 404)));
+
+      expect(hook.result.current.state.status).toBe('ready');
+    });
+
     it('CA-8: al recargar vuelve a ver la ficha con el token que sigue en la barra', async () => {
       const api = fakeApi();
       const first = await renderReady(api);
@@ -297,6 +311,23 @@ describe('usePublicLinkVisit (013b CA-3, CA-5 a CA-8)', () => {
 
     expect(hook.result.current.outcome).toEqual({ status: 'idle' });
     await waitFor(() => expect(hook.result.current.state.status).toBe('ready'));
+  });
+
+  it('CA-6, CA-8: un `404` tardío de la descarga del enlace anterior no deja el nuevo en carga', async () => {
+    const api = fakeApi();
+    let failDownload: (error: unknown) => void = () => undefined;
+    api.download.mockReturnValueOnce(new Promise((_resolve, reject) => (failDownload = reject)));
+    const { hook } = await renderReady(api);
+    act(() => void hook.result.current.download());
+
+    pasteLink('#otro-token');
+    await waitFor(() => expect(api.open).toHaveBeenLastCalledWith('otro-token'));
+    await waitFor(() => expect(hook.result.current.state.status).toBe('ready'));
+    await act(async () =>
+      failDownload(apiError(SHARING_ERROR_CODES.SHARING_LINK_UNAVAILABLE, 404)),
+    );
+
+    expect(hook.result.current.state.status).toBe('ready');
   });
 
   it('no guarda nada en el almacenamiento del navegador (spec §5)', async () => {

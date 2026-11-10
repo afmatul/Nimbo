@@ -21,7 +21,7 @@ qué módulo está un problema sin entrar al servidor, y ningún panel identific
 
 ## 2. Historias de usuario
 - **HU-1** Como Operador, quiero un grupo por módulo (identidad, almacenamiento, indexación y optimizador) en el tablero de operación, para ubicar en qué módulo está un problema.
-- **HU-2** → PD-201 (tablero de negocio con tendencias por periodo).
+- **HU-2** → PD-202 (tablero de negocio con tendencias por periodo).
 - **HU-3** Como Operador, quiero un grupo del agente en el tablero de operación, para vigilar su uso, su latencia y sus errores.
 - La privacidad es la de 022 HU-6, sin historia nueva (CA-12).
 
@@ -47,22 +47,22 @@ qué módulo está un problema sin entrar al servidor, y ningún panel identific
 | Antes | Ahora | Nota |
 |---|---|---|
 | HU-1 (señales de cada módulo) | HU-1 | Parcial: solo lo que dan HTTP y colas |
-| HU-2, CA-10 (tablero de negocio) | PD-201 | Sin tablero de negocio (antigua P-4) |
-| HU-3, CA-11 (agente por plan, fragmentos) | HU-3, CA-11 | Parcial: total, latencia y errores; por plan → PD-202; fragmentos → PD-200 |
-| CA-1 (identidad) | CA-1 | Parcial: correos, reúso de token y motivo del bloqueo → PD-200 |
-| CA-2 (almacenamiento) | CA-2 | Parcial: motivo de rechazo, bytes, limpieza y errores de MinIO → PD-200 |
-| CA-3 (espacio total y por plan) | PD-201 | — |
-| CA-4, CA-5, CA-6 (versiones, edición, canal en vivo) | PD-200 | Sin serie en 022 |
-| CA-7 (indexación) | CA-7 | Parcial: resultado detallado (no indexable, descartado) → PD-200 |
-| CA-8 (optimizador) | CA-8 | Parcial: resultado detallado y bytes antes y después → PD-200 |
-| CA-9 (`audit.record_failed`, PD-67) | PD-200 | — |
+| HU-2, CA-10 (tablero de negocio) | PD-202 | Sin tablero de negocio (antigua P-4) |
+| HU-3, CA-11 (agente por plan, fragmentos) | HU-3, CA-11 | Parcial: total, latencia y errores; por plan → PD-203; fragmentos → PD-201 |
+| CA-1 (identidad) | CA-1 | Parcial: correos, reúso de token y motivo del bloqueo → PD-201 |
+| CA-2 (almacenamiento) | CA-2 | Parcial: motivo de rechazo, bytes, limpieza y errores de MinIO → PD-201 |
+| CA-3 (espacio total y por plan) | PD-202 | — |
+| CA-4, CA-5, CA-6 (versiones, edición, canal en vivo) | PD-201 | Sin serie en 022 |
+| CA-7 (indexación) | CA-7 | Parcial: resultado detallado (no indexable, descartado) → PD-201 |
+| CA-8 (optimizador) | CA-8 | Parcial: resultado detallado y bytes antes y después → PD-201 |
+| CA-9 (`audit.record_failed`, PD-67) | PD-201 | — |
 | CA-12, CA-14 | CA-12, CA-14 | Adaptados a paneles; CA-14 sobre el tablero de operación |
 | CA-13 (degradación) | — | No aplica: no se instrumenta código (RN-4) |
 | — | CA-15 | Nuevo: aplica 022 CA-10 a los grupos |
 
 ### Trazabilidad
 RNF-18 → CA-1, CA-2, CA-7, CA-8, CA-11, CA-15 · RNF-17 → CA-12 · RF-05 → CA-14 · RF-34 → CA-11 · RNF-12 → CA-15 ·
-PD-67, PD-168 → fuera (§7; PD-200, PD-202).
+PD-67, PD-168 → fuera (§7; PD-201, PD-203).
 
 ## 4. Reglas de negocio
 - **RN-1** Fuentes: solo `nimbo_http_request_duration_seconds` (`route`, `status`), `nimbo_queue_*` (`queue`, `state`, `attempts_made`) y `nimbo_dependency_up` de 022. Ninguna serie nueva.
@@ -82,9 +82,9 @@ PD-67, PD-168 → fuera (§7; PD-200, PD-202).
 - Sin interfaz en `apps/web`: los paneles son de Grafana y no siguen Cielo Sereno (igual que 022 §6; no hay fila en `ui-guidelines.md` §7). No requiere mockup.
 
 ## 7. Fuera de alcance
-- Toda señal que exija instrumentar código (PD-200): correos enviados o fallidos, reúso de token de refresco, motivo del bloqueo de inicio de sesión, motivo de rechazo y bytes de las cargas, errores de MinIO por operación, limpieza de cargas, versiones (014), edición (016), canal en vivo (015), resultado detallado de indexación y optimizador, `audit.record_failed` (PD-67), fragmentos por consulta y buckets HTTP por encima de 10 s.
-- Tablero de negocio con tendencias por periodo, retención mayor a 15 días, y espacio total y por plan (PD-201).
-- Consultas del agente por plan (PD-202); primer fragmento y consumo o costo (PD-168).
+- Toda señal que exija instrumentar código (PD-201): correos enviados o fallidos, reúso de token de refresco, motivo del bloqueo de inicio de sesión, motivo de rechazo y bytes de las cargas, errores de MinIO por operación, limpieza de cargas, versiones (014), edición (016), canal en vivo (015), resultado detallado de indexación y optimizador, `audit.record_failed` (PD-67), fragmentos por consulta y buckets HTTP por encima de 10 s.
+- Tablero de negocio con tendencias por periodo, retención mayor a 15 días, y espacio total y por plan (PD-202).
+- Consultas del agente por plan (PD-203); primer fragmento y consumo o costo (PD-168).
 - Alertas nuevas (RN-3; PD-67, PD-167 (a)). El núcleo de 022 (paneles 1 a 15, seis reglas) no cambia.
 - Conteos al momento y pantalla de trabajos (022b, PD-74, PD-122); el panel de 011. Ruido de PD-172 (exige código).
 - Grupos de versiones, edición, canal en vivo, búsqueda (018), compartición (012, 013), papelera y backoffice.
@@ -93,22 +93,22 @@ PD-67, PD-168 → fuera (§7; PD-200, PD-202).
 ## 8. Supuestos
 - **S-1** (discutible) Códigos leídos de los controladores y errores del `api` (2026-11-08): el inicio de sesión fallido es `401` (`IDENTITY_INVALID_CREDENTIALS`); el bloqueo por correo (`IDENTITY_LOGIN_LOCKED`) y el límite por IP comparten `429`, así que el panel los muestra juntos. El reúso de un token de refresco es un `401` más de `session/refresh`.
 - **S-2** (discutible) «Denegaciones» = todo `403` del `api`: incluye roles internos en rutas de cliente (`SHARED_FORBIDDEN`) y cuentas en solo lectura (`STORAGE_ACCOUNT_READ_ONLY`). Se ven por ruta, no por motivo.
-- **S-3** (discutible) «Carga rechazada» = respuesta `4xx` al iniciar o completar (límites y tipo `422`, partes faltantes `409`, vencida `410`, cuota `422`); el motivo exacto es de PD-200.
-- **S-4** (discutible) La latencia del agente es la de la respuesta completa (flujo SSE). Un error que llega dentro del flujo, después del primer evento, sale como `200` y no cuenta como error. El histograma HTTP de 022 llega a 10 s: una respuesta más larga satura el p95 en 10 s (PD-200).
+- **S-3** (discutible) «Carga rechazada» = respuesta `4xx` al iniciar o completar (límites y tipo `422`, partes faltantes `409`, vencida `410`, cuota `422`); el motivo exacto es de PD-201.
+- **S-4** (discutible) La latencia del agente es la de la respuesta completa (flujo SSE). Un error que llega dentro del flujo, después del primer evento, sale como `200` y no cuenta como error. El histograma HTTP de 022 llega a 10 s: una respuesta más larga satura el p95 en 10 s (PD-201).
 - **S-5** Se demuestra en local con el compose y tráfico sintético desde la web y el runbook, igual que 022 P-2.
 
 ## 9. Preguntas
 - [RESUELTA] P-1 → recorte a solo tableros (≈ 1 día, 3 archivos de autor); cabe en tamaño sin partir (2026-11-08, propuesta del dueño, aprobado el 2026-11-08 (indicación en la sesión de Claude Code)).
-- [RESUELTA] P-2 → no se modifican módulos ni `shared` (RN-4); no hacen falta las autorizaciones del PR #78. Se retoman con PD-200 (2026-11-08, propuesta del dueño, aprobado el 2026-11-08 (indicación en la sesión de Claude Code)).
-- [RESUELTA] P-3 → sin desglose por plan; el total va en CA-11 y el desglose a PD-202 (2026-11-08, propuesta del dueño, aprobado el 2026-11-08 (indicación en la sesión de Claude Code)).
-- [RESUELTA] P-4 → sin tablero de negocio; la retención y las tendencias van a PD-201 (2026-11-08, propuesta del dueño, aprobado el 2026-11-08 (indicación en la sesión de Claude Code)).
-- [RESUELTA] P-7 → complementa 011 con tendencias por periodo (2026-11-02, Adrián, PR #78). Con el recorte, va a PD-201.
-- [RESUELTA] P-8 → grupo del agente en el tablero de operación; primer fragmento y costo, PD-168 (2026-11-02, Adrián). Con el recorte, el desglose por plan va a PD-202 y los fragmentos a PD-200.
+- [RESUELTA] P-2 → no se modifican módulos ni `shared` (RN-4); no hacen falta las autorizaciones del PR #78. Se retoman con PD-201 (2026-11-08, propuesta del dueño, aprobado el 2026-11-08 (indicación en la sesión de Claude Code)).
+- [RESUELTA] P-3 → sin desglose por plan; el total va en CA-11 y el desglose a PD-203 (2026-11-08, propuesta del dueño, aprobado el 2026-11-08 (indicación en la sesión de Claude Code)).
+- [RESUELTA] P-4 → sin tablero de negocio; la retención y las tendencias van a PD-202 (2026-11-08, propuesta del dueño, aprobado el 2026-11-08 (indicación en la sesión de Claude Code)).
+- [RESUELTA] P-7 → complementa 011 con tendencias por periodo (2026-11-02, Adrián, PR #78). Con el recorte, va a PD-202.
+- [RESUELTA] P-8 → grupo del agente en el tablero de operación; primer fragmento y costo, PD-168 (2026-11-02, Adrián). Con el recorte, el desglose por plan va a PD-203 y los fragmentos a PD-201.
 - [RESUELTA] P-11 → solo agregados y distribuciones, sin identificadores (2026-11-02, Adrián).
 
 ## 10. Registro de cambios
 | Fecha | Cambio | Motivo | Aprobó |
 |---|---|---|---|
 | 2026-11-02 | Creación en Borrador desde 022 CA-4, CA-7, CA-8, CA-17, HU-2 (negocio y agente) y los grupos de módulo de RN-3; sin plan ni tareas por P-1 (inventario fuera de tamaño) | Corte de 022 por tamaño (PR #78) | — |
-| 2026-11-08 | Recorte a solo tableros: grupos Identidad, Almacenamiento, Indexación, Optimizador y Agente sobre las series de 022. CA-1, CA-2, CA-7, CA-8, CA-11, CA-12 y CA-14 reescritos; CA-15 nuevo; CA-3 a CA-6, CA-9, CA-10 y CA-13 y HU-2 salen (PD-200 a PD-202). P-1 a P-4 resueltas; plan y tareas escritos | Petición del dueño; P-1 sin otra salida en tamaño | Plan aprobado 2026-11-08 (sesión de Claude Code) |
-| 2026-11-10 | Cierre de T-06: la validación automatizada de Abel cuenta como demo; CA-7 y CA-11 se cierran **parciales** (sin clave de Gemini no hubo indexación exitosa ni respuesta del modelo, plan R-6). H-2: Grafana pasa a `mem_limit: 768m` con `GOMEMLIMIT=690MiB` en esta spec (ADR-0040, plan R-8; staging en PD-203). Pendientes renumerados a PD-200 a PD-202 al rehacer la rama sobre `main` | Demo T-06 y choque de números con 013b | Adrián |
+| 2026-11-08 | Recorte a solo tableros: grupos Identidad, Almacenamiento, Indexación, Optimizador y Agente sobre las series de 022. CA-1, CA-2, CA-7, CA-8, CA-11, CA-12 y CA-14 reescritos; CA-15 nuevo; CA-3 a CA-6, CA-9, CA-10 y CA-13 y HU-2 salen (PD-201 a PD-203). P-1 a P-4 resueltas; plan y tareas escritos | Petición del dueño; P-1 sin otra salida en tamaño | Plan aprobado 2026-11-08 (sesión de Claude Code) |
+| 2026-11-10 | Cierre de T-06: la validación automatizada de Abel cuenta como demo; CA-7 y CA-11 se cierran **parciales** (sin clave de Gemini no hubo indexación exitosa ni respuesta del modelo, plan R-6). H-2: Grafana pasa a `mem_limit: 768m` con `GOMEMLIMIT=690MiB` en esta spec (ADR-0040, plan R-8; staging en PD-204). Pendientes renumerados a PD-201 a PD-203 al rehacer la rama sobre `main` | Demo T-06 y choque de números con 013b | Adrián |

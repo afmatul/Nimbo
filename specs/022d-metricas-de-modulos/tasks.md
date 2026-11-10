@@ -25,7 +25,7 @@
   25 a 27 y 29 a 31 (83/83). Los nombres de las colas salen de `INDEXING_QUEUE`, `INDEX_RECONCILE_QUEUE` y
   `OPTIMIZATION_QUEUE` del `api`.
 - **T-04** (2026-11-08) Rojo: 4 casos de CA-11 fallaban por la fila «Agente» ausente. Verde: fila 32 y paneles 33 a 35
-  (87/87). Caso extra: el grupo solo usa `job`, `route`, `status` y `le` (sin desglose por plan, PD-202). Las
+  (87/87). Caso extra: el grupo solo usa `job`, `route`, `status` y `le` (sin desglose por plan, PD-203). Las
   descripciones de 34 y 35 dicen la saturación en 10 s y los errores dentro del flujo (S-4, R-4, R-5).
 - **T-05** (2026-11-08) Rojo: «el runbook nombra las cinco filas y los paneles 16 a 35» fallaba; «solo `operacion.json`
   en `dashboards/`» y «cinco filas en orden» ya pasaban con T-01 a T-04, así que el primero se comprobó en rojo con un
@@ -36,5 +36,5 @@
 - **T-06** (2026-11-08, Abel; cierre 2026-11-10, Adrián) Demo en local automatizada desde volúmenes vacíos: CA-1, CA-2,
   CA-8, CA-12, CA-14 y CA-15 aprobados; CA-7 y CA-11 **parciales** sin clave de Gemini (plan R-6). R-3 confirmado en el
   panel 21. Evidencias y hallazgos en `evidencias/t06/README.md`. H-2 (OOM de Grafana con 256 MiB) resuelto aquí:
-  `mem_limit: 768m` y `GOMEMLIMIT=690MiB`, prueba R-4 en rojo primero (92/92), ADR-0040 y PD-203 para staging. H-5:
+  `mem_limit: 768m` y `GOMEMLIMIT=690MiB`, prueba R-4 en rojo primero (92/92), ADR-0040 y PD-204 para staging. H-5:
   lector de controladores con separador de Windows. H-9: plan R-6 y runbook §4.

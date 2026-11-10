@@ -178,7 +178,7 @@ Los gradientes sintéticos se comprimen mucho: el 99,5 % no representa fotograf�
 | Panel 33 | Hasta ≈ 5,96 consultas por minuto, con las dos ráfagas acotadas |
 | Panel 34 | p50 ≈ 7 a 35 ms y p95 ≈ 10 a 48 ms. No representa la latencia del modelo |
 | Panel 35 | 0 % con solo `200`, y entre 9 % y 100 % con errores. El 100 % se ve cuando en la ventana de 5 min solo quedan errores |
-| Desglose por plan | Ninguno en consultas ni etiquetas (PD-202) |
+| Desglose por plan | Ninguno en consultas ni etiquetas (PD-203) |
 
 El `429` observado es el del límite de 10 preguntas por minuto y cuenta, no el de cuota del plan. El panel 35 cuenta todo lo que no es `2xx`, así que el comportamiento del panel ante un `429` sí queda demostrado.
 
@@ -235,7 +235,7 @@ Resultados completos en el [registro 38](38-ca12-privacidad-20261108-181913.txt)
 | Series `nimbo_*` desde las 14:30 | 991, sin correos, UUID, nombres de archivo ni tokens (el registro 45 cuenta 725, porque su ventana es de 2 h) |
 | Valores de `route` | 33: 32 plantillas y `GET <sin patrón>` |
 | Canarios del ensayo (IDs, correos, nombres, claves de objeto y secretos locales) | Sin coincidencias en etiquetas, `/metrics`, tablero ni registros |
-| PD-202 (el registro 38 lo cita con su número anterior, PD-192) | Sin desglose por plan en consultas ni etiquetas |
+| PD-203 (el registro 38 lo cita con su número anterior, PD-192) | Sin desglose por plan en consultas ni etiquetas |
 
 **Limitaciones:**
 - Se ejercitaron 33 rutas de las 90 declaradas.
@@ -277,14 +277,14 @@ Medidas con 512 MiB ([registro 08](08-grafana-512mib-estabilidad-20261108-154927
 
 | # | Hallazgo | Evidencia | Impacto | Tipo | Estado | Recomendación |
 |---|---|---|---|---|---|---|
-| **H-2** | OOM de Grafana con 256 MiB | 05, 06, 08, 46 | **Alto** | Defecto probable de capacidad | ✅ Resuelto: `mem_limit: 768m` y `GOMEMLIMIT=690MiB` (plan R-8) | Medir en staging (PD-203) |
+| **H-2** | OOM de Grafana con 256 MiB | 05, 06, 08, 46 | **Alto** | Defecto probable de capacidad | ✅ Resuelto: `mem_limit: 768m` y `GOMEMLIMIT=690MiB` (plan R-8) | Medir en staging (PD-204) |
 | H-1 | El runbook §2 borra volúmenes con nombres fijos (`nimbo_grafana_data`). Hoy no coincide con ninguno, pero coincidiría con un proyecto llamado `nimbo` | Runbook §2 y listado de volúmenes | Bajo | Discrepancia documental | ⏳ Pendiente; cambio preparado | Línea de 022: variable con el nombre del proyecto |
 | H-3 | Grafana registra un error por no existir `provisioning/plugins`, una vez por arranque (15:41:15). No afecta al tablero | Registro de Grafana, no incluido | Bajo | Defecto menor | ⏳ Pendiente | Infra de 022: crear el directorio o aceptarlo |
 | H-4 | Los paneles 1 y 2 muestran contenedores de otros proyectos de la máquina | Capturas 01, 04 y 07, no incluidas por esos nombres | Bajo | Limitación del ensayo | Sin acción | No aparece con un solo proyecto |
 | H-5 | 6 de 90 casos de `observability.spec.ts` fallaban en Windows | Ver abajo | Medio | Defecto de portabilidad de las pruebas | ✅ 2 corregidos en 022d; ⏳ 4 de 022 con parche verificado | Aplicar el parche de 022 y confirmar en CI |
 | H-6 | Reinicios en cadena con `nest start --watch`. **Causa no demostrada** | 15, 29 | Medio | Limitación del ensayo, causa sin determinar | ⚠️ Mitigado solo en local | Reproducir fuera de OneDrive |
 | H-7 | Un evento único no eleva `rate()` (`session/refresh · 401` en 0) | 10, 15 | Bajo | Observación | Mitigado en el ensayo; cambio preparado | Avisar en el runbook §4 |
-| H-8 | «Completados» de BullMQ incluye documentos que terminan en `fallido` | 20, 29, 45; plan 019, línea 41 | Bajo | **Observación de diseño, no defecto** | Documentado; cambio preparado | Aclararlo en el runbook; detalle en PD-200 |
+| H-8 | «Completados» de BullMQ incluye documentos que terminan en `fallido` | 20, 29, 45; plan 019, línea 41 | Bajo | **Observación de diseño, no defecto** | Documentado; cambio preparado | Aclararlo en el runbook; detalle en PD-201 |
 | H-9 | El runbook §4 dice `503` o `422` sin clave o sin corpus, y el plan R-6 dice `503` sin clave; sin archivos indexados lo real es `200 no_indexed` | 26 a 29, 42 a 45; spec 020, CA-7 | Medio | **Discrepancia documental** | ✅ R-6 y runbook §4 corregidos | — |
 | H-10 | El runbook §5 cita el estado `failed` en el panel 7; el colector solo mide `waiting`, `prioritized`, `active` y `delayed` | 38 | Bajo | **Discrepancia documental** | ⏳ Pendiente; cambio preparado | Línea de 022: corregir la fila |
 
@@ -301,16 +301,16 @@ Medidas con 512 MiB ([registro 08](08-grafana-512mib-estabilidad-20261108-154927
 ## Decisiones (Adrián, 2026-11-10)
 
 1. **H-2:** se resuelve en 022d. Grafana pasa a `mem_limit: 768m` con `GOMEMLIMIT=690MiB` (ADR-0040, plan R-8). El
-   pico real se mide en staging (PD-203).
+   pico real se mide en staging (PD-204).
 2. **Tarea humana:** la validación automatizada de esta demo cuenta como la demo de T-06.
 3. **Cierre parcial:** CA-7 y CA-11 se cierran parciales; lo no comprobado (§«Qué quedó sin comprobar») se debe a la
    falta de clave de Gemini, que el plan R-6 permite.
 4. **Integración:** 022 ya está en `main` (#78). La rama se rehízo (`feat/022d-tableros-de-modulos`, PR #106) sobre `main` con
-   solo los commits de 022d y va en un PR propio; el #92 queda reemplazado. Los pendientes de 022d pasan a PD-200 a
-   PD-202 (el registro 38 conserva el número con el que se capturó).
+   solo los commits de 022d y va en un PR propio; el #92 queda reemplazado. Los pendientes de 022d pasan a PD-201 a
+   PD-203 (el registro 38 conserva el número con el que se capturó).
 5. **T-06:** completada en `tasks.md`.
 
-Sin decidir y fuera del cierre: H-1, H-3, H-5 (los 4 casos de 022), H-7, H-8 y H-10, con cambios preparados por Abel (PD-204).
+Sin decidir y fuera del cierre: H-1, H-3, H-5 (los 4 casos de 022), H-7, H-8 y H-10, con cambios preparados por Abel (PD-205).
 H-9 se corrigió en el runbook §4 junto con H-2.
 
 ## Archivos no incluidos

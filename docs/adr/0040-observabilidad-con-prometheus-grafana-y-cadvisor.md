@@ -122,7 +122,7 @@ Resultado del spike (T-01, 2026-11-03): **parcial, no verificado en Docker Deskt
   su `mem_limit`» de abajo, así que **Grafana pasa a `mem_limit: 768m` con `GOMEMLIMIT=690MiB`** (≈ 90 %, para que el
   recolector de Go recupere memoria antes del tope). Los tres suman 1152 MiB (+512) y, con ONLYOFFICE, los límites en
   producción pasan a 9088 MiB: siguen siendo topes y no reservas. Prometheus y cAdvisor no cambian. Lo comprueba la
-  prueba R-4 de `scripts/observability.spec.ts`; staging confirma el pico real (PD-203).
+  prueba R-4 de `scripts/observability.spec.ts`; staging confirma el pico real (PD-204).
 
 ## Consecuencias
 - Positivas: un solo stack para 022 y 022d. Sin puertos públicos nuevos. CA-10 queda cubierto por aprovisionamiento.

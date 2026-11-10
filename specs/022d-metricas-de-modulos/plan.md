@@ -128,9 +128,9 @@ no hay código ni datos de clientes (spec §5). No se repite en la demo lo que l
 - **R-3 `@Post()` sin ruta.** El inicio de carga es `POST /api/v1/uploads` (sin barra final): el lector normaliza la barra
   y la demo confirma la etiqueta real en el panel 21 (si difiere, se corrige la consulta y el lector).
 - **R-4 Latencia del agente por encima de 10 s.** Los buckets HTTP de 022 llegan a 10 s: el p95 se satura en 10 s (S-4).
-  Cambiarlo es código de `shared`: va a PD-200. El panel lo dice en su descripción.
+  Cambiarlo es código de `shared`: va a PD-201. El panel lo dice en su descripción.
 - **R-5 Errores dentro del flujo SSE.** Salen como `200`; el panel 35 los omite (S-4). Medirlos exige instrumentar
-  `intelligence` (PD-200).
+  `intelligence` (PD-201).
 - **R-6 Demo del agente y del optimizador.** El optimizador solo necesita una imagen JPEG o PNG. Las respuestas del
   modelo necesitan la clave de Gemini y un corpus indexado. Sin archivos indexados, el agente responde `200` sin llamar
   al modelo (020 CA-7) y el panel 35 queda en 0 %; sus errores se ven con `401`, `404`, `422` o el `429` de tasa, y el
@@ -138,10 +138,10 @@ no hay código ni datos de clientes (spec §5). No se repite en la demo lo que l
 - **R-7 Un tablero más largo.** 35 paneles; las filas permiten plegarlas a mano en la vista, sin guardar (aprovisionado).
 - **R-8 Memoria de Grafana (H-2 de T-06).** Con 256 MiB Grafana murió por OOM con los 35 paneles; con 512 MiB llegó al
   93 %. Decisión de Adrián (2026-11-10): resolverlo en esta rama con `mem_limit: 768m` y `GOMEMLIMIT=690MiB` (ADR-0040,
-  nota del 2026-11-10). El pico real en staging queda en PD-203.
+  nota del 2026-11-10). El pico real en staging queda en PD-204.
 - **Desviaciones de los diagramas:** ninguna. DF-28 (e) y DF-29 siguen como los dejó 022.
-- **Pendientes que deja fuera** (filas nuevas en `pendientes.md`): **PD-200** señales que exigen instrumentar código
-  (incluye PD-67 y los buckets de R-4); **PD-201** tablero de negocio, retención y espacio por plan; **PD-202**
+- **Pendientes que deja fuera** (filas nuevas en `pendientes.md`): **PD-201** señales que exigen instrumentar código
+  (incluye PD-67 y los buckets de R-4); **PD-202** tablero de negocio, retención y espacio por plan; **PD-203**
   consultas del agente por plan (junto a PD-168). PD-172 y PD-173 siguen en 022.
 - **ADR requeridos:** ninguno.
 
