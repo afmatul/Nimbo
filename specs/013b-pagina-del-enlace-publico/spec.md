@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En revisión |
+| Estado | Hecha |
 | Dueño | Fátima |
 | Fase | 2 |
 | Requisitos | RF-17, RNF-08, RNF-13, RNF-14; apoyan RF-07, RNF-05, RNF-07 |
 | Depende de | 013 (API integrada, PR #93; PD-177 en PR #98) · Hermana: 013c (sección «Enlace público» del diálogo) |
-| Última actualización | 2026-11-07 |
+| Última actualización | 2026-11-08 |
 
 ## 1. Contexto y objetivo
 La 013 dejó la API del enlace público: quien recibe `…/enlace#<token>` hoy llega a una ruta que no existe. Esta spec
