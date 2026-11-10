@@ -44,6 +44,7 @@ Son la base para defender la arquitectura en la exposición final (enunciado §6
 | 0038 | [El optimizador corre en un proceso `worker-optimizer` propio, sobre una imagen glibc](0038-optimizador-en-worker-dedicado-glibc.md) (spec 021 T-08/T-10; **enmienda ADR-0001 y ADR-0037**; cierra PD-128) | Aceptado |
 | 0039 | [El visitante de un enlace público llega a su archivo por una función `SECURITY DEFINER` de identificadores y actúa como el propietario](0039-visitante-de-enlace-publico-sin-actor.md) (spec 013; amplía ADR-0021, excepción nombrada a «el servicio recibe `actor`»; DF-09, DF-86) | Aceptado |
 | 0040 | [Observabilidad con `prom-client`, Prometheus, Grafana Alerting por SMTP y cAdvisor](0040-observabilidad-con-prometheus-grafana-y-cadvisor.md) (spec 022; DF-28 (e), DF-29) | Aceptado |
+| 0041 | [Respaldos cifrados con `gpg` asimétrico, programados por un contenedor del compose y una regla ILM en MinIO](0041-cifrado-y-programacion-de-respaldos.md) (spec 022c, RNF-21; si la imagen no trae `gpg`, `age` con imagen mínima; 0040 reservado para la 022) | Aceptado |
 
 Estados: `Pendiente` (sin redactar) · `Propuesto` (redactado, falta acuerdo del equipo) · `Aceptado` · `Reemplazado por`.
 Los ADR 0001, 0002, 0008, 0009, 0014 y 0015 se aceptaron el 26/09/2026 (Adrián, parte de ADR de la T-27 de la spec 000).

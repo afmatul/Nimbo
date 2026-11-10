@@ -2,7 +2,7 @@
 # Local: `docker compose up -d` carga automáticamente `compose.override.yml` (puertos, Mailpit, apps por perfil).
 # Staging: `COMPOSE_FILE=compose.yml:compose.staging.yml` (imágenes por SHA, Traefik con TLS, sin puertos internos).
 # `WORKER_PORT` y `WORKER_OPTIMIZER_PORT` nunca aparecen en `ports:` (CA-23, ADR-0038). ONLYOFFICE solo con
-# `--profile onlyoffice` (CA-2).
+# `--profile onlyoffice` (CA-2). Respaldos de la base solo con `--profile backups` (022c S-4).
 name: nimbo
 
 services:
@@ -58,7 +58,8 @@ services:
     mem_limit: 512m
     restart: unless-stopped
 
-  # Crea el bucket con versionado (D-7) y termina. Idempotente: `mc mb --ignore-existing`.
+  # Crea el bucket con versionado (D-7), le aplica la única regla de ciclo de vida (versiones no vigentes, 7 días;
+  # 022c CA-7) y termina. Idempotente: `mc mb --ignore-existing` y `mc ilm import` reemplaza la configuración entera.
   minio-init:
     image: pgsty/mc:RELEASE.2026-09-16T00-00-00Z
     depends_on:
@@ -246,6 +247,35 @@ services:
     mem_limit: 3g
     restart: unless-stopped
 
+  # Respaldo diario cifrado de la base (022c, ADR-0041; `docs/operations/respaldos.md`). Misma imagen que `postgres`
+  # (misma versión de `pg_dump`/`pg_restore`, trae `gpg`) con `entrypoint` propio: el de la imagen inicializaría un
+  # clúster. Solo recibe las credenciales del dueño (el volcado necesita saltar la RLS forzada, plan D-2), sin
+  # `env_file` ni puertos, y es el único que monta `backup_data`. Corre como `root` (usuario por defecto de la imagen):
+  # el volumen nombrado nace de `root` y la clave privada que el Operador monta con `-v` solo para `restore` suele
+  # ser legible solo por su dueño. Solo la clave **pública** entra como secreto; sin `BACKUP_PUBLIC_KEY_FILE` apunta a
+  # `/dev/null` y cada corrida responde `BACKUP_KEY_MISSING` (R-3).
+  backup:
+    image: pgvector/pgvector:pg17
+    profiles: [backups]
+    entrypoint: ['bash', '/opt/nimbo-backup/backup.sh']
+    command: ['schedule']
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      BACKUP_TIME: ${BACKUP_TIME:-03:00}
+      TZ: ${BACKUP_TZ:-America/Guatemala}
+    volumes:
+      - backup_data:/backups
+      - ./infra/backup:/opt/nimbo-backup:ro
+    secrets:
+      - backup_public_key
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 256m
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
@@ -253,3 +283,8 @@ volumes:
   prometheus_data:
   grafana_data:
   onlyoffice_data:
+  backup_data:
+
+secrets:
+  backup_public_key:
+    file: ${BACKUP_PUBLIC_KEY_FILE:-/dev/null}
