@@ -28,6 +28,7 @@ Dueño: Abel. Ningún archivo de un módulo de negocio ni de `shared` (spec RN-4
 |---|---|---|
 | infra/grafana | `infra/grafana/dashboards/operacion.json` (cambia) | Cinco filas y 15 paneles nuevos, ids 16 a 35 a continuación del 15 y debajo de él (`gridPos.y` ≥ 72). Filas con `collapsed: false`, así los paneles quedan en `panels` del primer nivel, que es donde los lee la prueba de 022 (`dashboardExprs`) y Grafana los aprovisiona igual. Misma fuente (`uid` `prometheus`), mismas ventanas (`rate[5m]`) y mismo estilo de leyendas que los paneles de 022. `uid`, `title`, `editable: false` y `version` no cambian |
 | scripts | `scripts/observability.spec.ts` (cambia) | Bloque `022d` con tres ayudantes locales al archivo: paneles de un grupo (los que siguen a la fila de ese título hasta la siguiente fila), etiquetas usadas por una consulta y rutas declaradas por los controladores (`apps/api/src/modules/**/presentation/*.controller.ts`, `@Controller` más `@Get`/`@Post`/`@Put`/`@Patch`/`@Delete` con cadena literal, prefijo `/api/v1`). Casos por grupo (§6) |
+| raíz | `compose.yml` (cambia, H-2 de T-06) | Grafana pasa de `mem_limit: 256m` a `768m` con `GOMEMLIMIT=690MiB`; prueba R-4 de `observability.spec.ts` y nota en ADR-0040 (decisión de Adrián, 2026-11-10) |
 | docs/operations | `docs/operations/observabilidad.md` (cambia) | §5: filas de los paneles 16 a 35 con su lectura. §4: cómo generar tráfico de cada grupo en local (curl para identidad; la web para cargas, descargas, optimización y agente) y qué grupo queda vacío sin la clave de Gemini o sin corpus (PD-135). §8: límites conocidos (S-1 a S-4 de la spec) |
 
 **Paneles nuevos** (todas las consultas filtran `job="api"` en HTTP; las rutas, como lista cerrada de plantillas completas
@@ -134,6 +135,9 @@ no hay código ni datos de clientes (spec §5). No se repite en la demo lo que l
   al modelo (020 CA-7) y el panel 35 queda en 0 %; sus errores se ven con `401`, `404`, `422` o el `429` de tasa, y el
   `503` exige archivos indexados y el proveedor caído (corregido tras la demo T-06, H-9).
 - **R-7 Un tablero más largo.** 35 paneles; las filas permiten plegarlas a mano en la vista, sin guardar (aprovisionado).
+- **R-8 Memoria de Grafana (H-2 de T-06).** Con 256 MiB Grafana murió por OOM con los 35 paneles; con 512 MiB llegó al
+  93 %. Decisión de Adrián (2026-11-10): resolverlo en esta rama con `mem_limit: 768m` y `GOMEMLIMIT=690MiB` (ADR-0040,
+  nota del 2026-11-10). El pico real en staging queda en PD-203.
 - **Desviaciones de los diagramas:** ninguna. DF-28 (e) y DF-29 siguen como los dejó 022.
 - **Pendientes que deja fuera** (filas nuevas en `pendientes.md`): **PD-200** señales que exigen instrumentar código
   (incluye PD-67 y los buckets de R-4); **PD-201** tablero de negocio, retención y espacio por plan; **PD-202**

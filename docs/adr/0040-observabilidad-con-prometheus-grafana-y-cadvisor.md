@@ -116,6 +116,13 @@ Resultado del spike (T-01, 2026-11-03): **parcial, no verificado en Docker Deskt
   contenedor (limitación del entorno; PD-173, se comprueba en staging). WSL2 expone `/dev/loop0` y `/dev/loop1`, imágenes de solo
   lectura siempre al 100 %, que hacían disparar la regla de disco (H-1): la regla excluye `/dev/loop*` y `/dev/shm` y mira
   solo el dispositivo de bloque de mayor capacidad (`topk(1, container_fs_limit_bytes)`), que en WSL2 es el de datos de Docker.
+- **Demo T-06 de 022d (2026-11-08, Abel) y decisión de Adrián (2026-11-10):** con `mem_limit: 256m` Grafana murió
+  por OOM (`anon-rss` ≈ 229 MiB) con el tablero de 35 paneles; con 512 MiB la memoria anónima llegó a 477 MiB (93 %)
+  con cargas simultáneas y el heap de Go seguía por encima de 256 MiB en reposo. Se cumplió el criterio «pasa el 80 % de
+  su `mem_limit`» de abajo, así que **Grafana pasa a `mem_limit: 768m` con `GOMEMLIMIT=690MiB`** (≈ 90 %, para que el
+  recolector de Go recupere memoria antes del tope). Los tres suman 1152 MiB (+512) y, con ONLYOFFICE, los límites en
+  producción pasan a 9088 MiB: siguen siendo topes y no reservas. Prometheus y cAdvisor no cambian. Lo comprueba la
+  prueba R-4 de `scripts/observability.spec.ts`; staging confirma el pico real (PD-203).
 
 ## Consecuencias
 - Positivas: un solo stack para 022 y 022d. Sin puertos públicos nuevos. CA-10 queda cubierto por aprovisionamiento.

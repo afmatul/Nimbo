@@ -208,11 +208,13 @@ services:
       GF_SMTP_FROM_ADDRESS: ${GRAFANA_SMTP_FROM}
       # Destinatario de las alertas; `provisioning/alerting/alertas.json` lo lee como `$ALERT_EMAIL_TO` (P-3)
       ALERT_EMAIL_TO: ${ALERT_EMAIL_TO}
+      # 022d H-2: con 256m Grafana murió por OOM en la demo T-06; el recolector de Go recupera memoria antes del tope.
+      GOMEMLIMIT: 690MiB
     volumes:
       - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
-    mem_limit: 256m
+    mem_limit: 768m
     restart: unless-stopped
 
   # Sin `privileged`: solo lectura sobre el anfitrión y el socket de Docker (ADR-0040, R-2). Sin `ports:`.

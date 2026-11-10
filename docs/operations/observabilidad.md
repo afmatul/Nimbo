@@ -13,7 +13,8 @@
 | `api` `/metrics` | `METRICS_PORT` (`9464`) | no | Servidor aparte, fuera de `/api/v1` |
 | `worker` / `worker-optimizer` `/metrics` | `WORKER_PORT` (`3001`) / `WORKER_OPTIMIZER_PORT` (`3003`) | no | Mismo puerto interno de salud |
 
-Límites de memoria: Prometheus 256 MiB, Grafana 256 MiB, cAdvisor 128 MiB. Cada proceso se distingue por el `job` de
+Límites de memoria: Prometheus 256 MiB, Grafana 768 MiB con `GOMEMLIMIT=690MiB`, cAdvisor 128 MiB. Grafana tenía
+256 MiB y murió por OOM con el tablero de 35 paneles (022d H-2, demo T-06). Cada proceso se distingue por el `job` de
 Prometheus (`api`, `worker`, `worker-optimizer`, `cadvisor`).
 
 ## 2. Levantar la observabilidad
@@ -123,8 +124,9 @@ con una cuenta de Cliente verificada (el correo llega a Mailpit):
   no termina bien y lo que ocurra se ve en los paneles 25 a 27.
 - **«Optimizador»:** en un JPEG o PNG, *Optimizar* pide la estimación y después la optimización (cola `optimization`
   en `worker-optimizer`).
-- **«Agente»:** preguntar en el agente. Sin clave de Gemini o sin corpus indexado (no hay `pnpm seed`, PD-135) responde
-  `503` o `422`, que el panel 35 muestra como error: también sirve de evidencia.
+- **«Agente»:** preguntar en el agente. Sin archivos indexados (no hay `pnpm seed`, PD-135) responde `200` sin llamar
+  al modelo (020 CA-7) y el panel 35 queda en 0 %. Los errores se ven con `401` (sin sesión), `404`, `422` (pregunta
+  inválida) o el `429` de tasa; el `503` exige archivos indexados y el proveedor caído (022d H-9).
 
 **Errores 5xx (opcional):** `docker compose stop postgres` hace que `GET /api/v1/health/ready` responda `503`. Repite
 el primer bucle durante 6 minutos para ver la tasa de 5xx y la regla 1; luego `docker compose start postgres`.

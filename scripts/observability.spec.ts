@@ -339,10 +339,14 @@ describe('022 T-01: Compose de observabilidad (CA-2, CA-3, CA-9, CA-10)', () => 
       );
     });
 
-    it('R-4: los límites de memoria son 256, 256 y 128 MiB', () => {
+    it('R-4: los límites de memoria son 256, 768 y 128 MiB (Grafana subió en 022d, H-2)', () => {
       expect(Number(serviceOf(config, 'prometheus').mem_limit)).toBe(256 * MIB);
-      expect(Number(serviceOf(config, 'grafana').mem_limit)).toBe(256 * MIB);
+      expect(Number(serviceOf(config, 'grafana').mem_limit)).toBe(768 * MIB);
       expect(Number(serviceOf(config, 'cadvisor').mem_limit)).toBe(128 * MIB);
+    });
+
+    it('022d H-2: el recolector de Grafana conoce su límite (GOMEMLIMIT al 90 % de 768 MiB)', () => {
+      expect(serviceOf(config, 'grafana').environment?.GOMEMLIMIT).toBe('690MiB');
     });
 
     it('CA-9: Grafana arranca sin acceso anónimo, sin registro y sin telemetría', () => {
