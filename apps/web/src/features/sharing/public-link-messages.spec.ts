@@ -4,7 +4,10 @@ import {
   PUBLIC_LINK_DOWNLOAD_FAILED,
   PUBLIC_LINK_OPEN_FAILED,
   publicLinkMessage,
+  type PublicLinkMessage,
 } from './public-link-messages';
+
+const textOf = ({ title, description }: PublicLinkMessage): string => `${title} ${description}`;
 
 describe('mensajes de la página del enlace público (013b §6, RN-1)', () => {
   it.each([
@@ -33,18 +36,35 @@ describe('mensajes de la página del enlace público (013b §6, RN-1)', () => {
       'warning',
     ],
   ] as const)('%s: %s', (_ca, key, title, tone) => {
-    expect(publicLinkMessage(key)).toEqual({ title, tone });
+    const message = publicLinkMessage(key);
+
+    expect(textOf(message)).toBe(title);
+    expect(message.tone).toBe(tone);
   });
 
   it('CA-7: la red al abrir y al descargar tienen textos distintos', () => {
-    expect(publicLinkMessage(PUBLIC_LINK_OPEN_FAILED).title).not.toBe(
-      publicLinkMessage(PUBLIC_LINK_DOWNLOAD_FAILED).title,
+    expect(textOf(publicLinkMessage(PUBLIC_LINK_OPEN_FAILED))).not.toBe(
+      textOf(publicLinkMessage(PUBLIC_LINK_DOWNLOAD_FAILED)),
     );
+  });
+
+  it('el catálogo da por separado qué pasó y qué hacer (S-2: sin partir el texto)', () => {
+    expect(publicLinkMessage(SHARING_ERROR_CODES.SHARING_LINK_UNAVAILABLE)).toEqual({
+      title: 'Este enlace ya no está disponible.',
+      description: 'Pide a quien te lo compartió uno nuevo.',
+      tone: 'neutral',
+    });
+  });
+
+  it('CA-5, CA-7: los avisos sobre la ficha (`429` y red al descargar) van en advertencia', () => {
+    expect(publicLinkMessage(SHARED_ERROR_CODES.TOO_MANY_REQUESTS).tone).toBe('warning');
+    expect(publicLinkMessage(PUBLIC_LINK_DOWNLOAD_FAILED).tone).toBe('warning');
   });
 
   it('CA-5: el `429` es neutro, en advertencia, con los minutos de `Retry-After` hacia arriba', () => {
     expect(publicLinkMessage(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, 3_541)).toEqual({
-      title: 'Hubo demasiados intentos con este enlace. Espera 60 minutos e inténtalo de nuevo.',
+      title: 'Hubo demasiados intentos con este enlace.',
+      description: 'Espera 60 minutos e inténtalo de nuevo.',
       tone: 'warning',
     });
   });
@@ -53,20 +73,20 @@ describe('mensajes de la página del enlace público (013b §6, RN-1)', () => {
     ['con menos de un minuto de espera', 30],
     ['sin `Retry-After`', undefined],
   ])('CA-5: %s, dice «1 minuto» en singular', (_caso, seconds) => {
-    expect(publicLinkMessage(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, seconds).title).toBe(
+    expect(textOf(publicLinkMessage(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, seconds))).toBe(
       'Hubo demasiados intentos con este enlace. Espera 1 minuto e inténtalo de nuevo.',
     );
   });
 
   it('CA-5: con más de un minuto dice «minutos» en plural', () => {
-    expect(publicLinkMessage(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, 61).title).toBe(
+    expect(textOf(publicLinkMessage(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, 61))).toBe(
       'Hubo demasiados intentos con este enlace. Espera 2 minutos e inténtalo de nuevo.',
     );
   });
 
   it('CA-5, RN-1: el `429` no usa el texto genérico ni dice el motivo', () => {
-    const { title } = publicLinkMessage(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, 900);
+    const text = textOf(publicLinkMessage(SHARED_ERROR_CODES.TOO_MANY_REQUESTS, 900));
 
-    expect(title).not.toMatch(/Hiciste|contraseña|red|techo/);
+    expect(text).not.toMatch(/Hiciste|contraseña|red|techo/);
   });
 });

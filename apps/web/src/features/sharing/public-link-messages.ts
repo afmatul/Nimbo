@@ -16,9 +16,10 @@ export type PublicLinkMessageKey =
 /** `neutral`: no es una falla que el visitante corrija (no disponible); `warning`: puede seguir con la ficha. */
 export type PublicLinkMessageTone = 'neutral' | 'error' | 'warning';
 
+/** Qué pasó (`title`) y qué hacer (`description`), en tuteo (spec 013b CA-4 a CA-7). */
 export interface PublicLinkMessage {
-  /** Qué pasó y qué hacer, en tuteo (spec 013b CA-4 a CA-7). */
   readonly title: string;
+  readonly description: string;
   readonly tone: PublicLinkMessageTone;
 }
 
@@ -27,19 +28,23 @@ type FixedKey = Exclude<PublicLinkMessageKey, typeof SHARED_ERROR_CODES.TOO_MANY
 /** Un solo texto por motivo: nunca se dice por qué no está disponible ni cuántos intentos quedan (RN-1). */
 const FIXED_MESSAGES: Readonly<Record<FixedKey, PublicLinkMessage>> = {
   [SHARING_ERROR_CODES.SHARING_LINK_UNAVAILABLE]: {
-    title: 'Este enlace ya no está disponible. Pide a quien te lo compartió uno nuevo.',
+    title: 'Este enlace ya no está disponible.',
+    description: 'Pide a quien te lo compartió uno nuevo.',
     tone: 'neutral',
   },
   [SHARING_ERROR_CODES.SHARING_LINK_PASSWORD_INVALID]: {
-    title: 'La contraseña no es correcta. Revísala y vuelve a intentarlo.',
+    title: 'La contraseña no es correcta.',
+    description: 'Revísala y vuelve a intentarlo.',
     tone: 'error',
   },
   [PUBLIC_LINK_OPEN_FAILED]: {
-    title: 'No pudimos cargar el archivo compartido. Revisa tu conexión e inténtalo de nuevo.',
+    title: 'No pudimos cargar el archivo compartido.',
+    description: 'Revisa tu conexión e inténtalo de nuevo.',
     tone: 'error',
   },
   [PUBLIC_LINK_DOWNLOAD_FAILED]: {
-    title: 'No pudimos iniciar la descarga. Revisa tu conexión e inténtalo de nuevo.',
+    title: 'No pudimos iniciar la descarga.',
+    description: 'Revisa tu conexión e inténtalo de nuevo.',
     tone: 'warning',
   },
 };
@@ -56,7 +61,8 @@ function waitLabel(retryAfterSeconds: number): string {
  */
 function tooManyRequestsMessage(retryAfterSeconds = 0): PublicLinkMessage {
   return {
-    title: `Hubo demasiados intentos con este enlace. Espera ${waitLabel(retryAfterSeconds)} e inténtalo de nuevo.`,
+    title: 'Hubo demasiados intentos con este enlace.',
+    description: `Espera ${waitLabel(retryAfterSeconds)} e inténtalo de nuevo.`,
     tone: 'warning',
   };
 }

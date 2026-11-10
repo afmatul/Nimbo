@@ -34,7 +34,7 @@ export interface VersionActions {
   readonly closeRestore: () => void;
   readonly confirmRestore: () => Promise<void>;
   readonly preparingId: string | null;
-  readonly download: (version: FileVersionSummary) => Promise<void>;
+  readonly download: (version: FileVersionSummary) => Promise<boolean>;
 }
 
 function codeOf(error: unknown): string | null {

@@ -34,12 +34,6 @@ const STATE_VIEW_BY_TONE: Readonly<
   },
 };
 
-/** «Qué pasó. Qué hacer.» del catálogo → título y texto de `StateView` (mockup: `h2` y párrafo). */
-function splitTitle(message: string) {
-  const [title = '', ...rest] = message.split(/(?<=\.) /);
-  return { title, description: rest.join(' ') };
-}
-
 /** Sin ficha (no disponible, error y `429` al abrir): la página conserva un `h1` y el estado va en `h2`. */
 function WithoutDetails({ children }: { readonly children: ReactNode }): JSX.Element {
   const headingId = useId();
@@ -65,24 +59,23 @@ interface CatalogStateProps {
  * de `StateView` exige una acción (RNF-14): sin `reload` se muestra como estado, anunciado con `role="status"`.
  */
 function CatalogState({ messageKey, retryAfterSeconds, icon, reload }: CatalogStateProps) {
-  const message = publicLinkMessage(messageKey, retryAfterSeconds);
-  const { type, className } = STATE_VIEW_BY_TONE[message.tone];
+  const { title, description, tone } = publicLinkMessage(messageKey, retryAfterSeconds);
+  const { type, className } = STATE_VIEW_BY_TONE[tone];
   const shared = {
-    ...splitTitle(message.title),
+    title,
+    description,
     headingLevel: 'h2' as const,
     ...(icon && { icon }),
     className: cn(className, reload && RETRY_ON_TINT),
   };
   const action = reload && { label: 'Reintentar', onClick: reload, variant: 'outline' as const };
+  const view: StateViewProps =
+    type === 'error' && action
+      ? { type: 'error', action, ...shared }
+      : { type: 'empty', role: 'status', ...(action && { action }), ...shared };
   return (
     <WithoutDetails>
-      {action === undefined ? (
-        <StateView type="empty" role="status" {...shared} />
-      ) : type === 'error' ? (
-        <StateView type="error" action={action} {...shared} />
-      ) : (
-        <StateView type="empty" role="status" action={action} {...shared} />
-      )}
+      <StateView {...view} />
     </WithoutDetails>
   );
 }

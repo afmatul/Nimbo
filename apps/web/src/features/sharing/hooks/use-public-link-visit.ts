@@ -30,8 +30,8 @@ export interface PublicLinkVisit {
   readonly preparing: boolean;
   /** «Reintentar» al abrir (CA-5, CA-7): vuelve a pedir la ficha del fragmento actual. */
   readonly reload: () => void;
-  /** «Descargar»; sin contraseña, `''`, que el cliente no envía. */
-  readonly download: (password?: string) => Promise<void>;
+  /** «Descargar»; sin contraseña, `''`, que el cliente no envía. `false` si ya había una en curso. */
+  readonly download: (password?: string) => Promise<boolean>;
 }
 
 const LOADING: PublicLinkVisitState = { status: 'loading' };
@@ -182,8 +182,6 @@ export function usePublicLinkVisit(
     outcome,
     preparing: prepared.preparing !== null,
     reload,
-    download: async (password = '') => {
-      await prepared.download(password);
-    },
+    download: (password = '') => prepared.download(password),
   };
 }

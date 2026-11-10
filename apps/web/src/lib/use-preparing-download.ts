@@ -17,7 +17,8 @@ export interface PreparingDownload<T> {
 
 /**
  * Descarga con el patrón de 005: una petición a la vez, «Preparando…» pasados 2 s y la URL firmada abierta con
- * `openUrl`. Si falla, `onFailure` decide el aviso y recibe cómo reintentar.
+ * `openUrl`. Si falla pedir la URL, `onFailure` decide el aviso y recibe cómo reintentar; un fallo de `openUrl` no es
+ * un error de descarga y sigue de largo.
  */
 export function usePreparingDownload<T>(
   requestUrl: (arg: T) => Promise<{ readonly url: string }>,
@@ -34,15 +35,18 @@ export function usePreparingDownload<T>(
     if (inFlight.current) return false;
     inFlight.current = true;
     timer.current = setTimeout(() => setPreparing(() => arg), PREPARING_DELAY_MS);
+    let url: string;
     try {
-      openUrl((await requestUrl(arg)).url);
+      ({ url } = await requestUrl(arg));
     } catch (error) {
       onFailure(arg, error, () => void download(arg));
+      return true;
     } finally {
       clearTimeout(timer.current);
       inFlight.current = false;
       setPreparing(null);
     }
+    openUrl(url);
     return true;
   };
 

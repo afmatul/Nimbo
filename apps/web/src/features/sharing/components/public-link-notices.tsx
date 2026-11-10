@@ -8,27 +8,18 @@ import { Alert } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../lib/utils';
 import type { PublicLinkDownloadOutcome } from '../hooks/use-public-link-visit';
-import {
-  PUBLIC_LINK_DOWNLOAD_FAILED,
-  publicLinkMessage,
-  type PublicLinkMessageTone,
-} from '../public-link-messages';
+import { PUBLIC_LINK_DOWNLOAD_FAILED, publicLinkMessage } from '../public-link-messages';
 
 import { RETRY_ON_TINT } from './public-link-states';
 
 const DOWNLOAD_STARTED = 'Tu descarga comenzó. Si no empieza, vuelve a intentarlo.';
 
-/** Tono del catálogo → `variant` del `Alert` de los avisos sobre la ficha. */
-const ALERT_VARIANT_BY_TONE: Readonly<Record<PublicLinkMessageTone, 'info' | 'error' | 'warning'>> =
-  {
-    neutral: 'info',
-    error: 'error',
-    warning: 'warning',
-  };
-
 interface NoticeAlertProps {
-  /** `success` no es un estado del catálogo: es el resultado de la descarga. */
-  readonly variant: (typeof ALERT_VARIANT_BY_TONE)[PublicLinkMessageTone] | 'success';
+  /**
+   * `warning`: el tono que el catálogo da al `429` y a la red al descargar (`public-link-messages.spec.ts`); `success`
+   * no es del catálogo: es el resultado de la descarga.
+   */
+  readonly variant: 'warning' | 'success';
   readonly icon: ReactNode;
   readonly children: ReactNode;
   readonly className?: string;
@@ -61,30 +52,27 @@ function RateLimitedNotice({
 }: {
   readonly retryAfterSeconds: number | undefined;
 }): JSX.Element {
-  const { title, tone } = publicLinkMessage(
+  const { title, description } = publicLinkMessage(
     SHARED_ERROR_CODES.TOO_MANY_REQUESTS,
     retryAfterSeconds,
   );
   return (
-    <NoticeAlert
-      variant={ALERT_VARIANT_BY_TONE[tone]}
-      icon={<Clock aria-hidden="true" className={iconClass} />}
-    >
-      <p>{title}</p>
+    <NoticeAlert variant="warning" icon={<Clock aria-hidden="true" className={iconClass} />}>
+      <p>{`${title} ${description}`}</p>
     </NoticeAlert>
   );
 }
 
 /** La red falla al descargar: el diseño de «bloqueado» con «Reintentar» (CA-7). */
 function DownloadFailedNotice({ retry }: { readonly retry: () => void }): JSX.Element {
-  const { title, tone } = publicLinkMessage(PUBLIC_LINK_DOWNLOAD_FAILED);
+  const { title, description } = publicLinkMessage(PUBLIC_LINK_DOWNLOAD_FAILED);
   return (
     <NoticeAlert
-      variant={ALERT_VARIANT_BY_TONE[tone]}
+      variant="warning"
       icon={<AlertCircle aria-hidden="true" className={iconClass} />}
       className={RETRY_ON_TINT}
     >
-      <p>{title}</p>
+      <p>{`${title} ${description}`}</p>
       <Button
         type="button"
         variant="outline"
