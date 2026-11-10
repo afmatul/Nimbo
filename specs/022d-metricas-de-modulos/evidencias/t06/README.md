@@ -298,15 +298,20 @@ Medidas con 512 MiB ([registro 08](08-grafana-512mib-estabilidad-20261108-154927
 
 **H-10.** Esa fila pertenece a 022, no a los paneles nuevos.
 
-## Decisiones pendientes (Matul)
+## Decisiones (Adrián, 2026-11-10)
 
-1. **H-2:** qué límite de memoria se fija para Grafana y si debe resolverse antes de cerrar la T-06.
-2. **Tarea humana:** si esta validación automatizada basta o se necesita un recorrido manual.
-3. **Cambios en archivos de 022 o compartidos:** H-1, H-3, H-5 (parte de 022), H-7, H-8, H-9 (runbook) y H-10.
-4. **Integración:** cómo entra la implementación, que hoy se apoya en 022 (#78).
-5. **Cierre de la T-06:** si con lo anterior puede marcarse completada en `tasks.md`.
+1. **H-2:** se resuelve en 022d. Grafana pasa a `mem_limit: 768m` con `GOMEMLIMIT=690MiB` (ADR-0040, plan R-8). El
+   pico real se mide en staging (PD-203).
+2. **Tarea humana:** la validación automatizada de esta demo cuenta como la demo de T-06.
+3. **Cierre parcial:** CA-7 y CA-11 se cierran parciales; lo no comprobado (§«Qué quedó sin comprobar») se debe a la
+   falta de clave de Gemini, que el plan R-6 permite.
+4. **Integración:** 022 ya está en `main` (#78). La rama `feat/022d-metricas-de-modulos` se rehízo sobre `main` con
+   solo los commits de 022d y va en un PR propio; el #92 queda reemplazado. Los pendientes de 022d pasan a PD-200 a
+   PD-202 (el registro 38 conserva el número con el que se capturó).
+5. **T-06:** completada en `tasks.md`.
 
-La cobertura parcial de CA-7 y CA-11 se debe a la falta de clave de Gemini, que la asignación permite.
+Sin decidir y fuera del cierre: H-1, H-3, H-5 (los 4 casos de 022), H-7, H-8 y H-10, con cambios preparados por Abel.
+H-9 se corrigió en el runbook §4 junto con H-2.
 
 ## Archivos no incluidos
 
