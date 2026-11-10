@@ -98,7 +98,7 @@ Bitácora (JSON por línea, `level`, `time`, `event`, `correlationId` por corrid
 | `backup.scheduled` | `nextRunAt` |
 | `backup.completed` | `backupFile`, `sizeBytes`, `durationMs`, `kept` (copias tras rotar) |
 | `backup.failed` | `code`, `durationMs`, `exitCode` (de la herramienta) |
-| `restore.completed` / `restore.failed` | `backupFile`, `durationMs` / `code`, `durationMs` |
+| `restore.completed` / `restore.failed` | `backupFile`, `durationMs` / `code`, `exitCode`, `durationMs` |
 
 Nunca: texto de `stderr` de `pg_dump`/`pg_restore`, host, usuario, contraseña, `PG*`, ruta ni contenido de la clave.
 Los scripts salen con `0` si todo va bien y con `1` en un fallo, después de escribir la línea `*.failed`.
