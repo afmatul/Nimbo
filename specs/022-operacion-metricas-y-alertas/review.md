@@ -41,10 +41,10 @@
 - Ninguno.
 
 ## Importantes y sugerencias
-- **[I-1]** `spec.md` §10 y `plan.md` — registrar `GF_PUBLIC_DASHBOARDS_ENABLED`, `GF_SNAPSHOTS_EXTERNAL_ENABLED` y `GF_USERS_VIEWERS_CAN_EDIT` (T-08), autorizadas por Adrián el 2026-11-05 junto con `GF_SERVER_ROOT_URL`. `.env.example` y `env:check`: ✅
-- **[I-2]** DF-29 nombra `metrics-server.ts`, que no existe (es `metrics.module.ts`). Al integrar: DF-29 a Resuelto y PD-166 a Cerrados.
-- **[I-3]** Anotar en la spec «CA-3 parcial hasta PD-173; si staging tampoco da datos, se retira el panel 15».
-- **[I-4]** `evidencias/t09/README.md:8` y cabecera de `spec.md` desactualizados (T-09 ya está `[x]`; fecha 2026-11-03).
+- ~~**[I-1]**~~ ✅ resuelto 2026-11-10 · `spec.md` §10 y `plan.md` — registrar `GF_PUBLIC_DASHBOARDS_ENABLED`, `GF_SNAPSHOTS_EXTERNAL_ENABLED` y `GF_USERS_VIEWERS_CAN_EDIT` (T-08), autorizadas por Adrián el 2026-11-05 junto con `GF_SERVER_ROOT_URL`. `.env.example` y `env:check`: ✅
+- ~~**[I-2]**~~ ✅ resuelto 2026-11-10 · DF-29 nombra `metrics-server.ts`, que no existe (es `metrics.module.ts`). Nombre corregido; al integrar: DF-29 a Resuelto y PD-166 a Cerrados.
+- ~~**[I-3]**~~ ✅ resuelto 2026-11-10 · Anotar en la spec «CA-3 parcial hasta PD-173; si staging tampoco da datos, se retira el panel 15».
+- ~~**[I-4]**~~ ✅ resuelto 2026-11-10 · `evidencias/t09/README.md:8` y cabecera de `spec.md` desactualizados (T-09 ya está `[x]`; fecha 2026-11-03).
 - **[S-1]** reflujar el comentario de `startWorker` en `worker-bootstrap.ts`. **[S-2]** `health.ready` cada 15 s con una dependencia caída (PD-189, antes PD-174). **[S-3]** `queue-metrics.collector.ts` sin prueba unitaria propia.
 
 ## DF y pendientes

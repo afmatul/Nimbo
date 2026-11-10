@@ -5,7 +5,7 @@
 | Primera ronda | 2026-11-03, de 21:07 a 23:50 (hora local, UTC−6), sobre `114a024e` |
 | Segunda ronda | 2026-11-04, de 06:15 a 07:02, sobre `fd95398a`: verifica las correcciones de H-1, H-4 y H-6 (`e8765667` y `fd95398a`) y ejecuta CA-11, que Matul pidió como obligatoria |
 | Ejecutó | Abel, con apoyo de Claude Code. Las demos no cambiaron ningún archivo versionado |
-| Estado | **Verificada, pendiente de la decisión de Matul.** La T-09 sigue sin marcar en `tasks.md` |
+| Estado | **Completada.** T-09 marcada en `tasks.md`; abiertos PD-172, PD-173 (CA-3 parcial) y PD-189 |
 
 ## Ambiente
 
@@ -235,7 +235,7 @@ Detalle tal como se observó en la primera ronda:
 
 ## Decisiones pendientes (Matul)
 
-Ya resuelto por las decisiones del 2026-11-04 y verificado: H-1, H-4 y H-6 se corrigieron en 022; H-2 pasó a PD-173 y H-7 a PD-189; CA-11 se ejecutó y fue aprobada. Queda por decidir:
+Ya resuelto por las decisiones del 2026-11-04 y verificado: H-1, H-4 y H-6 se corrigieron en 022; H-2 pasó a PD-173 y H-7 a PD-189; CA-11 se ejecutó y fue aprobada. Adrián las resolvió el 2026-11-10: CA-3 queda parcial por PD-173, PD-189 no bloquea y T-09 se marca completada. Planteadas así:
 
 1. **CA-3 con PD-173 abierto:** si se acepta que el «disco por contenedor» se compruebe en staging Linux, o si bloquea la T-09.
 2. **PD-189 (H-7):** si se puede cerrar la T-09 con PD-189 abierto.

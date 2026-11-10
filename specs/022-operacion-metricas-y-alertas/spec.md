@@ -9,7 +9,7 @@
 | Fase prevista | 3 (asignación original; calendario pendiente de reprogramación) |
 | Requisitos | RNF-18 (métricas, tableros y alertas; la salud ya la entregó 000); aplican RF-05, RF-22, RNF-01, RNF-09, RNF-12, RNF-16, RNF-17 |
 | Depende de | 000 (salud, bitácoras, CI, compose). Usa las colas BullMQ que ya existen (CA-1), incluidas las de 010, 019 y 021 |
-| Última actualización | 2026-11-03 |
+| Última actualización | 2026-11-10 |
 
 ## 1. Contexto y objetivo
 Nimbo ya informa su salud y deja bitácoras (000). Esta spec permite al Operador observar el sistema con métricas y
@@ -40,7 +40,7 @@ cuentas (PD-74, PD-122), son de 022b. La alerta de «> 50 trabajos pendientes o 
 ### Métricas (HU-1, HU-6)
 - **CA-1** (HU-1, RNF-18) Dados `api`, `worker` y `worker-optimizer` en marcha, cuando se recolectan sus métricas por la red interna, entonces se distinguen los tres procesos, las peticiones HTTP por ruta y código con latencia (p50, p95, p99) y, por cola, trabajos en espera, activos, completados y fallidos, con tiempo de espera y de ejecución; incluye `indexing`, `index-status`, `index-reconcile` y `optimization`.
 - **CA-2** (HU-1, RNF-18, DF-29) — error: Dada una petición a las métricas desde fuera de la red interna (por Traefik o directa al host), cuando llega, entonces no recibe métricas; Traefik no enruta ningún host ni ruta hacia las métricas, Prometheus no se publica y lo público sigue siendo lo de 000.
-- **CA-3** (HU-1, RNF-18) Dados los servicios del compose, cuando se consultan las métricas de sistema, entonces se ven CPU, memoria y disco por contenedor y la disponibilidad de Postgres, Redis, MinIO y, con su perfil activo, ONLYOFFICE.
+- **CA-3** (HU-1, RNF-18) Dados los servicios del compose, cuando se consultan las métricas de sistema, entonces se ven CPU, memoria y disco por contenedor y la disponibilidad de Postgres, Redis, MinIO y, con su perfil activo, ONLYOFFICE. **Parcial hasta PD-173:** el disco por contenedor (panel 15) no tiene datos en Docker Desktop/WSL2; se comprueba en staging (Linux nativo) y, si tampoco hay datos, se retira el panel y el disco queda cubierto solo por el del anfitrión.
 - **CA-4** → 022d (señales de los grupos de módulo de RN-3).
 - **CA-5** (HU-6, RNF-17) — privacidad: Dada cualquier serie, etiqueta, tablero o mensaje de alerta, cuando se inspecciona, entonces no contiene correos, nombres de archivo, claves de objeto, tokens, contenido ni identificadores de cuenta, archivo, documento, usuario o sesión; solo agregados y distribuciones (RN-2), y las rutas aparecen por su plantilla.
 
@@ -138,3 +138,4 @@ Resueltas por Adrián en el PR #78 el 2026-11-02; ninguna queda abierta.
 | 2026-11-03 | T-07: la regla 4 identifica el disco del anfitrión como el máximo sobre los dispositivos de bloque reales (`container_fs_*{id="/",device=~"/dev/.+"}`, sin tmpfs ni overlay) y alerta si alguno supera el 80 %. PD-170 cerrado; la comprobación en Docker Desktop/WSL2 sigue pendiente (spike de ADR-0040) | cAdvisor emite una serie por dispositivo con `id="/"` (spike T-01) | Adrián |
 | 2026-11-03 | Panel 15 «Disco usado por contenedor» en el tablero de operación (CA-3, disco por contenedor); sin regla nueva (siguen seis) | El panel 14 solo cubre el disco del anfitrión | Adrián |
 | 2026-11-04 | Correcciones de la demo T-09: regla 4 solo sobre el `/dev/*` de mayor capacidad (H-1, revisa la decisión de PD-170); tasa 5xx con `or vector(0)` (H-4); `GF_SERVER_ROOT_URL` para los enlaces de los correos (H-6); PD-173 (H-2, disco por contenedor) y PD-189 (H-7; antes PD-174, renumerado al integrar main) | Hallazgos de Abel en la demo en Docker Desktop/WSL2 | Adrián |
+| 2026-11-10 | T-08: Grafana además con `GF_PUBLIC_DASHBOARDS_ENABLED`, `GF_SNAPSHOTS_EXTERNAL_ENABLED` y `GF_USERS_VIEWERS_CAN_EDIT` en falso, y se confirma `GF_SERVER_ROOT_URL` (H-6); CA-3 queda parcial por PD-173 | CA-9 y P-6: ningún tablero sin cuenta, *Viewer* sin editar ni explorar; las cuatro variables no estaban en el plan aprobado (solo `GF_AUTH_ANONYMOUS_ENABLED`) | Adrián |
