@@ -12,6 +12,8 @@ import type { SharingLogger } from './sharing-logger';
 
 /** Clave del bloqueo por contraseñas fallidas (plan §5, RN-7): por enlace y por el hash de la red. */
 const FAILURE_KEY_PREFIX = 'sharing:link-fail:';
+/** Clave del techo global (013b plan §5, RN-3; PD-175): solo el id del enlace, sin red ni IP. */
+const CEILING_KEY_PREFIX = 'sharing:link-fail-all:';
 
 /** Lo que el visitante aporta a la verificación (CA-10): la contraseña, si la envía, y su IP; nunca el token. */
 export interface PasswordAttempt {
@@ -34,6 +36,8 @@ const MISSING: PasswordCheck = { passed: false, engagedLock: false };
 const failureKeyOf = (link: PublicLink, ip: string): string =>
   `${FAILURE_KEY_PREFIX}${link.id}:${networkHashOf(ip)}`;
 
+const ceilingKeyOf = (link: PublicLink): string => `${CEILING_KEY_PREFIX}${link.id}`;
+
 /** CA-12: una contraseña ausente o vacía (`""`, el campo vacío del formulario) no es un intento. */
 const isMissing = (password: string | undefined): password is undefined | '' =>
   password === undefined || password === '';
@@ -48,28 +52,49 @@ export class PublicLinkPasswordGate {
   constructor(
     @Inject(I_PASSWORD_HASHER) private readonly hasher: IPasswordHasher,
     @Inject(I_ATTEMPT_LOCKOUT) private readonly lockout: IAttemptLockout,
-    @Inject(SHARING_CONFIG) private readonly config: Pick<SharingConfig, 'publicLinkLockout'>,
+    @Inject(SHARING_CONFIG)
+    private readonly config: Pick<SharingConfig, 'publicLinkLockout' | 'publicLinkCeiling'>,
     @Inject(PinoLogger) private readonly logger: SharingLogger,
   ) {}
 
   /**
-   * CA-10, CA-12, CA-13: sin contraseña en el enlace no se verifica nada. Si la pide y falta (ausente o `""`), no pasa
-   * sin contar ni registrar. Con una, el intento se reserva por enlace + red **antes** de Argon2id (fuera de toda
-   * transacción), así el bloqueo vigente da `429` aunque sea la correcta; un acierto libera la reserva y cada fallo va
-   * solo a la bitácora técnica, sin IP ni contraseña (CA-18).
+   * CA-10, CA-12, CA-13, en este orden (013b plan §1):
+   * 1. Si el enlace no pide contraseña, pasa sin verificar nada ni contar para el techo (013b CA-15).
+   * 2. Si el techo global del enlace está activo, `429` para todos, aunque sea la correcta (013b CA-12).
+   * 3. Si la contraseña falta (ausente o `""`), no pasa, sin contar ni registrar (CA-12).
+   * 4. Con una, reserva el intento por enlace + red **antes** de Argon2id y fuera de toda transacción: el bloqueo
+   *    vigente da `429` aunque sea la correcta (CA-13).
+   * 5. Un acierto libera solo la reserva por red; el techo no se reinicia (013b RN-3). Un fallo va solo a la bitácora
+   *    técnica, sin IP ni contraseña (CA-18), y cuenta para el techo; `engagedLock` es el de la red o el del techo
+   *    (013b CA-14).
    */
   async check(link: PublicLink, { password, ip }: PasswordAttempt): Promise<PasswordCheck> {
     const { passwordHash } = link.toSnapshot();
     if (passwordHash === null) return PASSED;
+    const ceilingKey = ceilingKeyOf(link);
+    await this.assertBelowCeiling(ceilingKey);
     if (isMissing(password)) return MISSING;
     const key = failureKeyOf(link, ip);
-    const engagedLock = await this.reserveAttempt(key);
+    const networkEngaged = await this.reserveAttempt(key);
     if (await this.hasher.verify(passwordHash, password)) {
       await this.lockout.clear(key);
       return PASSED;
     }
     this.logger.info({ event: 'public_link.password_failed', linkId: link.id });
-    return { passed: false, engagedLock };
+    const ceilingEngaged = await this.recordCeilingFailure(ceilingKey);
+    return { passed: false, engagedLock: networkEngaged || ceilingEngaged };
+  }
+
+  /** 013b CA-12: con el techo activo, `429` con su espera, sin Argon2id ni reserva por red. */
+  private async assertBelowCeiling(ceilingKey: string): Promise<void> {
+    const ceiling = await this.lockout.check(ceilingKey);
+    if (ceiling.locked) throw new RateLimitExceededError(ceiling.retryAfterSeconds);
+  }
+
+  /** 013b CA-14: si este fallo es el que activó el techo; el script atómico lo da a uno solo. */
+  private async recordCeilingFailure(ceilingKey: string): Promise<boolean> {
+    const record = await this.lockout.recordFailure(ceilingKey, this.config.publicLinkCeiling);
+    return record.locked && record.engagedLock;
   }
 
   /** CA-13: con el bloqueo vigente, `429` con la espera sin verificar; si no, si este intento es el que lo activa. */

@@ -5,12 +5,12 @@ import { STORAGE_ERROR_CODES, type DownloadUrlResponse, type FileSummary } from 
 import { act, useState, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
+import { PREPARING_DELAY_MS } from '../../../lib/use-preparing-download';
 import { StorageRequestError } from '../storage-request-error';
 
 import {
   DownloadNoticeBanner,
   FileRowMenu,
-  PREPARING_DELAY_MS,
   type DownloadNotice,
   type FileRowMenuProps,
 } from './file-row-menu';
@@ -297,6 +297,24 @@ describe('FileRowMenu (CA-13, CA-21)', () => {
 
     expect(openUrl).toHaveBeenCalledWith('https://objetos.local/lenta');
     expect(document.querySelector('[role="status"]')?.textContent).toBe('');
+  });
+
+  it('013b CA-3: doble clic en «Descargar»: una sola petición y el segundo no cierra ni limpia el aviso', async () => {
+    const pending = deferred();
+    const requestUrl = jest.fn(() => pending.promise);
+    const onNotice = jest.fn();
+    await renderMenu({ requestUrl, onNotice });
+
+    await chooseDownload();
+    await act(async () => items()[0]?.click());
+
+    expect(requestUrl).toHaveBeenCalledTimes(1);
+    expect(onNotice).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('[role="menu"]')).not.toBeNull();
+
+    await act(async () => pending.resolve(SIGNED));
+
+    expect(document.querySelector('[role="menu"]')).toBeNull();
   });
 
   it('CA-21: 429: aviso arriba con el texto de la spec y «Reintentar» vuelve a pedir la URL', async () => {

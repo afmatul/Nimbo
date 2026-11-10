@@ -12,8 +12,8 @@ const MINUTE_MS = 60 * SECOND_MS;
 const POLICY: LockoutPolicy = { maxFailures: 5, windowSeconds: 15 * 60, lockSeconds: 15 * 60 };
 const CONCURRENT_FAILURES = 10;
 
-/** `IAttemptLockout` contra Redis real (plan §6.4; CA-5, CA-19, CA-23). */
-describe('RedisAttemptLockout (CA-5, CA-19, CA-23)', () => {
+/** `IAttemptLockout` contra Redis real (plan §6.4; CA-5, CA-19, CA-23; 013b CA-14). */
+describe('RedisAttemptLockout (CA-5, CA-19, CA-23; 013b CA-14)', () => {
   let redis: Redis;
   let clock: FixedClock;
   let lockout: RedisAttemptLockout;
@@ -42,7 +42,7 @@ describe('RedisAttemptLockout (CA-5, CA-19, CA-23)', () => {
     key = `identity:lockout:login:${createHash('sha256').update(email).digest('hex')}`;
   });
 
-  it('CA-5: 4 fallos no bloquean; el 5.º bloquea 900 s', async () => {
+  it('CA-5, 013b CA-14: 4 fallos no bloquean; el 5.º bloquea 900 s y avisa que lo activó', async () => {
     for (let failure = 1; failure < POLICY.maxFailures; failure += 1) {
       await expect(lockout.recordFailure(key, POLICY)).resolves.toEqual({ locked: false });
     }
@@ -50,8 +50,20 @@ describe('RedisAttemptLockout (CA-5, CA-19, CA-23)', () => {
     await expect(lockout.recordFailure(key, POLICY)).resolves.toEqual({
       locked: true,
       retryAfterSeconds: 900,
+      engagedLock: true,
     });
     await expect(lockout.check(key)).resolves.toEqual({ locked: true, retryAfterSeconds: 900 });
+  });
+
+  it('013b CA-14: con el bloqueo vigente, un fallo más queda bloqueado sin activarlo otra vez', async () => {
+    await recordFailures(POLICY.maxFailures);
+    clock.advance(MINUTE_MS);
+
+    await expect(lockout.recordFailure(key, POLICY)).resolves.toEqual({
+      locked: true,
+      retryAfterSeconds: 840,
+      engagedLock: false,
+    });
   });
 
   it('CA-5: sin fallos `check` no bloquea', async () => {
@@ -109,7 +121,7 @@ describe('RedisAttemptLockout (CA-5, CA-19, CA-23)', () => {
     await expect(lockout.recordFailure(key, POLICY)).resolves.toEqual({ locked: false });
   });
 
-  it('CA-19: 10 fallos simultáneos con máximo 5 dejan un solo bloqueo y ninguna excepción', async () => {
+  it('CA-19, 013b CA-14: 10 fallos simultáneos con máximo 5 dejan un solo bloqueo, un solo `engagedLock` y ninguna excepción', async () => {
     const states = await Promise.all(
       Array.from({ length: CONCURRENT_FAILURES }, () => lockout.recordFailure(key, POLICY)),
     );
@@ -118,6 +130,7 @@ describe('RedisAttemptLockout (CA-5, CA-19, CA-23)', () => {
     expect(states.filter((state) => state.locked)).toHaveLength(
       CONCURRENT_FAILURES - POLICY.maxFailures + 1,
     );
+    expect(states.filter((state) => state.locked && state.engagedLock)).toHaveLength(1);
     await expect(redis.keys(`${key}*`)).resolves.toEqual([`${key}:lock`]);
     await expect(lockout.check(key)).resolves.toEqual({ locked: true, retryAfterSeconds: 900 });
   });

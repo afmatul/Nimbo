@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Archivo compartido · Nimbo</title>
+<!-- Mockup de referencia (spec 013b: página pública /enlace, CA-1 a CA-8 y CA-11). Estado: descarga-error-red. -->
+<!-- Título genérico de CA-8: nunca el nombre del archivo ni el token. noindex por S-5. -->
+<!-- Colores: valores de ui-guidelines.md §3 (tonos AA). La implementación usa tokens, components/ui y components/nimbo. -->
+<!-- Generado con _generadores/enlace-publico/generar.js (marco y mis-archivos). No editar a mano. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Valores de ui-guidelines.md §3 (tonos AA de ADR-0014). La implementación usa las utilidades de Tailwind, nunca hex. */
+    --sheet: #E7EDF5;          /* fondo de la hoja de mockups (no es un token de la app) */
+    --background: #F4F7FB;
+    --card: #FAFCFF;
+    --border: #DDE6F0;
+    --input: #7F93AA;
+    --foreground: #1E2D40;
+    --secondary-foreground: #3A5068;
+    --muted-foreground: #5E7389;
+    --primary: #4A6FA5;
+    --primary-hover: #3B5A8A;
+    --primary-foreground: #FFFFFF;
+    --brand: #6B8DD6;
+    --muted: #EEF3F9;
+    --accent: #DDE6F0;
+    --ring: #4A6FA5;
+    --success: #6DB99A;
+    --success-foreground: #3A7560;
+    --destructive: #A34F4F;
+    --destructive-soft: #C97B7B;
+    --overlay: rgba(44, 58, 82, .45); /* velo de diálogo: agent-bg al 45 %; token pendiente (#6 de app-layout) */
+    --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 18px;
+    --shadow-card: 0 1px 3px rgba(74,111,165,.08), 0 1px 2px rgba(74,111,165,.04);
+    --shadow-modal: 0 8px 24px rgba(44,58,82,.18);
+    --shadow-button: 0 1px 2px rgba(107,141,214,.20);
+    /* Mezclas al 12 % sobre card (fondo de alertas y distintivos) */
+    --success-soft: color-mix(in srgb, var(--success) 12%, var(--card));
+    --destructive-tint: color-mix(in srgb, var(--destructive-soft) 12%, var(--card));
+    --brand-soft: color-mix(in srgb, var(--brand) 12%, var(--card));
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--sheet); color: var(--foreground);
+    font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.5;
+  }
+  a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--primary-hover); }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+  .ico { flex: none; }
+
+  /* Rótulo de la hoja */
+  .sheet-label {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+    padding: 40px 48px 12px; font-size: 12px; line-height: 1.5; color: var(--secondary-foreground);
+  }
+  .sheet-label .chip { background: var(--border); border-radius: var(--radius-sm); padding: 1px 7px; font-weight: 600; font-size: 11px; }
+  .sheet-label strong { color: var(--foreground); font-size: 13px; font-weight: 600; }
+  .sheet-label .file { font-weight: 500; font-variant-numeric: tabular-nums; color: var(--primary-hover); }
+
+  /* Lienzo y marco de la aplicación (propuesta p. 08 y p. 17) */
+  .canvas {
+    position: relative; margin: 0 48px 48px; background: var(--background); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card); overflow: hidden;
+  }
+  .app { display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 860px; }
+  .sidebar { display: flex; flex-direction: column; gap: 14px; background: var(--card); border-right: 1px solid var(--border); padding: 18px 12px 16px; }
+  .brand-row { display: flex; align-items: center; gap: 10px; padding: 4px 8px 10px; border-bottom: 1px solid var(--border); }
+  .logo { display: inline-flex; align-items: center; gap: 10px; color: var(--foreground); text-decoration: none; font-weight: 700; font-size: 17px; letter-spacing: .02em; min-height: 36px; }
+  .logo-mark { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); font-size: 15px; font-weight: 700; box-shadow: var(--shadow-button); }
+  .plan-chip { font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: .04em; color: var(--secondary-foreground); background: var(--muted); border-radius: var(--radius-sm); padding: 2px 6px; }
+  .nav { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .nav a { display: flex; align-items: center; gap: 12px; min-height: 36px; padding: 6px 12px; border-radius: var(--radius-md); color: var(--secondary-foreground); text-decoration: none; font-size: 13.5px; font-weight: 500; }
+  .nav a:hover { background: var(--muted); color: var(--foreground); }
+  .nav .meta { margin-left: auto; font-size: 11px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .nav-sep { height: 1px; background: var(--border); margin: 2px 8px; }
+  .nav-title { margin: 6px 12px 0; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-foreground); }
+  .quota { margin-top: auto; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px; background: var(--card); }
+  .quota-head { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 600; }
+  .quota-bar { height: 6px; border-radius: 999px; background: var(--muted); margin: 8px 0 6px; overflow: hidden; }
+  .quota-bar span { display: block; height: 100%; width: 21%; background: var(--success); border-radius: 999px; }
+  .quota-meta { font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
+
+  .main { min-width: 0; display: flex; flex-direction: column; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; padding: 10px 28px; background: var(--card); border-bottom: 1px solid var(--border); }
+  .topbar .menu-btn, .topbar .logo-mobile { display: none; }
+  .crumbs ol { display: flex; align-items: center; gap: 10px; list-style: none; margin: 0; padding: 0; font-size: 14px; }
+  .crumbs li + li::before { content: "/"; color: var(--muted-foreground); margin-right: 10px; }
+  .crumbs a { color: var(--secondary-foreground); text-decoration: none; }
+  .crumbs a:hover { color: var(--foreground); text-decoration: underline; }
+  .crumbs [aria-current] { font-weight: 600; color: var(--foreground); }
+  .account-btn { display: inline-flex; align-items: center; gap: 10px; min-height: 40px; padding: 4px 6px 4px 12px; border: 0; border-radius: 999px; background: transparent; color: var(--secondary-foreground); font: inherit; font-size: 13px; cursor: pointer; }
+  .account-btn:hover { background: var(--muted); }
+  .avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; background: var(--card); color: var(--foreground); font-size: 11px; font-weight: 700; box-shadow: 0 0 0 2px var(--brand); }
+
+  .content { padding: 28px 28px 40px; }
+  .page-head h1 { margin: 0; font-size: 26px; line-height: 1.25; font-weight: 700; letter-spacing: -.01em; }
+  .page-head p { margin: 6px 0 0; color: var(--secondary-foreground); font-size: 14.5px; }
+  /* Botones (components/ui/button) */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 16px; border-radius: var(--radius-md); font: inherit; font-weight: 600; font-size: 13.5px; line-height: 1.2; cursor: pointer; text-decoration: none; white-space: nowrap; }
+  .btn-sm { min-height: 36px; padding: 6px 12px; font-size: 13px; }
+  .btn-outline { color: var(--secondary-foreground); background: var(--card); border: 1px solid var(--input); }
+  .btn-outline:hover { background: var(--muted); color: var(--foreground); }
+  .btn-primary { color: var(--primary-foreground); background: var(--primary); border: 1px solid var(--primary); box-shadow: var(--shadow-button); }
+  .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+  .btn-destructive { color: var(--primary-foreground); background: var(--destructive); border: 1px solid var(--destructive); }
+  .btn[disabled] { opacity: .45; pointer-events: none; }
+  .btn-busy { opacity: 1 !important; }
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin, .skeleton-line { animation: none !important; } }
+
+  /* Propio de sharing/enlace-publico (spec 013b). Valores de ui-guidelines.md §3; la app usa utilidades de Tailwind. */
+  :root {
+    --warning: #D4A96A;
+    --warning-foreground: #8A6424;
+    --file-docx: #3F62A8; --file-docx-bg: #6B8DD620;
+  }
+  [hidden] { display: none !important; }
+
+  /* Lienzo de una página pública: cabecera arriba y contenido centrado (app/(public)/layout.tsx) */
+  .pub { display: flex; flex-direction: column; min-height: 760px; background: var(--background); }
+
+  /* PublicHeader: h-16, bg-card, borde inferior, sombra suave; logo (BrandLogo) y navegación pública */
+  .pub-header { display: flex; align-items: center; justify-content: space-between; height: 64px; padding: 0 24px; background: var(--card); border-bottom: 1px solid var(--border); box-shadow: var(--shadow-card); }
+  .brand { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 4px; border-radius: var(--radius-sm); color: var(--foreground); text-decoration: none; }
+  .brand:hover { color: var(--foreground); }
+  .brand-mark { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); box-shadow: var(--shadow-button); }
+  .brand-name { font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
+  .pub-nav { display: flex; align-items: center; gap: 4px; }
+  .pub-nav a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: var(--radius-sm); color: var(--foreground); font-size: 14px; font-weight: 500; text-decoration: none; }
+  .pub-nav a:hover { background: var(--muted); color: var(--foreground); }
+
+  /* IdentityCard: columna de 448 px, tarjeta con ícono de tono, título h1 centrado y contenido */
+  .pub-main { flex: 1; display: flex; flex-direction: column; }
+  .id-wrap { width: 100%; max-width: 448px; margin: 0 auto; padding: 64px 16px; }
+  .id-card { display: grid; gap: 24px; padding: 32px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+  .id-head { display: grid; justify-items: center; gap: 12px; text-align: center; }
+  .tone { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: var(--radius-md); }
+  .tone-info { background: var(--accent); color: var(--primary); }
+  .id-head h1 { margin: 0; font-size: 24px; line-height: 1.3; font-weight: 600; letter-spacing: -.01em; overflow-wrap: anywhere; }
+
+  /* Ficha del archivo: ícono del tipo (FileTypeIcon), nombre, tamaño y vencimiento absoluto */
+  .ficha { display: flex; align-items: flex-start; gap: 12px; margin: 0; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--card); }
+  .ftile { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; flex: none; border-radius: 8px; }
+  .ftile-docx { color: var(--file-docx); background: var(--file-docx-bg); }
+  .ficha-text { min-width: 0; }
+  .ficha-name { margin: 0; font-size: 15px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+  .ficha-meta { display: flex; flex-wrap: wrap; gap: 0 6px; margin: 2px 0 0; font-size: 13.5px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+
+  /* Formulario de la contraseña (PasswordField: Input + botón de 44 px para mostrar u ocultar) */
+  .form { display: grid; gap: 16px; margin: 0; }
+  .field { display: grid; gap: 6px; }
+  .field label { font-size: 14px; font-weight: 500; }
+  .pw { position: relative; }
+  .input { width: 100%; min-height: 44px; padding: 8px 48px 8px 12px; border: 1px solid var(--input); border-radius: var(--radius-md); background: var(--card); color: var(--foreground); font: inherit; font-size: 15px; }
+  .input:focus-visible, .input.is-focus { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .input[aria-invalid="true"] { border-color: var(--destructive); }
+  .pw-toggle { position: absolute; top: 0; right: 0; bottom: 0; display: inline-flex; align-items: center; justify-content: center; width: 44px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--muted-foreground); cursor: pointer; }
+  .pw-toggle:hover { color: var(--foreground); }
+  .field-hint { margin: 0; font-size: 13px; color: var(--muted-foreground); }
+  .field-error { display: flex; align-items: flex-start; gap: 6px; margin: 0; font-size: 13.5px; font-weight: 500; color: var(--destructive); }
+  .field-error .ico { margin-top: 2px; }
+
+  /* Acción principal a todo el ancho, 44 px; «Preparando descarga…» no acepta otro clic y conserva el contraste */
+  .btn-block { width: 100%; min-height: 44px; font-size: 14px; }
+  .btn[aria-disabled="true"] { cursor: progress; }
+
+  /* Alert de shadcn sobre la ficha: warning (429 y red al descargar) y success (descarga iniciada), role="status" */
+  .alert { display: flex; align-items: flex-start; gap: 10px; margin: 0; padding: 12px 16px; border: 1px solid; border-radius: var(--radius-md); font-size: 14px; line-height: 1.5; }
+  .alert .ico { margin-top: 2px; }
+  .alert p { margin: 0; }
+  .alert-body { display: grid; justify-items: start; gap: 10px; min-width: 0; }
+  /* Sobre el fondo warning al 10 % (y de error al 12 %) el borde input da 2.87 (2.73): se usa secondary-foreground (no texto, ≥ 3:1) */
+  .alert-warning .btn-outline, .state-warning .btn-outline, .state-error .btn-outline { color: var(--foreground); border-color: var(--secondary-foreground); }
+  .alert-warning { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 10%, var(--card)); color: var(--warning-foreground); }
+  .alert-success { border-color: var(--success); background: color-mix(in srgb, var(--success) 10%, var(--card)); color: var(--foreground); }
+  .alert-success .ico { color: var(--success-foreground); }
+
+  /* Cargando: esqueleto con la forma de la ficha (aria-hidden) y un texto con role="status" */
+  .skeleton-line { display: block; height: 12px; border-radius: 999px; background: var(--muted); animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .55; } }
+  .sk-head { display: grid; justify-items: center; gap: 12px; }
+  .sk-tone { width: 48px; height: 48px; border-radius: var(--radius-md); }
+  .sk-title { width: 80%; height: 20px; }
+  .sk-title2 { width: 50%; height: 20px; }
+  .sk-ficha { display: flex; gap: 12px; align-items: center; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); }
+  .sk-ficha > div { flex: 1; display: grid; gap: 8px; }
+  .sk-tile { width: 40px; height: 40px; flex: none; border-radius: 8px; }
+  .sk-btn { height: 44px; border-radius: var(--radius-md); }
+  .w45 { width: 45%; } .w70 { width: 70%; }
+  .loading-text { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; font-size: 14px; color: var(--secondary-foreground); }
+
+  /* StateView (no disponible y error al abrir), en la misma columna que la tarjeta */
+  .state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 224px; padding: 32px; text-align: center; background: var(--card); border: 1px dashed var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+  .state > .ico { margin-bottom: 16px; color: var(--muted-foreground); }
+  .state h2 { margin: 0; font-size: 16px; line-height: 1.5; font-weight: 600; color: var(--foreground); }
+  .state p { margin: 6px 0 0; max-width: 384px; font-size: 14px; color: var(--muted-foreground); }
+  .state .btn { margin-top: 20px; }
+  .state-error { border-color: color-mix(in srgb, var(--destructive-soft) 60%, var(--card)); background: var(--destructive-tint); }
+  .state-error > .ico, .state-error h2 { color: var(--destructive); }
+  .state-error p, .state-warning p { color: var(--foreground); }
+  .state-warning { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 10%, var(--card)); }
+  .state-warning > .ico, .state-warning h2 { color: var(--warning-foreground); }
+
+  @media (max-width: 767px) {
+    .pub-header { padding: 0 16px; }
+  }
+  @media (max-width: 639px) {
+    .sheet-label { padding: 16px 12px 10px; }
+    .canvas { margin: 0 8px 16px; border-radius: var(--radius-md); }
+    .pub { min-height: 680px; }
+    .pub-nav a { padding: 0 8px; }
+    .id-wrap { padding: 40px 16px; }
+    .id-card { padding: 24px; }
+    .ficha { gap: 10px; padding: 12px; }
+    .ftile { width: 36px; height: 36px; }
+    .ficha-name { font-size: 14px; }
+    .ficha-meta { flex-direction: column; }
+    .ficha-meta [aria-hidden="true"] { display: none; }
+    .state { padding: 32px 16px; }
+    .state .btn { width: 100%; min-height: 44px; }
+    .alert .btn { min-height: 44px; }
+  }
+</style>
+</head>
+<body>
+
+<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">013b</span> <strong>Enlace público (página)</strong> <span class="file">enlace-publico--descarga-error-red.html</span> <span>ruta /enlace#… (el token va en el fragmento y no se muestra) · estado: la red falla al descargar: aviso de advertencia sobre la ficha con «Reintentar» (CA-7)</span></aside>
+
+<div class="canvas">
+  <div class="pub">
+    <header class="pub-header">
+      <a class="brand" href="#"><span class="brand-mark"><svg class="ico " width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg></span><span class="brand-name">Nimbo</span></a>
+      <nav class="pub-nav" aria-label="Navegación pública">
+        <a href="#">Planes</a>
+        <a href="#">Iniciar sesión</a>
+      </nav>
+    </header>
+    <main class="pub-main" id="contenido">
+      <section class="id-wrap" aria-labelledby="ficha-t">
+        <div class="id-card">
+          <div class="id-head">
+            <span class="tone tone-info" aria-hidden="true"><svg class="ico " width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4"/><path d="m15.4 6.5-6.8 4"/></svg></span>
+            <h1 id="ficha-t">Andrea Morales compartió un archivo contigo</h1>
+          </div>
+          <div class="ficha">
+            <span class="ftile ftile-docx" aria-hidden="true"><svg class="ico " width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span>
+            <div class="ficha-text">
+              <p class="ficha-name">Informe_trimestral_Q3.docx</p>
+              <p class="ficha-meta"><span>2,4 MB</span><span aria-hidden="true">·</span><span>Vence el 14 nov 2026, 14:30</span></p>
+            </div>
+          </div>
+          <div class="alert alert-warning" role="status"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg><div class="alert-body"><p>No pudimos iniciar la descarga. Revisa tu conexión e inténtalo de nuevo.</p>
+            <button class="btn btn-outline btn-sm" type="button"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span>Reintentar</span></button></div></div>
+          <button class="btn btn-primary btn-block" type="button"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg><span>Descargar</span></button>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+</body>
+</html>

@@ -3,8 +3,8 @@
 import { Eye, EyeOff } from 'lucide-react';
 import { forwardRef, useState } from 'react';
 
-import { Input, type InputProps } from '../../../components/ui/input';
-import { cn } from '../../../lib/utils';
+import { cn } from '../../lib/utils';
+import { Input, type InputProps } from '../ui/input';
 
 /** Campo de contraseña con el botón de mostrar u ocultar del mockup de inicio de sesión (objetivo de 44 px). */
 export const PasswordField = forwardRef<HTMLInputElement, Omit<InputProps, 'type'>>(

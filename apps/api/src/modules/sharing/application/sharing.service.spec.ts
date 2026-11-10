@@ -1,3 +1,4 @@
+import { sharingConfigWith } from '../../../../test/support/sharing-config';
 import type { Actor, IRateLimiter, ITransactionRunner, RateLimitDecision } from '../../../shared';
 import { createActor, FixedClock, RateLimitExceededError, Role } from '../../../shared';
 import { Action } from '../../access';
@@ -143,12 +144,7 @@ const setup = (options: SetupOptions = {}) => {
     rateLimiter,
     audit,
     new FixedClock(NOW),
-    {
-      shareAttemptsPerMinute: RATE_LIMIT_PER_MINUTE,
-      webPublicUrl: 'https://nimbo.test',
-      publicLinkRequestsPerMinute: RATE_LIMIT_PER_MINUTE,
-      publicLinkLockout: { maxFailures: 5, windowSeconds: 900, lockSeconds: 900 },
-    },
+    sharingConfigWith({ shareAttemptsPerMinute: RATE_LIMIT_PER_MINUTE }),
     logger,
   );
   return { service, journal, recorded, shares, rateLimiter, permissions, logger };

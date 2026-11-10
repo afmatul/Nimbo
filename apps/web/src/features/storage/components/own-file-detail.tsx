@@ -3,6 +3,7 @@
 import * as React from 'react';
 
 import { showNotice } from '../../../components/ui/sonner';
+import { openInBrowser } from '../../../lib/use-preparing-download';
 import { IndexingBanner } from '../../intelligence/components/indexing-banner';
 import {
   useIndexingStatus,
@@ -22,7 +23,7 @@ import { BackLink, CitedLocation, FileHeader } from './file-detail-header';
 import { FileDetailsCard } from './file-details-card';
 import { HistoryCard } from './file-history-card';
 import { FileNotFoundState } from './file-not-found-state';
-import { DownloadNoticeBanner, openInBrowser, type DownloadNotice } from './file-row-menu';
+import { DownloadNoticeBanner, type DownloadNotice } from './file-row-menu';
 import { ReadOnlyActionsHint } from './read-only-notice';
 import { RestoreVersionDialog } from './restore-version-dialog';
 import { useSpace } from './space-provider';

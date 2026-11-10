@@ -6,6 +6,7 @@ import {
   dayLabel,
   lastActivityLabel,
   dayMonthLabel,
+  expiresAtLabel,
   lastDayInputValue,
   lastDayLabel,
   longDayLabel,
@@ -106,5 +107,19 @@ describe('fecha y hora de una versión (014 CA-6)', () => {
   it('CA-6: el día es el de Guatemala aunque en UTC ya sea el siguiente', () => {
     // 2026-10-08 03:00 UTC = 2026-10-07 21:00 en Guatemala.
     expect(dateTimeLabel('2026-10-08T03:00:00.000Z', TODAY)).toBe('ayer, 21:00');
+  });
+});
+
+describe('vencimiento de un enlace público (013b CA-1)', () => {
+  it('CA-1: «14 nov 2026, 14:30», fecha absoluta en hora de Guatemala', () => {
+    expect(expiresAtLabel('2026-11-14T20:30:00.000Z')).toBe('14 nov 2026, 14:30');
+  });
+
+  it('CA-1: nunca «hoy» ni «ayer», aunque venza hoy', () => {
+    expect(expiresAtLabel(new Date().toISOString())).not.toMatch(/^(hoy|ayer)/);
+  });
+
+  it('CA-1: el día es el de Guatemala aunque en UTC ya sea el siguiente', () => {
+    expect(expiresAtLabel('2026-11-15T03:00:00.000Z')).toBe('14 nov 2026, 21:00');
   });
 });

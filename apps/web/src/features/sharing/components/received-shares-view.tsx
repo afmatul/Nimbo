@@ -9,8 +9,9 @@ import { AppLayout, DEFAULT_NAV_ITEMS } from '../../../components/nimbo/app-layo
 import { ReadOnlyBanner } from '../../../components/nimbo/read-only-banner';
 import { StateView } from '../../../components/nimbo/state-view';
 import { buttonVariants } from '../../../components/ui/button';
+import { openInBrowser } from '../../../lib/use-preparing-download';
 import { RENEW_PATH } from '../../billing/routes';
-import { DownloadNoticeBanner, openInBrowser } from '../../storage/components/file-row-menu';
+import { DownloadNoticeBanner } from '../../storage/components/file-row-menu';
 import { SidebarQuota } from '../../storage/components/sidebar-quota';
 import { useReadOnlyAccount, useSpace } from '../../storage/components/space-provider';
 import { useUploads } from '../../storage/hooks/use-upload-manager';
