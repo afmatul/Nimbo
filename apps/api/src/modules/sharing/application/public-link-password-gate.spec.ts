@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 
+import { sharingConfigWith } from '../../../../test/support/sharing-config';
 import type {
   AttemptReservation,
   FailureRecord,
@@ -13,7 +14,6 @@ import { LinkToken } from '../domain/link-token';
 import { PublicLink } from '../domain/public-link';
 
 import { PublicLinkPasswordGate } from './public-link-password-gate';
-import type { SharingConfig } from './sharing-config';
 
 const LINK_ID = '44444444-4444-4444-8444-444444444444';
 const IP = '2001:db8:aa:bb:1:2:3:4';
@@ -83,7 +83,7 @@ const setup = ({
       return Promise.resolve();
     }),
   } satisfies IAttemptLockout;
-  const config = { publicLinkLockout: LOCKOUT, publicLinkCeiling: CEILING } as SharingConfig;
+  const config = sharingConfigWith({ publicLinkLockout: LOCKOUT, publicLinkCeiling: CEILING });
   const logger = { info: jest.fn(), warn: jest.fn() };
   const gate = new PublicLinkPasswordGate(hasher, lockout, config, logger);
   return { gate, journal, hasher, lockout, logger };

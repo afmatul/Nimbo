@@ -5,10 +5,10 @@ import type { JSX } from 'react';
 import { useWatch, type UseFormReturn } from 'react-hook-form';
 
 import { IdentityCard } from '../../../../components/nimbo/identity-card';
+import { PasswordField } from '../../../../components/nimbo/password-field';
 import { Button } from '../../../../components/ui/button';
 import { Label } from '../../../../components/ui/label';
 import { FieldError } from '../../components/field-error';
-import { PasswordField } from '../../components/password-field';
 import { PasswordRequirements } from '../../components/password-requirements';
 import { ServerErrorAlert } from '../../components/server-error-alert';
 import {

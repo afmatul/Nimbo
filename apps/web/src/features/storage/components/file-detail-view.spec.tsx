@@ -11,6 +11,7 @@ import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 import * as React from 'react';
 
+import { PREPARING_DELAY_MS } from '../../../lib/use-preparing-download';
 import { forgetSession, rememberSession } from '../../identity/session/session-memory';
 import { SessionProvider } from '../../identity/session/session-provider';
 import { sessionFixture } from '../../identity/session/test-session';
@@ -26,7 +27,6 @@ import { GB, spaceSummaryWith } from '../test-space-summary';
 import { pruneWarning, versionFixture, VERSIONED_FILE } from '../test-versions';
 
 import { FileDetailView } from './file-detail-view';
-import { PREPARING_DELAY_MS } from './file-row-menu';
 import { UploadsSpaceProvider } from './space-provider';
 import { UploadsProvider } from './uploads-provider';
 
