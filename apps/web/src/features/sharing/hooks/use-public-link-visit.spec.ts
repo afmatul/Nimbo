@@ -81,6 +81,20 @@ describe('usePublicLinkVisit (013b CA-3, CA-5 a CA-8)', () => {
       expect(api.open).toHaveBeenCalledTimes(1);
     });
 
+    it('CA-5, CA-8: el resultado de un pedido anterior no pisa al de «Reintentar»', async () => {
+      const api = fakeApi();
+      let failFirst: (error: unknown) => void = () => undefined;
+      api.open.mockReturnValueOnce(new Promise((_resolve, reject) => (failFirst = reject)));
+      const { hook } = renderVisit(api);
+      await waitFor(() => expect(api.open).toHaveBeenCalledTimes(1));
+
+      act(() => hook.result.current.reload());
+      await waitFor(() => expect(hook.result.current.state.status).toBe('ready'));
+      await act(async () => failFirst(apiError(SHARING_ERROR_CODES.SHARING_LINK_UNAVAILABLE, 404)));
+
+      expect(hook.result.current.state.status).toBe('ready');
+    });
+
     it('CA-8: al recargar vuelve a ver la ficha con el token que sigue en la barra', async () => {
       const api = fakeApi();
       const first = await renderReady(api);

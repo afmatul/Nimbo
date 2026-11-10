@@ -1,7 +1,7 @@
 'use client';
 
 import { SHARED_ERROR_CODES, SHARING_ERROR_CODES, type PublicLinkDetails } from '@nimbo/contracts';
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { ApiClientError } from '../../../lib/api-error';
 import { usePreparingDownload, type PreparingDownload } from '../../../lib/use-preparing-download';
@@ -76,107 +76,65 @@ function failedDownloadOutcome(error: unknown, retry: () => void): PublicLinkDow
   return { status: 'download-error', retry };
 }
 
-interface OpenFlight {
+interface OpenRequest {
   readonly token: string;
-  readonly result: Promise<PublicLinkVisitState>;
-}
-
-interface OpenVisit {
-  readonly state: PublicLinkVisitState;
-  readonly reload: () => void;
-  readonly markUnavailable: () => void;
-  /** Token de la ficha abierta; se lee al descargar, nunca al pintar. */
-  readonly currentToken: () => string;
-}
-
-/** Peticiones `POST /open`: la que está en curso y si el componente sigue montado. */
-interface OpenFlights {
-  readonly flightRef: RefObject<OpenFlight | null>;
-  readonly mountedRef: RefObject<boolean>;
-  /** Aplica el resultado si sigue montado y nadie abrió otro token después. */
-  readonly follow: (next: OpenFlight) => void;
-  readonly start: (token: string) => void;
-}
-
-function useOpenFlights(
-  api: PublicLinkVisitorApi,
-  setState: (state: PublicLinkVisitState) => void,
-): OpenFlights {
-  const flightRef = useRef<OpenFlight | null>(null);
-  const mountedRef = useRef(false);
-
-  const follow = useCallback(
-    (next: OpenFlight): void => {
-      void next.result.then((result) => {
-        if (mountedRef.current && flightRef.current === next) setState(result);
-      });
-    },
-    [setState],
-  );
-
-  const start = useCallback(
-    (token: string): void => {
-      flightRef.current = { token, result: openState(api, token) };
-      follow(flightRef.current);
-    },
-    [api, follow],
-  );
-
-  return { flightRef, mountedRef, follow, start };
 }
 
 /**
- * Al montar abre el fragmento o, en el segundo montaje de `<StrictMode>`, sigue la petición en curso sin repetirla.
- * Otro `#token` en la misma pestaña (`hashchange`) se abre con `restart`.
+ * El `#token` de la barra: se lee al montar y con `hashchange` si cambió; «Reintentar» pide el mismo de nuevo. Cada
+ * pedido es un objeto nuevo: la ficha y el aviso del pedido anterior dejan de valer.
  */
-function useFragment(flights: OpenFlights, restart: (token: string) => void): void {
-  const { flightRef, mountedRef, follow, start } = flights;
+function useFragmentRequest(): readonly [OpenRequest | null, () => void] {
+  const [request, setRequest] = useState<OpenRequest | null>(null);
   useEffect(() => {
-    mountedRef.current = true;
-    if (flightRef.current === null) start(readFragment());
-    else follow(flightRef.current);
-
-    const onHashChange = (): void => {
+    const follow = (): void => {
       const token = readFragment();
-      if (token !== flightRef.current?.token) restart(token);
+      setRequest((current) => (current?.token === token ? current : { token }));
     };
-    window.addEventListener('hashchange', onHashChange);
-    return () => {
-      mountedRef.current = false;
-      window.removeEventListener('hashchange', onHashChange);
-    };
-  }, [flightRef, mountedRef, start, follow, restart]);
+    follow();
+    window.addEventListener('hashchange', follow);
+    return () => window.removeEventListener('hashchange', follow);
+  }, []);
+  const reload = useCallback(() => setRequest({ token: readFragment() }), []);
+  return [request, reload];
 }
 
-/** `POST /open` con el token del fragmento; la petición en curso vive en un `ref` (`useOpenFlights`). */
-function useOpenVisit(api: PublicLinkVisitorApi, onRestart: () => void): OpenVisit {
-  const [state, setState] = useState<PublicLinkVisitState>(LOADING);
-  const flights = useOpenFlights(api, setState);
-  const { start, flightRef } = flights;
+/** Un valor del pedido actual: con otro pedido vuelve a `initial` sin un `setState` más (CA-8). */
+function useRequestState<T>(
+  request: OpenRequest | null,
+  initial: T,
+): readonly [T, (value: T) => void] {
+  const [held, setHeld] = useState({ request, value: initial });
+  const set = useCallback((value: T) => setHeld({ request, value }), [request]);
+  return [held.request === request ? held.value : initial, set];
+}
 
-  const restart = useCallback(
-    (token: string): void => {
-      setState(LOADING);
-      onRestart();
-      start(token);
-    },
-    [onRestart, start],
-  );
-
-  useFragment(flights, restart);
-
-  return {
-    state,
-    reload: () => restart(readFragment()),
-    markUnavailable: () => setState(UNAVAILABLE),
-    currentToken: () => flightRef.current?.token ?? '',
-  };
+/**
+ * `POST /open` por cada pedido; al desmontar o con otro pedido, el resultado anterior ya no se aplica. El pedido llega
+ * después de montar, así el doble montaje de `<StrictMode>` no repite la petición (CA-8).
+ */
+function useOpenDetails(
+  api: PublicLinkVisitorApi,
+  request: OpenRequest | null,
+  setState: (state: PublicLinkVisitState) => void,
+): void {
+  useEffect(() => {
+    if (request === null) return undefined;
+    let current = true;
+    void openState(api, request.token).then((next) => {
+      if (current) setState(next);
+    });
+    return () => {
+      current = false;
+    };
+  }, [api, request, setState]);
 }
 
 interface VisitDownloadInput {
   readonly api: PublicLinkVisitorApi;
   readonly openUrl: (url: string) => void;
-  readonly visit: OpenVisit;
+  readonly token: string;
+  readonly setState: (state: PublicLinkVisitState) => void;
   readonly setOutcome: (outcome: PublicLinkDownloadOutcome) => void;
 }
 
@@ -184,16 +142,17 @@ interface VisitDownloadInput {
 function useVisitDownload({
   api,
   openUrl,
-  visit,
+  token,
+  setState,
   setOutcome,
 }: VisitDownloadInput): PreparingDownload<string> {
   return usePreparingDownload<string>(
     (password) => {
       setOutcome(IDLE);
-      return api.download(visit.currentToken(), password);
+      return api.download(token, password);
     },
     (_password, error, retry) => {
-      if (isUnavailable(error)) visit.markUnavailable();
+      if (isUnavailable(error)) setState(UNAVAILABLE);
       else setOutcome(failedDownloadOutcome(error, retry));
     },
     (url) => {
@@ -211,16 +170,18 @@ export function usePublicLinkVisit(
   api: PublicLinkVisitorApi,
   openUrl: (url: string) => void,
 ): PublicLinkVisit {
-  const [outcome, setOutcome] = useState<PublicLinkDownloadOutcome>(IDLE);
-  const resetOutcome = useCallback(() => setOutcome(IDLE), []);
-  const visit = useOpenVisit(api, resetOutcome);
-  const prepared = useVisitDownload({ api, openUrl, visit, setOutcome });
+  const [request, reload] = useFragmentRequest();
+  const [state, setState] = useRequestState(request, LOADING);
+  const [outcome, setOutcome] = useRequestState(request, IDLE);
+  useOpenDetails(api, request, setState);
+  const token = request?.token ?? '';
+  const prepared = useVisitDownload({ api, openUrl, token, setState, setOutcome });
 
   return {
-    state: visit.state,
+    state,
     outcome,
     preparing: prepared.preparing !== null,
-    reload: visit.reload,
+    reload,
     download: async (password = '') => {
       await prepared.download(password);
     },
