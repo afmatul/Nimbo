@@ -1,0 +1,54 @@
+022d T-06, H-2: lectura y medicion controlada de la memoria de Grafana. Generado 2026-11-08 19:39:00 (hora de Guatemala, UTC-6)
+Limite del repositorio: mem_limit 256m (compose.yml, sin cambios). Limite local del ensayo: 512 MiB. Sin pruebas de estres; sin cambios de limites.
+
+== Estado actual
+reinicios=0 oom=false limite_bytes=536870912
+anon 433905664
+file 69378048
+kernel 11280384
+pagetables 4665344
+slab 3069024
+memory.current=533442560 memory.peak=536891392
+low 0 high 0 max 57922 oom 0 oom_kill 0 oom_group_kill 0 
+
+== Runtime de Go en Grafana (/metrics interno)
+go_gc_gogc_percent 100
+go_gc_gomemlimit_bytes 9.223372036854776e+18
+go_goroutines 754
+go_memstats_heap_inuse_bytes 4.6063616e+08
+go_memstats_heap_released_bytes 2.30744064e+08
+go_memstats_heap_sys_bytes 8.41580544e+08
+process_resident_memory_bytes 4.30497792e+08
+go_gc_gomemlimit_bytes = 9.22e18 significa sin limite suave: el recolector de Go no conoce el limite del contenedor.
+
+== OOM en el kernel desde el arranque de la VM
+total: 1 (el unico es el de las 15:18:00 con 256 MiB)
+
+== Grafana de la Spec 022 en la misma maquina (solo lectura)
+limite_bytes=268435456 reinicios=0 oom=false
+Tiene 15 paneles y no recibio esta carga: no es una comparacion valida.
+
+== Medicion secuencial, una pestana, ventanas de 30 s (19:33 a 19:39)
+reposo = sin navegador en el tablero; p15 = tablero temporal con los paneles 1 a 15; p35 = nimbo-operacion. Misma ventana de datos.
+login Operador: 200
+temporal creado con 15 paneles; nimbo-operacion tiene 35 (filas incluidas)
+-- ronda 1
+reposo  asignado=     5.7 MiB  anon_final=411.9 MiB  heap_inuse=288.6 MiB  paneles=0 cargando=0  oom_kill=0
+p15     asignado=   346.0 MiB  anon_final=442.0 MiB  heap_inuse=458.0 MiB  paneles=15 cargando=0  oom_kill=0
+p35     asignado=   207.5 MiB  anon_final=463.6 MiB  heap_inuse=434.0 MiB  paneles=30 cargando=0  oom_kill=0
+-- ronda 2
+reposo  asignado=     5.7 MiB  anon_final=445.1 MiB  heap_inuse=437.4 MiB  paneles=0 cargando=0  oom_kill=0
+p15     asignado=   133.2 MiB  anon_final=450.2 MiB  heap_inuse=333.6 MiB  paneles=15 cargando=0  oom_kill=0
+p35     asignado=   211.4 MiB  anon_final=450.9 MiB  heap_inuse=310.6 MiB  paneles=30 cargando=0  oom_kill=0
+-- ronda 3
+reposo  asignado=     4.9 MiB  anon_final=451.4 MiB  heap_inuse=313.6 MiB  paneles=0 cargando=0  oom_kill=0
+p15     asignado=   124.4 MiB  anon_final=458.7 MiB  heap_inuse=436.2 MiB  paneles=15 cargando=0  oom_kill=0
+p35     asignado=   208.5 MiB  anon_final=424.0 MiB  heap_inuse=424.3 MiB  paneles=30 cargando=0  oom_kill=0
+
+media por ventana de 30 s: reposo=5.4 MiB, 15 paneles=201.2 MiB, 35 paneles=209.1 MiB
+neto sobre el reposo: 15 paneles=195.8 MiB; 35 paneles=203.7 MiB; razón=1.04
+
+Lectura: la ronda 1 de p15 es la primera carga de ese tablero y es atipica (346 MiB). En las rondas 2 y 3, p15 asigno 124 a 133 MiB y p35 208 a 211 MiB por ventana.
+Limites: asignacion acumulada, no memoria retenida; tres rondas; con 512 MiB, no con 256 MiB. No demuestra que los paneles nuevos causaran el OOM.
+heap_inuse incluye basura sin recolectar y estuvo por encima de 256 MiB en todas las ventanas, tambien en reposo (289, 437 y 314 MiB), por eso no aisla el efecto de los paneles.
+Limpieza: el script fallo al borrar el tablero temporal desde about:blank; se elimino aparte. Solo queda nimbo-operacion, version 1.

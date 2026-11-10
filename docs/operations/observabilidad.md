@@ -1,6 +1,6 @@
 # Observabilidad: métricas, tablero de operación y alertas
 
-> Spec 022 (CA-9, CA-10, CA-11, CA-18) · ADR-0040. Público: Operador (custodia el administrador de Grafana, S-6) y
+> Spec 022 (CA-9, CA-10, CA-11, CA-18) y 022d (grupos de los módulos) · ADR-0040. Público: Operador (custodia el administrador de Grafana, S-6) y
 > Administrador (solo lectura). Cliente y Soporte no tienen cuenta (P-6).
 
 ## 1. Servicios y puertos
@@ -13,7 +13,8 @@
 | `api` `/metrics` | `METRICS_PORT` (`9464`) | no | Servidor aparte, fuera de `/api/v1` |
 | `worker` / `worker-optimizer` `/metrics` | `WORKER_PORT` (`3001`) / `WORKER_OPTIMIZER_PORT` (`3003`) | no | Mismo puerto interno de salud |
 
-Límites de memoria: Prometheus 256 MiB, Grafana 256 MiB, cAdvisor 128 MiB. Cada proceso se distingue por el `job` de
+Límites de memoria: Prometheus 256 MiB, Grafana 768 MiB con `GOMEMLIMIT=690MiB`, cAdvisor 128 MiB. Grafana tenía
+256 MiB y murió por OOM con el tablero de 35 paneles (022d H-2, demo T-06). Cada proceso se distingue por el `job` de
 Prometheus (`api`, `worker`, `worker-optimizer`, `cadvisor`).
 
 ## 2. Levantar la observabilidad
@@ -98,10 +99,42 @@ for i in $(seq 1 5); do
 done
 ```
 
+### Tráfico de los grupos de los módulos (022d)
+
+Los grupos «Identidad», «Almacenamiento», «Indexación», «Optimizador» y «Agente» (paneles 16 a 35) solo leen las
+series HTTP y de colas de arriba: se llenan con tráfico real del `api` y de los `worker`.
+
+```bash
+# «Identidad»: inicios de sesión fallidos (401) hasta el bloqueo (429). 5 fallos en 15 min bloquean el correo;
+# 20 intentos en 15 min por IP también responden 429. Los dos 429 salen juntos en el panel 18 (022d S-1).
+for i in $(seq 1 8); do
+  curl -s -o /dev/null -w '%{http_code}\n' -H 'Content-Type: application/json' \
+    http://localhost:3000/api/v1/auth/login \
+    -d "{\"email\":\"demo-bloqueo@nimbo.local\",\"password\":\"Incorrecta-$(openssl rand -hex 6)\"}"
+done
+```
+
+Los registros del bucle de arriba también suman en el panel 17. Para el resto, desde la web (`http://localhost:3002`)
+con una cuenta de Cliente verificada (el correo llega a Mailpit):
+
+- **«Almacenamiento»:** subir un archivo (carga completa, `2xx` en `POST /api/v1/uploads` y `…/complete`), subir uno
+  que supere el tamaño o el tipo permitido (rechazada, `4xx`) y descargar un archivo o una versión (panel 22).
+- **«Indexación»:** cada carga de un tipo que el extractor soporta (por ejemplo `.docx` o PDF) encola su indexación
+  (`indexing`); `index-reconcile` corre solo, por calendario. Sin la clave de Gemini (`GEMINI_API_KEY`) la indexación
+  no termina bien y lo que ocurra se ve en los paneles 25 a 27.
+- **«Optimizador»:** en un JPEG o PNG, *Optimizar* pide la estimación y después la optimización (cola `optimization`
+  en `worker-optimizer`).
+- **«Agente»:** preguntar en el agente. Sin archivos indexados (no hay `pnpm seed`, PD-135) responde `200` sin llamar
+  al modelo (020 CA-7) y el panel 35 queda en 0 %. Los errores se ven con `401` (sin sesión), `404`, `422` (pregunta
+  inválida) o el `429` de tasa; el `503` exige archivos indexados y el proveedor caído (022d H-9).
+
 **Errores 5xx (opcional):** `docker compose stop postgres` hace que `GET /api/v1/health/ready` responda `503`. Repite
 el primer bucle durante 6 minutos para ver la tasa de 5xx y la regla 1; luego `docker compose start postgres`.
 
 ## 5. Qué muestra el tablero «Operación»
+
+Los paneles 1 a 15 son de 022. Desde el 16 van los grupos de los módulos de 022d, cada uno bajo su fila, que se puede
+plegar en la vista sin guardar (el tablero está aprovisionado). Las rutas aparecen por su plantilla, nunca con ids.
 
 | # | Panel | Lectura |
 |---|---|---|
@@ -120,6 +153,26 @@ el primer bucle durante 6 minutos para ver la tasa de 5xx y la regla 1; luego `d
 | 13 | Disponibilidad de dependencias (1 arriba, 0 caída) | Postgres, Redis, MinIO y ONLYOFFICE (si está configurado) |
 | 14 | Uso del disco del anfitrión (por dispositivo) | Fracción usada de cada disco de bloque; la regla 4 solo mira el de mayor capacidad y dispara sobre 80 % |
 | 15 | Disco usado por contenedor | Bytes escritos por cada contenedor en su capa (`container_fs_usage_bytes` por `name`); sin regla, sirve para ver quién llena el disco del panel 14 |
+| 16 | Identidad | Fila del grupo de identidad (022d CA-1) |
+| 17 | Identidad: respuestas por ruta y código | Registro, reenvío y verificación del correo, inicio, renovación y cierre de sesión, contraseña y cierre de las otras sesiones, por código |
+| 18 | Inicios de sesión por resultado (2xx, 401, 429) | `POST /api/v1/auth/login` por código: exitosos, credenciales inválidas (`401`), bloqueo por correo o límite por IP (`429`, juntos) |
+| 19 | Accesos denegados (403) por ruta | Todo `403` del `api`: roles internos en rutas de cliente y cuentas en solo lectura, por ruta y no por motivo |
+| 20 | Almacenamiento | Fila del grupo de almacenamiento (022d CA-2) |
+| 21 | Cargas por ruta y código | Inicio, reanudación y cierre: `2xx` completadas; `4xx` rechazadas (`422` límites, tipo o cuota; `409` partes faltantes; `410` vencida) |
+| 22 | Enlaces de descarga emitidos | Enlaces `2xx` de archivos y de versiones, por ruta |
+| 23 | Límite de frecuencia (429) por ruta | `429` de las rutas de los paneles 21 y 22 |
+| 24 | Indexación | Fila del grupo de indexación (022d CA-7) |
+| 25 | Indexación: completados y fallidos por intento | Colas `indexing` e `index-reconcile`: completados y fallidos con `attempts_made` |
+| 26 | Indexación: profundidad por estado | Trabajos de esas colas en cada estado |
+| 27 | Indexación: ejecución p95 | Duración de cada intento por cola |
+| 28 | Optimizador | Fila del grupo del optimizador (022d CA-8) |
+| 29 | Optimizador: solicitudes por ruta y código | Estimar (`…/optimization/estimate`) y optimizar (`…/optimization/run`) por código |
+| 30 | Cola optimization: completados y fallidos por intento | Como el panel 25 para la cola `optimization` |
+| 31 | Cola optimization: ejecución p95 | Como el panel 27 para la cola `optimization` |
+| 32 | Agente | Fila del grupo del agente (022d CA-11) |
+| 33 | Agente: consultas por minuto | Preguntas por minuto, todas las cuentas juntas (sin desglose por plan, PD-203) |
+| 34 | Agente: latencia total (p50, p95) | Hasta el final de la respuesta en flujo; se satura en 10 s (§8) |
+| 35 | Agente: proporción de respuestas con error | Todo lo que no es `2xx`, incluido el `429` del límite del plan; 0 % sin errores |
 
 ## 6. Las seis alertas
 
@@ -168,3 +221,13 @@ solas al recuperarla, y la de renovación 15 min después del último fallo.
   funcionan con el túnel SSH de §2.
 - Tras restaurar Redis, el `api` puede tardar en responder unos instantes sin reiniciarse (demo T-09, PD-196).
 - Candidata a regla futura «caída de un proceso propio o de Prometheus» (`up == 0`), fuera de las seis (PD-167 (a)).
+- **Grupos de los módulos (022d).** Solo ven lo que dan las series HTTP y de colas de 022; el resto exige instrumentar
+  código (PD-201):
+  - El panel 18 no distingue el bloqueo por correo (`IDENTITY_LOGIN_LOCKED`) del límite por IP: ambos son `429`. El
+    reúso de un token de refresco es un `401` más de `session/refresh` (022d S-1).
+  - El panel 19 cuenta todo `403` del `api` por ruta, no por motivo (S-2).
+  - En el panel 21, «rechazada» es cualquier `4xx` al iniciar o completar; el motivo exacto no se ve (S-3).
+  - Los paneles 34 y 35 miden la respuesta completa del agente. El histograma HTTP llega a 10 s: una respuesta más larga
+    satura el p95 en 10 s. Un error dentro del flujo, después del primer evento, sale como `200` y no cuenta (S-4).
+  - Si se renombra una ruta, el panel queda en 0 sin error en Grafana; la prueba `scripts/observability.spec.ts` falla
+    porque cruza cada ruta citada con los controladores del `api` (022d R-2).

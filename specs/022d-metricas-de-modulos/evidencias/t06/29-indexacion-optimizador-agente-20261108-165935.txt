@@ -1,0 +1,307 @@
+022d T-06: Indexacion, Optimizador y Agente. Generado 2026-11-08 16:59:35 -06:00 (hora de Guatemala, UTC-6)
+rama: ccr-8a865a6f-771ym2 HEAD: 5a5dc5c
+Datos sinteticos. GEMINI_API_KEY vacia. Adaptacion local H-6: API y workers con nest start sin --watch desde 16:43:41.
+
+== Comprobacion de procesos sin --watch
+inicio Sun Nov 08 2026 16:44:11 GMT-0600 (hora estándar central)
+listo api /health/live en 0 s: HTTP 200
+listo api /health/ready en 0 s: HTTP 200
+api ready cuerpo: {"status":"ok","checks":{"postgres":"up","redis":"up","minio":"up"}}
+listo worker /health/ready en 0 s: HTTP 200
+listo worker-optimizer /health/ready en 0 s: HTTP 200
+listo web 23002 en 0 s: HTTP 200
+traefik 28000 -> api ready: HTTP 200
+traefik 28000 -> web: HTTP 200
+
+/metrics en cada proceso
+api: HTTP 200; familias nimbo_*: 7
+worker: HTTP 200; familias nimbo_*: 10
+worker-optimizer: HTTP 200; familias nimbo_*: 4
+no expuesto http://127.0.0.1:23000/metrics: HTTP 404
+no expuesto http://127.0.0.1:23000/api/v1/metrics: HTTP 404
+no expuesto http://localhost:28000/metrics: HTTP 404
+
+objetivos de Prometheus
+api http://api:29464/metrics health=up ultimo=2026-11-08T22:44:10.442954065Z duracion=0.053s error=
+cadvisor http://cadvisor:8080/metrics health=up ultimo=2026-11-08T22:44:13.242614615Z duracion=0.016s error=
+worker http://worker:23001/metrics health=up ultimo=2026-11-08T22:44:04.393671167Z duracion=0.022s error=
+worker-optimizer http://worker-optimizer:23003/metrics health=up ultimo=2026-11-08T22:44:00.589615989Z duracion=0.028s error=
+
+métricas
+up{job="cadvisor"} = 1
+up{job="worker-optimizer"} = 1
+up{job="worker"} = 1
+up{job="api"} = 1
+series nimbo_* job=api: 61
+series nimbo_* job=worker-optimizer: 9
+series nimbo_* job=worker: 109
+familias api: nimbo_dependency_up(3), nimbo_http_request_duration_seconds_bucket(36), nimbo_http_request_duration_seconds_count(3), nimbo_http_request_duration_seconds_sum(3), nimbo_queue_job_failures_total(6), nimbo_queue_jobs(8), nimbo_queue_jobs_completed_total(2)
+familias worker-optimizer: nimbo_dependency_up(1), nimbo_queue_job_failures_total(3), nimbo_queue_jobs(4), nimbo_queue_jobs_completed_total(1)
+familias worker: nimbo_dependency_up(1), nimbo_queue_job_failures_total(30), nimbo_queue_job_run_seconds_bucket(12), nimbo_queue_job_run_seconds_count(1), nimbo_queue_job_run_seconds_sum(1), nimbo_queue_job_wait_seconds_bucket(12), nimbo_queue_job_wait_seconds_count(1), nimbo_queue_job_wait_seconds_sum(1), nimbo_queue_jobs(40), nimbo_queue_jobs_completed_total(10)
+dependency postgres job=api = 1
+dependency redis job=api = 1
+dependency minio job=api = 1
+dependency redis job=worker-optimizer = 1
+dependency redis job=worker = 1
+
+fin Sun Nov 08 2026 16:44:45 GMT-0600 (hora estándar central)
+
+== Trafico y contadores: indexacion
+[antes] indexacion 16:44:56
+  completados por cola:
+    queue=index-reconcile = 0
+    queue=indexing = 0
+  intentos fallidos por cola e intento:
+    (sin series)
+  ejecuciones registradas por cola:
+    (sin series)
+  profundidad por cola y estado (> 0):
+    queue=index-reconcile state=delayed = 1
+  HTTP por ruta y código:
+    (sin series)
+16:44:56 POST /api/v1/auth/login -> 200 156 ms
+16:45:16 POST /api/v1/uploads -> 201 46 ms
+16:45:16   PUT MinIO -> 200
+16:45:17 POST /api/v1/uploads/:uploadId/complete -> 200 66 ms
+16:45:17   archivo registrado: tipo=docx bytes=1009
+16:45:17 GET /api/v1/files/:fileId/indexing -> 200 33 ms
+16:45:17   estado inicial: pendiente motivo=null
+16:45:37 POST /api/v1/uploads -> 201 82 ms
+16:45:37   PUT MinIO -> 200
+16:45:37 POST /api/v1/uploads/:uploadId/complete -> 200 145 ms
+16:45:37   archivo registrado: tipo=docx bytes=1009
+16:45:37 GET /api/v1/files/:fileId/indexing -> 200 33 ms
+16:45:37   estado inicial: pendiente motivo=null
+16:45:57 POST /api/v1/uploads -> 201 43 ms
+16:45:57   PUT MinIO -> 200
+16:45:57 POST /api/v1/uploads/:uploadId/complete -> 200 59 ms
+16:45:57   archivo registrado: tipo=docx bytes=1010
+16:45:57 GET /api/v1/files/:fileId/indexing -> 200 18 ms
+16:45:57   estado inicial: pendiente motivo=null
+16:46:17 --- seguimiento de estados hasta el final o 8 min
+16:46:17   documento 1: fallido motivo=proveedor_no_disponible reintentable=true
+16:46:17   documento 2: fallido motivo=proveedor_no_disponible reintentable=true
+16:46:17   documento 3: fallido motivo=proveedor_no_disponible reintentable=true
+16:46:17   sin terminar: 0
+sin discrepancias con lo esperado
+[despues] indexacion 16:46:52
+  completados por cola:
+    queue=index-reconcile = 1
+    queue=indexing = 3
+  intentos fallidos por cola e intento:
+    (sin series)
+  ejecuciones registradas por cola:
+    queue=index-reconcile = 1
+    queue=indexing = 3
+  profundidad por cola y estado (> 0):
+    queue=index-reconcile state=delayed = 1
+  HTTP por ruta y código:
+    route=POST /api/v1/uploads status=201 = 3
+    route=POST /api/v1/uploads/:uploadId/complete status=200 = 3
+fin 16:46:52
+
+== Trafico y contadores: optimizador
+[antes] optimizador 16:47:45
+  completados por cola:
+    queue=optimization = 0
+  intentos fallidos por cola e intento:
+    (sin series)
+  ejecuciones registradas por cola:
+    (sin series)
+  profundidad por cola y estado (> 0):
+    (sin series)
+  HTTP por ruta y código:
+    (sin series)
+16:47:45 POST /api/v1/auth/login -> 200 99 ms
+16:48:06 --- imagen 1: JPEG 3000x2000, 5701658 bytes, hash 889a3affdebc278b
+16:48:06 POST /api/v1/uploads -> 201 57 ms
+16:48:06   PUT MinIO -> 200
+16:48:06 POST /api/v1/uploads/:uploadId/complete -> 200 97 ms
+16:48:06   archivo registrado: tipo=imagen bytes=5701658
+16:48:06 POST /api/v1/files/:fileId/optimization/estimate -> 202 90 ms
+16:48:06   estado inicial: estimando
+16:48:08   estimación: estimada tras 2 s
+16:48:08   estimados=732807 ahorro=4968851 (87.1 %) motivo=null
+16:48:28 POST /api/v1/files/:fileId/optimization/run -> 202 73 ms
+16:48:28   estado inicial: optimizando
+16:48:29   optimización: completada tras 2 s
+16:48:29   resultado=732807 ahorro=4968851 (87.1 %) motivo=null
+16:48:29 POST /api/v1/files/:fileId/download-url -> 200 36 ms
+16:48:29   integridad: formato=jpeg 3000x2000 mismas_dimensiones=true bytes=732807 coincide_resultBytes=true menor=true distinto_del_original=true; decodifica sin error
+16:48:29 GET /api/v1/files/:fileId/versions -> 200 27 ms
+16:48:29   versiones del archivo: 2
+16:48:50 --- imagen 2: JPEG 3000x2000, 5701695 bytes, hash e19b611b3dffb253
+16:48:50 POST /api/v1/uploads -> 201 136 ms
+16:48:50   PUT MinIO -> 200
+16:48:50 POST /api/v1/uploads/:uploadId/complete -> 200 49 ms
+16:48:50   archivo registrado: tipo=imagen bytes=5701695
+16:48:50 POST /api/v1/files/:fileId/optimization/estimate -> 202 37 ms
+16:48:50   estado inicial: estimando
+16:48:52   estimación: estimada tras 2 s
+16:48:52   estimados=731592 ahorro=4970103 (87.1 %) motivo=null
+16:49:12 POST /api/v1/files/:fileId/optimization/run -> 202 62 ms
+16:49:12   estado inicial: optimizando
+16:49:14   optimización: completada tras 2 s
+16:49:14   resultado=731592 ahorro=4970103 (87.1 %) motivo=null
+16:49:14 POST /api/v1/files/:fileId/download-url -> 200 30 ms
+16:49:14   integridad: formato=jpeg 3000x2000 mismas_dimensiones=true bytes=731592 coincide_resultBytes=true menor=true distinto_del_original=true; decodifica sin error
+16:49:14 GET /api/v1/files/:fileId/versions -> 200 34 ms
+16:49:14   versiones del archivo: 2
+16:49:34 --- imagen 3: JPEG 3000x2000, 5698358 bytes, hash 05b2c439136b275d
+16:49:34 POST /api/v1/uploads -> 201 33 ms
+16:49:34   PUT MinIO -> 200
+16:49:34 POST /api/v1/uploads/:uploadId/complete -> 200 40 ms
+16:49:34   archivo registrado: tipo=imagen bytes=5698358
+16:49:34 POST /api/v1/files/:fileId/optimization/estimate -> 202 32 ms
+16:49:34   estado inicial: estimando
+16:49:36   estimación: estimada tras 2 s
+16:49:36   estimados=733450 ahorro=4964908 (87.1 %) motivo=null
+16:49:56 POST /api/v1/files/:fileId/optimization/run -> 202 69 ms
+16:49:56   estado inicial: optimizando
+16:49:58   optimización: completada tras 2 s
+16:49:58   resultado=733450 ahorro=4964908 (87.1 %) motivo=null
+16:49:58 POST /api/v1/files/:fileId/download-url -> 200 21 ms
+16:49:58   integridad: formato=jpeg 3000x2000 mismas_dimensiones=true bytes=733450 coincide_resultBytes=true menor=true distinto_del_original=true; decodifica sin error
+16:49:58 GET /api/v1/files/:fileId/versions -> 200 20 ms
+16:49:58   versiones del archivo: 2
+sin discrepancias con lo esperado
+[despues] optimizador 16:50:53
+  completados por cola:
+    queue=optimization = 6
+  intentos fallidos por cola e intento:
+    (sin series)
+  ejecuciones registradas por cola:
+    queue=optimization = 6
+  profundidad por cola y estado (> 0):
+    (sin series)
+  HTTP por ruta y código:
+    route=POST /api/v1/files/:fileId/optimization/estimate status=202 = 3
+    route=POST /api/v1/files/:fileId/optimization/run status=202 = 3
+fin 16:50:53
+
+== Trafico y contadores: agente
+[antes] agente 16:50:53
+  HTTP por ruta y código:
+    (sin series)
+16:50:53 POST /api/v1/auth/login -> 200 91 ms
+16:50:53 GET /api/v1/agent/status -> 200 36 ms
+16:50:53   estado del agente: {"used":0,"limit":20,"hasIndexedFiles":false,"maxQuestionChars":1000,"resetsAt":"2026-12-01T06:00:00.000Z"}
+16:51:13 POST /api/v1/agent/ask -> 200 30 ms
+16:51:13   pregunta válida 1: tipo=text/event-stream eventos=(ninguno) detalles=null
+16:51:34 POST /api/v1/agent/ask -> 200 27 ms
+16:51:34   pregunta válida 2: tipo=text/event-stream eventos=(ninguno) detalles=null
+16:51:54 POST /api/v1/agent/ask -> 200 33 ms
+16:51:54   pregunta válida 3: tipo=text/event-stream eventos=(ninguno) detalles=null
+16:52:14 POST /api/v1/agent/ask -> 200 36 ms
+16:52:14   pregunta válida 4: tipo=text/event-stream eventos=(ninguno) detalles=null
+16:52:34 POST /api/v1/agent/ask -> 200 33 ms
+16:52:34   pregunta válida 5: tipo=text/event-stream eventos=(ninguno) detalles=null
+16:52:54 POST /api/v1/agent/ask -> 200 32 ms
+16:52:54   pregunta válida 6: tipo=text/event-stream eventos=(ninguno) detalles=null
+16:53:14 POST /api/v1/agent/ask -> 422 AGENT_INVALID_QUESTION 9 ms
+16:53:14   pregunta vacía 1: tipo=application/json eventos=(ninguno) detalles={"reason":"empty"}
+16:53:34 POST /api/v1/agent/ask -> 422 AGENT_INVALID_QUESTION 12 ms
+16:53:34   pregunta vacía 2: tipo=application/json eventos=(ninguno) detalles={"reason":"empty"}
+16:53:54 GET /api/v1/agent/status -> 200 33 ms
+16:53:54   estado tras las preguntas: {"used":0,"limit":20,"hasIndexedFiles":false,"maxQuestionChars":1000,"resetsAt":"2026-12-01T06:00:00.000Z"}
+sin discrepancias con lo esperado
+[despues] agente 16:54:29
+  HTTP por ruta y código:
+    route=POST /api/v1/agent/ask status=200 = 6
+    route=POST /api/v1/agent/ask status=422 = 2
+fin 16:54:29
+
+== Consultas reales de los paneles
+ventana: últimos 30 min, hasta Sun Nov 08 2026 16:59:35 GMT-0600 (hora estándar central)
+
+Panel 25: Indexación: completados y fallidos por intento
+  index-reconcile · completados                                          mín=0.0033 máx=0.0037 puntos=61 NaN=0
+  indexing · completados                                                 mín=0.0000 máx=0.0100 puntos=61 NaN=0
+  index-reconcile · 1 intentos fallidos                                  mín=0.0000 máx=0.0000 puntos=61 NaN=0
+  indexing · 1 intentos fallidos                                         mín=0.0000 máx=0.0000 puntos=61 NaN=0
+  index-reconcile · 2 intentos fallidos                                  mín=0.0000 máx=0.0000 puntos=61 NaN=0
+  indexing · 2 intentos fallidos                                         mín=0.0000 máx=0.0000 puntos=61 NaN=0
+  index-reconcile · 3+ intentos fallidos                                 mín=0.0000 máx=0.0000 puntos=61 NaN=0
+  indexing · 3+ intentos fallidos                                        mín=0.0000 máx=0.0000 puntos=61 NaN=0
+
+Panel 26: Indexación: profundidad por estado
+  index-reconcile · active                                               mín=0.0000 máx=0.0000 puntos=57 NaN=0
+  index-reconcile · delayed                                              mín=1.0000 máx=1.0000 puntos=57 NaN=0
+  index-reconcile · prioritized                                          mín=0.0000 máx=0.0000 puntos=57 NaN=0
+  index-reconcile · waiting                                              mín=0.0000 máx=0.0000 puntos=57 NaN=0
+  indexing · active                                                      mín=0.0000 máx=0.0000 puntos=57 NaN=0
+  indexing · delayed                                                     mín=0.0000 máx=0.0000 puntos=57 NaN=0
+  indexing · prioritized                                                 mín=0.0000 máx=0.0000 puntos=57 NaN=0
+  indexing · waiting                                                     mín=0.0000 máx=0.0000 puntos=57 NaN=0
+
+Panel 27: Indexación: ejecución p95
+  index-reconcile                                                        mín=0.0950 máx=0.0950 puntos=54 NaN=7
+  indexing                                                               mín=0.0998 máx=0.4649 puntos=10 NaN=19
+
+Panel 29: Optimizador: solicitudes por ruta y código
+  POST /api/v1/files/:fileId/optimization/estimate · 202                 mín=0.0000 máx=0.0078 puntos=23 NaN=0
+  POST /api/v1/files/:fileId/optimization/run · 202                      mín=0.0000 máx=0.0078 puntos=22 NaN=0
+
+Panel 30: Cola optimization: completados y fallidos por intento
+  optimization · completados                                             mín=0.0000 máx=0.0203 puntos=61 NaN=0
+  optimization · 1 intentos fallidos                                     mín=0.0000 máx=0.0000 puntos=61 NaN=0
+  optimization · 2 intentos fallidos                                     mín=0.0000 máx=0.0000 puntos=61 NaN=0
+  optimization · 3+ intentos fallidos                                    mín=0.0000 máx=0.0000 puntos=61 NaN=0
+
+Panel 31: Cola optimization: ejecución p95
+  optimization                                                           mín=2.3675 máx=2.4250 puntos=13 NaN=10
+
+Panel 33: Agente: consultas por minuto
+  consultas por minuto                                                   mín=0.0000 máx=1.4279 puntos=16 NaN=0
+
+Panel 34: Agente: latencia total (p50, p95)
+  p50                                                                    mín=0.0075 máx=0.0346 puntos=13 NaN=3
+  p95                                                                    mín=0.0097 máx=0.0485 puntos=13 NaN=3
+
+Panel 35: Agente: proporción de respuestas con error
+  error                                                                  mín=0.0000 máx=1.0000 puntos=13 NaN=3
+
+Contadores acumulados por ruta y código
+  GET /api/v1/files/:fileId/indexing                                   200 = 6
+  GET /api/v1/files/:fileId/optimization                               200 = 12
+  GET /api/v1/files/:fileId/versions                                   200 = 3
+  POST /api/v1/files/:fileId/download-url                              200 = 3
+  POST /api/v1/files/:fileId/optimization/estimate                     202 = 3
+  POST /api/v1/files/:fileId/optimization/run                          202 = 3
+
+Valores de la etiqueta route: 33; con UUID o @: 0
+
+== Eventos de worker e indexacion (sin identificadores)
+eventos distintos: 4
+  x1 16:43:48-16:43:48 level=30 event=index.reconcile_scheduled
+  x3 16:44:52-16:54:52 level=30 event=index.reconcile_completed
+  x3 16:45:17-16:45:57 level=30 event=indexing.started attempt=1
+  x3 16:45:17-16:45:57 level=40 event=indexing.failed reason=proveedor_no_disponible state=fallido attempt=1
+
+== Eventos del optimizador
+eventos distintos: 2
+  x3 16:48:07-16:49:35 level=30 event=optimization.estimated
+  x3 16:48:29-16:49:57 level=30 event=optimization.completed reason=null
+
+== Eventos del agente
+eventos distintos: 2
+  x6 16:51:13-16:52:54 level=30 event=agent.asked outcome=no_indexed
+  x2 16:53:14-16:53:34 level=30 event=agent.asked outcome=invalid
+
+== Estado en BD de la indexacion
+fallido | proveedor_no_disponible | 1 | 0 | 3
+
+== Privacidad de etiquetas
+series nimbo_* en 2 h: 991; etiquetas: attempts_made, dependency, instance, job, le, queue, route, state, status
+  queue: editing-save, index-reconcile, index-status, indexing, invoice-retry, mail, optimization, ping, subscription-reconcile, subscription-renewal, trash-purge, upload-cleanup, usage-reconcile
+  state: active, delayed, prioritized, waiting
+  status: 200, 201, 202, 204, 401, 403, 404, 409, 422, 429
+  attempts_made: 1, 2, 3+
+  dependency: minio, postgres, redis
+  job: api, worker, worker-optimizer
+  route: 33 plantillas
+  plan u otra etiqueta por cuenta: (ninguna)
+valores con datos prohibidos: 0
+
+== Monitor de Grafana y targets
+muestras=65; anon max=459.6 MiB; actual max=508.6 MiB; reinicios max=0; oom_kill max=0; muestras con menos de 4 targets UP=6; Grafana HTTP distinto de 200=0

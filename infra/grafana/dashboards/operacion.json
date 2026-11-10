@@ -513,6 +513,593 @@
           "legendFormat": "{{name}}"
         }
       ]
+    },
+    {
+      "id": 16,
+      "type": "row",
+      "title": "Identidad",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 72
+      },
+      "panels": []
+    },
+    {
+      "id": 17,
+      "type": "timeseries",
+      "title": "Identidad: respuestas por ruta y código",
+      "description": "Registro, verificación del correo, sesión y contraseña, por plantilla de ruta y código de respuesta.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 73
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (route, status) (rate(nimbo_http_request_duration_seconds_count{job=\"api\",route=~\"POST /api/v1/auth/register|POST /api/v1/auth/resend-verification|POST /api/v1/auth/verify-email|POST /api/v1/auth/login|POST /api/v1/auth/session/refresh|POST /api/v1/auth/session/logout|POST /api/v1/auth/forgot-password|POST /api/v1/auth/reset-password|POST /api/v1/auth/change-password|POST /api/v1/sessions/revoke-others\"}[5m]))",
+          "legendFormat": "{{route}} · {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "type": "timeseries",
+      "title": "Inicios de sesión por resultado (2xx, 401, 429)",
+      "description": "Exitosos (2xx), fallidos por credenciales (401) y limitados o bloqueados (429). El 429 junta el bloqueo por correo y el límite por IP: el motivo exige instrumentar código (PD-201).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 73
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (status) (rate(nimbo_http_request_duration_seconds_count{job=\"api\",route=\"POST /api/v1/auth/login\"}[5m]))",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "type": "timeseries",
+      "title": "Accesos denegados (403) por ruta",
+      "description": "Todas las respuestas 403 del api: roles internos en rutas de cliente y cuentas en solo lectura. Se ven por ruta, no por motivo.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 81
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (route) (rate(nimbo_http_request_duration_seconds_count{job=\"api\",status=\"403\"}[5m]))",
+          "legendFormat": "{{route}}"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "type": "row",
+      "title": "Almacenamiento",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 89
+      },
+      "panels": []
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "Cargas por ruta y código",
+      "description": "Inicio, reanudación y cierre de cargas. 2xx = completadas; 4xx = rechazadas (422 límites, tipo o cuota; 409 partes faltantes; 410 vencida). El motivo exacto exige instrumentar código (PD-201).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 90
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (route, status) (rate(nimbo_http_request_duration_seconds_count{job=\"api\",route=~\"POST /api/v1/uploads|POST /api/v1/uploads/:uploadId/resume|POST /api/v1/uploads/:uploadId/complete\"}[5m]))",
+          "legendFormat": "{{route}} · {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "Enlaces de descarga emitidos",
+      "description": "Enlaces de descarga de archivos y de versiones respondidos con 2xx.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 90
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (route) (rate(nimbo_http_request_duration_seconds_count{job=\"api\",route=~\"POST /api/v1/files/:fileId/download-url|POST /api/v1/files/:fileId/versions/:versionId/download-url\",status=~\"2..\"}[5m]))",
+          "legendFormat": "{{route}}"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "Límite de frecuencia (429) por ruta",
+      "description": "Respuestas 429 de las rutas de cargas y descargas.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 98
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (route) (rate(nimbo_http_request_duration_seconds_count{job=\"api\",route=~\"POST /api/v1/uploads|POST /api/v1/uploads/:uploadId/resume|POST /api/v1/uploads/:uploadId/complete|POST /api/v1/files/:fileId/download-url|POST /api/v1/files/:fileId/versions/:versionId/download-url\",status=\"429\"}[5m]))",
+          "legendFormat": "{{route}}"
+        }
+      ]
+    },
+    {
+      "id": 24,
+      "type": "row",
+      "title": "Indexación",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 106
+      },
+      "panels": []
+    },
+    {
+      "id": 25,
+      "type": "timeseries",
+      "title": "Indexación: completados y fallidos por intento",
+      "description": "Trabajos terminados por cola e intentos fallidos por número de intento (1, 2 o 3+).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 107
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (queue) (rate(nimbo_queue_jobs_completed_total{queue=~\"indexing|index-reconcile\"}[5m]))",
+          "legendFormat": "{{queue}} · completados"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (queue, attempts_made) (rate(nimbo_queue_job_failures_total{queue=~\"indexing|index-reconcile\"}[5m]))",
+          "legendFormat": "{{queue}} · {{attempts_made}} intentos fallidos"
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "type": "timeseries",
+      "title": "Indexación: profundidad por estado",
+      "description": "Trabajos en cada estado de la cola.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 107
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (queue, state) (nimbo_queue_jobs{queue=~\"indexing|index-reconcile\"})",
+          "legendFormat": "{{queue}} · {{state}}"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "type": "timeseries",
+      "title": "Indexación: ejecución p95",
+      "description": "Duración de cada intento, termine bien o mal.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 115
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (queue, le) (rate(nimbo_queue_job_run_seconds_bucket{queue=~\"indexing|index-reconcile\"}[5m])))",
+          "legendFormat": "{{queue}}"
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "type": "row",
+      "title": "Optimizador",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 123
+      },
+      "panels": []
+    },
+    {
+      "id": 29,
+      "type": "timeseries",
+      "title": "Optimizador: solicitudes por ruta y código",
+      "description": "Solicitudes de estimar y de optimizar JPEG o PNG, por código de respuesta.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 124
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (route, status) (rate(nimbo_http_request_duration_seconds_count{job=\"api\",route=~\"POST /api/v1/files/:fileId/optimization/estimate|POST /api/v1/files/:fileId/optimization/run\"}[5m]))",
+          "legendFormat": "{{route}} · {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "type": "timeseries",
+      "title": "Cola optimization: completados y fallidos por intento",
+      "description": "Trabajos terminados de la cola optimization e intentos fallidos por número de intento (1, 2 o 3+).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 124
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (queue) (rate(nimbo_queue_jobs_completed_total{queue=\"optimization\"}[5m]))",
+          "legendFormat": "{{queue}} · completados"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (queue, attempts_made) (rate(nimbo_queue_job_failures_total{queue=\"optimization\"}[5m]))",
+          "legendFormat": "{{queue}} · {{attempts_made}} intentos fallidos"
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "type": "timeseries",
+      "title": "Cola optimization: ejecución p95",
+      "description": "Duración de cada intento, termine bien o mal.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 132
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (queue, le) (rate(nimbo_queue_job_run_seconds_bucket{queue=\"optimization\"}[5m])))",
+          "legendFormat": "{{queue}}"
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "type": "row",
+      "title": "Agente",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 140
+      },
+      "panels": []
+    },
+    {
+      "id": 33,
+      "type": "timeseries",
+      "title": "Agente: consultas por minuto",
+      "description": "Preguntas al agente por minuto, todas las cuentas juntas.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 141
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum(rate(nimbo_http_request_duration_seconds_count{job=\"api\",route=\"POST /api/v1/agent/ask\"}[5m])) * 60",
+          "legendFormat": "consultas por minuto"
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "type": "timeseries",
+      "title": "Agente: latencia total (p50, p95)",
+      "description": "Hasta el final de la respuesta en flujo. El histograma llega a 10 s: una respuesta más larga satura el p95 en 10 s (PD-201).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 141
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(nimbo_http_request_duration_seconds_bucket{job=\"api\",route=\"POST /api/v1/agent/ask\"}[5m])))",
+          "legendFormat": "p50"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(nimbo_http_request_duration_seconds_bucket{job=\"api\",route=\"POST /api/v1/agent/ask\"}[5m])))",
+          "legendFormat": "p95"
+        }
+      ]
+    },
+    {
+      "id": 35,
+      "type": "timeseries",
+      "title": "Agente: proporción de respuestas con error",
+      "description": "Respuestas distintas de 2xx, incluido el 429 del límite del plan; 0 % si no hay errores. Un error dentro del flujo, después del primer evento, sale como 200 y no cuenta (PD-201).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 141
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "(sum(rate(nimbo_http_request_duration_seconds_count{job=\"api\",route=\"POST /api/v1/agent/ask\",status!~\"2..\"}[5m])) or vector(0)) / sum(rate(nimbo_http_request_duration_seconds_count{job=\"api\",route=\"POST /api/v1/agent/ask\"}[5m]))",
+          "legendFormat": "error"
+        }
+      ]
     }
   ]
 }

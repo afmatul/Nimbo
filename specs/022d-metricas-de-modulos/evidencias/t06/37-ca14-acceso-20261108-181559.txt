@@ -1,0 +1,49 @@
+CA-14 — 8/11/2026, 18:14:34 (hora de Guatemala) — Chrome con ventana real, perfil nuevo por sesión
+
+[Anónimo]
+  /d/nimbo-operacion → /login; isSignedIn=false; paneles=0; html con grupos=false, series=false, título de panel=false
+  captura: 31-ca14-anonimo-redirige-a-login-20261108-181440.png
+  respuestas 2xx de datos durante la carga: 0
+  GET /api/dashboards/uid/nimbo-operacion → 401; cuerpo con series o grupos=false
+  GET /api/search → 401; cuerpo con series o grupos=false
+  GET /api/datasources → 401; cuerpo con series o grupos=false
+  GET /api/datasources/proxy/uid/prometheus/api/v1/query → 401; cuerpo con series o grupos=false
+  POST /api/ds/query → 401; cuerpo con series o grupos=false
+  GET /api/org/users → 401; cuerpo con series o grupos=false
+  GET /api/user → 401; cuerpo con series o grupos=false
+  GET /api/dashboard/snapshots → 401; cuerpo con series o grupos=false
+  /d/nimbo-operacion?viewPanel=panel-17 → /login
+  /explore → /login
+  /dashboards → /login
+  cuenta sintética de Cliente de Nimbo contra Grafana: POST /login → 401
+
+[Administrador · Viewer]
+  sesión: login=administrador isGrafanaAdmin=false rol=Viewer
+  meta: canSave=false canEdit=false canAdmin=false canDelete=false provisioned=true version=1
+  tablero: paneles=30 grupos=Identidad|Almacenamiento|Indexación|Optimizador|Agente sinDatos=1 errores=0 botones=(ninguno relevante)
+  consultas /api/ds/query: 2xx=30, resto=0
+  captura: 32-ca14-viewer-barra-del-tablero-20261108-181514.png
+  captura: 33-ca14-viewer-cinco-grupos-20261108-181514.png
+  guardar nimbo-operacion por API (contenido idéntico): 403 You'll need additional permissions to perform this action. Permissions needed: any of dashboards:create, dashboards:write
+  crear tablero temporal por API: 403 You'll need additional permissions to perform this action. Permissions needed: any of dashboards:create, dashboards:write
+  versión tras los intentos: 1; sin cambio=true
+  editPanel por URL: panelOptions=true guardar=false
+  /explore → /; consulta visible=false
+
+[Operador · Editor]
+  sesión: login=operador isGrafanaAdmin=false rol=Editor
+  meta: canSave=true canEdit=true canAdmin=false canDelete=true provisioned=true version=1
+  tablero: paneles=30 grupos=Identidad|Almacenamiento|Indexación|Optimizador|Agente sinDatos=1 errores=0 botones=Make editable
+  consultas /api/ds/query: 2xx=30, resto=0
+  captura: 34-ca14-editor-barra-del-tablero-20261108-181552.png
+  captura: 35-ca14-editor-cinco-grupos-20261108-181552.png
+  nimbo-operacion no se intenta guardar como Editor: el permiso del rol se prueba en un tablero temporal aparte.
+  crear temporal: 200 version=1
+  temporal meta: canSave=true canEdit=true provisioned=false
+  guardar cambio en temporal: 200 version=2
+  temporal en la interfaz: botones=Edit
+  captura: 36-ca14-editor-tablero-temporal-guardado-20261108-181558.png
+  eliminar temporal: 200
+  temporal tras eliminar: GET → 404
+  tableros visibles: nimbo-operacion
+  nimbo-operacion: versión=1; sin cambio=true

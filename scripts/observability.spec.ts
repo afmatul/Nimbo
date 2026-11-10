@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { parseEnv } from 'node:util';
@@ -91,6 +91,84 @@ const dashboardExprs = (): string[] => {
     panels: { targets?: { expr: string }[] }[];
   };
   return dashboard.panels.flatMap((panel) => (panel.targets ?? []).map((target) => target.expr));
+};
+
+interface DashboardPanel {
+  readonly id: number;
+  readonly type: string;
+  readonly title: string;
+  readonly description?: string;
+  readonly targets?: readonly { expr: string; legendFormat?: string }[];
+}
+
+const dashboardPanels = (): DashboardPanel[] =>
+  (JSON.parse(read('infra/grafana/dashboards/operacion.json')) as { panels: DashboardPanel[] })
+    .panels;
+
+/** Etiquetas cerradas que pueden usar los grupos de los módulos (022d CA-12). */
+const MODULE_LABELS = new Set(['job', 'route', 'status', 'queue', 'state', 'attempts_made', 'le']);
+const API_PREFIX = '/api/v1';
+const CONTROLLERS_ROOT = 'apps/api/src/modules';
+const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+
+/** Paneles de un grupo: los que siguen a la fila con ese título hasta la fila siguiente (022d plan §2). */
+const groupPanels = (title: string): DashboardPanel[] => {
+  const panels = dashboardPanels();
+  const start = panels.findIndex((panel) => panel.type === 'row' && panel.title === title);
+  if (start === -1) return [];
+  const rest = panels.slice(start + 1);
+  const end = rest.findIndex((panel) => panel.type === 'row');
+  return end === -1 ? rest : rest.slice(0, end);
+};
+
+/** Paneles de los grupos de los módulos: desde la primera fila hasta el final (los 1 a 15 de 022 no tienen filas). */
+const modulePanels = (): DashboardPanel[] => {
+  const panels = dashboardPanels();
+  const firstRow = panels.findIndex((panel) => panel.type === 'row');
+  return firstRow === -1 ? [] : panels.slice(firstRow);
+};
+
+const groupExprs = (title: string): string[] =>
+  groupPanels(title).flatMap((panel) => (panel.targets ?? []).map((target) => target.expr));
+
+/** Etiquetas de los selectores, de las agrupaciones y de la leyenda de una consulta. */
+const labelsOf = (expr: string, legend = ''): string[] => [
+  ...[...expr.matchAll(/(\w+)\s*(?:=~|!~|!=|=)\s*"/g)].map((match) => match[1] ?? ''),
+  ...[...expr.matchAll(/\b(?:by|without|on|ignoring)\s*\(([^)]*)\)/g)].flatMap((match) =>
+    (match[1] ?? '').split(',').map((label) => label.trim()),
+  ),
+  ...[...legend.matchAll(/\{\{\s*(\w+)\s*\}\}/g)].map((match) => match[1] ?? ''),
+];
+
+/** Plantillas de ruta citadas por `route="…"` o `route=~"a|b"` en una consulta. */
+const routesOf = (expr: string): string[] =>
+  [...expr.matchAll(/\broute\s*(?:=~|!~|!=|=)\s*"([^"]*)"/g)].flatMap((match) =>
+    (match[1] ?? '').split('|'),
+  );
+
+/** `MÉTODO /api/v1/<controlador>/<ruta>` sin barra final, como las arma Nest (022d R-3). */
+const routeTemplate = (method: string, prefix: string, path: string): string => {
+  const joined = [API_PREFIX, prefix, path].filter((part) => part !== '').join('/');
+  return `${method.toUpperCase()} ${joined.replace(/\/+/g, '/').replace(/\/$/, '')}`;
+};
+
+/** Rutas que declaran los controladores del `api` con decoradores de cadena literal (022d R-2). */
+const declaredRoutes = (): Set<string> => {
+  const files = readdirSync(join(ROOT, CONTROLLERS_ROOT), { recursive: true, encoding: 'utf8' })
+    .filter((file) => /(^|[\\/])presentation[\\/][^\\/]+\.controller\.ts$/.test(file))
+    .map((file) => read(join(CONTROLLERS_ROOT, file)));
+  const routes = new Set<string>();
+  for (const source of files) {
+    let prefix = '';
+    for (const match of source.matchAll(
+      /@(Controller|Get|Post|Put|Patch|Delete)\((?:'([^']*)')?\)/g,
+    )) {
+      const [, decorator = '', path = ''] = match;
+      if (decorator === 'Controller') prefix = path;
+      else routes.add(routeTemplate(decorator, prefix, path));
+    }
+  }
+  return routes;
 };
 
 interface AlertQuery {
@@ -261,10 +339,14 @@ describe('022 T-01: Compose de observabilidad (CA-2, CA-3, CA-9, CA-10)', () => 
       );
     });
 
-    it('R-4: los límites de memoria son 256, 256 y 128 MiB', () => {
+    it('R-4: los límites de memoria son 256, 768 y 128 MiB (Grafana subió en 022d, H-2)', () => {
       expect(Number(serviceOf(config, 'prometheus').mem_limit)).toBe(256 * MIB);
-      expect(Number(serviceOf(config, 'grafana').mem_limit)).toBe(256 * MIB);
+      expect(Number(serviceOf(config, 'grafana').mem_limit)).toBe(768 * MIB);
       expect(Number(serviceOf(config, 'cadvisor').mem_limit)).toBe(128 * MIB);
+    });
+
+    it('022d H-2: el recolector de Grafana conoce su límite (GOMEMLIMIT al 90 % de 768 MiB)', () => {
+      expect(serviceOf(config, 'grafana').environment?.GOMEMLIMIT).toBe('690MiB');
     });
 
     it('CA-9: Grafana arranca sin acceso anónimo, sin registro y sin telemetría', () => {
@@ -683,6 +765,224 @@ describe('022 T-01: Compose de observabilidad (CA-2, CA-3, CA-9, CA-10)', () => 
       expect(runbook).toMatch(/Viewer/);
       expect(runbook).toMatch(/Editor/);
       expect(runbook).toContain('Mailpit');
+    });
+  });
+});
+
+describe('022d: grupos de los módulos en el tablero de operación', () => {
+  const HTTP_COUNT = 'nimbo_http_request_duration_seconds_count';
+
+  /** Primera consulta del grupo que cumple todas las condiciones, o `undefined`. */
+  const findExpr = (group: string, ...parts: readonly (string | RegExp)[]): string | undefined =>
+    groupExprs(group).find((expr) =>
+      parts.every((part) => (typeof part === 'string' ? expr.includes(part) : part.test(expr))),
+    );
+
+  const sortedRoutes = (expr: string | undefined): string[] => routesOf(expr ?? '').sort();
+
+  describe('T-01: ayudantes y grupo «Identidad» (CA-1, CA-12)', () => {
+    it('CA-1: la fila «Identidad» tiene las respuestas de sus diez rutas por ruta y código', () => {
+      const expr = findExpr('Identidad', HTTP_COUNT, 'job="api"', 'by (route, status)');
+      expect(sortedRoutes(expr)).toEqual(
+        [
+          'POST /api/v1/auth/register',
+          'POST /api/v1/auth/resend-verification',
+          'POST /api/v1/auth/verify-email',
+          'POST /api/v1/auth/login',
+          'POST /api/v1/auth/session/refresh',
+          'POST /api/v1/auth/session/logout',
+          'POST /api/v1/auth/forgot-password',
+          'POST /api/v1/auth/reset-password',
+          'POST /api/v1/auth/change-password',
+          'POST /api/v1/sessions/revoke-others',
+        ].sort(),
+      );
+    });
+
+    it('CA-1: los inicios de sesión se separan por código (2xx, 401 y 429)', () => {
+      const expr = findExpr('Identidad', HTTP_COUNT, /by \(status\)/);
+      expect(routesOf(expr ?? '')).toEqual(['POST /api/v1/auth/login']);
+    });
+
+    it('CA-1: las denegaciones (403) de todo el api se ven por ruta', () => {
+      const expr = findExpr('Identidad', HTTP_COUNT, 'status="403"', 'by (route)');
+      expect(expr).toBeDefined();
+      expect(routesOf(expr ?? '')).toEqual([]);
+    });
+
+    it('CA-12: los grupos de los módulos solo usan las etiquetas job, route, status, queue, state, attempts_made y le', () => {
+      const targets = modulePanels().flatMap((panel) => panel.targets ?? []);
+      expect(targets.length).toBeGreaterThan(0);
+      const used = targets.flatMap((target) => labelsOf(target.expr, target.legendFormat));
+      expect(used.filter((label) => !MODULE_LABELS.has(label))).toEqual([]);
+    });
+
+    it('CA-12: cada ruta citada existe como plantilla en un controlador del api', () => {
+      const declared = declaredRoutes();
+      const cited = dashboardPanels().flatMap((panel) =>
+        (panel.targets ?? []).flatMap((target) => routesOf(target.expr)),
+      );
+      expect(cited.length).toBeGreaterThan(0);
+      expect(cited.filter((route) => !declared.has(route))).toEqual([]);
+    });
+
+    it('CA-12: ningún panel de los grupos contiene correos, UUID ni identificadores', () => {
+      const texts = modulePanels().flatMap((panel) => [
+        panel.title,
+        panel.description ?? '',
+        ...(panel.targets ?? []).flatMap((target) => [target.expr, target.legendFormat ?? '']),
+      ]);
+      expect(texts.length).toBeGreaterThan(0);
+      expect(texts.filter((text) => UUID.test(text) || text.includes('@'))).toEqual([]);
+    });
+
+    it('R-2: el lector de controladores entiende la ruta sin barra final y las plantillas con parámetros', () => {
+      const declared = declaredRoutes();
+      expect(declared.has('POST /api/v1/uploads')).toBe(true);
+      expect(declared.has('POST /api/v1/files/:fileId/versions/:versionId/download-url')).toBe(
+        true,
+      );
+      expect(declared.has('POST /api/v1/agent/ask')).toBe(true);
+    });
+  });
+
+  describe('T-02: grupo «Almacenamiento» (CA-2)', () => {
+    const UPLOADS = [
+      'POST /api/v1/uploads',
+      'POST /api/v1/uploads/:uploadId/resume',
+      'POST /api/v1/uploads/:uploadId/complete',
+    ];
+    const DOWNLOADS = [
+      'POST /api/v1/files/:fileId/download-url',
+      'POST /api/v1/files/:fileId/versions/:versionId/download-url',
+    ];
+
+    it('CA-2: la fila «Almacenamiento» muestra las cargas iniciadas, reanudadas y completadas por ruta y código', () => {
+      const expr = findExpr('Almacenamiento', HTTP_COUNT, 'job="api"', 'by (route, status)');
+      expect(sortedRoutes(expr)).toEqual([...UPLOADS].sort());
+    });
+
+    it('CA-2: los enlaces de descarga emitidos (2xx) de archivos y versiones se ven por ruta', () => {
+      const expr = findExpr('Almacenamiento', HTTP_COUNT, 'status=~"2.."', 'by (route)');
+      expect(sortedRoutes(expr)).toEqual([...DOWNLOADS].sort());
+    });
+
+    it('CA-2: los límites de frecuencia (429) de cargas y descargas se ven por ruta', () => {
+      const expr = findExpr('Almacenamiento', HTTP_COUNT, 'status="429"', 'by (route)');
+      expect(sortedRoutes(expr)).toEqual([...UPLOADS, ...DOWNLOADS].sort());
+    });
+  });
+
+  describe('T-03: grupos «Indexación» y «Optimizador» (CA-7, CA-8)', () => {
+    const INDEXING = 'queue=~"indexing|index-reconcile"';
+    const OPTIMIZATION = 'queue="optimization"';
+
+    /** Completados por cola, fallidos por intento y ejecución p95 de las colas de un grupo. */
+    const expectQueueSignals = (group: string, queues: string): void => {
+      expect(
+        findExpr(group, `nimbo_queue_jobs_completed_total{${queues}}`, 'by (queue)'),
+      ).toBeDefined();
+      expect(
+        findExpr(group, `nimbo_queue_job_failures_total{${queues}}`, 'by (queue, attempts_made)'),
+      ).toBeDefined();
+      expect(
+        findExpr(
+          group,
+          'histogram_quantile(0.95',
+          `nimbo_queue_job_run_seconds_bucket{${queues}}`,
+          'by (queue, le)',
+        ),
+      ).toBeDefined();
+    };
+
+    it('CA-7: la fila «Indexación» muestra completados, fallidos por intento y ejecución p95 de indexing e index-reconcile', () => {
+      expectQueueSignals('Indexación', INDEXING);
+    });
+
+    it('CA-7: la fila «Indexación» muestra la profundidad de sus colas por estado', () => {
+      expect(
+        findExpr('Indexación', `nimbo_queue_jobs{${INDEXING}}`, 'by (queue, state)'),
+      ).toBeDefined();
+    });
+
+    it('CA-8: la fila «Optimizador» muestra las solicitudes de estimar y optimizar por código', () => {
+      const expr = findExpr('Optimizador', HTTP_COUNT, 'job="api"', 'by (route, status)');
+      expect(sortedRoutes(expr)).toEqual([
+        'POST /api/v1/files/:fileId/optimization/estimate',
+        'POST /api/v1/files/:fileId/optimization/run',
+      ]);
+    });
+
+    it('CA-8: la fila «Optimizador» muestra completados, fallidos por intento y ejecución p95 de la cola optimization', () => {
+      expectQueueSignals('Optimizador', OPTIMIZATION);
+    });
+  });
+
+  describe('T-04: grupo «Agente» (CA-11)', () => {
+    const ASK = 'route="POST /api/v1/agent/ask"';
+
+    it('CA-11: la fila «Agente» muestra las consultas por minuto', () => {
+      expect(
+        findExpr('Agente', `${HTTP_COUNT}{job="api",${ASK}}`, /^sum\(rate\(/, / \* 60$/),
+      ).toBeDefined();
+    });
+
+    it('CA-11: la fila «Agente» muestra la latencia total p50 y p95', () => {
+      for (const quantile of ['0.5', '0.95']) {
+        expect(
+          findExpr(
+            'Agente',
+            `histogram_quantile(${quantile},`,
+            `nimbo_http_request_duration_seconds_bucket{job="api",${ASK}}`,
+            'by (le)',
+          ),
+        ).toBeDefined();
+      }
+    });
+
+    it('CA-11: la proporción de respuestas con error cuenta todo lo que no es 2xx (incluido el 429) y muestra 0 sin errores', () => {
+      expect(
+        findExpr(
+          'Agente',
+          `${ASK},status!~"2.."`,
+          'or vector(0)) / ',
+          `${HTTP_COUNT}{job="api",${ASK}}`,
+        ),
+      ).toBeDefined();
+    });
+
+    it('CA-11: el grupo no desglosa por plan ni por ninguna etiqueta fuera de route, status y le (PD-203)', () => {
+      const labels = groupPanels('Agente').flatMap((panel) =>
+        (panel.targets ?? []).flatMap((target) => labelsOf(target.expr, target.legendFormat)),
+      );
+      expect(labels.length).toBeGreaterThan(0);
+      expect(labels.filter((label) => !['job', 'route', 'status', 'le'].includes(label))).toEqual(
+        [],
+      );
+    });
+  });
+
+  describe('T-05: un solo tablero aprovisionado y runbook (CA-14, CA-15)', () => {
+    const GROUPS = ['Identidad', 'Almacenamiento', 'Indexación', 'Optimizador', 'Agente'];
+
+    it('CA-14: los grupos viven en el único tablero aprovisionado, sin otro tablero', () => {
+      expect(readdirSync(join(ROOT, 'infra/grafana/dashboards'))).toEqual(['operacion.json']);
+    });
+
+    it('CA-15: el tablero aprovisionado trae las cinco filas de los módulos, en orden', () => {
+      const rows = dashboardPanels()
+        .filter((panel) => panel.type === 'row')
+        .map((panel) => panel.title);
+      expect(rows).toEqual(GROUPS);
+    });
+
+    it('CA-15: el runbook nombra las cinco filas, los paneles 16 a 35 y cómo generar su tráfico', () => {
+      const runbook = read('docs/operations/observabilidad.md');
+      for (const group of GROUPS) expect(runbook).toContain(`«${group}»`);
+      for (const panel of dashboardPanels().filter((candidate) => candidate.id >= 16)) {
+        expect(runbook).toContain(`| ${String(panel.id)} | ${panel.title} |`);
+      }
+      expect(runbook).toContain('POST /api/v1/auth/login');
     });
   });
 });
