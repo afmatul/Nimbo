@@ -3,8 +3,7 @@
 import type { FileKind } from '@nimbo/contracts';
 import type * as React from 'react';
 
-import type { PreviewFailure } from '../preview-failure';
-import type { ReaderEvents } from '../reader-events';
+import type { ReaderProps } from '../reader-events';
 
 import { ImagePreview } from './ImagePreview';
 import { PdfPreview } from './PdfPreview';
@@ -12,11 +11,7 @@ import { PresentationPreview } from './PresentationPreview';
 import { SpreadsheetPreview } from './SpreadsheetPreview';
 import { TextPreview } from './TextPreview';
 
-type PreviewReaderProps = ReaderEvents & {
-  readonly kind: FileKind;
-  readonly url: string;
-  readonly onFailure: (failure: PreviewFailure) => void;
-};
+type PreviewReaderProps = ReaderProps & { readonly kind: FileKind };
 
 export function PreviewReader({ kind, ...reader }: PreviewReaderProps): React.JSX.Element | null {
   switch (kind) {

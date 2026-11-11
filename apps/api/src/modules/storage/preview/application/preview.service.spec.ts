@@ -11,8 +11,11 @@ import {
   Role,
 } from '../../../../shared';
 import type { Actor, IRateLimiter } from '../../../../shared';
-import { NodeNotFoundError, PreviewUnsupportedError } from '../../domain/errors';
-import { PreviewTooManyRequestsError } from '../domain/preview-errors';
+import {
+  NodeNotFoundError,
+  PreviewUnsupportedError,
+  StorageTooManyRequestsError,
+} from '../../domain/errors';
 
 import { PREVIEW_CONFIG } from './preview-config';
 import { PreviewService } from './preview.service';
@@ -121,7 +124,7 @@ describe('PreviewService', () => {
       (caught: unknown) => caught,
     );
 
-    expect(error).toBeInstanceOf(PreviewTooManyRequestsError);
+    expect(error).toBeInstanceOf(StorageTooManyRequestsError);
     expect(error).toMatchObject({
       status: 429,
       code: 'STORAGE_TOO_MANY_REQUESTS',
@@ -143,7 +146,7 @@ describe('PreviewService', () => {
 
   it('CA-12: conserva la instancia 429 sin duplicar preview.url_failed', async () => {
     const { service, facade, rateLimiter, logger } = await setup();
-    const failure = new PreviewTooManyRequestsError(17);
+    const failure = new StorageTooManyRequestsError(17);
     rateLimiter.consume.mockRejectedValue(failure);
 
     await expect(service.issueUrl(CLIENT, FILE_ID)).rejects.toBe(failure);

@@ -2,8 +2,8 @@
 
 import * as React from 'react';
 
-import { readerFailure, type PreviewFailure } from '../preview-failure';
-import type { ReaderEvents } from '../reader-events';
+import { readerFailure } from '../preview-failure';
+import type { ReaderProps } from '../reader-events';
 import type { OoxmlFailureReason } from '../readers/ooxml-package-reader';
 import type { OoxmlWorkerOptions, OoxmlWorkerReading } from '../readers/ooxml-worker-client';
 import type { PresentationPreview, SlideProjection } from '../readers/pptx-model';
@@ -20,10 +20,7 @@ export type OoxmlFormat = keyof OoxmlModels;
 type Preview<K extends OoxmlFormat> = OoxmlModels[K]['preview'];
 type Unit<K extends OoxmlFormat> = OoxmlModels[K]['unit'];
 export type UnitSelection = { readonly index: number; readonly offset: number };
-export type OoxmlReaderProps = ReaderEvents & {
-  readonly url: string;
-  readonly onFailure: (failure: PreviewFailure) => void;
-};
+export type OoxmlReaderProps = ReaderProps;
 export type OoxmlReading<K extends OoxmlFormat> = {
   readonly preview: Preview<K> | null;
   readonly selection: UnitSelection;

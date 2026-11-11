@@ -1,11 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 
-import { StoragePreviewFacade } from '../..';
+import { StoragePreviewFacade, StorageTooManyRequestsError } from '../..';
 import type { PreviewDelivery } from '../..';
 import { DomainError, I_RATE_LIMITER, InsufficientRoleError, Role } from '../../../../shared';
 import type { Actor, IRateLimiter } from '../../../../shared';
-import { PreviewTooManyRequestsError } from '../domain/preview-errors';
 
 import { PREVIEW_CONFIG } from './preview-config';
 import type { PreviewConfig } from './preview-config';
@@ -41,14 +40,14 @@ export class PreviewService {
       { limit: this.config.previewUrlPerMinute, windowSeconds: RATE_LIMIT_WINDOW_SECONDS },
     ]);
     if (!decision.allowed) {
-      const error = new PreviewTooManyRequestsError(decision.retryAfterSeconds);
+      const error = new StorageTooManyRequestsError(decision.retryAfterSeconds);
       this.logger.warn({ event: 'preview.rate_limited', fileId, code: error.code });
       throw error;
     }
   }
 
   private loggedFailure(fileId: string, error: unknown): Error {
-    if (error instanceof PreviewTooManyRequestsError) return error;
+    if (error instanceof StorageTooManyRequestsError) return error;
     if (error instanceof DomainError) {
       this.logger.warn({ event: 'preview.url_failed', fileId, code: error.code });
       return error;

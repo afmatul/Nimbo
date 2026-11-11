@@ -3,16 +3,11 @@
 import * as React from 'react';
 
 import { useLatestCallbacks } from '../hooks/use-latest-callbacks';
-import { readerFailure, type PreviewFailure } from '../preview-failure';
-import type { ReaderEvents } from '../reader-events';
+import { readerFailure } from '../preview-failure';
+import type { ReaderProps } from '../reader-events';
 import { detectImageMime } from '../readers/image-mime';
 import { fetchObjectBytes } from '../readers/object-bytes';
 import { concatenateChunks, discardStream, releaseHeldReader } from '../readers/stream-bytes';
-
-type ImagePreviewProps = ReaderEvents & {
-  readonly url: string;
-  readonly onFailure: (failure: PreviewFailure) => void;
-};
 
 type ImageResource = {
   readonly attempt: ImageAttempt;
@@ -21,7 +16,7 @@ type ImageResource = {
 
 type ImageAttempt = {
   readonly controller: AbortController;
-  readonly onFailure: ImagePreviewProps['onFailure'];
+  readonly onFailure: ReaderProps['onFailure'];
   readonly publish: (image: ImageResource | null) => void;
   readonly onReady: () => void;
   active: boolean;
@@ -104,7 +99,7 @@ function useImageReading({
   onFailure,
   onReady,
   registerCleanup,
-}: ImagePreviewProps): ImageResource | null {
+}: ReaderProps): ImageResource | null {
   const [image, setImage] = React.useState<ImageResource | null>(null);
   const callbacks = useLatestCallbacks({ onFailure, onReady });
   React.useEffect(() => {
@@ -127,7 +122,7 @@ function useImageReading({
   return image;
 }
 
-function ImageReading(props: ImagePreviewProps): React.JSX.Element | null {
+function ImageReading(props: ReaderProps): React.JSX.Element | null {
   const image = useImageReading(props);
   if (image === null || !image.attempt.active) return null;
   return (
@@ -145,6 +140,6 @@ function ImageReading(props: ImagePreviewProps): React.JSX.Element | null {
   );
 }
 
-export function ImagePreview(props: ImagePreviewProps): React.JSX.Element {
+export function ImagePreview(props: ReaderProps): React.JSX.Element {
   return <ImageReading key={props.url} {...props} />;
 }

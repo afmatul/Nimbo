@@ -4,7 +4,7 @@ import * as React from 'react';
 
 import { useLatestCallbacks } from '../hooks/use-latest-callbacks';
 import { readerFailure, type PreviewFailure } from '../preview-failure';
-import type { ReaderEvents } from '../reader-events';
+import type { ReaderProps } from '../reader-events';
 import {
   openPdfSession,
   PdfReadError,
@@ -15,10 +15,6 @@ import {
 import styles from './PdfPreview.module.css';
 import { EmptyFileNotice, UnitNavigation } from './ReaderNavigation';
 
-type PdfPreviewProps = ReaderEvents & {
-  readonly url: string;
-  readonly onFailure: (failure: PreviewFailure) => void;
-};
 type PdfAttempt = {
   readonly controller: AbortController;
   readonly fail: (failure: PreviewFailure) => void;
@@ -99,7 +95,7 @@ function usePdfReading({
   onFailure,
   onReady,
   registerCleanup,
-}: PdfPreviewProps): LoadedPdf | null {
+}: ReaderProps): LoadedPdf | null {
   const [loaded, setLoaded] = React.useState<LoadedPdf | null>(null);
   const callbacks = useLatestCallbacks({ onFailure, onReady });
   React.useEffect(() => {
@@ -220,12 +216,12 @@ function EmptyPdf({ attempt }: LoadedPdf): React.JSX.Element {
   return <EmptyFileNotice />;
 }
 
-function PdfReading(props: PdfPreviewProps): React.JSX.Element | null {
+function PdfReading(props: ReaderProps): React.JSX.Element | null {
   const loaded = usePdfReading(props);
   if (loaded === null) return null;
   return loaded.session.numPages === 0 ? <EmptyPdf {...loaded} /> : <PdfPages {...loaded} />;
 }
 
-export function PdfPreview(props: PdfPreviewProps): React.JSX.Element {
+export function PdfPreview(props: ReaderProps): React.JSX.Element {
   return <PdfReading key={props.url} {...props} />;
 }

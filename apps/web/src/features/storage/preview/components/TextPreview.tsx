@@ -3,15 +3,10 @@
 import * as React from 'react';
 
 import { useLatestCallbacks } from '../hooks/use-latest-callbacks';
-import { readerFailure, type PreviewFailure } from '../preview-failure';
-import type { ReaderEvents } from '../reader-events';
+import { readerFailure } from '../preview-failure';
+import type { ReaderProps } from '../reader-events';
 import { fetchObjectBytes } from '../readers/object-bytes';
 import { discardStream, releaseHeldReader } from '../readers/stream-bytes';
-
-type TextPreviewProps = ReaderEvents & {
-  readonly url: string;
-  readonly onFailure: (failure: PreviewFailure) => void;
-};
 
 /** Un texto grande llega en cientos de chunks: se pinta a lo sumo cada 100 ms en vez de reconstruir el `<pre>` por chunk. */
 const PUBLISH_INTERVAL_MS = 100;
@@ -20,7 +15,7 @@ type TextEncoding = 'utf-8' | 'windows-1252';
 
 type TextAttempt = {
   readonly controller: AbortController;
-  readonly onFailure: TextPreviewProps['onFailure'];
+  readonly onFailure: ReaderProps['onFailure'];
   readonly publish: (text: string) => void;
   readonly onReady: () => void;
   active: boolean;
@@ -140,7 +135,7 @@ async function loadText(url: string, attempt: TextAttempt): Promise<void> {
   }
 }
 
-function useTextReading({ url, onFailure, onReady, registerCleanup }: TextPreviewProps): string {
+function useTextReading({ url, onFailure, onReady, registerCleanup }: ReaderProps): string {
   const [text, setText] = React.useState('');
   const callbacks = useLatestCallbacks({ onFailure, onReady });
   React.useEffect(() => {
@@ -167,11 +162,11 @@ function useTextReading({ url, onFailure, onReady, registerCleanup }: TextPrevie
   return text;
 }
 
-function TextReading(props: TextPreviewProps): React.JSX.Element {
+function TextReading(props: ReaderProps): React.JSX.Element {
   const text = useTextReading(props);
   return <pre className="whitespace-pre-wrap break-words font-sans text-foreground">{text}</pre>;
 }
 
-export function TextPreview(props: TextPreviewProps): React.JSX.Element {
+export function TextPreview(props: ReaderProps): React.JSX.Element {
   return <TextReading key={props.url} {...props} />;
 }

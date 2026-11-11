@@ -109,7 +109,7 @@ type _ListForOwnerSignature = Expect<
  * composición del `api` y el del `worker` (T-51), desde 011 (PD-31) el token del lector de metadatos que consume
  * `backoffice`, el token de `IObjectStorage` para la factura PDF de `billing` (009, decisión 1) y, desde 016, la
  * fachada `EditableFileGateway` para `editing` con el 404 uniforme de un nodo (`NodeNotFoundError`, 005 CA-16:
- * `editing` responde igual que `storage`), desde 017 (plan §2.3) la fachada de vista previa, que usa el mismo 404, y
+ * `editing` responde igual que `storage`), desde 017 (plan §2.3) la fachada de vista previa, que usa el mismo 404 y el mismo 429 (`StorageTooManyRequestsError`), y
  * desde 019 el evento `storage.file-version-created` (ADR-0019: lo exporta el productor) y la fachada
  * `IndexableFileGateway` para `intelligence`. El detector, el escáner, los repositorios y el emisor interno de URLs no
  * salen.
@@ -124,6 +124,7 @@ const RUNTIME_EXPORTS = [
   'NodeNotFoundError',
   'StorageModule',
   'StoragePreviewFacade',
+  'StorageTooManyRequestsError',
   'StorageWorkerModule',
   'invoiceObjectKey',
 ] as const;

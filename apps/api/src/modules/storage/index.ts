@@ -9,7 +9,7 @@ export type {
   EditedVersionOutcome,
 } from './application/edited-version.registrar';
 export { I_PLAN_LIMITS_PROVIDER } from './application/plan-limits';
-export { NodeNotFoundError } from './domain/errors';
+export { NodeNotFoundError, StorageTooManyRequestsError } from './domain/errors';
 export type { IPlanLimitsProvider, PlanLimits } from './application/plan-limits';
 export { StoragePreviewFacade } from './application/storage-preview.facade';
 export type { PreviewDelivery } from './application/storage-preview.facade';
