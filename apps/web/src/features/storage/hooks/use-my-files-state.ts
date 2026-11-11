@@ -11,7 +11,7 @@ import {
 import * as React from 'react';
 
 import type { StorageApi } from '../api';
-import type { DownloadNotice, PinToggle } from '../components/file-row-menu';
+import { type DownloadNotice, type PinToggle } from '../components/file-row-menu';
 import type { FolderDisclosure } from '../components/node-table';
 import { useQuickAccessSidebar } from '../components/quick-access-sidebar';
 import { useSpace, type SpaceSummaryState } from '../components/space-provider';

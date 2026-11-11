@@ -128,7 +128,7 @@ exports.MQ_900 = `  @media (max-width: 900px) {
     .topbar .logo-mobile { display: inline-flex; }
     .crumbs { display: none; }
     .topbar-left { display: flex; align-items: center; gap: 4px; }
-    .account-btn .account-name { display: none; }
+    .account-btn .account-name { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
     .account-btn { padding: 4px; min-width: 44px; min-height: 44px; justify-content: center; }
   }
 `;

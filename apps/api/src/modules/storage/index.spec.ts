@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import type { FileSummary } from '@nimbo/contracts';
+
 import type { Actor } from '../../shared';
 
 import type { FileKind } from './domain/file-kind';
@@ -13,6 +15,7 @@ import type {
   INodeMetadataReader,
   IPlanLimitsProvider,
   PlanLimits,
+  PreviewDelivery,
 } from './index';
 
 /** Igualdad estricta de tipos (patrón de `type-challenges`); un fallo aquí lo detecta `pnpm typecheck`. */
@@ -44,6 +47,20 @@ type _PlanLimitsShape = Expect<
 >;
 type _LimitsForSignature = Expect<
   Equal<IPlanLimitsProvider['limitsFor'], (actor: Actor) => Promise<PlanLimits>>
+>;
+
+/** 017 plan §2.3: la vista previa recibe el `FileSummary` del cliente (D-13), la URL y su vencimiento. */
+type _PreviewDeliveryShape = Expect<
+  Equal<
+    PreviewDelivery,
+    { readonly file: FileSummary; readonly url: string; readonly expiresAt: Date }
+  >
+>;
+type _IssueUrlSignature = Expect<
+  Equal<
+    storage.StoragePreviewFacade['issueUrl'],
+    (actor: Actor, fileId: string) => Promise<PreviewDelivery>
+  >
 >;
 
 /**
@@ -95,7 +112,7 @@ type _ListForOwnerSignature = Expect<
  * `editing` responde igual que `storage`). Desde 019, el evento `storage.file-version-created` (ADR-0019: lo exporta
  * el productor) y la fachada `IndexableFileGateway` para `intelligence`. Desde 011b, la fachada `SupportTrashService`
  * para `backoffice` (con vistas de lectura, no entidades) y su error de cursor `InvalidQueryError`. Desde 013, la fachada
- * `LinkedFileGateway` para los enlaces públicos de `sharing`. El detector, el escáner y los repositorios no salen.
+ * `LinkedFileGateway` para los enlaces públicos de `sharing`. Desde 017 (plan §2.3), la fachada de vista previa, que usa el mismo 404 y el mismo 429 (`StorageTooManyRequestsError`). El detector, el escáner y los repositorios no salen.
  */
 const RUNTIME_EXPORTS = [
   'AccountReadOnlyError',
@@ -112,6 +129,8 @@ const RUNTIME_EXPORTS = [
   'OptimizableFileGateway',
   'StorageModule',
   'StorageFacadesWorkerModule',
+  'StoragePreviewFacade',
+  'StorageTooManyRequestsError',
   'StorageWorkerModule',
   'WritableAccountPolicy',
   'SupportTrashService',
@@ -119,12 +138,16 @@ const RUNTIME_EXPORTS = [
 ] as const;
 
 describe('modules/storage/index.ts', () => {
-  it('CA-3, CA-4, CA-9, RN-1, 011 PD-31, 009, 016 §2, 019 RN-11, 012 PD-121, 011b, 013, 021 PD-130, 018b D-1: exporta exactamente los tokens de límites, de metadatos, de objetos y de coincidencia por contenido, los tres módulos (`api`, `worker` y fachadas del `worker-optimizer`), las fachadas de edición, indexación, optimización, papelera de Soporte (con su error de cursor) y enlaces públicos, el evento de versión y la política de solo lectura', () => {
+  it('CA-3, CA-4, CA-9, RN-1, 011 PD-31, 009, 016 §2, 017 CA-11, 019 RN-11, 012 PD-121, 011b, 013, 021 PD-130, 018b D-1: exporta exactamente los tokens de límites, de metadatos, de objetos y de coincidencia por contenido, los tres módulos (`api`, `worker` y fachadas del `worker-optimizer`), las fachadas de edición, vista previa, indexación, optimización, papelera de Soporte (con su error de cursor) y enlaces públicos, el evento de versión y la política de solo lectura', () => {
     expect(storage.FILE_VERSION_CREATED).toBe('storage.file-version-created');
     expect(Object.keys(storage).sort()).toEqual([...RUNTIME_EXPORTS].sort());
     expect(typeof storage.I_PLAN_LIMITS_PROVIDER).toBe('symbol');
     expect(typeof storage.I_NODE_METADATA_READER).toBe('symbol');
     expect(typeof storage.I_CONTENT_MATCH_READER).toBe('symbol');
+  });
+
+  it('017 plan §2.3: el emisor interno de URLs (sin tasa ni auditoría) no sale del módulo', () => {
+    expect(Object.keys(storage)).not.toContain('AccessibleFileUrlIssuer');
   });
 
   it('CA-9, DF-52: el escáner de cargas vencidas (único acceso sin actor) no sale del módulo', () => {

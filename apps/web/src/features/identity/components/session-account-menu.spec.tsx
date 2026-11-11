@@ -40,7 +40,7 @@ describe('SessionAccountMenu (CA-14)', () => {
       </SessionProvider>,
     );
 
-    await user.click(screen.getByRole('button', { name: 'Menú de la cuenta de Ana López' }));
+    await user.click(screen.getByRole('button', { name: 'Ana López (menú de la cuenta)' }));
     expect(screen.getByText('ana@ejemplo.com')).toBeTruthy();
     await user.click(screen.getByRole('menuitem', { name: 'Cerrar sesión' }));
     const dialog = await screen.findByRole('alertdialog');
@@ -67,7 +67,7 @@ describe('SessionAccountMenu (CA-14)', () => {
       </SessionProvider>,
     );
 
-    await user.click(screen.getByRole('button', { name: 'Menú de la cuenta de Ana López' }));
+    await user.click(screen.getByRole('button', { name: 'Ana López (menú de la cuenta)' }));
 
     for (const other of ['Cliente', 'Soporte', 'Administrador', 'Operador']) {
       expect(screen.queryByText(other) !== null).toBe(other === label);
@@ -88,7 +88,7 @@ describe('SessionAccountMenu (CA-14)', () => {
       </SessionProvider>,
     );
 
-    await user.click(screen.getByRole('button', { name: 'Menú de la cuenta de Ana López' }));
+    await user.click(screen.getByRole('button', { name: 'Ana López (menú de la cuenta)' }));
 
     expect(screen.getByRole('menuitem', { name: 'Mi actividad' }).getAttribute('href')).toBe(path);
     expect(screen.getByRole('menuitem', { name: 'Seguridad' }).getAttribute('href')).toBe(
@@ -112,7 +112,7 @@ describe('SessionAccountMenu (CA-14)', () => {
         </SessionProvider>,
       );
 
-      await user.click(screen.getByRole('button', { name: 'Menú de la cuenta de Ana López' }));
+      await user.click(screen.getByRole('button', { name: 'Ana López (menú de la cuenta)' }));
 
       const item = screen.queryByRole('menuitem', { name: 'Plan y facturación' });
       expect(item?.getAttribute('href') ?? null).toBe(offered ? '/suscripcion' : null);

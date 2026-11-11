@@ -10,7 +10,7 @@ import { AccountMenu } from './account-menu';
 const RAW_COLOR =
   /#[0-9a-f]{3,8}\b|\b(?:bg|text|border)-(?:red|blue|green|gray|slate|zinc|neutral|white|black)\b/i;
 
-const TRIGGER_NAME = 'Menú de la cuenta de Ana López';
+const TRIGGER_NAME = 'Ana López (menú de la cuenta)';
 
 function renderMenu(onSignOut: () => Promise<void> = jest.fn(() => Promise.resolve())): {
   onSignOut: () => Promise<void>;

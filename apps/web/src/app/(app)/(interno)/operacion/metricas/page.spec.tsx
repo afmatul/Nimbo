@@ -67,7 +67,7 @@ describe('Métricas del Operador (/operacion/metricas)', () => {
   it('011 CA-17: el Operador llega desde el menú de la cuenta a Seguridad, Mi actividad y Cerrar sesión', async () => {
     await renderPage();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Menú de la cuenta de Ana López' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Ana López (menú de la cuenta)' }));
 
     const menu = screen.getByRole('menu');
     expect(

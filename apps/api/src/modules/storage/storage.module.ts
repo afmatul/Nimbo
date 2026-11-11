@@ -7,6 +7,7 @@ import type { Env, MinioConfig } from '../../shared';
 import { AccessModule } from '../access';
 import { AuditModule } from '../audit';
 
+import { AccessibleFileUrlIssuer } from './application/accessible-file-url-issuer';
 import { EditableFileGateway } from './application/editable-file.gateway';
 import { EditedVersionRegistrar } from './application/edited-version.registrar';
 import { FILE_SERVICE_CONFIG } from './application/file-service-config';
@@ -27,6 +28,7 @@ import { QUICK_ACCESS_CONFIG } from './application/quick-access-config';
 import type { QuickAccessConfig } from './application/quick-access-config';
 import { QuickAccessService } from './application/quick-access.service';
 import { SpaceSummaryService } from './application/space-summary.service';
+import { StoragePreviewFacade } from './application/storage-preview.facade';
 import { SupportTrashService } from './application/support-trash.service';
 import { UPLOAD_CONFIG } from './application/upload-config';
 import type { UploadConfig } from './application/upload-config';
@@ -143,11 +145,13 @@ export class StorageModule {
         ...TRASH_LIFECYCLE_PROVIDERS,
         ...SPACE_PROVIDERS,
         SpaceSummaryService,
+        AccessibleFileUrlIssuer,
         FileService,
         VersionHistoryService,
         VersionRestoreService,
         FolderService,
         QuickAccessService,
+        StoragePreviewFacade,
         SearchService,
         { provide: I_NODE_SEARCH_REPOSITORY, useClass: TypeOrmNodeSearchRepository },
         { provide: I_NODE_METADATA_READER, useClass: SqlNodeMetadataReader },
@@ -161,13 +165,14 @@ export class StorageModule {
       ],
       // 011 (PD-31): el lector de metadatos para `backoffice`. 009 (ampliación de la decisión 1, 2026-10-15): `billing`
       // importa `I_OBJECT_STORAGE` de forma explícita, sin módulo global. 016: la fachada de edición para `editing`.
-      // 019: la fachada de la indexación para `intelligence`. 012 (PD-121): la política de solo lectura para `sharing`.
+      // 017 (plan §2.3): la fachada de vista previa para `PreviewModule`. 019: la fachada de la indexación para `intelligence`. 012 (PD-121): la política de solo lectura para `sharing`.
       // 011b: la papelera de Soporte para `backoffice`. 013: la fachada de los enlaces públicos para `sharing`. 021: la
       // fachada del optimizador.
       exports: [
         I_NODE_METADATA_READER,
         I_OBJECT_STORAGE,
         EditableFileGateway,
+        StoragePreviewFacade,
         IndexableFileGateway,
         WritableAccountPolicy,
         SupportTrashService,

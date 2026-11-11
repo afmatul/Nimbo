@@ -253,5 +253,6 @@ describe('pino-http con las opciones de `buildLoggerModuleParams` (001 CA-18)', 
       res: { statusCode: 500 },
     });
     expect(lines.find((line) => line.event === 'identity.rate_limited')).not.toHaveProperty('req');
+    expect(httpLine).toHaveProperty('err.message', 'failed with status code 500');
   });
 });

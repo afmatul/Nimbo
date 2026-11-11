@@ -69,6 +69,9 @@ export function placeNameOf(folderId: string | null, breadcrumbs: readonly Folde
   return placeOf(folderId, breadcrumbs).name ?? UNKNOWN_FOLDER_PLACE;
 }
 
+/** Encabezado del explorador: nombra la sección y recibe el foco al volver si la fila ya no está (017 §6). */
+export const EXPLORER_HEADING_ID = 'explorador-titulo';
+
 /** Pantallas táctiles sin arrastre: la descripción del vacío no menciona arrastrar (mockup `explorador--vacio`). */
 const NO_DRAG_QUERY = '(hover: none), (pointer: coarse)';
 
@@ -123,7 +126,7 @@ export function FileExplorer(props: FileExplorerProps): React.JSX.Element {
   const owner = isOwner(props.accessLevel);
   const place = placeOf(folderId, breadcrumbs);
   return (
-    <section className="flex flex-col gap-4" aria-labelledby="explorador-titulo">
+    <section className="flex flex-col gap-4" aria-labelledby={EXPLORER_HEADING_ID}>
       {place.isRoot || breadcrumbs.length === 0 ? null : (
         <FolderBackLink breadcrumbs={breadcrumbs} {...(owner ? {} : { root: SHARED_ROOT_CRUMB })} />
       )}
@@ -259,8 +262,9 @@ function ExplorerTitle({
   const unknownWhileLoading = place.name === undefined && loading;
   return (
     <h1
-      id="explorador-titulo"
-      className="min-w-0 truncate text-xl font-semibold tracking-tight text-foreground"
+      id={EXPLORER_HEADING_ID}
+      tabIndex={-1}
+      className="min-w-0 truncate rounded-sm text-xl font-semibold tracking-tight text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {unknownWhileLoading ? (
         <>

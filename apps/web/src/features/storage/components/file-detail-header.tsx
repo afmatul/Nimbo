@@ -13,13 +13,13 @@ import type * as React from 'react';
 import { FileTypeChip } from '../../../components/nimbo/file-type-chip';
 import { Button } from '../../../components/ui/button';
 import { IndexingStatusChip } from '../../intelligence/components/indexing-status-chip';
+import { CHIP_TYPE_BY_KIND } from '../file-type';
 import type { ReadyVersionsListing } from '../hooks/use-file-versions';
 import type { VersionActions } from '../hooks/use-version-actions';
 import { locationPath, MY_FILES_LABEL } from '../routes';
 import { currentVersionOf } from '../version-history';
 
 import { AskAgentButton } from './ask-agent-button';
-import { CHIP_TYPE_BY_KIND } from './node-rows';
 
 /** Título mientras el archivo no llegó (cargando o error). */
 const GENERIC_TITLE = 'Versiones del archivo';

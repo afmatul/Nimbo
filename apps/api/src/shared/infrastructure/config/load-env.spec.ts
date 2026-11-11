@@ -127,6 +127,7 @@ describe('loadEnv(apiEnvSchema)', () => {
         PUBLIC_LINK_LOCK_MINUTES: 15,
         PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR: 100,
         RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE: 120,
+        RATE_LIMIT_PREVIEW_URL_PER_MINUTE: 120,
         RATE_LIMIT_VERSION_RESTORE_PER_MINUTE: 30,
         FOLDER_MAX_DEPTH: 10,
         QUICK_ACCESS_MAX_PINNED: 5,
@@ -183,6 +184,7 @@ describe('loadEnv(apiEnvSchema)', () => {
     const result = loadEnv(apiEnvSchema, source);
 
     delete process.env.DATABASE_URL;
+
     expect(result).toEqual({ ok: false, issues: ['`DATABASE_URL` es obligatoria'] });
   });
 });
@@ -357,7 +359,11 @@ describe('loadEnv(apiEnvSchema): variables de 001 (plan §6.10)', () => {
   });
 
   it('CA-20: `WEB_PUBLIC_URL` con `http://` y `APP_ENV=staging` falla', () => {
-    const result = loadEnv(apiEnvSchema, { ...VALID_API, APP_ENV: 'staging' });
+    const result = loadEnv(apiEnvSchema, {
+      ...VALID_API,
+      APP_ENV: 'staging',
+      MINIO_PUBLIC_ENDPOINT: 'http://objetos.localhost:9000',
+    });
 
     expect(result).toEqual({
       ok: false,
@@ -445,6 +451,7 @@ describe('loadEnv: carga y descarga de archivos (005 T-20)', () => {
   it.each([
     'RATE_LIMIT_UPLOAD_INIT_PER_MINUTE',
     'RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE',
+    'RATE_LIMIT_PREVIEW_URL_PER_MINUTE',
     'RATE_LIMIT_VERSION_RESTORE_PER_MINUTE',
   ])('RN-16: `%s=0` se rechaza', (key) => {
     const result = loadEnv(apiEnvSchema, { ...VALID_API, [key]: '0' });

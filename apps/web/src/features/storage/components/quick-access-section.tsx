@@ -15,10 +15,9 @@ import {
   DropdownMenuTrigger,
 } from '../../../components/ui/dropdown-menu';
 import { cn } from '../../../lib/utils';
+import { CHIP_TYPE_BY_KIND } from '../file-type';
 import type { QuickAccess } from '../hooks/use-quick-access';
 import { folderPath, MY_FILES_LABEL, MY_FILES_PATH } from '../routes';
-
-import { CHIP_TYPE_BY_KIND } from './node-rows';
 
 export interface QuickAccessSectionProps {
   readonly quickAccess: QuickAccess;

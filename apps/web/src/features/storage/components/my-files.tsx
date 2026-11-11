@@ -1,6 +1,6 @@
 'use client';
 
-import type { NodeAccessLevel, NodeSummary } from '@nimbo/contracts';
+import type { FileSummary, NodeAccessLevel, NodeSummary } from '@nimbo/contracts';
 import * as React from 'react';
 
 import { AppLayout } from '../../../components/nimbo/app-layout';
@@ -12,6 +12,7 @@ import {
   type MyFilesState,
   type RowActionHandlers,
 } from '../hooks/use-my-files-state';
+import { useReturnFocus } from '../hooks/use-return-focus';
 import { isOwner } from '../node-access';
 
 import { FileExplorer, type FileExplorerStatus } from './file-explorer';
@@ -24,6 +25,12 @@ import { QuickAccessLimitAlert } from './quick-access-limit-alert';
 import { ReadOnlyNotice } from './read-only-notice';
 import { SidebarQuota } from './sidebar-quota';
 
+/**
+ * Acción que otro módulo agrega como primer ítem del menú de cada archivo (017: «Previsualizar»). Solo recibe el
+ * archivo: no ve el estado del explorador. Es un componente de cliente, así que la provee un envoltorio de cliente.
+ */
+export type FirstFileAction = React.ComponentType<{ readonly file: FileSummary }>;
+
 /** Lo que la fila necesita para «Compartir»: el nivel de la ubicación abierta y quién abre el diálogo (012b). */
 interface RowShare {
   readonly level: NodeAccessLevel;
@@ -35,10 +42,12 @@ function RowActions({
   node,
   handlers,
   share,
+  FirstAction,
 }: {
   readonly node: NodeSummary;
   readonly handlers: RowActionHandlers;
   readonly share: RowShare;
+  readonly FirstAction: FirstFileAction | undefined;
 }): React.JSX.Element {
   const common = {
     onRename: () => handlers.organize({ action: 'rename', node }),
@@ -57,6 +66,7 @@ function RowActions({
       requestUrl={handlers.requestUrl}
       onNotice={handlers.onNotice}
       onRefresh={handlers.onRefresh}
+      firstAction={FirstAction ? <FirstAction file={node} /> : undefined}
       {...common}
     />
   );
@@ -89,9 +99,15 @@ interface MyFilesExplorerProps {
   readonly state: MyFilesState;
   readonly status: FileExplorerStatus;
   readonly share: RowShare;
+  readonly firstAction: FirstFileAction | undefined;
 }
 
-function MyFilesExplorer({ state, status, share }: MyFilesExplorerProps): React.JSX.Element {
+function MyFilesExplorer({
+  state,
+  status,
+  share,
+  firstAction,
+}: MyFilesExplorerProps): React.JSX.Element {
   const { contents, notices, uploads, folderId } = state;
   return (
     <FileExplorer
@@ -108,7 +124,12 @@ function MyFilesExplorer({ state, status, share }: MyFilesExplorerProps): React.
       disclosure={state.view.disclosure}
       controls={contents.controls}
       renderRowActions={(node) => (
-        <RowActions node={node} handlers={state.rowActions} share={share} />
+        <RowActions
+          node={node}
+          handlers={state.rowActions}
+          share={share}
+          FirstAction={firstAction}
+        />
       )}
       notice={explorerNotices(state.sidebar.quickAccess, notices.notice, () =>
         notices.setNotice(null),
@@ -133,6 +154,10 @@ export interface MyFilesProps {
   readonly folderId: string | null;
   /** Cliente de compartición del diálogo «Compartir» (012b). */
   readonly sharingApi: SharingApi;
+  /** Archivo cuya fila recibe el foco al volver de la vista previa (017 §6); sin él, el foco no se mueve. */
+  readonly returnFocusId?: string | null;
+  /** Primer ítem del menú de cada archivo; sin él, el menú queda como en 005/006. */
+  readonly firstAction?: FirstFileAction;
 }
 
 /**
@@ -140,9 +165,15 @@ export interface MyFilesProps {
  * renombra, mueve y manda a la papelera (con accesos rápidos, el contador de la Papelera y la tarjeta de cuota en la barra
  * lateral).
  */
-export function MyFiles({ folderId, sharingApi }: MyFilesProps): React.JSX.Element {
+export function MyFiles({
+  folderId,
+  sharingApi,
+  returnFocusId = null,
+  firstAction,
+}: MyFilesProps): React.JSX.Element {
   const state = useMyFilesState(folderId);
   const { listing } = state.contents;
+  useReturnFocus(listing.status, returnFocusId);
   const [sharing, setSharing] = React.useState<ShareTarget | null>(null);
   const share: RowShare = { level: accessLevelOf(listing), open: setSharing };
   return (
@@ -157,7 +188,12 @@ export function MyFiles({ folderId, sharingApi }: MyFilesProps): React.JSX.Eleme
         {listing.status === 'not_found' ? (
           <FolderNotFoundState />
         ) : (
-          <MyFilesExplorer state={state} status={listing.status} share={share} />
+          <MyFilesExplorer
+            state={state}
+            status={listing.status}
+            share={share}
+            firstAction={firstAction}
+          />
         )}
       </div>
       <MyFilesDialogs state={state} />

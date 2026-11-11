@@ -4,7 +4,7 @@ import type { JSX } from 'react';
 
 import { FileTypeChip } from '../../../components/nimbo/file-type-chip';
 import { Button } from '../../../components/ui/button';
-import { CHIP_TYPE_BY_KIND } from '../../storage/components/node-rows';
+import { CHIP_TYPE_BY_KIND } from '../../storage';
 import { FILE_KIND_LABELS } from '../../storage/file-kind-label';
 import { dayText } from '../backoffice-dates';
 import { locationText } from '../trash-notices';

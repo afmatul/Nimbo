@@ -17,6 +17,14 @@ a «cargando») y descarta respuestas de intentos anteriores. Se refresca al com
 `uploadedFiles.length`; el `UploadManager` no se toca), al mandar a la papelera, restaurar, eliminar definitivamente y al
 terminar de vaciar (D-16). Sin empuje en tiempo real (P-2). Si el resumen falla, el resto de la app sigue usable (CA-8).
 
+**Frontera pública y vuelta de la vista previa (017 T-05)**: otros módulos y los envoltorios de ruta importan solo de
+`index.ts` (`MyFiles`, `FirstFileAction`, `locationPath`, `returnPathOf`, `returnFocusOf`, `useFileDownload`). `MyFiles`
+acepta `firstAction`, un componente que recibe solo el archivo y se pinta como primer ítem de su menú ⋮ (`FileRowMenu`
+lo recibe como `firstAction?: ReactNode`); al ser una función, lo pasa un envoltorio de cliente. «Volver» navega a
+`returnPathOf(file)` (`file.folderId` o la raíz con `?foco=<id>`); la página lo lee con `returnFocusOf` y
+`useReturnFocus` espera el listado y enfoca el ⋮ de esa fila o, si ya no está, el encabezado del explorador. No guarda
+orden, páginas, desgloses ni la URL firmada.
+
 | Pieza                                                                               | Qué hace                                                                                                 | Tarea      |
 | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------- |
 | `upload/upload-manager.ts`                                                          | Máquina de estados de las cargas (2 archivos × 4 partes, pausa, corte, cancelación)                      | T-12, T-13 |

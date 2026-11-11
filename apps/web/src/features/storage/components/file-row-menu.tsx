@@ -58,6 +58,11 @@ export interface FileRowMenuProps {
   readonly pin: PinToggle;
   /** Nivel sobre el archivo y «Compartir» (012b): sin `OWNER`, solo descargar y, como Editor, editar un `.docx`. */
   readonly sharing: RowSharing;
+  /**
+   * Primer ítem del menú, antes de «Descargar» (017: «Previsualizar»), ya renderizado: `MyFiles` lo crea desde su
+   * `FirstFileAction`. Storage no conoce quién lo provee.
+   */
+  readonly firstAction?: React.ReactNode;
 }
 
 function codeOf(error: unknown): string | null {
@@ -116,6 +121,7 @@ export function FileRowMenu({
   onMoveToTrash,
   pin,
   sharing,
+  firstAction,
 }: FileRowMenuProps): React.JSX.Element {
   const [open, setOpen] = React.useState(false);
   const flow = usePreparingDownload<FileSummary>(
@@ -143,6 +149,7 @@ export function FileRowMenu({
       <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
         <RowMenuTrigger name={file.name} />
         <DropdownMenuContent align="end">
+          {firstAction}
           <DropdownMenuItem
             aria-disabled={preparing || undefined}
             className={preparing ? 'text-secondary-foreground' : undefined}
@@ -208,6 +215,9 @@ function FileActionItems({
   );
 }
 
+/** El botón ⋮ es el control de su fila: lo enfoca la vuelta de la vista previa (017 §6). */
+export const ROW_CONTROL_SELECTOR = '[data-row-control]';
+
 /** «Ver historial»: enlace a la ficha del archivo con sus versiones (plan 014 §2). */
 function HistoryMenuItem({ fileId }: { readonly fileId: string }): React.JSX.Element {
   return (
@@ -252,6 +262,7 @@ export function RowMenuTrigger({ name }: { readonly name: string }): React.JSX.E
         size="icon"
         className="shrink-0 text-secondary-foreground"
         aria-label={`Acciones de ${name}`}
+        data-row-control=""
       >
         <EllipsisVertical className="h-5 w-5" aria-hidden="true" />
       </Button>

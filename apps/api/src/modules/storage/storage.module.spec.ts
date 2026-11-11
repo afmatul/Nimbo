@@ -4,6 +4,7 @@ import type { DynamicModule, Provider, ValueProvider } from '@nestjs/common';
 import { EventEmitterDomainEventPublisher, I_DOMAIN_EVENT_PUBLISHER } from '../../shared';
 import { AuditModule } from '../audit';
 
+import { AccessibleFileUrlIssuer } from './application/accessible-file-url-issuer';
 import { EditableFileGateway } from './application/editable-file.gateway';
 import { FILE_SERVICE_CONFIG } from './application/file-service-config';
 import { FileVersionService } from './application/file-version.service';
@@ -23,6 +24,7 @@ import { QUICK_ACCESS_CONFIG } from './application/quick-access-config';
 import { QuickAccessService } from './application/quick-access.service';
 import { SpaceMeasurer } from './application/space-measurer';
 import { SpaceSummaryService } from './application/space-summary.service';
+import { StoragePreviewFacade } from './application/storage-preview.facade';
 import { SupportTrashService } from './application/support-trash.service';
 import { TrashPurger } from './application/trash-purger';
 import { UPLOAD_CONFIG } from './application/upload-config';
@@ -165,7 +167,7 @@ describe('StorageModule', () => {
     expect(providers).toEqual(expect.arrayContaining([SpaceMeasurer, SpaceSummaryService]));
   });
 
-  it('011 PD-31: provee el lector de metadatos con su adaptador SQL y exporta su token, el de objetos (009) y las fachadas de edición (016), de indexación (019), de optimización (021) y de enlaces públicos (013), la política de solo lectura (012 PD-121) y la papelera de Soporte (011b)', () => {
+  it('011 PD-31: provee el lector de metadatos con su adaptador SQL y exporta su token, el de objetos (009) y las fachadas de edición (016), de vista previa (017), de indexación (019), de optimización (021) y de enlaces públicos (013), la política de solo lectura (012 PD-121) y la papelera de Soporte (011b)', () => {
     const reader = providers.find((provider) => tokenOf(provider) === I_NODE_METADATA_READER);
 
     expect(reader).toEqual({ provide: I_NODE_METADATA_READER, useClass: SqlNodeMetadataReader });
@@ -173,6 +175,7 @@ describe('StorageModule', () => {
       I_NODE_METADATA_READER,
       I_OBJECT_STORAGE,
       EditableFileGateway,
+      StoragePreviewFacade,
       IndexableFileGateway,
       WritableAccountPolicy,
       SupportTrashService,
@@ -188,6 +191,12 @@ describe('StorageModule', () => {
       useClass: TypeOrmSupportTrashRepository,
     });
     expect(providers).toContain(SupportTrashService);
+  });
+
+  it('017 CA-11: registra el emisor compartido y la fachada de vista previa', () => {
+    expect(providers).toEqual(
+      expect.arrayContaining([AccessibleFileUrlIssuer, StoragePreviewFacade]),
+    );
   });
 
   it('019 RN-11: registra el publicador de eventos con que `FileVersionService` anuncia cada versión vigente', () => {

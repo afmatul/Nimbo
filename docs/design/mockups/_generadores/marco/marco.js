@@ -178,7 +178,7 @@ function topbar({ crumbs = ['Cuenta', 'Seguridad'], conMenu = false, menuAbierto
           </nav>` : ''}
         </div>
         ${conMenu ? '<div class="account">\n        ' : ''}<button class="account-btn" type="button"${cuentaExtra} aria-haspopup="menu" aria-expanded="${menuAbierto}">
-          <span class="account-name">${CUENTA.nombre}</span><span class="avatar" aria-hidden="true">${CUENTA.iniciales}</span><span class="sr-only">Menú de la cuenta</span>
+          <span class="account-name">${CUENTA.nombre}<span class="sr-only"> (menú de la cuenta)</span></span><span class="avatar" aria-hidden="true">${CUENTA.iniciales}</span>
         </button>${conMenu ? `${menuCuenta({ abierto: menuAbierto, actividad })}\n        </div>` : ''}
       </header>`;
 }

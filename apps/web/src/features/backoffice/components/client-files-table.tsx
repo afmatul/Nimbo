@@ -4,8 +4,8 @@ import type { JSX } from 'react';
 
 import { FileTypeChip } from '../../../components/nimbo/file-type-chip';
 import { StatusBadge } from '../../../components/nimbo/status-badge';
-import { CHIP_TYPE_BY_KIND } from '../../storage/components/node-rows';
 import { FILE_KIND_LABELS } from '../../storage/file-kind-label';
+import { CHIP_TYPE_BY_KIND } from '../../storage/file-type';
 import { dateTimeText, dayText } from '../backoffice-dates';
 
 const sizeOf = (file: ClientFileMetadata): string => formatBytes(Number(file.sizeBytes));

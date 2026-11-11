@@ -9,7 +9,7 @@ import { FileTypeChip } from '../../../components/nimbo/file-type-chip';
 import { StatusBadge } from '../../../components/nimbo/status-badge';
 import { dayLabel } from '../../../lib/format-date';
 import { cn } from '../../../lib/utils';
-import { CHIP_TYPE_BY_KIND } from '../../storage/components/node-rows';
+import { CHIP_TYPE_BY_KIND } from '../../storage/file-type';
 import { fileDetailPath, folderPath, locationPath, MY_FILES_LABEL } from '../../storage/routes';
 
 const LINK_CLASSES =

@@ -1,5 +1,6 @@
 // API pública del módulo `storage`. Otros módulos importan solo desde aquí (Art. VIII.3, CA-5).
-// No se exportan el detector de tipos, el escáner de cargas vencidas, el adaptador de auditoría ni los repositorios.
+// No se exportan el detector de tipos, el escáner de cargas vencidas, el adaptador de auditoría, los repositorios ni
+// el emisor interno de URLs (`AccessibleFileUrlIssuer`, 017 plan §2.3).
 // `EditableFileGateway` es la fachada que consume `editing` (016, ADR-0012: la versión es de `storage`).
 export { EditableFileGateway } from './application/editable-file.gateway';
 export type { EditableFile } from './application/editable-file.gateway';
@@ -8,8 +9,14 @@ export type {
   EditedVersionOutcome,
 } from './application/edited-version.registrar';
 export { I_PLAN_LIMITS_PROVIDER } from './application/plan-limits';
-export { AccountReadOnlyError, NodeNotFoundError } from './domain/errors';
+export {
+  AccountReadOnlyError,
+  NodeNotFoundError,
+  StorageTooManyRequestsError,
+} from './domain/errors';
 export type { IPlanLimitsProvider, PlanLimits } from './application/plan-limits';
+export { StoragePreviewFacade } from './application/storage-preview.facade';
+export type { PreviewDelivery } from './application/storage-preview.facade';
 export { I_NODE_METADATA_READER } from './application/ports/i-node-metadata-reader.port';
 export type {
   FileMetadata,

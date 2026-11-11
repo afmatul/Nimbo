@@ -37,6 +37,8 @@ export default tseslint.config(
       // Fixtures negativos de `boundaries.js`: violan las fronteras a propósito; los lintea su prueba.
       'packages/config/eslint/fixtures/**',
       'pnpm-lock.yaml',
+      // Harness local (worktrees de agentes con copias del repo); ya lo excluye `.prettierignore`.
+      '.claude/**',
     ],
   },
   ...base.map(withRoot),

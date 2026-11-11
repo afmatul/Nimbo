@@ -194,6 +194,22 @@ describe('accesos rápidos (006 plan §9.2)', () => {
   });
 });
 
+describe('previsualización (017 plan §5)', () => {
+  const previewRate = apiEnvObjectSchema.shape.RATE_LIMIT_PREVIEW_URL_PER_MINUTE;
+
+  it('CA-12: `RATE_LIMIT_PREVIEW_URL_PER_MINUTE` es solo del `api` y vale 120 por defecto', () => {
+    expect(declaredIn('RATE_LIMIT_PREVIEW_URL_PER_MINUTE')).toEqual(['api']);
+    expect(previewRate.parse(undefined)).toBe(120);
+  });
+
+  it.each(['-1', '2.5', 'cien'])(
+    'CA-12: `RATE_LIMIT_PREVIEW_URL_PER_MINUTE=%s` no pasa (entero positivo; `0` en load-env)',
+    (value) => {
+      expect(previewRate.safeParse(value).success).toBe(false);
+    },
+  );
+});
+
 describe('canal en vivo (015 plan §5)', () => {
   it('CA-14: `REALTIME_CONNECT_ATTEMPTS_PER_MINUTE` es solo del `api`, vale 60 por defecto y es positiva', () => {
     const attempts = apiEnvObjectSchema.shape.REALTIME_CONNECT_ATTEMPTS_PER_MINUTE;
@@ -221,6 +237,39 @@ describe('JWT_ACCESS_SECRET (002 plan §6.10, CA-25, CA-26)', () => {
 
     expect(issues).toEqual(['`JWT_ACCESS_SECRET` debe tener al menos 32 caracteres']);
     expect(issues.join()).not.toContain('x'.repeat(31));
+  });
+
+  it.each(['staging', 'production'])(
+    'CA-11: con `APP_ENV=%s` rechaza servir objetos desde el hostname de la web',
+    (appEnv) => {
+      expect(
+        issuesFor({
+          APP_ENV: appEnv,
+          JWT_ACCESS_SECRET: STAGING_SECRET,
+          WEB_PUBLIC_URL: 'https://nimbo.me',
+          MINIO_PUBLIC_ENDPOINT: 'https://nimbo.me:9000',
+        }),
+      ).toEqual([
+        '`MINIO_PUBLIC_ENDPOINT` debe usar un hostname distinto del de WEB_PUBLIC_URL en staging y en producción (origen de objetos aislado)',
+      ]);
+    },
+  );
+
+  it('CA-11: con `APP_ENV=staging` acepta un subdominio propio para los objetos', () => {
+    expect(
+      issuesFor({
+        APP_ENV: 'staging',
+        JWT_ACCESS_SECRET: STAGING_SECRET,
+        WEB_PUBLIC_URL: 'https://nimbo.me',
+        MINIO_PUBLIC_ENDPOINT: 'https://objetos.nimbo.me',
+      }),
+    ).toEqual([]);
+  });
+
+  it('CA-11: en local el host de objetos puede compartir hostname con la web', () => {
+    expect(issuesFor({ APP_ENV: 'local', MINIO_PUBLIC_ENDPOINT: 'http://localhost:9000' })).toEqual(
+      [],
+    );
   });
 
   it('CA-26: en local basta el valor de desarrollo de `.env.example`', () => {

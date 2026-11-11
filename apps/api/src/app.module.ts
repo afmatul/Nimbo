@@ -17,6 +17,7 @@ import { OptimizerModule } from './modules/optimizer';
 import { RealtimeModule } from './modules/realtime';
 import { SharingModule } from './modules/sharing';
 import { StorageModule } from './modules/storage';
+import { PreviewModule } from './modules/storage/preview';
 import { PlanLimitsBindingModule } from './plan-limits-binding.module';
 import {
   AuthGuardsModule,
@@ -56,8 +57,8 @@ import { UserDirectoryBindingModule } from './user-directory-binding.module';
 export class AppModule {
   static forRoot(env: Env): DynamicModule {
     const identity = IdentityModule.forRoot(env);
-    // Una sola instancia de `storage`: `billing`, `backoffice`, `editing` y `sharing` la importan de forma explícita
-    // (009, ampliación de la decisión 1; 011; 016; 012).
+    // Una sola instancia de `storage`: `billing`, `backoffice`, `editing`, `sharing` y la vista previa la importan de
+    // forma explícita (009, ampliación de la decisión 1; 011; 016; 012; 017 plan §2.3).
     const storage = StorageModule.forRoot(env);
     const realtime = RealtimeModule.forRoot(env, identity);
     return {
@@ -81,6 +82,12 @@ export class AppModule {
         UserDirectoryBindingModule.forRoot(identity),
         ShareeDirectoryBindingModule.forRoot(identity),
         storage,
+        PreviewModule.register({
+          storageModule: storage,
+          config: {
+            previewUrlPerMinute: env.RATE_LIMIT_PREVIEW_URL_PER_MINUTE,
+          },
+        }),
         AuditHttpModule,
         BillingHttpModule.forRoot(env, storage),
         BackofficeModule.forRoot(identity, storage),

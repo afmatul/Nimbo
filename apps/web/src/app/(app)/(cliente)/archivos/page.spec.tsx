@@ -76,13 +76,13 @@ function fakeApi(overrides: Partial<StorageApi> = {}): jest.Mocked<StorageApi> {
 async function renderPage(
   api: StorageApi,
   managerOptions?: UploadManagerOptions,
+  search: Readonly<Record<string, string>> = {},
 ): Promise<HTMLElement> {
+  const element = await ArchivosPage({ searchParams: Promise.resolve(search) });
   const { container } = render(
     <SessionProvider apiPublicUrl="http://localhost/api/v1">
       <UploadsProvider api={api} {...(managerOptions ? { managerOptions } : {})}>
-        <UploadsSpaceProvider>
-          <ArchivosPage />
-        </UploadsSpaceProvider>
+        <UploadsSpaceProvider>{element}</UploadsSpaceProvider>
       </UploadsProvider>
     </SessionProvider>,
   );
@@ -123,6 +123,37 @@ describe('página Mis archivos (/archivos)', () => {
     const table = await screen.findByRole('table');
     expect(within(table).getByText('informe.docx')).toBeTruthy();
     expect(within(table).getByRole('button', { name: 'Acciones de informe.docx' })).toBeTruthy();
+  });
+
+  it('017 CA-6: en la raíz, «Previsualizar» es el primer ítem de un PDF y abre su vista previa', async () => {
+    const plan: FileSummary = { ...NUEVO, name: 'plan.pdf', kind: 'pdf' };
+    const api = fakeApi({ folderContents: jest.fn(() => Promise.resolve(page([plan]))) });
+    await renderPage(api);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Acciones de plan.pdf' }));
+    const [first] = screen.getAllByRole('menuitem');
+    expect(first?.textContent).toBe('Previsualizar');
+    const preview = screen.getByRole('menuitem', { name: 'Previsualizar' });
+    expect(preview.tagName).toBe('A');
+    expect(preview.getAttribute('href')).toBe(`/archivos/vista-previa/${plan.id}`);
+    expect(api.downloadUrl).not.toHaveBeenCalled();
+  });
+
+  it('017 CA-6: un .docx no ofrece «Previsualizar»: «Descargar» sigue primero', async () => {
+    await renderPage(fakeApi({ folderContents: jest.fn(() => Promise.resolve(page([INFORME]))) }));
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Acciones de informe.docx' }));
+
+    expect(screen.queryByRole('menuitem', { name: 'Previsualizar' })).toBeNull();
+    expect(screen.getAllByRole('menuitem')[0]?.textContent).toBe('Descargar');
+  });
+
+  it('017 CA-9: al volver de la vista previa (`?foco=`) enfoca el control de la fila del archivo', async () => {
+    const api = fakeApi({ folderContents: jest.fn(() => Promise.resolve(page([INFORME]))) });
+    await renderPage(api, undefined, { foco: INFORME.id });
+
+    const control = await screen.findByRole('button', { name: 'Acciones de informe.docx' });
+    await waitFor(() => expect(document.activeElement).toBe(control));
   });
 
   it('CA-21: si el listado falla, «Reintentar» repite la petición y muestra la lista', async () => {

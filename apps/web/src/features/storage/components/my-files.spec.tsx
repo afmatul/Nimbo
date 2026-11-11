@@ -14,12 +14,13 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 
+import { DropdownMenuItem } from '../../../components/ui/dropdown-menu';
 import { fakeSharingApi } from '../../sharing/test-sharing';
 import type { StorageApi } from '../api';
 import { StorageRequestError } from '../storage-request-error';
 import { GB, spaceSummaryWith } from '../test-space-summary';
 
-import { MyFiles } from './my-files';
+import { MyFiles, type FirstFileAction, type MyFilesProps } from './my-files';
 import { UploadsSpaceProvider } from './space-provider';
 import { UploadsProvider } from './uploads-provider';
 
@@ -433,6 +434,91 @@ describe('MyFiles avisa cuando fijar o quitar falla (006 CA-27)', () => {
     expect(alert.textContent).toContain('No pudimos quitar «raiz.pdf» de la barra lateral.');
     expect(alert.textContent).toContain('Hiciste demasiadas solicitudes.');
     expect(within(desktopSidebar()).getByRole('button', { name: RAIZ_IN_SIDEBAR })).toBeTruthy();
+  });
+});
+
+/** Mis archivos al volver de la vista previa (017 §6): ubicación de origen y fila que pide el foco. */
+function renderReturn(api: StorageApi, props: Omit<MyFilesProps, 'sharingApi'>): void {
+  render(
+    <UploadsProvider api={api}>
+      <UploadsSpaceProvider>
+        <MyFiles {...props} sharingApi={fakeSharingApi()} />
+      </UploadsSpaceProvider>
+    </UploadsProvider>,
+  );
+}
+
+function explorerHeading(): HTMLElement {
+  return screen.getByRole('heading', { level: 1 });
+}
+
+describe('MyFiles al volver de la vista previa (017 CA-7, CA-9)', () => {
+  it('CA-9: en la raíz, con el listado listo, enfoca el control de la fila del archivo', async () => {
+    renderReturn(fakeApi(), { folderId: null, returnFocusId: 'f-root' });
+
+    const control = await screen.findByRole('button', { name: 'Acciones de raiz.pdf' });
+    await waitFor(() => expect(document.activeElement).toBe(control));
+  });
+
+  it('CA-9: en una carpeta enfoca la fila de esa carpeta y no lee la raíz', async () => {
+    const api = fakeApi();
+    renderReturn(api, { folderId: ALPHA.id, returnFocusId: 'f-a' });
+
+    const control = await screen.findByRole('button', { name: 'Acciones de acta.pdf' });
+    await waitFor(() => expect(document.activeElement).toBe(control));
+    expect(api.folderContents).not.toHaveBeenCalledWith(null, expect.anything());
+  });
+
+  it('CA-9: si la fila ya no está en la lista, enfoca el encabezado del explorador', async () => {
+    renderReturn(fakeApi(), { folderId: null, returnFocusId: 'f-que-ya-no-esta' });
+
+    await screen.findByText('raiz.pdf');
+    await waitFor(() => expect(document.activeElement).toBe(explorerHeading()));
+    expect(explorerHeading().textContent).toBe('Mis archivos');
+  });
+
+  it('CA-9: espera el listado: mientras carga no mueve el foco', async () => {
+    let resolve!: (contents: FolderContentsResponse) => void;
+    const folderContents = jest.fn(
+      () => new Promise<FolderContentsResponse>((done) => (resolve = done)),
+    );
+    renderReturn(fakeApi({ folderContents }), { folderId: null, returnFocusId: 'f-root' });
+
+    await act(async () => undefined);
+    expect(document.activeElement).toBe(document.body);
+    await act(async () => resolve(LISTINGS['root'] as FolderContentsResponse));
+
+    const control = await screen.findByRole('button', { name: 'Acciones de raiz.pdf' });
+    await waitFor(() => expect(document.activeElement).toBe(control));
+  });
+
+  it('CA-7: sin objetivo de foco no mueve el foco al abrir la ubicación', async () => {
+    renderReturn(fakeApi(), { folderId: null });
+
+    await screen.findByText('raiz.pdf');
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it('CA-9: `firstAction` es el primer ítem del menú de cada archivo y recibe su archivo', async () => {
+    const FirstAction: FirstFileAction = ({ file }) => (
+      <DropdownMenuItem>{`Previsualizar ${file.name}`}</DropdownMenuItem>
+    );
+    renderReturn(fakeApi(), { folderId: null, firstAction: FirstAction });
+    await screen.findByText('raiz.pdf');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Acciones de raiz.pdf' }));
+
+    expect(screen.getAllByRole('menuitem')[0]?.textContent).toBe('Previsualizar raiz.pdf');
+  });
+
+  it('CA-7: el menú de las carpetas no recibe `firstAction`', async () => {
+    const FirstAction: FirstFileAction = () => <DropdownMenuItem>Previsualizar</DropdownMenuItem>;
+    renderReturn(fakeApi(), { folderId: null, firstAction: FirstAction });
+    await screen.findByText('raiz.pdf');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Acciones de Proyecto Alpha' }));
+
+    expect(screen.queryByRole('menuitem', { name: 'Previsualizar' })).toBeNull();
   });
 });
 

@@ -102,12 +102,20 @@ function fakeApi(overrides: Partial<StorageApi> = {}): jest.Mocked<StorageApi> {
   } as jest.Mocked<StorageApi>;
 }
 
+interface FolderRoute {
+  readonly folderId: string;
+  readonly search?: Readonly<Record<string, string>>;
+}
+
 async function renderFolder(
   api: StorageApi,
-  folderId = FASE3.id,
+  route: FolderRoute = { folderId: FASE3.id },
   managerOptions?: UploadManagerOptions,
 ): Promise<void> {
-  const page = await CarpetaPage({ params: Promise.resolve({ folderId }) });
+  const page = await CarpetaPage({
+    params: Promise.resolve({ folderId: route.folderId }),
+    searchParams: Promise.resolve(route.search ?? {}),
+  });
   render(
     <SessionProvider apiPublicUrl="http://localhost/api/v1">
       <UploadsProvider api={api} {...(managerOptions ? { managerOptions } : {})}>
@@ -149,6 +157,43 @@ describe('página de una carpeta (/archivos/carpeta/[folderId])', () => {
       '/archivos',
     );
     expect(crumbs.getByRole('link', { name: 'Proyecto Alpha' })).toBeTruthy();
+  });
+
+  it('017 CA-6: en una carpeta, «Previsualizar» es el primer ítem de un PDF y abre su vista previa', async () => {
+    const plan: FileSummary = {
+      ...INFORME,
+      id: '8b9c0d1e-2f3a-4d5e-8f6a-0c1d2e3f4a5b',
+      name: 'Plan.pdf',
+      kind: 'pdf',
+    };
+    await renderFolder(
+      fakeApi({
+        folderContents: contentsBy(() => Promise.resolve(fase3([{ type: 'file', ...plan }]))),
+      }),
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Acciones de Plan.pdf' }));
+    expect(screen.getAllByRole('menuitem')[0]?.textContent).toBe('Previsualizar');
+    const preview = screen.getByRole('menuitem', { name: 'Previsualizar' });
+    expect(preview.tagName).toBe('A');
+    expect(preview.getAttribute('href')).toBe(`/archivos/vista-previa/${plan.id}`);
+  });
+
+  it('017 CA-9: al volver de la vista previa (`?foco=`) enfoca la fila del archivo en su carpeta', async () => {
+    await renderFolder(fakeApi(), { folderId: FASE3.id, search: { foco: INFORME.id } });
+
+    const control = await screen.findByRole('button', {
+      name: 'Acciones de Informe_avance_RAG.docx',
+    });
+    await waitFor(() => expect(document.activeElement).toBe(control));
+  });
+
+  it('017 CA-9: si el archivo ya no está en la carpeta, el foco va al encabezado del explorador', async () => {
+    const gone = '9f8e7d6c-5b4a-4c3d-8e2f-1a0b9c8d7e6f';
+    await renderFolder(fakeApi(), { folderId: FASE3.id, search: { foco: gone } });
+
+    const heading = await screen.findByRole('heading', { level: 1, name: 'Fase 3 · RAG' });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
   });
 
   it('006 CA-27 (Q-3): al montar la página la carpeta se registra como reciente y la barra la muestra', async () => {
@@ -265,7 +310,7 @@ describe('página de una carpeta (/archivos/carpeta/[folderId])', () => {
       init: jest.fn(() => Promise.resolve(simple)),
       complete: jest.fn(() => Promise.resolve({ file: uploaded })),
     });
-    await renderFolder(api, FASE3.id, { put: () => Promise.resolve() });
+    await renderFolder(api, { folderId: FASE3.id }, { put: () => Promise.resolve() });
     await screen.findByRole('table');
 
     await chooseFiles([new File(['hola'], 'nuevo.pdf')]);

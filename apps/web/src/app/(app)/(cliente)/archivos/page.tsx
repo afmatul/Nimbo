@@ -1,13 +1,27 @@
 import type { ReactNode } from 'react';
 
 import { getEnv } from '../../../../env';
-import { SessionMyFiles } from '../../../../features/storage/components/session-my-files';
+import { returnFocusOf, type RouteSearch } from '../../../../features/storage';
+import { PreviewFiles } from '../../../../features/storage/preview';
+
+interface ArchivosPageProps {
+  readonly searchParams: Promise<RouteSearch>;
+}
 
 /**
  * Mis archivos (005, 006): la raíz con sus carpetas, «Nueva carpeta», «Subir archivos», arrastrar y soltar,
- * «Descargar» y «Compartir» (012b). El panel de cargas vive en el layout de `(cliente)`, así un fallo del listado no
- * toca las cargas.
+ * «Descargar», «Compartir» (012b) y, en los formatos admitidos, «Previsualizar» (017). El panel de cargas vive en el
+ * layout de `(cliente)`, así un fallo del listado no toca las cargas. Al volver de la vista previa, `?foco=` indica la
+ * fila que recibe el foco (017 §6).
  */
-export default function ArchivosPage(): ReactNode {
-  return <SessionMyFiles apiPublicUrl={getEnv().API_PUBLIC_URL} folderId={null} />;
+export default async function ArchivosPage({
+  searchParams,
+}: ArchivosPageProps): Promise<ReactNode> {
+  return (
+    <PreviewFiles
+      apiPublicUrl={getEnv().API_PUBLIC_URL}
+      folderId={null}
+      returnFocusId={returnFocusOf(await searchParams)}
+    />
+  );
 }

@@ -11,10 +11,10 @@ import { usePreparingDownload } from '../../../lib/use-preparing-download';
 import { editorPath } from '../../editing/routes';
 import { LEVEL_LABELS, SHARED_WITH_ME_LABEL, SHARED_WITH_ME_PATH } from '../../sharing';
 import type { StorageApi } from '../api';
+import { CHIP_TYPE_BY_KIND } from '../file-type';
 import { canEditDocx } from '../node-access';
 
 import { DownloadNoticeBanner, downloadFailureNotice, type DownloadNotice } from './file-row-menu';
-import { CHIP_TYPE_BY_KIND } from './node-rows';
 
 export interface SharedFileDetailProps {
   readonly detail: FileDetailResponse;

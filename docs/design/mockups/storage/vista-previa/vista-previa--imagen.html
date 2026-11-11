@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arquitectura_C4_contexto.png · Nimbo — imagen PNG tal cual</title>
+<!-- Mockup de referencia (spec 017: previsualización). Estado: imagen. -->
+<!-- Colores: valores de ui-guidelines.md §3 (tonos AA). La implementación usa tokens, components/ui y components/nimbo. -->
+<!-- Generado con storage/vista-previa/generar.js (marco, mis-archivos, carpetas, espacio y desglose). No editar a mano. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Valores de ui-guidelines.md §3 (tonos AA de ADR-0014). La implementación usa las utilidades de Tailwind, nunca hex. */
+    --sheet: #E7EDF5;          /* fondo de la hoja de mockups (no es un token de la app) */
+    --background: #F4F7FB;
+    --card: #FAFCFF;
+    --border: #DDE6F0;
+    --input: #7F93AA;
+    --foreground: #1E2D40;
+    --secondary-foreground: #3A5068;
+    --muted-foreground: #5E7389;
+    --primary: #4A6FA5;
+    --primary-hover: #3B5A8A;
+    --primary-foreground: #FFFFFF;
+    --brand: #6B8DD6;
+    --muted: #EEF3F9;
+    --accent: #DDE6F0;
+    --ring: #4A6FA5;
+    --success: #6DB99A;
+    --success-foreground: #3A7560;
+    --destructive: #A34F4F;
+    --destructive-soft: #C97B7B;
+    --overlay: rgba(44, 58, 82, .45); /* velo de diálogo: agent-bg al 45 %; token pendiente (#6 de app-layout) */
+    --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 18px;
+    --shadow-card: 0 1px 3px rgba(74,111,165,.08), 0 1px 2px rgba(74,111,165,.04);
+    --shadow-modal: 0 8px 24px rgba(44,58,82,.18);
+    --shadow-button: 0 1px 2px rgba(107,141,214,.20);
+    /* Mezclas al 12 % sobre card (fondo de alertas y distintivos) */
+    --success-soft: color-mix(in srgb, var(--success) 12%, var(--card));
+    --destructive-tint: color-mix(in srgb, var(--destructive-soft) 12%, var(--card));
+    --brand-soft: color-mix(in srgb, var(--brand) 12%, var(--card));
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--sheet); color: var(--foreground);
+    font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.5;
+  }
+  a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: var(--primary-hover); }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+  .ico { flex: none; }
+
+  /* Rótulo de la hoja */
+  .sheet-label {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px;
+    padding: 40px 48px 12px; font-size: 12px; line-height: 1.5; color: var(--secondary-foreground);
+  }
+  .sheet-label .chip { background: var(--border); border-radius: var(--radius-sm); padding: 1px 7px; font-weight: 600; font-size: 11px; }
+  .sheet-label strong { color: var(--foreground); font-size: 13px; font-weight: 600; }
+  .sheet-label .file { font-weight: 500; font-variant-numeric: tabular-nums; color: var(--primary-hover); }
+
+  /* Lienzo y marco de la aplicación (propuesta p. 08 y p. 17) */
+  .canvas {
+    position: relative; margin: 0 48px 48px; background: var(--background); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card); overflow: hidden;
+  }
+  .app { display: grid; grid-template-columns: 236px minmax(0, 1fr); min-height: 860px; }
+  .sidebar { display: flex; flex-direction: column; gap: 14px; background: var(--card); border-right: 1px solid var(--border); padding: 18px 12px 16px; }
+  .brand-row { display: flex; align-items: center; gap: 10px; padding: 4px 8px 10px; border-bottom: 1px solid var(--border); }
+  .logo { display: inline-flex; align-items: center; gap: 10px; color: var(--foreground); text-decoration: none; font-weight: 700; font-size: 17px; letter-spacing: .02em; min-height: 36px; }
+  .logo-mark { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); font-size: 15px; font-weight: 700; box-shadow: var(--shadow-button); }
+  .plan-chip { font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: .04em; color: var(--secondary-foreground); background: var(--muted); border-radius: var(--radius-sm); padding: 2px 6px; }
+  .nav { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .nav a { display: flex; align-items: center; gap: 12px; min-height: 36px; padding: 6px 12px; border-radius: var(--radius-md); color: var(--secondary-foreground); text-decoration: none; font-size: 13.5px; font-weight: 500; }
+  .nav a:hover { background: var(--muted); color: var(--foreground); }
+  .nav .meta { margin-left: auto; font-size: 11px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  .nav-sep { height: 1px; background: var(--border); margin: 2px 8px; }
+  .nav-title { margin: 6px 12px 0; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-foreground); }
+  .quota { margin-top: auto; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px; background: var(--card); }
+  .quota-head { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 600; }
+  .quota-bar { height: 6px; border-radius: 999px; background: var(--muted); margin: 8px 0 6px; overflow: hidden; }
+  .quota-bar span { display: block; height: 100%; width: 21%; background: var(--success); border-radius: 999px; }
+  .quota-meta { font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--muted-foreground); }
+
+  .main { min-width: 0; display: flex; flex-direction: column; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; padding: 10px 28px; background: var(--card); border-bottom: 1px solid var(--border); }
+  .topbar .menu-btn, .topbar .logo-mobile { display: none; }
+  .crumbs ol { display: flex; align-items: center; gap: 10px; list-style: none; margin: 0; padding: 0; font-size: 14px; }
+  .crumbs li + li::before { content: "/"; color: var(--muted-foreground); margin-right: 10px; }
+  .crumbs a { color: var(--secondary-foreground); text-decoration: none; }
+  .crumbs a:hover { color: var(--foreground); text-decoration: underline; }
+  .crumbs [aria-current] { font-weight: 600; color: var(--foreground); }
+  .account-btn { display: inline-flex; align-items: center; gap: 10px; min-height: 40px; padding: 4px 6px 4px 12px; border: 0; border-radius: 999px; background: transparent; color: var(--secondary-foreground); font: inherit; font-size: 13px; cursor: pointer; }
+  .account-btn:hover { background: var(--muted); }
+  .avatar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 999px; background: var(--card); color: var(--foreground); font-size: 11px; font-weight: 700; box-shadow: 0 0 0 2px var(--brand); }
+
+  .content { padding: 28px 28px 40px; }
+  .page-head h1 { margin: 0; font-size: 26px; line-height: 1.25; font-weight: 700; letter-spacing: -.01em; }
+  .page-head p { margin: 6px 0 0; color: var(--secondary-foreground); font-size: 14.5px; }
+  /* Botones (components/ui/button) */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 16px; border-radius: var(--radius-md); font: inherit; font-weight: 600; font-size: 13.5px; line-height: 1.2; cursor: pointer; text-decoration: none; white-space: nowrap; }
+  .btn-sm { min-height: 36px; padding: 6px 12px; font-size: 13px; }
+  .btn-outline { color: var(--secondary-foreground); background: var(--card); border: 1px solid var(--input); }
+  .btn-outline:hover { background: var(--muted); color: var(--foreground); }
+  .btn-primary { color: var(--primary-foreground); background: var(--primary); border: 1px solid var(--primary); box-shadow: var(--shadow-button); }
+  .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+  .btn-destructive { color: var(--primary-foreground); background: var(--destructive); border: 1px solid var(--destructive); }
+  .btn[disabled] { opacity: .45; pointer-events: none; }
+  .btn-busy { opacity: 1 !important; }
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin, .skeleton-line { animation: none !important; } }
+  @media (max-width: 900px) {
+    .app { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+    .sidebar { display: none; }
+    .topbar { padding: 10px 12px; }
+    .topbar .menu-btn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); cursor: pointer; }
+    .topbar .logo-mobile { display: inline-flex; }
+    .crumbs { display: none; }
+    .topbar-left { display: flex; align-items: center; gap: 4px; }
+    .account-btn .account-name { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+    .account-btn { padding: 4px; min-width: 44px; min-height: 44px; justify-content: center; }
+  }
+  @media (max-width: 600px) {
+    .sheet-label { padding: 16px 12px 10px; }
+    .canvas { margin: 0 8px 16px; border-radius: var(--radius-md); }
+    .content { padding: 18px 12px 28px; }
+    .page-head h1 { font-size: 23px; }
+  }
+
+  /* Extensiones del marco (shared/layout) */
+  :root {
+    --warning: #D4A96A;
+    --warning-foreground: #8A6424;
+    --warning-soft: color-mix(in srgb, var(--warning) 12%, var(--card));
+  }
+  [hidden] { display: none !important; }
+
+  /* Ítem activo: fondo accent, texto foreground en 600 y barra de 3 px (no solo color) */
+  .nav a[aria-current="page"] { background: var(--accent); color: var(--foreground); font-weight: 600; border-left: 3px solid var(--primary); padding-left: 9px; }
+  .nav a[aria-current="page"] .meta, .nav a:hover .meta { color: var(--secondary-foreground); } /* muted-foreground sobre muted da 4.39 */
+  @media (max-width: 900px) { .logo { min-height: 44px; } } /* CA-5 de 000b: 44 px en móvil */
+
+  /* Menú de la cuenta (DropdownMenu de shadcn) */
+  .topbar { position: relative; }
+  .account { position: relative; }
+  .account-btn[aria-expanded="true"] { background: var(--muted); color: var(--foreground); }
+  .account-pop { position: absolute; z-index: 20; top: calc(100% + 8px); right: 0; width: 272px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-modal); padding: 6px; }
+  .account-who { padding: 10px 12px 12px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+  .account-who p { margin: 0; }
+  .account-who-name { font-weight: 600; font-size: 14px; }
+  .account-who-mail { font-size: 13px; color: var(--muted-foreground); overflow-wrap: anywhere; }
+  .account-menu { list-style: none; margin: 0; padding: 0; }
+  .account-menu [role="menuitem"] { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 40px; padding: 8px 12px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); font: inherit; font-size: 14px; font-weight: 500; text-align: left; text-decoration: none; cursor: pointer; }
+  .account-menu [role="menuitem"] .ico { color: var(--secondary-foreground); }
+  .account-menu [role="menuitem"]:hover, .account-menu [role="menuitem"]:focus { background: var(--muted); }
+  .account-menu [role="menuitem"]:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+  .account-sep { height: 1px; background: var(--border); margin: 6px 4px; }
+
+  /* Cajón móvil (AppLayout, por debajo de 900 px) */
+  .drawer-overlay { position: absolute; inset: 0; z-index: 10; background: var(--overlay); }
+  .drawer { position: absolute; z-index: 11; top: 0; bottom: 0; left: 0; width: min(320px, calc(100% - 40px)); display: flex; flex-direction: column; gap: 14px; overflow-y: auto; background: var(--card); box-shadow: var(--shadow-modal); padding: 12px 12px 16px; }
+  .drawer-head { display: flex; align-items: center; gap: 10px; padding: 0 0 10px 8px; border-bottom: 1px solid var(--border); }
+  .drawer-head .icon-btn { margin-left: auto; }
+  .drawer .nav a { min-height: 44px; font-size: 15px; }
+  .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); cursor: pointer; }
+  .icon-btn:hover { background: var(--muted); }
+  @media (min-width: 901px) { .drawer, .drawer-overlay { display: none !important; } }
+
+  /* Aviso de solo lectura (ReadOnlyBanner, RF-23) */
+  .readonly { display: flex; align-items: center; gap: 12px 16px; margin: 0 0 22px; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--card)); border-radius: var(--radius-lg); background: var(--warning-soft); color: var(--foreground); }
+  .readonly > .ico { color: var(--warning-foreground); flex: none; }
+  .readonly-text { flex: 1; min-width: 0; margin: 0; font-size: 14px; line-height: 1.5; }
+  .readonly-text strong { display: block; color: var(--warning-foreground); font-weight: 600; }
+  .readonly .btn { flex: none; }
+
+  @media (max-width: 600px) {
+    .account { position: static; }
+    .account-pop { top: calc(100% - 2px); right: 8px; width: min(272px, calc(100% - 16px)); }
+    .account-menu [role="menuitem"] { min-height: 44px; }
+    .readonly { flex-wrap: wrap; align-items: flex-start; padding: 14px; }
+    .readonly .btn { width: 100%; }
+  }
+
+  /* Propio de storage/vista-previa (spec 017) */
+  :root {
+    /* Tipos de archivo (ui-guidelines §3): texto AA; fondo = tono base al 12 % */
+    --file-docx: #3F62A8; --file-docx-bg: #6B8DD620;
+    --file-xlsx: #3A7560; --file-xlsx-bg: #6DB99A20;
+    --file-pptx: #8A6424; --file-pptx-bg: #D4A96A20;
+    --file-pdf: #A34F4F;  --file-pdf-bg: #C97B7B20;
+    --file-other: #53677D; --file-other-bg: #7A90A820;
+  }
+  .app { min-height: 900px; }
+  a.btn-primary, a.btn-primary:hover { color: var(--primary-foreground); }
+  a.btn-outline:hover { color: var(--foreground); }
+
+  /* Cuota en tramos de QuotaBar (§4): 70–89 % warning; 90–100 % destructive-soft */
+  .quota-warn .quota-bar span { background: var(--warning); }
+  .quota-full { border-color: color-mix(in srgb, var(--destructive-soft) 45%, var(--card)); }
+  .quota-full .quota-bar span { background: var(--destructive-soft); }
+  .quota-note { margin: 8px 0 0; font-size: 11.5px; line-height: 1.45; font-weight: 500; }
+  .quota-warn .quota-note { color: var(--warning-foreground); }
+  .quota-full .quota-note { color: var(--destructive); }
+
+  /* Encabezado de la página */
+  .page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .page-head p { margin-top: 4px; }
+
+  /* Tabla de archivos (explorador, vista de lista) */
+  .files { margin-top: 20px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); overflow: hidden; }
+  .files table { width: 100%; border-collapse: collapse; }
+  .files th { padding: 11px 16px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-foreground); background: var(--background); border-bottom: 1px solid var(--border); }
+  .files td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 13.5px; color: var(--secondary-foreground); }
+  .files tr:last-child td { border-bottom: 0; }
+  .files .c-size, .files .c-date { width: 130px; font-variant-numeric: tabular-nums; }
+  .fname { display: flex; align-items: center; gap: 12px; min-width: 0; color: var(--foreground); font-weight: 500; }
+  .fname-text { min-width: 0; overflow-wrap: anywhere; }
+  .fmeta-m { display: none; }
+  .badge-new { margin-left: 8px; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; color: var(--success-foreground); background: var(--success-soft); border: 1px solid color-mix(in srgb, var(--success) 40%, var(--card)); border-radius: var(--radius-sm); padding: 1px 6px; white-space: nowrap; }
+  .ftile { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; flex: none; border-radius: 8px; }
+  .ftile-docx { color: var(--file-docx); background: var(--file-docx-bg); }
+  .ftile-xlsx { color: var(--file-xlsx); background: var(--file-xlsx-bg); }
+  .ftile-pptx { color: var(--file-pptx); background: var(--file-pptx-bg); }
+  .ftile-pdf { color: var(--file-pdf); background: var(--file-pdf-bg); }
+  .ftile-other { color: var(--file-other); background: var(--file-other-bg); }
+
+  /* Acciones por fila (DropdownMenu de shadcn, como el menú de la cuenta): botón ⋮ y menú con «Descargar» */
+  .files .c-act { width: 64px; padding: 6px 14px 6px 0; text-align: right; }
+  .row-actions { position: relative; display: inline-flex; }
+  .row-btn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--secondary-foreground); cursor: pointer; }
+  .row-btn:hover, .row-btn[aria-expanded="true"] { background: var(--muted); color: var(--foreground); }
+  .account-menu [role="menuitem"][aria-disabled="true"] { cursor: progress; color: var(--secondary-foreground); background: transparent; }
+  .account-menu [role="menuitem"][aria-disabled="true"] .ico { color: var(--primary); }
+  .row-menu { position: absolute; z-index: 6; top: calc(100% + 4px); right: 0; width: 208px; text-align: left; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-modal); padding: 6px; }
+  /* Vacío (StateView type="empty" de 000b): borde discontinuo, ícono, título, descripción y acción */
+  .state-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 224px; margin-top: 20px; padding: 32px; text-align: center; background: var(--card); border: 1px dashed var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+  .state-empty > .ico { margin-bottom: 16px; color: var(--muted-foreground); }
+  .state-empty h2 { margin: 0; font-size: 16px; line-height: 1.5; font-weight: 600; letter-spacing: -.01em; }
+  .state-empty p { margin: 6px 0 0; max-width: 384px; font-size: 14px; color: var(--muted-foreground); }
+  .state-empty .btn { margin-top: 20px; }
+  .solo-tactil { display: none; }
+
+  /* Cargando: esqueleto con la forma de la tabla (aria-hidden) y un estado con texto */
+  .files-skeleton .sk-head { display: grid; grid-template-columns: minmax(0, 1fr) 130px 130px 64px; padding: 11px 16px; background: var(--background); border-bottom: 1px solid var(--border); }
+  .sk-row { display: grid; grid-template-columns: minmax(0, 1fr) 130px 130px 64px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .sk-row:last-child { border-bottom: 0; }
+  .sk-name { display: flex; align-items: center; gap: 12px; }
+  .sk-name > div { flex: 1; }
+  .skeleton-line { display: block; height: 12px; border-radius: 999px; background: var(--muted); animation: pulse 1.4s ease-in-out infinite; }
+  .skeleton-line.tile { width: 30px; height: 30px; flex: none; border-radius: 8px; }
+  .skeleton-line.head { height: 10px; width: 64px; background: var(--border); }
+  .skeleton-line.meta { display: none; }
+  .w30 { width: 30%; } .w40 { width: 40%; } .w45 { width: 45%; } .w55 { width: 55%; } .w60 { width: 60%; } .w70 { width: 70%; }
+  @keyframes pulse { 50% { opacity: .55; } }
+  .loading-text { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; font-size: 13px; color: var(--secondary-foreground); }
+
+  /* Error (StateView type="error", con el tono y la estructura del error aprobado de Seguridad) */
+  .state-error { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 224px; margin-top: 20px; padding: 32px; text-align: center; border: 1px dashed color-mix(in srgb, var(--destructive-soft) 60%, var(--card)); border-radius: var(--radius-lg); background: var(--destructive-tint); }
+  .state-error > .ico { color: var(--destructive); }
+  .state-error h2 { margin: 12px 0 6px; font-size: 16px; line-height: 1.5; font-weight: 600; color: var(--destructive); }
+  .state-error p { margin: 0 0 20px; max-width: 46ch; font-size: 14px; color: var(--foreground); }
+
+  /* Aviso de descarga fallida (Alert de shadcn, variante destructiva), arriba de la lista */
+  .alert { display: flex; align-items: flex-start; gap: 12px; margin: 20px 0 0; padding: 12px 8px 12px 16px; border: 1px solid color-mix(in srgb, var(--destructive-soft) 45%, var(--card)); border-radius: var(--radius-lg); background: var(--destructive-tint); }
+  .alert > .ico { margin-top: 2px; color: var(--destructive); }
+  .alert-body { flex: 1; min-width: 0; }
+  .alert-title { margin: 0; font-size: 14px; font-weight: 600; color: var(--destructive); overflow-wrap: anywhere; }
+  .alert-text { margin: 2px 0 0; font-size: 13.5px; color: var(--foreground); }
+  .alert-actions { display: flex; align-items: center; gap: 4px; flex: none; }
+  .alert .icon-btn { width: 36px; height: 36px; color: var(--secondary-foreground); }
+  .alert + .files { margin-top: 16px; }
+
+  /* Arrastre (§5): zona de soltar sobre Mis archivos, bg-brand/5 + borde 1.5 px discontinuo brand */
+  .content { position: relative; flex: 1; } /* la zona de soltar ocupa todo el área bajo la barra superior */
+  .dropzone { position: absolute; inset: 10px; z-index: 4; border: 1.5px dashed var(--brand); border-radius: var(--radius-lg); background: color-mix(in srgb, var(--brand) 5%, transparent); pointer-events: none; }
+  .drop-label { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; width: max-content; max-width: calc(100% - 32px); margin: 0; padding: 12px 20px 12px 14px; border-radius: var(--radius-lg); background: var(--primary); color: var(--primary-foreground); box-shadow: var(--shadow-modal); }
+  .drop-label-icon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex: none; border-radius: 999px; background: color-mix(in srgb, var(--primary-foreground) 16%, var(--primary)); }
+  .drop-label strong { display: block; font-size: 15px; font-weight: 600; }
+  .drop-label span.sub { display: block; font-size: 13px; }
+
+
+  /* Spec 006: logo, carpetas, menú con varias acciones, diálogos con formulario, árbol de destino y toast */
+  .logo-mark-nube { width: 34px; height: 28px; background: none; box-shadow: none; border-radius: 0; }
+  .logo-nube-cuerpo { fill: var(--brand); }
+  .logo-nube-destello { fill: var(--primary-foreground); }
+
+  .head-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .page-sub { margin: 4px 0 0; font-size: 13.5px; color: var(--secondary-foreground); font-variant-numeric: tabular-nums; }
+  .back-link { display: none; }
+
+  /* Carpetas en la tabla: ícono de carpeta (brand sobre brand-soft) y nombre como enlace que abre la carpeta */
+  .ftile-folder { color: var(--primary); background: var(--brand-soft); }
+  a.fname-link { display: inline-flex; align-items: center; min-height: 24px; color: var(--foreground); text-decoration: none; }
+  .crumbs a { display: inline-flex; align-items: center; min-height: 24px; }
+  a.fname-link:hover { text-decoration: underline; color: var(--foreground); }
+  .fsub { display: block; font-size: 12px; font-weight: 400; color: var(--muted-foreground); }
+
+  /* El menú de 4 ítems no cabe dentro de la tabla: sin recorte (en la app, Radix lo monta en un portal) */
+  .files { overflow: visible; }
+  .files th:first-child { border-top-left-radius: var(--radius-lg); }
+  .files th:last-child { border-top-right-radius: var(--radius-lg); }
+
+  /* Menú ⋮ con varias acciones; «Eliminar» en destructive con ícono (el color no es el único indicio) */
+  .account-menu [role="menuitem"].menu-danger, .account-menu [role="menuitem"].menu-danger .ico { color: var(--destructive); }
+
+  /* Diálogo con formulario (Dialog de shadcn) */
+  .dialog-form { width: min(480px, calc(100% - 32px)); }
+  .dialog-form form { margin: 0; }
+  .dialog p strong { color: var(--foreground); font-weight: 600; }
+  .field { margin-top: 18px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+  .input-group { display: flex; align-items: stretch; border: 1px solid var(--input); border-radius: var(--radius-md); background: var(--card); }
+  .input-group:focus-within { outline: 2px solid var(--ring); outline-offset: 1px; }
+  .input-group:has(input[aria-invalid="true"]) { border-color: var(--destructive); box-shadow: 0 0 0 1px var(--destructive); }
+  .input-group input { flex: 1; min-width: 0; min-height: 44px; padding: 10px 14px; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--foreground); font: inherit; font-size: 15px; }
+  .input-group input:focus-visible { outline: none; }
+  .input-suffix { display: inline-flex; align-items: center; padding: 0 14px; border-left: 1px solid var(--border); border-radius: 0 var(--radius-md) var(--radius-md) 0; background: var(--muted); color: var(--secondary-foreground); font-size: 14px; font-weight: 500; }
+  .field-error { display: flex; gap: 6px; align-items: flex-start; margin: 6px 0 0 !important; font-size: 13px !important; color: var(--destructive) !important; }
+  .field-error .ico { margin-top: 2px; }
+  .dlg-alert { display: flex; gap: 10px; align-items: flex-start; margin-top: 16px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--destructive-soft) 45%, var(--card)); border-radius: var(--radius-md); background: var(--destructive-tint); }
+  .dlg-alert .ico { margin-top: 1px; color: var(--destructive); }
+  .dlg-alert p { margin: 0 !important; color: var(--foreground) !important; font-size: 13.5px !important; }
+  .dlg-hint { display: flex; gap: 8px; align-items: flex-start; font-size: 13px !important; }
+  .dlg-hint .ico { margin-top: 2px; color: var(--primary); }
+  .dialog-note { margin-top: 14px !important; padding: 10px 12px; border-radius: var(--radius-md); background: var(--muted); color: var(--secondary-foreground) !important; font-size: 13px !important; overflow-wrap: anywhere; }
+
+  /* Árbol de destino de «Mover a…» (patrón tree de WAI-ARIA, una sola selección) */
+  .dialog-move { width: min(520px, calc(100% - 32px)); top: 110px; }
+  .tree, .tree [role="group"] { list-style: none; margin: 0; padding: 0; }
+  .tree { margin-top: 14px; max-height: 300px; overflow-y: auto; padding: 4px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--card); }
+  .tree [role="treeitem"] { outline: none; }
+  .tree-row { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 10px; border-radius: var(--radius-md); color: var(--foreground); font-size: 14px; cursor: pointer; }
+  .tree-row:hover { background: var(--muted); }
+  .tree [role="treeitem"]:focus-visible > .tree-row { outline: 2px solid var(--ring); outline-offset: -2px; }
+  .tree-row .ico { color: var(--secondary-foreground); }
+  .tree-row .tw { display: inline-flex; width: 18px; flex: none; color: var(--secondary-foreground); }
+  .tree [aria-expanded="true"] > .tree-row .tw .ico { transform: rotate(90deg); }
+  .tree [aria-level="2"] > .tree-row { padding-left: 32px; }
+  .tree [aria-level="3"] > .tree-row { padding-left: 54px; }
+  .tree [aria-level="4"] > .tree-row { padding-left: 76px; }
+  .tree [aria-selected="true"] > .tree-row { background: var(--accent); border-left: 3px solid var(--brand); padding-left: 7px; font-weight: 600; }
+  .tree [aria-level="2"][aria-selected="true"] > .tree-row { padding-left: 29px; }
+  .tree [aria-level="3"][aria-selected="true"] > .tree-row { padding-left: 51px; }
+  .tree [aria-selected="true"] > .tree-row .tree-check { display: inline-flex; color: var(--primary); }
+  .tree-check { display: none; margin-left: auto; }
+  .tree [aria-disabled="true"] > .tree-row { cursor: not-allowed; color: var(--muted-foreground); background: transparent; }
+  .tree-note { margin-left: auto; font-size: 12px; color: var(--muted-foreground); white-space: nowrap; }
+
+  /* Aviso flotante (toast) abajo a la derecha del área de la app */
+  .toast { position: absolute; z-index: 8; right: 24px; bottom: 24px; display: flex; align-items: center; gap: 12px; width: min(440px, calc(100% - 48px)); padding: 10px 8px 10px 16px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-modal); }
+  .toast > .ico { color: var(--success-foreground); }
+  .toast-error > .ico { color: var(--destructive); }
+  .toast-text { flex: 1; min-width: 0; margin: 0; font-size: 14px; color: var(--foreground); overflow-wrap: anywhere; }
+  .toast .icon-btn { width: 36px; height: 36px; color: var(--secondary-foreground); }
+
+  @media (max-width: 900px) {
+    .back-link { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; margin: -8px 0 2px -6px; padding: 0 6px; border-radius: var(--radius-md); color: var(--secondary-foreground); text-decoration: none; font-size: 14px; font-weight: 500; }
+    .back-link:hover { color: var(--foreground); background: var(--muted); }
+  }
+
+  /* Tarjeta de cuota de 007: ícono en el texto del tramo, acción y estados de carga y error */
+  :root { --warning: #D4A96A; --warning-foreground: #8A6424; }
+  .quota-bar span { transition: width .3s ease; }
+  .quota-note { display: flex; align-items: flex-start; gap: 6px; }
+  .quota-note .ico { margin-top: 2px; }
+  .quota-link { display: inline-flex; align-items: center; gap: 2px; min-height: 24px; margin-top: 6px; font-size: 12.5px; font-weight: 600; }
+  .quota-bar-sk { background: var(--muted); }
+  .quota-meta-error { display: flex; align-items: flex-start; gap: 6px; margin: 8px 0 0; color: var(--secondary-foreground); }
+  .quota-meta-error .ico { margin-top: 2px; color: var(--destructive); }
+  .quota p.quota-meta { margin: 0; }
+  .drawer .quota-link { min-height: 44px; font-size: 14px; }
+  @media (prefers-reduced-motion: reduce) { .quota-bar span { transition: none; } }
+
+  /* Token de guías y sangría del desglose (= @utility tree-indent y tree-guides de globals.css) */
+  :root { --tree-guide: var(--border); --tree-indent: 16px; --tree-guide-x: 25px; --tree-max-level: 3; }
+  @media (min-width: 601px) { :root { --tree-indent: 28px; --tree-guide-x: 31px; --tree-max-level: 6; } }
+  .tree-indent { padding-inline-start: calc(min(var(--tree-level, 0), var(--tree-max-level)) * var(--tree-indent)); }
+  .tree-guides { background-image: repeating-linear-gradient(to right, var(--tree-guide) 0 1px, transparent 1px var(--tree-indent)); background-repeat: no-repeat; background-position: var(--tree-guide-x) 0; background-size: calc(min(var(--tree-level, 0), var(--tree-max-level)) * var(--tree-indent)) 100%; }
+
+  /* Desglose de carpetas (spec 006, CA-26) */
+  .exp-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex: none; border: 0; border-radius: var(--radius-md); background: transparent; color: var(--secondary-foreground); cursor: pointer; }
+  .exp-btn:hover { background: var(--muted); color: var(--foreground); }
+  .exp-btn[aria-expanded="true"] .ico:not(.spin) { transform: rotate(90deg); }
+  .exp-spacer { width: 32px; height: 32px; flex: none; }
+  .files tr[aria-hidden="true"] .fname { gap: 12px; }
+  .files tr[aria-hidden="true"] .skeleton-line:not(.tile) { height: 12px; }
+
+  /* Filas de estado de la carpeta desglosada: cargando, vacía y error (con «Reintentar» solo en la fila) */
+  .sub-state { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; min-height: 32px; padding-left: calc(min(var(--tree-level, 0), var(--tree-max-level)) * var(--tree-indent) + 44px); font-size: 13.5px; color: var(--secondary-foreground); }
+  .sub-state .ico { color: var(--secondary-foreground); }
+  .sub-state > span { flex: 1 1 12ch; min-width: 0; }
+  .sub-state[role="alert"] { color: var(--foreground); }
+  .sub-state[role="alert"] .ico { color: var(--destructive); }
+  /* «Ver más» al final del nivel (Q-2): enlace a la página de la carpeta */
+  .more-link { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 8px; margin-left: -8px; border-radius: var(--radius-md); color: var(--primary); font-weight: 600; text-decoration: none; }
+  .more-link:hover { background: var(--muted); color: var(--primary-hover); }
+  .more-link .ico { color: inherit; }
+
+  /* Menú ⋮ con «Quitar de la barra lateral»: el texto más largo no cabe en 208 px */
+  .row-menu { min-width: 208px; width: max-content; max-width: calc(100vw - 32px); }
+
+  @media (max-width: 600px) {
+    .exp-btn { width: 44px; height: 44px; margin-left: -8px; }
+    .exp-spacer { width: 36px; height: 44px; }
+    .files .fname { gap: 10px; } /* la sangría se detiene en el nivel 3 (--tree-max-level) */
+    .sub-state { padding-left: calc(min(var(--tree-level, 0), var(--tree-max-level)) * var(--tree-indent) + 36px); min-height: 44px; }
+    .sub-state .btn, .more-link { min-height: 44px; }
+    .files tr[aria-hidden="true"] .exp-spacer { height: 30px; }
+  }
+
+  :root { --file-img: #276B7A; --file-img-bg: #7EC8D820; }
+  .ftile-img { color: var(--file-img); background: var(--file-img-bg); }
+
+  /* Encabezado del visor: «Volver», nombre, chip de tipo, metadatos, «Solo lectura» y «Descargar» */
+  .pv-back { margin: -6px 0 12px -4px; }
+  .pv-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; }
+  .pv-title { display: flex; align-items: flex-start; gap: 14px; min-width: 0; flex: 1 1 420px; }
+  .pv-title .ftile { width: 40px; height: 40px; border-radius: 10px; margin-top: 2px; }
+  .pv-title h1 { margin: 0; font-size: 24px; line-height: 1.3; font-weight: 700; letter-spacing: -.01em; overflow-wrap: anywhere; }
+  .pv-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 6px 0 0; font-size: 13.5px; color: var(--secondary-foreground); font-variant-numeric: tabular-nums; }
+  .ftchip { display: inline-flex; align-items: center; padding: 1px 7px; border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; letter-spacing: .04em; }
+  .ftchip-pdf { color: var(--file-pdf); background: var(--file-pdf-bg); }
+  .ftchip-img { color: var(--file-img); background: var(--file-img-bg); }
+  .ftchip-other { color: var(--file-other); background: var(--file-other-bg); }
+  .ftchip-xlsx { color: var(--file-xlsx); background: var(--file-xlsx-bg); }
+  .ftchip-pptx { color: var(--file-pptx); background: var(--file-pptx-bg); }
+  .badge-ro { display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px 1px 6px; border-radius: 999px; background: var(--muted); border: 1px solid var(--border); color: var(--secondary-foreground); font-size: 12px; font-weight: 600; }
+  .pv-actions { display: flex; gap: 10px; flex: none; }
+  .sk-title { width: min(420px, 70%); height: 22px; }
+  .sk-meta { width: 180px; height: 12px; margin-top: 10px; }
+
+  /* Visor: tarjeta con barra de herramientas y lienzo (bg-muted). Sobre muted el texto va en secondary-foreground */
+  .viewer { margin-top: 20px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); overflow: hidden; }
+  .vw-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; min-height: 56px; padding: 8px 12px 8px 16px; border-bottom: 1px solid var(--border); }
+  .vw-info { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; color: var(--secondary-foreground); font-variant-numeric: tabular-nums; }
+  .vw-info strong { color: var(--foreground); font-weight: 600; }
+  .vw-info .ico { color: var(--primary); }
+  .vw-body { padding: 24px; background: var(--muted); }
+  .vw-body:focus-visible { outline-offset: -2px; }
+  .pager { display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--secondary-foreground); font-variant-numeric: tabular-nums; }
+  .pager .icon-btn { width: 36px; height: 36px; color: var(--secondary-foreground); border: 1px solid var(--input); background: var(--card); }
+  .pager .icon-btn[aria-disabled="true"] { opacity: .45; cursor: default; }
+  .pager input { width: 52px; min-height: 36px; padding: 4px 6px; border: 1px solid var(--input); border-radius: var(--radius-md); background: var(--card); color: var(--foreground); font: inherit; font-variant-numeric: tabular-nums; text-align: center; }
+  .pager input:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+  .pager label { font-weight: 500; }
+
+  /* PDF: páginas apiladas (canvas + capa de texto en la app); las siguientes se cargan al acercarse */
+  .pdf-pages { list-style: none; margin: 0; padding: 0; display: grid; gap: 20px; justify-items: center; }
+  .pdf-page { width: 100%; max-width: 720px; }
+  .pdf-sheet { aspect-ratio: 210 / 297; padding: 8% 9%; background: var(--card); border: 1px solid var(--border); border-radius: 4px; box-shadow: var(--shadow-card); color: var(--foreground); font-size: 13px; line-height: 1.55; }
+  .pdf-sheet h2 { margin: 0 0 4px; font-size: 22px; line-height: 1.25; font-weight: 700; }
+  .pdf-sheet h3 { margin: 18px 0 6px; font-size: 14.5px; font-weight: 700; }
+  .pdf-sheet p { margin: 0 0 8px; }
+  .pdf-sheet .pdf-sub { color: var(--secondary-foreground); }
+  .pdf-sheet ol, .pdf-sheet ul { margin: 0 0 8px; padding-left: 20px; }
+  .pdf-sheet table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 12.5px; }
+  .pdf-sheet th, .pdf-sheet td { padding: 6px 8px; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+  .pdf-sheet th { width: 32%; background: var(--background); font-weight: 600; }
+  .pdf-cover { display: flex; flex-direction: column; justify-content: space-between; }
+  .pdf-toc { margin-top: 28px !important; }
+  .pdf-toc li { display: flex; gap: 8px; }
+  .pdf-toc li span:nth-child(2) { flex: 1; border-bottom: 1px dotted var(--input); transform: translateY(-4px); }
+  .pdf-num { margin: 8px 0 0; text-align: center; font-size: 12.5px; color: var(--secondary-foreground); font-variant-numeric: tabular-nums; }
+  .pdf-sheet-sk { display: flex; flex-direction: column; gap: 12px; }
+  .pdf-sheet-sk .skeleton-line { background: var(--border); }
+
+  /* Imagen: tal cual, ajustada al ancho disponible, sobre el lienzo */
+  .img-stage { display: flex; justify-content: center; }
+  .img-stage svg { display: block; width: 100%; max-width: 960px; height: auto; background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow-card); }
+  .c4-box { fill: var(--card); stroke: var(--primary); stroke-width: 2; }
+  .c4-main { fill: var(--brand-soft); stroke: var(--primary); stroke-width: 2.5; }
+  .c4-ext { fill: var(--muted); stroke: var(--input); stroke-width: 2; stroke-dasharray: 6 4; }
+  .c4-t { fill: var(--foreground); font: 600 17px Inter, system-ui, sans-serif; }
+  .c4-s { fill: var(--secondary-foreground); font: 400 13px Inter, system-ui, sans-serif; }
+  .c4-line { stroke: var(--secondary-foreground); stroke-width: 1.6; fill: none; }
+  .c4-head { fill: var(--secondary-foreground); }
+
+  /* Texto: literal, sin convertir Markdown; misma familia Inter (no hay font-mono) */
+  .txt-doc { max-width: 880px; margin: 0 auto; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-card); }
+  .txt-doc pre { margin: 0; padding: 20px 24px; font: inherit; font-size: 14px; line-height: 1.65; color: var(--foreground); white-space: pre-wrap; overflow-wrap: anywhere; tab-size: 4; font-variant-numeric: tabular-nums; }
+
+  /* XLSX: pestañas de hojas (tablist) y cuadrícula con valores guardados */
+  .sheet-tabs { display: flex; gap: 4px; min-width: 0; overflow-x: auto; scrollbar-width: thin; }
+  .sheet-tabs [role="tab"] { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 14px; border: 1px solid transparent; border-radius: var(--radius-md); background: transparent; color: var(--secondary-foreground); font: inherit; font-size: 13.5px; font-weight: 500; white-space: nowrap; cursor: pointer; }
+  .sheet-tabs [role="tab"]:hover { background: var(--muted); color: var(--foreground); }
+  .sheet-tabs [role="tab"][aria-selected="true"] { background: var(--accent); color: var(--foreground); font-weight: 600; box-shadow: inset 0 -3px 0 var(--primary); }
+  .vw-alert { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 16px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--card); font-size: 13.5px; color: var(--foreground); }
+  .vw-alert .ico { margin-top: 2px; color: var(--primary); }
+  .vw-alert p { margin: 0; }
+  .vw-alert strong { font-weight: 600; }
+  .grid-wrap { overflow: auto; max-height: 560px; background: var(--card); border: 1px solid var(--input); border-radius: var(--radius-md); }
+  .grid-wrap:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .xl { border-collapse: separate; border-spacing: 0; font-size: 13.5px; font-variant-numeric: tabular-nums; min-width: 100%; }
+  .xl th, .xl td { padding: 8px 12px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); white-space: nowrap; text-align: left; }
+  .xl thead th { position: sticky; top: 0; z-index: 1; background: var(--background); color: var(--secondary-foreground); font-size: 12px; font-weight: 600; text-align: center; }
+  .xl tbody th { position: sticky; left: 0; background: var(--background); color: var(--secondary-foreground); font-size: 12px; font-weight: 600; text-align: center; min-width: 44px; }
+  .xl thead th:first-child { left: 0; z-index: 2; }
+  .xl td { color: var(--foreground); }
+  .xl td.num { text-align: right; }
+  .xl tr.xl-head td { font-weight: 600; background: var(--muted); }
+  .xl td.nv { color: var(--secondary-foreground); font-style: italic; }
+  .xl td.nv .ico { vertical-align: -2px; margin-right: 4px; color: var(--primary); }
+
+  /* PPTX: texto de cada diapositiva en orden, en tarjetas 16:9 (crecen si el texto no cabe) */
+  .slides { list-style: none; margin: 0; padding: 0; display: grid; gap: 20px; justify-items: center; }
+  .slide { width: 100%; max-width: 680px; }
+  .slide-card { aspect-ratio: 16 / 9; display: flex; flex-direction: column; padding: 28px 36px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-card); color: var(--foreground); }
+  .slide-card h2 { margin: 0 0 12px; font-size: 22px; line-height: 1.3; font-weight: 700; }
+  .slide-card p { margin: 0 0 6px; font-size: 15px; color: var(--secondary-foreground); }
+  .slide-card ul { margin: 0; padding-left: 20px; font-size: 15px; line-height: 1.6; }
+  .slide-title { justify-content: center; text-align: center; }
+  .slide-title h2 { font-size: 28px; }
+  .slide-num { margin: 8px 0 0; text-align: center; font-size: 12.5px; color: var(--secondary-foreground); font-variant-numeric: tabular-nums; }
+
+  /* Espera larga (> 2 s): barra indeterminada + texto en aria-live; respeta prefers-reduced-motion */
+  .wait { display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 460px; margin: 32px auto; padding: 28px 24px; text-align: center; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-card); }
+  .wait > .ico { color: var(--primary); }
+  .wait h2 { margin: 0; font-size: 16px; font-weight: 600; }
+  .wait p { margin: 0; font-size: 14px; color: var(--secondary-foreground); }
+  .wait .btn { margin-top: 8px; }
+  .indet { position: relative; width: 100%; height: 6px; margin: 6px 0 2px; border-radius: 999px; background: var(--muted); border: 1px solid var(--input); overflow: hidden; }
+  .indet span { position: absolute; top: 0; bottom: 0; width: 35%; border-radius: 999px; background: var(--primary); animation: indet 1.6s ease-in-out infinite; }
+  @keyframes indet { 0% { left: -35%; } 100% { left: 100%; } }
+  @media (prefers-reduced-motion: reduce) { .indet span { animation: none; left: 0; width: 100%; opacity: .35; } }
+
+  /* Estados del visor (StateView): neutro (borde discontinuo) o error (destructive-tint); dos acciones */
+  .vw-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 320px; padding: 40px 24px; text-align: center; }
+  .vw-state > .ico { margin-bottom: 14px; color: var(--secondary-foreground); }
+  .vw-state h2 { margin: 0; font-size: 17px; line-height: 1.45; font-weight: 600; }
+  .vw-state p { margin: 6px 0 0; max-width: 52ch; font-size: 14px; color: var(--secondary-foreground); }
+  .vw-state .btn-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 22px; }
+  .vw-state .vw-ref { margin-top: 14px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .vw-body-state { background: var(--card); }
+  .vw-state-error { background: var(--destructive-tint); }
+  .vw-state-error > .ico, .vw-state-error h2 { color: var(--destructive); }
+  .vw-state-error p { color: var(--foreground); }
+  .vw-state-warn > .ico, .vw-state-warn h2 { color: var(--warning-foreground); }
+
+  /* Volver: el foco regresa al control ⋮ de la fila de origen (anillo visible) */
+  .row-btn.foco { outline: 2px solid var(--ring); outline-offset: 2px; background: var(--muted); color: var(--foreground); }
+  .files tr.fila-origen td { background: color-mix(in srgb, var(--accent) 45%, var(--card)); }
+  .files tr.fila-origen .fmeta-m { color: var(--secondary-foreground); } /* muted-foreground no llega a 4.5 sobre la fila marcada */
+
+  @media (max-width: 600px) {
+    .app { min-height: 920px; }
+    .page-head h1 { font-size: 23px; }
+    .files { margin-top: 16px; }
+    .files thead { display: none; }
+    .files .c-size, .files .c-date { display: none; }
+    .files td { padding: 12px; }
+    .fmeta-m { display: block; margin-top: 1px; font-size: 12px; font-weight: 400; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+    .files td.c-act { width: 56px; padding: 6px 8px 6px 0; }
+    .row-btn { width: 44px; height: 44px; }
+    .state-empty { margin-top: 16px; padding: 32px 16px; }
+    .state-empty .btn, .state-error .btn { width: 100%; }
+    .state-error { margin-top: 16px; padding: 32px 16px; }
+    /* Aviso en móvil: la X arriba a la derecha (44 px) y «Reintentar» a todo el ancho debajo del texto */
+    .alert { position: relative; flex-wrap: wrap; margin-top: 16px; padding: 12px 52px 12px 12px; }
+    .alert-actions { width: calc(100% + 40px); padding-left: 30px; }
+    .alert-actions .btn { flex: 1; min-height: 44px; }
+    .alert .icon-btn { position: absolute; top: 4px; right: 4px; width: 44px; height: 44px; }
+    .solo-escritorio { display: none; }
+    .solo-tactil { display: inline; }
+    .files-skeleton .sk-head { display: none; }
+    .sk-row { grid-template-columns: minmax(0, 1fr); padding: 12px; }
+    .sk-row > .sk-col { display: none; }
+    .skeleton-line.meta { display: block; margin-top: 8px; height: 10px; }
+    .dropzone { inset: 6px; }
+    .drop-label { bottom: 20px; padding: 10px 14px 10px 10px; }
+    .page-head { align-items: flex-start; }
+    .head-actions { width: 100%; }
+    .head-actions .btn { flex: 1; padding: 8px 10px; }
+    .tree-row { min-height: 44px; }
+    .tree-row { flex-wrap: wrap; row-gap: 0; }
+    .tree-note { flex-basis: 100%; margin: -2px 0 2px 52px; white-space: normal; }
+    .dialog-move { top: 72px; }
+    .toast { left: 8px; right: 8px; bottom: 12px; width: auto; flex-wrap: wrap; padding: 10px 52px 10px 12px; }
+    .toast-text { flex-basis: calc(100% - 30px); }
+    .toast .btn { min-height: 44px; margin-left: 30px; }
+    .toast .icon-btn { position: absolute; top: 4px; right: 4px; width: 44px; height: 44px; }
+    .pv-back { min-height: 44px; margin: -4px 0 8px -4px; }
+    .pv-title { flex-basis: 100%; gap: 12px; }
+    .pv-title .ftile { width: 34px; height: 34px; }
+    .pv-title h1 { font-size: 20px; }
+    .pv-actions { width: 100%; }
+    .pv-actions .btn { flex: 1; min-height: 44px; }
+    .viewer { margin-top: 16px; border-radius: var(--radius-md); }
+    .vw-bar { padding: 8px 10px; }
+    .vw-body { padding: 12px; }
+    .pager .icon-btn { width: 44px; height: 44px; }
+    .pager input { min-height: 44px; width: 56px; font-size: 16px; }
+    .pdf-sheet { padding: 7% 7%; font-size: 9.5px; line-height: 1.45; }
+    .pdf-sheet h2 { font-size: 15px; }
+    .pdf-sheet h3 { margin-top: 10px; font-size: 11px; }
+    .pdf-sheet table { font-size: 9px; }
+    .pdf-sheet th, .pdf-sheet td { padding: 3px 4px; }
+    .sheet-tabs { width: 100%; }
+    .sheet-tabs [role="tab"] { min-height: 44px; }
+    .txt-doc pre { padding: 14px; font-size: 13.5px; }
+    .slide-card { padding: 16px 18px; }
+    .slide-card h2 { font-size: 16px; margin-bottom: 8px; }
+    .slide-title h2 { font-size: 19px; }
+    .slide-card p, .slide-card ul { font-size: 13px; line-height: 1.5; }
+    .wait { margin: 12px auto; padding: 22px 16px; }
+    .wait .btn, .vw-state .btn-row .btn { width: 100%; min-height: 44px; }
+    .vw-state { min-height: 280px; padding: 32px 16px; }
+    .vw-state .btn-row { width: 100%; flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">017</span> <strong>Vista previa</strong> <span class="file">vista-previa--imagen.html</span> <span>plan Personal (ejemplo) · estado: imagen PNG tal cual</span></aside>
+
+<div class="canvas">
+  <div class="app">
+    
+    <aside class="sidebar" aria-label="Barra lateral">
+      <div class="brand-row">
+        <a class="logo" href="#"><span class="logo-mark logo-mark-nube" aria-hidden="true"><svg class="logo-nube" viewBox="0 58 418 304" width="34" height="25" aria-hidden="true" focusable="false"><g class="logo-nube-cuerpo"><circle cx="258" cy="170" r="110"/><circle cx="122" cy="206" r="78"/><circle cx="348" cy="246" r="60"/><circle cx="69" cy="292" r="67"/><circle cx="351" cy="294" r="65"/><rect x="69" y="200" width="282" height="159"/></g><path class="logo-nube-destello" d="M210 122Q221 213 315 224Q221 235 210 328Q199 235 105 224Q199 213 210 122Z"/></svg></span><span>NIMBO</span></a>
+        <span class="plan-chip">PERSONAL</span>
+      </div>
+      <nav aria-label="Navegación principal">
+        <ul class="nav">
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span>Mis archivos</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4"/><path d="m15.4 6.5-6.8 4"/></svg><span>Compartidos conmigo</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span>Recientes</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 17v5"/><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"/></svg><span>Fijados</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg><span>Papelera</span><span class="meta">6</span></a></li>
+        </ul>
+        <div class="nav-sep" role="presentation"></div>
+        <ul class="nav">
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 3-1.9 5.8L4 10.7l6.1 1.9 1.9 5.9 1.9-5.9 6.1-1.9-6.1-1.9Z"/><path d="M5 3v4"/><path d="M3 5h4"/></svg><span>Optimizador</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M22 12H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M6 16h.01"/><path d="M10 16h.01"/></svg><span>Espacio</span></a></li>
+        </ul>
+        <p class="nav-title">Carpetas</p>
+        <ul class="nav">
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span>Proyecto Alpha</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span>Documentos Legales</span></a></li>
+          <li><a href="#"><svg class="ico " width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg><span>Finanzas</span></a></li>
+        </ul>
+      </nav>
+      <div class="quota">
+        <div class="quota-head"><span>Almacenamiento</span><span>32 %</span></div>
+        <div class="quota-bar" role="progressbar" aria-label="Almacenamiento usado" aria-valuemin="0" aria-valuemax="100" aria-valuenow="32" aria-valuetext="4.8 GB de 15 GB (32 %)"><span style="width: 32%"></span></div>
+        <div class="quota-meta">4.8 GB de 15 GB</div>
+        <a class="quota-link" href="#">Ver detalle<svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 18 6-6-6-6"/></svg></a>
+      </div>
+    </aside>
+    <div class="main">
+      
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="menu-btn" type="button" aria-label="Abrir menú de navegación" aria-expanded="false"><svg class="ico " width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg></button>
+          <a class="logo logo-mobile" href="#"><span class="logo-mark logo-mark-nube" aria-hidden="true"><svg class="logo-nube" viewBox="0 58 418 304" width="34" height="25" aria-hidden="true" focusable="false"><g class="logo-nube-cuerpo"><circle cx="258" cy="170" r="110"/><circle cx="122" cy="206" r="78"/><circle cx="348" cy="246" r="60"/><circle cx="69" cy="292" r="67"/><circle cx="351" cy="294" r="65"/><rect x="69" y="200" width="282" height="159"/></g><path class="logo-nube-destello" d="M210 122Q221 213 315 224Q221 235 210 328Q199 235 105 224Q199 213 210 122Z"/></svg></span><span>NIMBO</span></a>
+          <nav class="crumbs" aria-label="Ruta">
+            <ol><li><a href="#">Mis archivos</a></li><li><a href="#">Proyecto Alpha</a></li><li><a href="#">Documentación</a></li><li><span aria-current="page">Arquitectura_C4_contexto.png</span></li></ol>
+          </nav>
+        </div>
+        <button class="account-btn" type="button" aria-haspopup="menu" aria-expanded="false">
+          <span class="account-name">Lucía Barrios<span class="sr-only"> (menú de la cuenta)</span></span><span class="avatar" aria-hidden="true">LB</span>
+        </button>
+      </header>
+      <main class="content" id="contenido">
+        <a class="btn btn-outline btn-sm pv-back" href="#" aria-label="Volver a Documentación"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg><span>Volver</span></a>
+        <div class="pv-head">
+          <div class="pv-title"><span class="ftile ftile-img" aria-hidden="true"><svg class="ico " width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></span>
+            <div>
+              <h1>Arquitectura_<wbr>C4_<wbr>contexto.png</h1>
+              <p class="pv-meta"><span class="ftchip ftchip-img">PNG</span><span>1.8 MB · Modificado el 2 sep</span><span class="badge-ro"><svg class="ico " width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>Solo lectura</span></p>
+            </div>
+          </div>
+          <div class="pv-actions"><button class="btn btn-outline" type="button"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg><span>Descargar</span></button></div>
+        </div>
+        <section class="viewer" aria-label="Vista previa de Arquitectura_C4_contexto.png">
+          <div class="vw-bar">
+            <p class="vw-info"><svg class="ico " width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg><span><strong>PNG</strong> · 1600 × 1000 px · ajustada al ancho</span></p>
+          </div>
+          <div class="vw-body">
+            <div class="img-stage">
+              <svg viewBox="0 0 960 600" role="img" aria-label="Arquitectura_C4_contexto.png" xmlns="http://www.w3.org/2000/svg">
+              <defs><marker id="fl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="c4-head" d="M0 0L10 5L0 10z"/></marker></defs>
+              <text class="c4-t" x="40" y="48">Diagrama de contexto (C4, nivel 1)</text>
+              <text class="c4-s" x="40" y="72">Nimbo · Proyecto Final de Ingeniería de Software I</text>
+              <rect class="c4-box" x="380" y="110" width="200" height="90" rx="10"/><text class="c4-t" x="480" y="151" text-anchor="middle">Cliente</text><text class="c4-s" x="480" y="173" text-anchor="middle">Persona: guarda y edita</text>
+              <rect class="c4-main" x="340" y="260" width="280" height="110" rx="10"/><text class="c4-t" x="480" y="311" text-anchor="middle">Nimbo</text><text class="c4-s" x="480" y="333" text-anchor="middle">Almacenamiento como servicio</text>
+              <rect class="c4-ext" x="60" y="450" width="220" height="90" rx="10"/><text class="c4-t" x="170" y="491" text-anchor="middle">ONLYOFFICE Docs</text><text class="c4-s" x="170" y="513" text-anchor="middle">Edición de .docx</text>
+              <rect class="c4-ext" x="370" y="450" width="220" height="90" rx="10"/><text class="c4-t" x="480" y="491" text-anchor="middle">Proveedor de LLM</text><text class="c4-s" x="480" y="513" text-anchor="middle">Respuestas con citas</text>
+              <rect class="c4-ext" x="680" y="450" width="220" height="90" rx="10"/><text class="c4-t" x="790" y="491" text-anchor="middle">Servidor de correo</text><text class="c4-s" x="790" y="513" text-anchor="middle">Verificación y avisos</text>
+              <rect class="c4-box" x="700" y="110" width="200" height="90" rx="10"/><text class="c4-t" x="800" y="151" text-anchor="middle">Soporte</text><text class="c4-s" x="800" y="173" text-anchor="middle">Persona: solo metadatos</text>
+              <path class="c4-line" d="M480 200V256" marker-end="url(#fl)"/>
+              <path class="c4-line" d="M800 200L620 290" marker-end="url(#fl)"/>
+              <path class="c4-line" d="M400 370L200 446" marker-end="url(#fl)"/>
+              <path class="c4-line" d="M480 370V446" marker-end="url(#fl)"/>
+              <path class="c4-line" d="M560 370L760 446" marker-end="url(#fl)"/>
+            </svg>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var botones = Array.prototype.slice.call(document.querySelectorAll('.row-btn'));
+  function partes(btn) {
+    var menu = document.getElementById(btn.getAttribute('aria-controls'));
+    return { menu: menu, items: Array.prototype.slice.call(menu.querySelectorAll('[role="menuitem"]')) };
+  }
+  function cerrar(btn, devolverFoco) {
+    var p = partes(btn);
+    if (p.menu.hidden) return;
+    p.menu.hidden = true; btn.setAttribute('aria-expanded', 'false');
+    if (devolverFoco) btn.focus();
+  }
+  function abrir(btn, i) {
+    botones.forEach(function (b) { if (b !== btn) cerrar(b, false); });
+    var p = partes(btn);
+    p.menu.hidden = false; btn.setAttribute('aria-expanded', 'true');
+    p.items[(i + p.items.length) % p.items.length].focus();
+  }
+  botones.forEach(function (btn) {
+    var p = partes(btn);
+    btn.addEventListener('click', function () { if (p.menu.hidden) abrir(btn, 0); else cerrar(btn, true); });
+    btn.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); abrir(btn, 0); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); abrir(btn, -1); }
+    });
+    p.menu.addEventListener('keydown', function (e) {
+      var i = p.items.indexOf(document.activeElement), n = p.items.length;
+      if (e.key === 'ArrowDown') { e.preventDefault(); p.items[(i + 1) % n].focus(); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); p.items[(i - 1 + n) % n].focus(); }
+      else if (e.key === 'Home') { e.preventDefault(); p.items[0].focus(); }
+      else if (e.key === 'End') { e.preventDefault(); p.items[n - 1].focus(); }
+      else if (e.key === 'Escape') { e.preventDefault(); cerrar(btn, true); }
+      else if (e.key === 'Tab') { cerrar(btn, false); }
+    });
+    // En la app, «Descargar» pide la URL firmada (POST /files/:id/download-url) y el navegador descarga el archivo.
+    p.items.forEach(function (it) { it.addEventListener('click', function () { cerrar(btn, true); }); });
+    if (btn.getAttribute('aria-expanded') === 'true') p.items[0].focus();
+  });
+  document.addEventListener('click', function (e) {
+    botones.forEach(function (btn) {
+      var p = partes(btn);
+      if (!p.menu.hidden && !p.menu.contains(e.target) && !btn.contains(e.target)) cerrar(btn, false);
+    });
+  });
+})();
+
+(function () {
+  var T_VACIA = "\n            <tr id=\"__ID__\" data-padre=\"__PADRE__\" data-nivel=\"__NIVEL__\" style=\"--tree-level: __NIVEL__\"><td colspan=\"4\" class=\"tree-guides\"><div class=\"sub-state\"><svg class=\"ico \" width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2\"/></svg><span>Esta carpeta está vacía</span></div></td></tr>", n = 900;
+  function fila(id) { return document.getElementById(id); }
+  function visible(tr) { var p = tr.getAttribute('data-padre'); if (!p) return true; var pr = fila(p); return pr.querySelector('.exp-btn').getAttribute('aria-expanded') === 'true' && visible(pr); }
+  function refrescar() { Array.prototype.forEach.call(document.querySelectorAll('tr[data-padre]'), function (tr) { tr.hidden = !visible(tr); }); }
+  Array.prototype.forEach.call(document.querySelectorAll('.exp-btn'), function (btn) {
+    btn.addEventListener('click', function () {
+      var tr = btn.closest('tr'), abierto = btn.getAttribute('aria-expanded') === 'true';
+      if (!abierto && !document.querySelector('tr[data-padre="' + tr.id + '"]')) {
+        var id = 'r-' + (n++), html = T_VACIA.replace('__ID__', id).replace('__PADRE__', tr.id).split('__NIVEL__').join(+tr.getAttribute('data-nivel') + 1);
+        tr.insertAdjacentHTML('afterend', html); btn.setAttribute('aria-controls', id);
+      }
+      btn.setAttribute('aria-expanded', String(!abierto)); refrescar();
+    });
+  });
+})();
+
+(function () {
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
+  tabs.forEach(function (t, i) {
+    t.addEventListener('keydown', function (e) {
+      var n = tabs.length, j = null;
+      if (e.key === 'ArrowRight') j = (i + 1) % n; else if (e.key === 'ArrowLeft') j = (i - 1 + n) % n;
+      else if (e.key === 'Home') j = 0; else if (e.key === 'End') j = n - 1;
+      if (j === null) return; e.preventDefault(); tabs[j].focus();
+    });
+    t.addEventListener('click', function () {
+      tabs.forEach(function (x) { x.setAttribute('aria-selected', String(x === t)); x.tabIndex = x === t ? 0 : -1; });
+    });
+  });
+})();
+</script>
+</body>
+</html>

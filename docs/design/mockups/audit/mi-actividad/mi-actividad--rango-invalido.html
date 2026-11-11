@@ -222,7 +222,7 @@
     .topbar .logo-mobile { display: inline-flex; }
     .crumbs { display: none; }
     .topbar-left { display: flex; align-items: center; gap: 4px; }
-    .account-btn .account-name { display: none; }
+    .account-btn .account-name { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
     .account-btn { padding: 4px; min-width: 44px; min-height: 44px; justify-content: center; }
   }
 
@@ -268,7 +268,7 @@
     
     <aside class="sidebar" aria-label="Barra lateral">
       <div class="brand-row">
-        <a class="logo" href="#" aria-label="Nimbo, Mis archivos"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>
+        <a class="logo" href="#"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>
         <span class="plan-chip">PERSONAL</span>
       </div>
       <nav aria-label="Navegación principal">
@@ -302,12 +302,12 @@
       <header class="topbar">
         <div class="topbar-left">
           <button class="menu-btn" type="button" aria-label="Abrir menú de navegación" aria-expanded="false" aria-controls="cajon"><svg class="ico " width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/></svg></button>
-          <a class="logo logo-mobile" href="#" aria-label="Nimbo, Mis archivos"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>
+          <a class="logo logo-mobile" href="#"><span class="logo-mark" aria-hidden="true">N</span><span>NIMBO</span></a>
           
         </div>
         <div class="account">
-        <button class="account-btn" type="button" id="cuenta-btn" aria-controls="cuenta-menu" aria-haspopup="menu" aria-expanded="false" aria-label="Menú de la cuenta de Lucía Barrios">
-          <span class="account-name">Lucía Barrios</span><span class="avatar" aria-hidden="true">LB</span>
+        <button class="account-btn" type="button" id="cuenta-btn" aria-controls="cuenta-menu" aria-haspopup="menu" aria-expanded="false">
+          <span class="account-name">Lucía Barrios<span class="sr-only"> (menú de la cuenta)</span></span><span class="avatar" aria-hidden="true">LB</span>
         </button>
         <div class="account-pop" id="cuenta-pop" hidden>
           <div class="account-who">

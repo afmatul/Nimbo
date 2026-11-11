@@ -1,25 +1,16 @@
-import { formatBytes, type FileKind, type NodeSummary } from '@nimbo/contracts';
+import { formatBytes, type NodeSummary } from '@nimbo/contracts';
 import { ChevronRight, Folder, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 
-import { FileTypeChip, type FileType } from '../../../components/nimbo/file-type-chip';
+import { FileTypeChip } from '../../../components/nimbo/file-type-chip';
 import { DATE_LOCALE } from '../../../lib/format-date';
 import { cn } from '../../../lib/utils';
+import { CHIP_TYPE_BY_KIND } from '../file-type';
 import { folderPath } from '../routes';
 
 type FolderNode = Extract<NodeSummary, { type: 'folder' }>;
 type FileNode = Extract<NodeSummary, { type: 'file' }>;
-
-export const CHIP_TYPE_BY_KIND: Readonly<Record<FileKind, FileType>> = {
-  docx: 'docx',
-  pdf: 'pdf',
-  xlsx: 'xlsx',
-  pptx: 'pptx',
-  imagen: 'img',
-  texto: 'text',
-  otro: 'other',
-};
 
 /**
  * Nivel de desglose de la fila (0 = la ubicación abierta, 006 CA-26). Las utilidades `tree-indent` y `tree-guides` de

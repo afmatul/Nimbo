@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '../../../components/ui/dropdown-menu';
 import { cn } from '../../../lib/utils';
+import { CHIP_TYPE_BY_KIND } from '../file-type';
 import {
   daysLeft,
   deletedAtLabel,
@@ -22,7 +23,6 @@ import {
   remainingLabel,
 } from '../trash-dates';
 
-import { CHIP_TYPE_BY_KIND } from './node-rows';
 import { originalPlaceName } from './restore-result';
 import { useReadOnlyAccount } from './space-provider';
 

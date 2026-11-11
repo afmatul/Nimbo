@@ -5,6 +5,7 @@ import { STORAGE_ERROR_CODES, type DownloadUrlResponse, type FileSummary } from 
 import { act, useState, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
+import { DropdownMenuItem } from '../../../components/ui/dropdown-menu';
 import { PREPARING_DELAY_MS } from '../../../lib/use-preparing-download';
 import { StorageRequestError } from '../storage-request-error';
 
@@ -120,6 +121,16 @@ async function press(key: string): Promise<void> {
   });
 }
 
+/**
+ * Al cerrarse, Radix devuelve el foco al ⋮ en una macrotarea. Reabrir antes deja ese foco pendiente: llega con el menú
+ * nuevo abierto, cuenta como foco fuera y lo cierra (fallo intermitente bajo carga). La persona reabre con el foco ya
+ * de vuelta en el ⋮, así que la prueba espera lo mismo.
+ */
+async function settleClose(): Promise<void> {
+  await act(() => new Promise<void>((resolve) => setTimeout(resolve, 0)));
+  expect(document.activeElement).toBe(trigger());
+}
+
 async function chooseDownload(): Promise<void> {
   await press('Enter');
   const item = items()[0];
@@ -147,6 +158,32 @@ describe('FileRowMenu (CA-13, CA-21)', () => {
     expect(items()[0]?.textContent?.trim()).toBe('Descargar');
   });
 
+  it('017 CA-9: el slot `firstAction` va antes de «Descargar» cuando se provee', async () => {
+    await renderMenu({ firstAction: <DropdownMenuItem>Previsualizar</DropdownMenuItem> });
+    await press('Enter');
+
+    expect(items().map((item) => item.textContent?.trim())).toEqual([
+      'Previsualizar',
+      'Descargar',
+      'Ver historial',
+      'Renombrar',
+      'Mover a…',
+      'Fijar en la barra lateral',
+      'Editar',
+      'Compartir',
+      'Mover a la papelera',
+    ]);
+  });
+
+  it('017 CA-7: sin `firstAction` el menú no agrega ítems y «Descargar» sigue primero', async () => {
+    await renderMenu();
+    await press('Enter');
+
+    // `.docx`: además de lo de 005/006, «Ver historial» (014), «Editar» (016) y «Compartir» (012b).
+    expect(items()).toHaveLength(8);
+    expect(items()[0]?.textContent?.trim()).toBe('Descargar');
+  });
+
   it('006 CA-4, CA-7: «Renombrar» y «Mover a…» siguen a «Descargar» y abren su diálogo', async () => {
     const onRename = jest.fn();
     const onMove = jest.fn();
@@ -157,6 +194,7 @@ describe('FileRowMenu (CA-13, CA-21)', () => {
     expect(labels.slice(0, 4)).toEqual(['Descargar', 'Ver historial', 'Renombrar', 'Mover a…']);
     await act(async () => items()[2]?.click());
     expect(onRename).toHaveBeenCalledTimes(1);
+    await settleClose();
     await press('Enter');
     await act(async () => items()[3]?.click());
     expect(onMove).toHaveBeenCalledTimes(1);
@@ -395,6 +433,8 @@ describe('FileRowMenu (CA-13, CA-21)', () => {
     await renderMenu({ requestUrl: () => Promise.reject(TOO_MANY) });
 
     await chooseDownload();
+    expect(document.querySelector('[role="menu"]')).toBeNull();
+    await settleClose();
     await press('Enter');
 
     expect(alertBox()?.className).toContain('border-destructive/40');
