@@ -169,6 +169,30 @@ describe('textos de «Mi actividad»', () => {
   });
 
   it.each([
+    ['public_link.downloaded', 'Alguien con el enlace descargó 1 archivo'],
+    ['public_link.locked', 'Se bloquearon los intentos de contraseña del enlace de 1 archivo'],
+  ] as const)(
+    'CA-16 (013c): %s con `trigger` public_link tiene como sujeto «Alguien con el enlace», nunca «Tú»',
+    (action, text) => {
+      const visit = event({ action, origin: 'self', trigger: 'public_link' });
+
+      expect(activityActionLabel(visit)).toBe(text);
+      expect(activityActorLabel(visit)).toBe('Alguien con el enlace');
+    },
+  );
+
+  it.each([
+    ['public_link.created', 'Generaste un enlace público de 1 archivo'],
+    ['public_link.revoked', 'Revocaste un enlace público de 1 archivo'],
+  ] as const)('CA-17 (013c): %s hecho por ti se lee en segunda persona', (action, text) => {
+    const own = event({ action, origin: 'self', trigger: 'manual' });
+
+    expect(activityActionLabel(own)).toBe(text);
+    expect(activityActionLabel(own)).not.toBe(UNKNOWN_ACTIVITY_LABEL);
+    expect(activityActorLabel(own)).toBe('Tú');
+  });
+
+  it.each([
     ['self', 'ADMIN', 'Tú'],
     ['staff', 'SUPPORT', 'Soporte de Nimbo'],
     ['staff', 'ADMIN', 'Administración de Nimbo'],
