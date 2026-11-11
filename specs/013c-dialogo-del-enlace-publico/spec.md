@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Borrador |
+| Estado | Lista |
 | Dueño | Fátima |
 | Fase | 2 |
 | Requisitos | RF-17, RF-18, RNF-13, RNF-14; apoyan RF-07, RNF-07, RNF-08 |
 | Depende de | 013 (API integrada, PR #93), 012b (diálogo «Compartir»), 013b (página `/enlace`, `PasswordField` en `components/nimbo/`) |
-| Última actualización | 2026-11-10 |
+| Última actualización | 2026-11-11 |
 
 ## 1. Contexto y objetivo
 La 013 dejó la API para generar, ver, reemplazar y revocar el enlace público de un archivo, y la 013b la página del
@@ -38,8 +38,8 @@ se cierra PD-200 en la página del visitante.
 - **CA-7** (HU-2, RF-18, RN-1) Dado un enlace activo, cuando abro el diálogo (también tras generarlo y cerrar), entonces veo «Activo», «Vence el … · Con contraseña (o Sin contraseña) · Creado el …», la nota «Por seguridad, el enlace solo se ve al generarlo. Si lo perdiste, genera otro: el actual dejará de funcionar.», «Generar otro enlace» y «Revocar enlace», sin la URL. Un enlace vencido muestra «Vencido» y «Venció el …», con las mismas acciones y sin la nota.
 - **CA-8** (HU-2, RF-17) Dado un enlace activo, cuando pulso «Generar otro enlace», entonces la sección pide confirmar en línea, sin otro diálogo: «El enlace actual dejará de funcionar para quien lo tenga.», con el formulario de CA-3 (el foco va a la opción marcada de «Vence en»), el botón «Generar otro enlace» y «Cancelar». Al confirmar veo «Generando…» y la URL nueva como en CA-3 (013 CA-4); al cancelar vuelvo a CA-7 sin cambios (decisión 2). Con un enlace vencido, el formulario aparece sin esa advertencia (D-5).
 - **CA-9** (HU-2, RF-17) Dado un enlace sin revocar, cuando pulso «Revocar enlace» y confirmo en línea («¿Revocar el enlace? Quien lo tenga ya no podrá descargar el archivo.»), entonces veo «Revocando…» pasados 2 s, «Revocamos el enlace. Ya no sirve para descargar el archivo.» y la sección vuelve a «sin enlace» (D-1).
-- **CA-10** (HU-2, 010 RN-6) Dado mi cuenta en solo lectura, cuando abro la sección, entonces no se ofrece crear ni «Generar otro enlace»; veo el aviso «Tu cuenta está en solo lectura: no puedes generar enlaces.» con «Renovar plan», y «Revocar enlace» sigue disponible (013 CA-5; D-6). Si la cuenta pasa a solo lectura con el formulario abierto, el `403` `STORAGE_ACCOUNT_READ_ONLY` muestra ese aviso sobre el formulario y conserva lo elegido.
-- **CA-11** (RNF-13) Dado el formulario o una confirmación abiertos, cuando pulso Escape, entonces se cancela solo eso y el diálogo sigue abierto. Con una generación, un reemplazo o una revocación en curso, ni Escape ni la X cierran el diálogo (como `ConfirmDestructiveDialog` con `pending`). Con la URL a la vista y nada más abierto, Escape sí cierra el diálogo y la URL se pierde (D-7).
+- **CA-10** (HU-2, 010 RN-6) Dado mi cuenta en solo lectura, cuando abro la sección, entonces no se ofrece crear ni «Generar otro enlace»; veo arriba de la sección el aviso de solo lectura de siempre (`ReadOnlyBanner`): «Tu cuenta está en solo lectura.», «No puedes generar enlaces. Para hacerlo, renueva tu plan.» y «Renovar plan», y «Revocar enlace» sigue disponible (013 CA-5; D-6). Si la cuenta pasa a solo lectura con el formulario abierto, el `403` `STORAGE_ACCOUNT_READ_ONLY` muestra ese mismo aviso sobre el formulario y conserva lo elegido.
+- **CA-11** (RNF-13) Dado el formulario o una confirmación abiertos, cuando pulso Escape, entonces se cancela solo eso y el diálogo sigue abierto. Con una generación, un reemplazo o una revocación en curso, ni Escape, ni la X, ni un clic fuera del diálogo lo cierran (como `ConfirmDestructiveDialog` con `pending`). Sin nada en curso, el clic fuera se comporta como la X. Con la URL a la vista y nada más abierto, Escape sí cierra el diálogo y la URL se pierde (D-7).
 
 **Errores de la sección (RNF-14)**
 - **CA-12** (HU-1, RNF-07) — error: Dado `429` `SHARED_TOO_MANY_REQUESTS` al generar, entonces veo un aviso de advertencia «Hiciste demasiados intentos. Espera {n} minutos e inténtalo de nuevo.» con la espera de la API y conservo lo elegido (013 CA-6; texto del catálogo común).
@@ -87,7 +87,7 @@ se cierra PD-200 en la página del visitante.
 | `enlace-error-red` · `enlace-limite` · `enlace-no-existe` · `enlace-archivo-no-encontrado` | CA-12 a CA-14 |
 | `carpeta` (sección oculta) | CA-2 |
 
-- Tonos: `429` y solo lectura en aviso de advertencia; red, `404` y copia fallida en aviso de error; «Vencido» con insignia neutra. «Crear enlace público» es un botón secundario (`outline`).
+- Tonos: `429` en aviso de advertencia; solo lectura con `ReadOnlyBanner` (CA-10); red, `404` y copia fallida en aviso de error; «Vencido» con insignia neutra. «Crear enlace público» es un botón secundario (`outline`).
 - Mensajes clave: los de CA-1 a CA-17. Manda RF-17 (contraseña opcional) y «contraseña», no «clave» (013 §6).
 
 ## 7. Fuera de alcance
@@ -111,6 +111,7 @@ se cierra PD-200 en la página del visitante.
 - [RESUELTA 2026-11-10, Fátima] D-7 cerrar con la URL sin copiar no pide confirmación · D-8 `404` del archivo con texto propio y sin botón · D-9 «Enlace copiado» sin temporizador · D-10 T-01 con 24 variantes y 48 PNG → sí a las cuatro
 - [RESUELTA 2026-11-10, Fátima] I-2 ¿Qué acción lleva el `404` del enlace? → una nueva, «Actualizar», que repite la lectura; «Actualizar lista» de 012b no cambia
 - [RESUELTA 2026-11-10, Fátima] I-5 ¿Dónde se ve el error de contraseña? → solo junto al campo, como 013b CA-4 (CA-5)
+- [RESUELTA 2026-11-11, Adrián] P-A → Fátima toca `features/audit/activity-labels.ts` y su prueba · S-7 → se mantiene el `key` por pedido de PD-200 (CA-18 sin cambios) · mockup de T-01 → aprobado con la solo lectura en `ReadOnlyBanner`
 
 ## 10. Registro de cambios
 | Fecha | Cambio | Motivo | Aprobó |
@@ -118,3 +119,4 @@ se cierra PD-200 en la página del visitante.
 | 2026-11-10 | Creación en `Borrador` con plan y tareas (ADR-0034); incluye 013 CA-18 y PD-200 | Fila 013c de `specs/README.md`; decisiones de Fátima del 2026-11-06 | Pendiente (Adrián) |
 | 2026-11-10 | Estados, textos y riesgos del mapa del `ui-designer` (R-1 a R-7 → CA-6, CA-11, CA-15 y §5); D-1 a D-10 resueltas con las recomendaciones | Mapa del `ui-designer`; decisiones de Fátima | Fátima (decisión); plan por aprobar (Adrián) |
 | 2026-11-10 | Revisión de documentos: CA-5 solo junto al campo (I-5), CA-11 con acción en curso (I-6), CA-12 con el texto del catálogo en advertencia (I-4), CA-14 «Actualizar» (I-2), §6 con los 24 nombres y tonos del mockup, S-4; tareas partidas (I-8) | Revisión del `reviewer`; decisiones de Fátima; mockup del `ui-designer` | Fátima (decisión); plan por aprobar (Adrián) |
+| 2026-11-11 | Auditoría del PR #107: CA-11 suma el clic fuera del diálogo (M-2); CA-10 y §6 usan `ReadOnlyBanner` para la solo lectura (M-3); estado `Lista` (M-4) | Auditoría de Adrián | Adrián |

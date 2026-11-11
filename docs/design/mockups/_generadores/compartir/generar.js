@@ -127,6 +127,8 @@ const CSS = '\n' + M.CSS.MARCO + M.CSS.BOTONES + M.CSS.MQ_900 +
   .alert-warning { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 10%, var(--card)); color: var(--warning-foreground); }
   .alert-success { border-color: var(--success); background: color-mix(in srgb, var(--success) 10%, var(--card)); color: var(--foreground); }
   .alert-success > .ico { color: var(--success-foreground); }
+  /* ReadOnlyBanner (marco.avisoSoloLectura) dentro de la sección: el gap de .pl separa, sin el margen de página */
+  .sd .readonly { margin: 0; }
 
   @media (max-width: 900px) {
     .layer { min-height: 0; }
@@ -182,7 +184,8 @@ const T = {
   limite: `Hiciste demasiados intentos. Espera ${ESPERA_MIN} minutos e inténtalo de nuevo.`,
   noExiste: 'Este enlace ya no existe. Actualiza para ver el estado actual.',
   archivoNo: 'Este archivo ya no está disponible. Puede que esté en la papelera.',
-  soloLectura: 'Tu cuenta está en solo lectura: no puedes generar enlaces.',
+  // ReadOnlyBanner (components/nimbo, M-3 de la auditoría del #107): título por omisión «Tu cuenta está en solo lectura.»
+  soloLectura: 'No puedes generar enlaces. Para hacerlo, renueva tu plan.',
 };
 
 // ---------- Piezas del diálogo de la 012b ----------
@@ -251,7 +254,6 @@ function alerta(tono, ic, texto, accion = '') {
 }
 const accionReintentar = () => btn('btn-outline btn-sm', 'Reintentar', { ic: 'retry' });
 const accionActualizar = () => btn('btn-outline btn-sm', 'Actualizar', { ic: 'retry' });
-const accionRenovar = () => `<a class="btn btn-outline btn-sm" href="#">Renovar plan</a>`;
 
 const resumen = ({ vencido = false, contrasena = true } = {}) => {
   const badge = vencido
@@ -414,8 +416,8 @@ const ESTADOS = [
   { estado: 'enlace-limite', titulo: '429 al generar: advertencia con la espera de la API, conserva lo elegido (CA-12)', cuerpo: () => formularioEnlace({ dias: 30, contrasena: 'puente-azul-27' }).replace('<div class="pl-actions">', alerta('warning', 'clock', T.limite).trim() + '\n        <div class="pl-actions">') },
   { estado: 'enlace-no-existe', titulo: '404 SHARING_LINK_NOT_FOUND al revocar: «Actualizar» vuelve a pedir el estado (CA-14)', cuerpo: () => alerta('error', 'alert', T.noExiste, accionActualizar()) + resumen() },
   { estado: 'enlace-archivo-no-encontrado', titulo: '404 STORAGE_NODE_NOT_FOUND: texto propio, sin botón (CA-14, D-8)', cuerpo: () => alerta('error', 'alert', T.archivoNo) },
-  { estado: 'enlace-solo-lectura-sin-enlace', titulo: 'solo lectura sin enlace: sin «Crear», con «Renovar plan» (CA-10, D-6)', cuerpo: () => alerta('warning', 'lock', T.soloLectura, accionRenovar()) },
-  { estado: 'enlace-solo-lectura-con-enlace', titulo: 'solo lectura con enlace: sin «Generar otro enlace»; «Revocar enlace» sigue (CA-10)', cuerpo: () => resumen() + alerta('warning', 'lock', T.soloLectura, accionRenovar()) + accionesEnlace({ soloLectura: true }) },
+  { estado: 'enlace-solo-lectura-sin-enlace', titulo: 'solo lectura sin enlace: ReadOnlyBanner con «Renovar plan», sin «Crear» (CA-10, D-6)', cuerpo: () => M.avisoSoloLectura({ cuerpo: T.soloLectura }) },
+  { estado: 'enlace-solo-lectura-con-enlace', titulo: 'solo lectura con enlace: sin «Generar otro enlace»; «Revocar enlace» sigue (CA-10)', cuerpo: () => M.avisoSoloLectura({ cuerpo: T.soloLectura }) + resumen() + accionesEnlace({ soloLectura: true }) },
   { estado: 'carpeta', titulo: 'una carpeta: la sección no aparece y no se pide nada a la API de enlaces (CA-2)', carpeta: true },
 ];
 

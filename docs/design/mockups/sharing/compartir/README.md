@@ -29,8 +29,8 @@
   - enlace-limite: `429` al generar, «Hiciste demasiados intentos. Espera 15 minutos e inténtalo de nuevo.» en `Alert` warning, sin botón; conserva lo elegido (CA-12)
   - enlace-no-existe: `404` `SHARING_LINK_NOT_FOUND` al revocar, «Este enlace ya no existe. Actualiza para ver el estado actual.» con «Actualizar» (CA-14)
   - enlace-archivo-no-encontrado: `404` `STORAGE_NODE_NOT_FOUND`, «Este archivo ya no está disponible. Puede que esté en la papelera.», sin botón (CA-14, D-8)
-  - enlace-solo-lectura-sin-enlace: «Tu cuenta está en solo lectura: no puedes generar enlaces.» en `Alert` warning con «Renovar plan», sin «Crear enlace público» (CA-10, D-6)
-  - enlace-solo-lectura-con-enlace: el resumen, el mismo aviso y solo «Revocar enlace» (CA-10). El `403` tardío al generar muestra el mismo aviso sobre el formulario conservado; no tiene captura propia
+  - enlace-solo-lectura-sin-enlace: `ReadOnlyBanner` (`components/nimbo/`, como «Compartidos conmigo» de la 012b) con candado, «Tu cuenta está en solo lectura.», «No puedes generar enlaces. Para hacerlo, renueva tu plan.» y «Renovar plan»; sin «Crear enlace público» (CA-10, D-6)
+  - enlace-solo-lectura-con-enlace: el mismo `ReadOnlyBanner` arriba, el resumen y solo «Revocar enlace» (CA-10). El `403` tardío al generar muestra el mismo aviso sobre el formulario conservado; no tiene captura propia
   - carpeta: el diálogo de una carpeta, sin la sección (CA-2)
 - **Capturas**: `docs/design/capturas/sharing/compartir/` (`compartir--<estado>--<360|1440>.png`, 48 PNG), con
   `pw/capturar-rutas.js` (es-GT, hora de Guatemala, movimiento reducido). `compartir--default--*.png` son las capturas
@@ -64,12 +64,13 @@
   «Revocar enlace», a «Cancelar»; tras generar, a «Copiar enlace»; tras revocar, a «Crear enlace público». «Cancelar»
   devuelve el foco al botón que abrió la confirmación.
 - **Errores**: red y 5xx, `404` y el fallo al copiar van en `ShareErrorAlert` (`Alert` error, `role="alert"`). El `429`
-  y la solo lectura van en `Alert` warning (`role="status"`): son límites, no fallas (`ui-guidelines.md` §4, como el
-  `429` de la 013b). El botón `outline` sobre advertencia o sobre el tono destructive lleva el borde
+  va en `Alert` warning (`role="status"`): es un límite, no una falla (`ui-guidelines.md` §4, como el `429` de la
+  013b). La solo lectura usa `ReadOnlyBanner`, el aviso de siempre (M-3 de la auditoría del #107). El botón `outline` sobre advertencia o sobre el tono destructive lleva el borde
   `secondary-foreground` (con `input` daría menos de 3:1, PD-189).
 - **Anuncios**: «Generando…», «Revocando…» y «Enlace copiado» van en una región `role="status"` oculta; los avisos de
   éxito, en su propio `Alert`. Cada aviso se anuncia una vez.
-- **Solo lectura** (D-6): se anticipa; no se ofrece crear ni «Generar otro enlace» y «Revocar enlace» sigue. En
+- **Solo lectura** (D-6): se anticipa con `ReadOnlyBanner` arriba de la sección, y el `403` tardío muestra el mismo
+  aviso sobre el formulario conservado; no se ofrece crear ni «Generar otro enlace» y «Revocar enlace» sigue. En
   solo lectura no se muestra la nota «Si lo perdiste, genera otro», que no se podría seguir.
 - **Datos de ejemplo**: `Informe_trimestral_Q3.docx` (2,4 MB), vence el 14 nov 2026, 14:30; la URL
   `https://nimbo.gt/enlace#q7Vf…` lleva un token falso. En la app nada de eso se guarda ni se registra (spec §5).
@@ -87,5 +88,5 @@
 - Botón primario con el token corregido (`primary`, DF-41).
 
 ## Estado
-- Borrador (013c T-01). Lo aprueba Adrián; hasta entonces la spec 013c no pasa a `Lista`.
+- Aprobado (Adrián, 2026-11-11: los 24 estados a 360 y 1440 px, con la solo lectura en `ReadOnlyBanner`).
 - Pendiente del inventario: «lista-accesos» como vista propia (012).

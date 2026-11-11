@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Compartir · Nimbo — solo lectura sin enlace: sin «Crear», con «Renovar plan» (CA-10, D-6)</title>
+<title>Compartir · Nimbo — solo lectura sin enlace: ReadOnlyBanner con «Renovar plan», sin «Crear» (CA-10, D-6)</title>
 <!-- Mockup de referencia (spec 013c: sección «Enlace público» del diálogo «Compartir», CA-1 a CA-15). Estado: enlace-solo-lectura-sin-enlace. -->
 <!-- El diálogo es el de la 012b (share-dialog.tsx); la URL y su token son de ejemplo, falsos. -->
 <!-- Colores: valores de ui-guidelines.md §3 (tonos AA). La implementación usa tokens, components/ui y components/nimbo. -->
@@ -415,6 +415,8 @@
   .alert-warning { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 10%, var(--card)); color: var(--warning-foreground); }
   .alert-success { border-color: var(--success); background: color-mix(in srgb, var(--success) 10%, var(--card)); color: var(--foreground); }
   .alert-success > .ico { color: var(--success-foreground); }
+  /* ReadOnlyBanner (marco.avisoSoloLectura) dentro de la sección: el gap de .pl separa, sin el margen de página */
+  .sd .readonly { margin: 0; }
 
   @media (max-width: 900px) {
     .layer { min-height: 0; }
@@ -435,7 +437,7 @@
 </head>
 <body>
 
-<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">013c</span> <strong>Compartir · Enlace público</strong> <span class="file">compartir--enlace-solo-lectura-sin-enlace.html</span> <span>diálogo sobre /archivos · estado: solo lectura sin enlace: sin «Crear», con «Renovar plan» (CA-10, D-6)</span></aside>
+<aside class="sheet-label" aria-label="Rótulo del mockup"><span class="chip">013c</span> <strong>Compartir · Enlace público</strong> <span class="file">compartir--enlace-solo-lectura-sin-enlace.html</span> <span>diálogo sobre /archivos · estado: solo lectura sin enlace: ReadOnlyBanner con «Renovar plan», sin «Crear» (CA-10, D-6)</span></aside>
 
 <div class="canvas">
   <div class="app" inert>
@@ -579,7 +581,11 @@
     </section>
     <section class="pl" aria-labelledby="enlace-publico-t">
       <h3 id="enlace-publico-t">Enlace público</h3>
-      <div class="alert alert-warning" role="status"><svg class="ico " width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><p class="alert-text">Tu cuenta está en solo lectura: no puedes generar enlaces.</p><a class="btn btn-outline btn-sm" href="#">Renovar plan</a></div>
+        <section class="readonly" aria-labelledby="ro-t">
+          <svg class="ico " width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <p class="readonly-text"><strong id="ro-t">Tu cuenta está en solo lectura.</strong> No puedes generar enlaces. Para hacerlo, renueva tu plan.</p>
+          <a class="btn btn-primary btn-sm" href="#">Renovar plan</a>
+        </section>
     </section>
     <button class="sd-close" type="button" aria-label="Cerrar"><svg class="ico " width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
   </div>
