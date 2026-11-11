@@ -1,10 +1,11 @@
 'use client';
 
-import type { FileSummary, NodeSummary } from '@nimbo/contracts';
-import type * as React from 'react';
+import type { FileSummary, NodeAccessLevel, NodeSummary } from '@nimbo/contracts';
+import * as React from 'react';
 
 import { AppLayout } from '../../../components/nimbo/app-layout';
-import { SignOutButton } from '../../identity/components/sign-out-button';
+import { ShareDialog, type ShareTarget, type SharingApi } from '../../sharing';
+import type { FolderListing } from '../hooks/use-folder-contents';
 import {
   maxFileLabelOf,
   useMyFilesState,
@@ -12,10 +13,11 @@ import {
   type RowActionHandlers,
 } from '../hooks/use-my-files-state';
 import { useReturnFocus } from '../hooks/use-return-focus';
+import { isOwner } from '../node-access';
 
 import { FileExplorer, type FileExplorerStatus } from './file-explorer';
 import { DownloadNoticeBanner, FileRowMenu, type DownloadNotice } from './file-row-menu';
-import { FolderBreadcrumbs } from './folder-breadcrumbs';
+import { FolderBreadcrumbs, SHARED_ROOT_CRUMB } from './folder-breadcrumbs';
 import { FolderNotFoundState } from './folder-not-found-state';
 import { FolderRowMenu } from './folder-row-menu';
 import { MyFilesDialogs } from './my-files-dialogs';
@@ -29,14 +31,22 @@ import { SidebarQuota } from './sidebar-quota';
  */
 export type FirstFileAction = React.ComponentType<{ readonly file: FileSummary }>;
 
-/** Menú ⋮ de una fila: descargar (archivos), renombrar, mover, fijar en la barra lateral y mandar a la papelera. */
+/** Lo que la fila necesita para «Compartir»: el nivel de la ubicación abierta y quién abre el diálogo (012b). */
+interface RowShare {
+  readonly level: NodeAccessLevel;
+  readonly open: (target: ShareTarget) => void;
+}
+
+/** Menú ⋮ de una fila: descargar, renombrar, mover, fijar en la barra lateral, compartir y mandar a la papelera. */
 function RowActions({
   node,
   handlers,
+  share,
   FirstAction,
 }: {
   readonly node: NodeSummary;
   readonly handlers: RowActionHandlers;
+  readonly share: RowShare;
   readonly FirstAction: FirstFileAction | undefined;
 }): React.JSX.Element {
   const common = {
@@ -44,6 +54,10 @@ function RowActions({
     onMove: () => handlers.organize({ action: 'move', node }),
     onMoveToTrash: () => void handlers.moveToTrash(node),
     pin: handlers.pinToggleFor(node),
+    sharing: {
+      level: share.level,
+      onShare: () => share.open({ nodeType: node.type, nodeId: node.id, name: node.name }),
+    },
   };
   if (node.type === 'folder') return <FolderRowMenu folder={node} {...common} />;
   return (
@@ -56,6 +70,11 @@ function RowActions({
       {...common}
     />
   );
+}
+
+/** Nivel sobre la ubicación abierta (012 CA-13); mientras carga o si falla, el del propietario: la API decide. */
+function accessLevelOf(listing: FolderListing): NodeAccessLevel {
+  return listing.status === 'ready' ? listing.contents.accessLevel : 'OWNER';
 }
 
 /** Arriba de la lista: el tope de fijados (CA-28) y el fallo de una descarga (005 CA-21); `undefined` sin avisos. */
@@ -76,19 +95,24 @@ function explorerNotices(
 }
 
 /** El explorador de la ubicación abierta con sus avisos, cargas, desglose, orden y «Cargar más». */
+interface MyFilesExplorerProps {
+  readonly state: MyFilesState;
+  readonly status: FileExplorerStatus;
+  readonly share: RowShare;
+  readonly firstAction: FirstFileAction | undefined;
+}
+
 function MyFilesExplorer({
   state,
   status,
+  share,
   firstAction,
-}: {
-  readonly state: MyFilesState;
-  readonly status: FileExplorerStatus;
-  readonly firstAction: FirstFileAction | undefined;
-}): React.JSX.Element {
+}: MyFilesExplorerProps): React.JSX.Element {
   const { contents, notices, uploads, folderId } = state;
   return (
     <FileExplorer
       status={status}
+      accessLevel={share.level}
       folderId={folderId}
       breadcrumbs={state.view.breadcrumbs}
       nodes={state.view.nodes}
@@ -100,7 +124,12 @@ function MyFilesExplorer({
       disclosure={state.view.disclosure}
       controls={contents.controls}
       renderRowActions={(node) => (
-        <RowActions node={node} handlers={state.rowActions} FirstAction={firstAction} />
+        <RowActions
+          node={node}
+          handlers={state.rowActions}
+          share={share}
+          FirstAction={firstAction}
+        />
       )}
       notice={explorerNotices(state.sidebar.quickAccess, notices.notice, () =>
         notices.setNotice(null),
@@ -109,9 +138,22 @@ function MyFilesExplorer({
   );
 }
 
+/**
+ * Migas en la barra superior cuando la ubicación ya cargó y hay al menos una carpeta abierta; lo compartido conmigo
+ * arranca en «Compartidos» (012b CA-9). En la raíz no: «Mis archivos» ya es el título y el ítem activo de la barra.
+ */
+function topBarOf(state: MyFilesState, level: NodeAccessLevel): React.ReactNode {
+  if (state.contents.listing.status !== 'ready') return null;
+  if (state.view.breadcrumbs.length === 0) return null;
+  const root = isOwner(level) ? {} : { root: SHARED_ROOT_CRUMB };
+  return <FolderBreadcrumbs breadcrumbs={state.view.breadcrumbs} {...root} />;
+}
+
 export interface MyFilesProps {
   /** Carpeta de la URL (`/archivos/carpeta/[folderId]`); `null` es la raíz (`/archivos`). */
   readonly folderId: string | null;
+  /** Cliente de compartición del diálogo «Compartir» (012b). */
+  readonly sharingApi: SharingApi;
   /** Archivo cuya fila recibe el foco al volver de la vista previa (017 §6); sin él, el foco no se mueve. */
   readonly returnFocusId?: string | null;
   /** Primer ítem del menú de cada archivo; sin él, el menú queda como en 005/006. */
@@ -125,35 +167,37 @@ export interface MyFilesProps {
  */
 export function MyFiles({
   folderId,
+  sharingApi,
   returnFocusId = null,
   firstAction,
 }: MyFilesProps): React.JSX.Element {
   const state = useMyFilesState(folderId);
   const { listing } = state.contents;
   useReturnFocus(listing.status, returnFocusId);
+  const [sharing, setSharing] = React.useState<ShareTarget | null>(null);
+  const share: RowShare = { level: accessLevelOf(listing), open: setSharing };
   return (
     <AppLayout
-      topBar={
-        listing.status === 'ready' ? (
-          <FolderBreadcrumbs breadcrumbs={state.view.breadcrumbs} />
-        ) : null
-      }
+      topBar={topBarOf(state, share.level)}
       sidebarSection={state.sidebar.sidebarSection}
       trashCount={state.sidebar.trashCount}
       quotaCard={<SidebarQuota state={state.sidebar.space} />}
     >
       <div className="space-y-4">
-        <div className="flex justify-end">
-          <SignOutButton />
-        </div>
         <ReadOnlyNotice />
         {listing.status === 'not_found' ? (
           <FolderNotFoundState />
         ) : (
-          <MyFilesExplorer state={state} status={listing.status} firstAction={firstAction} />
+          <MyFilesExplorer
+            state={state}
+            status={listing.status}
+            share={share}
+            firstAction={firstAction}
+          />
         )}
       </div>
       <MyFilesDialogs state={state} />
+      <ShareDialog api={sharingApi} target={sharing} onClose={() => setSharing(null)} />
     </AppLayout>
   );
 }

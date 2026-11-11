@@ -4,6 +4,7 @@ import type { DownloadUrlResponse, NodeSummary, QuickAccessItem } from '@nimbo/c
 import * as React from 'react';
 
 import { storageMessage } from '../../../lib/error-catalog';
+import { openInBrowser } from '../../../lib/use-preparing-download';
 import {
   useQuickAccess,
   type QuickAccess,
@@ -12,12 +13,7 @@ import {
 import type { QuickAccessApi } from '../quick-access-api';
 import { isStorageNotFound, StorageRequestError } from '../storage-request-error';
 
-import {
-  downloadFailureNotice,
-  openInBrowser,
-  type DownloadNotice,
-  type PinToggle,
-} from './file-row-menu';
+import { downloadFailureNotice, type DownloadNotice, type PinToggle } from './file-row-menu';
 import { QuickAccessSection } from './quick-access-section';
 
 export interface QuickAccessSidebarOptions {

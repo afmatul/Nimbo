@@ -100,7 +100,7 @@ describe('UploadRegistrar con reemplazo (014)', () => {
     expect(ctx.journal.entries.slice(0, 10)).toEqual([
       'tx:begin',
       'quota:lockUsage',
-      'nodes:findAccessibleById',
+      'nodes:findOwnedLiveFile',
       'session:transition:completada',
       'quota:lockUsage',
       'versions:nextNumber',

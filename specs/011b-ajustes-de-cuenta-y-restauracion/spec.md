@@ -4,12 +4,12 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | En curso (2026-10-26: PR-A en `feat/011b-ajustes`) · aprobada por Adrián el 2026-10-26 (PR #74) · plan, ADR-0035 y mockups aprobados |
+| Estado | Hecha (2026-10-31: PR-A #82 `cd05a9f` y PR-B #85 `1d7512a` integrados en `main`) · aprobada por Adrián el 2026-10-26 (PR #74) · plan, ADR-0035 y mockups aprobados |
 | Dueño | Fátima |
 | Fase | 3 (hereda la 011, Fase 2; se ejecuta en la Fase 3) |
 | Requisitos | RF-05, RF-06, RF-07, RF-12, RF-22, RF-23, RF-24; RNF-05, RNF-13, RNF-14, RNF-17 |
 | Depende de | 004, 006, 007 (resumen de espacio, P-3), 009, 010, 011 |
-| Última actualización | 2026-10-26 |
+| Última actualización | 2026-10-29 |
 
 > **Continuidad:** borrador cerrado, `plan.md` propuesto y `/mockup` listo el 2026-10-22, con los hallazgos del PR #74
 > corregidos el 2026-10-23, la auditoría de Adrián del 2026-10-24 y su seguimiento del 2026-10-26. Adrián aprobó spec,
@@ -117,3 +117,5 @@ puede deshacer una eliminación concreta dejando rastro visible para el cliente.
 | 2026-10-24 | Auditoría de Adrián: ADR-0035 y DF-81; restauración permitida en solo lectura fuera de la lista de bloqueos de ADR-0032; fecha con conversión de día Guatemala; `PUT` con extra > 0 y `DELETE` para quitar; errores de cuenta interna y sin suscripción separados; fuente de verdad de reglas y mapeo SQL; `FormDialog` y CSS compartidos | Cierre de B-1 a B-4, M-1 a M-7 y menores | Fátima |
 | 2026-10-26 | Seguimiento de Adrián: lectura `limites_de_cuenta`, fecha a las 00:00 del día siguiente en Guatemala, `no_subscription` en la vigencia. RN-8: un instante de fin se muestra como el último día en que rige; CA-6, CA-7 y RN-2 piden un día posterior al que se muestra | Cierre de N-1 a N-6 y decisión de Fátima sobre las fechas de fin | Fátima |
 | 2026-10-26 | N-7: el diálogo de cambio de plan usa la regla; «Venció el» queda fuera de ella. N-8: mensaje «La fecha de fin no puede ser anterior a hoy». Spec, plan, ADR-0035 y mockups aprobados: pasa a «Lista» | Aprobación de Adrián, PR #74 | Adrián |
+| 2026-10-29 | PR-B (T-08 a T-12) listo para revisión: demo en local aprobada. En la papelera de Soporte, un `404` dice «venció el» solo si la fecha de purga ya pasó (si no, «Ya no está en la papelera de <cliente>. Nada cambió.»), el `422` de profundidad dice el límite y que el cliente mueva la carpeta original, y los mensajes del motivo salen del catálogo de contracts. Pasa a «En revisión» | Revisión del PR-B (`review.md`) | Fátima |
+| 2026-10-31 | PR-B integrado tras la auditoría de Adrián (M-1, M-2, M-3 y m-1 corregidos; m-2 a m-9 y S-1, S-3, S-5, S-7 quedan como seguimiento en `review.md`). Pasa a «Hecha» | Aprobación de Adrián, PR #85 | Adrián |

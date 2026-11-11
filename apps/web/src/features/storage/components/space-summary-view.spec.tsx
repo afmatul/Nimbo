@@ -159,7 +159,7 @@ describe('SpaceSummaryView', () => {
     expect(within(sidebar).getByRole('region', { name: 'Almacenamiento' }).textContent).toContain(
       'No pudimos calcular tu espacio.',
     );
-    expect(within(sidebar).getByRole('link', { name: 'Mis Archivos' })).toBeTruthy();
+    expect(within(sidebar).getByRole('link', { name: 'Mis archivos' })).toBeTruthy();
   });
 
   it('CA-5: en 90–99 % el aviso es una alerta «Espacio casi agotado.»', () => {
@@ -192,7 +192,7 @@ describe('SpaceSummaryView', () => {
     expect(skeleton?.innerHTML).toContain('animate-pulse');
     expect(skeleton?.innerHTML).toContain('motion-reduce:animate-none');
     expect(screen.queryByRole('region', { name: 'Espacio usado' })).toBeNull();
-    expect(screen.getAllByRole('link', { name: 'Mis Archivos' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('link', { name: 'Mis archivos' }).length).toBeGreaterThan(0);
   });
 
   it('CA-8: si falla explica la causa y «Reintentar» vuelve a pedir el resumen', async () => {

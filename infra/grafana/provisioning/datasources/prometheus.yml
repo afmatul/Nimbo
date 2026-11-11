@@ -1,0 +1,12 @@
+# Fuente de datos de Grafana (022, CA-10): aprovisionada por archivo, sin pasos manuales en volúmenes vacíos.
+# Grafana solo lee Prometheus; no consulta PostgreSQL ni otra fuente de datos de clientes (RN-7).
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false

@@ -11,7 +11,9 @@ Procesamiento Asíncrono → Almacenamiento de Datos**, más **Servicios Externo
 - `web`: Next.js.
 - `api`: NestJS con los módulos de la «Lógica del Sistema» (REST + WebSocket).
 - `worker`: NestJS standalone con los procesadores y trabajos programados del «Procesamiento Asíncrono» (Indexación,
-  Optimización, Control de Suscripciones, Actualizado de Versiones). Usa los mismos módulos que `api`.
+  Optimización, Control de Suscripciones, Actualizado de Versiones). Usa los mismos módulos que `api`. Son **dos
+  procesos con la misma imagen** (ADR-0038): el `worker` general (todas las colas salvo `optimization`) y
+  `worker-optimizer` (solo `optimization`, el único que carga `sharp`), cada uno con su salud interna y 768 MiB sin swap.
 
 Justificación (ADR-0001): 4 personas y 10 semanas no justifican microservicios; las fronteras por módulo permiten
 separar uno como servicio el día que haga falta.
@@ -23,6 +25,7 @@ separar uno como servicio el día que haga falta.
 activo) y `s3.staging.nimbo.me` (MinIO, habilitado cuando 005 lo necesite). Imágenes en `ghcr.io/afmatul/nimbo-{api,worker,web}`;
 despliegue por SSH desde GitHub Actions (`migration:run` antes de `up -d`); rollback = redesplegar la etiqueta anterior.
 Solo Traefik publica puertos (80/443). La separación `api`/`worker` es por **proceso e imagen**, no por carpeta (ADR-0001).
+La imagen `nimbo-worker` usa base glibc; la del `api`, Alpine (ADR-0038). C + glibc fue aceptada el 2026-10-27; la enmienda concreta `node:22.23.3-trixie-slim`, sharp 0.35.5/libvips 8.18.7, Ghostscript de Trixie y `MALLOC_ARENA_MAX=2` fue aceptada por Matul/Adrián el 2026-10-28, después de `7f9285ff`. Ghostscript está en la imagen compartida para 019/futuro 021b, no participa en 021 JPEG/PNG. El optimizador recibe solo las 17 claves de su schema por `environment` explícito, sin `env_file` (PD-159 cerrado); esto no enmienda CA-19 de 000.
 
 ```mermaid
 flowchart TB
@@ -39,7 +42,7 @@ flowchart TB
     X1[audit] & X2[realtime] & X3[notifications]
   end
   subgraph Async["Procesamiento Asíncrono · worker"]
-    Q1[Indexación] & Q2[Optimización] & Q3[Control de Suscripciones] & Q4[Actualizado de Versiones]
+    Q1[Indexación] & Q2[Optimización · worker-optimizer] & Q3[Control de Suscripciones] & Q4[Actualizado de Versiones]
   end
   subgraph Datos["Almacenamiento de Datos"]
     P[("PostgreSQL + pgvector")] & MI[("MinIO")] & R[("Redis")]
@@ -49,6 +52,7 @@ flowchart TB
   end
   subgraph Obs["Observabilidad"]
     PR[Prometheus] --> GR[Grafana]
+    CA[cAdvisor] -.-> PR
   end
   W & S -->|HTTPS / WSS| T
   T -->|REST + WebSocket| Logica
@@ -66,6 +70,14 @@ flowchart TB
 Diferencias con el diagrama entregado: ver **DF-28** (flecha Pino→Gemini, embedding de consultas, módulos faltantes,
 SMTP, observabilidad, rutas vía Traefik y worker separado).
 
+**Observabilidad (propuesto en el plan de 022, ADR-0040 `Propuesto`; nada de esto está implementado todavía).** Cada
+proceso expone `/metrics` (`prom-client`) en un puerto interno: el `api`, en un servidor aparte en `METRICS_PORT`, fuera
+de `/api/v1` y de Traefik; los `worker`, en su puerto de salud. Prometheus (sin `ports:`) recolecta los tres procesos y
+cAdvisor (sin `ports:`), y los distingue por `job`. Grafana escucha solo en `127.0.0.1` (túnel SSH en staging), muestra el
+tablero de operación y evalúa las seis alertas de `product-context.md` §7 con Grafana Alerting y su SMTP propio (P-3),
+sin la cola `mail`. Es la única excepción a «solo Traefik publica puertos», y solo en la interfaz de bucle local.
+Ninguna caída de esta pila afecta a la app (Art. XII).
+
 ## 2. Estructura del monorepo
 
 ```
@@ -76,11 +88,12 @@ nimbo/
 │  ├─ api/                 # NestJS HTTP + WebSocket
 │  │  └─ src/shared/       # módulo transversal T1 (ver §3)
 │  │  └─ src/modules/<modulo>/   # aquí viven también los *.processor.ts y *.job.ts de cada módulo
-│  └─ worker/              # composición: WorkerModule + main.ts + salud interna; importa `@nimbo/api/*` (solo index.ts)
+│  └─ worker/              # imagen `nimbo-worker` (Dockerfile) y `healthcheck.ts`; las raíces `worker.main.ts` y
+│                          # `worker-optimizer.main.ts` viven en `apps/api/src` (plan 000 R-3, ADR-0038)
 ├─ packages/
 │  ├─ contracts/           # DTOs y tipos compartidos web ↔ api (fuente única)
 │  └─ config/              # eslint (incl. boundaries.js), tsconfig, jest base
-├─ infra/                  # solo configuraciones: traefik/, minio/, deploy/, (022) prometheus/, grafana/, respaldos
+├─ infra/                  # solo configuraciones: traefik/, minio/, deploy/, (022) prometheus/, grafana/, (022c) backup/
 ├─ docs/operations/        # despliegue, ambientes, rollback (insumo del Manual Técnico)
 ├─ e2e/  load/  specs/  docs/
 ```
@@ -94,18 +107,18 @@ No hay paquete `domain` aparte salvo que un ADR lo justifique.
 
 | Módulo | Diagrama | Responsabilidad | Puede depender de |
 |---|---|---|---|
-| `shared` | T1 (DF-49) | `Actor`, `IClock`, `DomainError` + `DomainExceptionFilter`, logger Pino con redacción, `correlationId`, validación de entorno, `DataSource`, salud (`HealthModule`, `IHealthIndicator`, indicadores Postgres/Redis/MinIO), paginación. Con 001: `IRateLimiter` → `RedisRateLimiter`, `TooManyRequestsError` (429), `ITransactionRunner` + `TransactionContext`, `ZodValidationPipe` (ADR-0020), `configureHttpApp` (solo JSON, CORS, `trust proxy`) y el proveedor `REDIS_CLIENT`. Con 003: guards globales (`JwtAuthGuard`, `RolesGuard`, `@Public`, `@Roles`), el puerto token→`Actor` que implementa `identity` (002 D-14, 003 D-2) y `withActor` (ADR-0005) | — |
+| `shared` | T1 (DF-49) | `Actor`, `IClock`, `DomainError` + `DomainExceptionFilter`, logger Pino con redacción, `correlationId`, validación de entorno, `DataSource`, salud (`HealthModule`, `IHealthIndicator`, indicadores Postgres/Redis/MinIO), paginación. Con 001: `IRateLimiter` → `RedisRateLimiter`, `TooManyRequestsError` (429), `ITransactionRunner` + `TransactionContext`, `ZodValidationPipe` (ADR-0020), `configureHttpApp` (solo JSON, CORS, `trust proxy`) y el proveedor `REDIS_CLIENT`. Con 003: guards globales (`JwtAuthGuard`, `RolesGuard`, `@Public`, `@Roles`), el puerto token→`Actor` que implementa `identity` (002 D-14, 003 D-2) y `withActor` (ADR-0005). Con 013 (plan 013 D-2, regla 8): `IPasswordHasher` → `Argon2idHasher`, `PasswordHash`, `IAttemptLockout` → `RedisAttemptLockout`, movidos desde `identity` sin cambio de firma. Con 022 (propuesto en su plan, ADR-0040): `MetricsModule` (un registro de `prom-client` por aplicación, entra por `SharedModule`), el middleware HTTP por `routePatternOf`, los recolectores de colas (descubrimiento de `WorkerHost` compartido con `WorkerDrain`) y de dependencias (reutiliza `HealthService.ready()`) y `OnlyOfficeProbe` (solo métricas, fuera de `ready`; no importa `editing`) | — |
 | `audit` | T2 (extraído de M8, DF-03) | `AuditService`, `AuditEntry`; declara e implementa `IAuditLogger` (ADR-0010). 005 creó el puerto y el catálogo cerrado `AuditAction`; 004 lo implementa con `AuditService`, persistente en `evento_auditoria` (solo adición, RLS por afectado), con el catálogo `AUDIT_CATALOG` (lista blanca de atributos por acción) y el repositorio interno `IAuditRepository`. `AuditModule` (escritura; lo cargan `api` y `worker`) y `AuditHttpModule` (solo `api`: `GET /audit/my-events`, la actividad propia para los cuatro roles) | shared |
 | `notifications` | T4 (DF-34) | Correo y notificaciones; declara e implementa `IMailer` e `INotifier` (ADR-0010). El `api` encola en `mail` y el `worker` entrega por SMTP con nodemailer (ADR-0018) | shared, realtime |
 | `realtime` | T3 (generalizado desde M5, DF-30) | Único gateway Socket.IO, salas por usuario y documento; valida el token del handshake con el puerto token→`Actor` de `shared`; declara `IRealtimePublisher` e `IDocumentRooms` y el evento `realtime.document-left` (ADR-0010, ADR-0019, 015) | shared |
-| `identity` | M1 | Registro, verificación, login, refresh, sesiones, dispositivos. Publica `identity.client-account-verified` (001, ADR-0019). Con 011 (Propuesto): fachadas de cuentas para `backoffice`. Con 009: `VerifiedClientLister` (en el `worker` por `IdentityReadersModule`) y `AccountContactReader` para `billing`. Implementa `IUserDirectory` (nombres visibles; lo declara `editing`) | shared, notifications, audit, editing (solo para implementar `IUserDirectory`, patrón `billing → storage`; 016, DF-74) |
+| `identity` | M1 | Registro, verificación, login, refresh, sesiones, dispositivos. Publica `identity.client-account-verified` (001, ADR-0019). Con 011 (Propuesto): fachadas de cuentas para `backoffice`. Con 009: `VerifiedClientLister` (en el `worker` por `IdentityReadersModule`) y `AccountContactReader` para `billing`. Implementa `IUserDirectory` (nombres visibles; lo declara `editing`) e `IShareeDirectory` (destinatarios; lo declara `sharing`, 012) | shared, notifications, audit, editing y sharing (solo para implementar `IUserDirectory` e `IShareeDirectory`, patrón `billing → storage`; 016, DF-74; 012, DF-84) |
 | `billing` | M4 | Planes, suscripciones, pagos, facturas, renovación; implementa `IPlanLimitsProvider` (declarado por `storage`, DF-51 opción A) e `IAgentQuota`; crea la suscripción Personal al consumir `identity.client-account-verified` | shared, notifications, audit, storage (`IObjectStorage` para facturas y `IPlanLimitsProvider`/`PlanLimits` para implementarlo; solo desde `storage/index.ts`), identity (solo desde su `index.ts`: el evento `identity.client-account-verified`, ADR-0019, y desde la 009 las fachadas de lectura `VerifiedClientLister` y `AccountContactReader`, sin repositorios ni entidades; aprobado por Adrián en la revisión del plan 009, decisión 2, DF-69) |
 | `access` | M3a (lectura) | Solo lectura: `PermissionResolver`, políticas, `accessibleNodes(actor)` | shared |
-| `storage` | M2 | Nodos, cargas, descargas, papelera, versiones, cuota, búsqueda por metadatos, vista previa. Con 005: `UploadService`, `QuotaService`, `FileService`, cola `upload-cleanup`. Escribe la columna `usuario.espacio_usado` (regla 6, DF-59). Con 019 publica `storage.file-version-created` (`FILE_VERSION_CREATED`, `FileVersionCreatedEvent`) tras el commit y expone la fachada `IndexableFileGateway` a `intelligence`. Con 017, la fachada `StoragePreviewFacade` (resuelve el archivo accesible y firma la URL de vista, sin tasa ni auditoría) que consume `PreviewService`, y el controlador `POST /files/:fileId/preview-url` vive en `storage/preview/` con su propia tasa (DF-15, DF-84). **Declara** `IPlanLimitsProvider` y `PlanLimits` en `application/plan-limits.ts` (DF-51, opción A) y no importa `billing` en ningún archivo | shared, access, audit, realtime (arista permitida por ADR-0010, sin uso en 005: el progreso de carga es local del cliente, DF-58; 015 tampoco la usa, P-7) |
+| `storage` | M2 | Nodos, cargas, descargas, papelera, versiones, cuota, búsqueda por metadatos, vista previa. Con 005: `UploadService`, `QuotaService`, `FileService`, cola `upload-cleanup`. Escribe la columna `usuario.espacio_usado` (regla 6, DF-59). Con 019 publica `storage.file-version-created` (`FILE_VERSION_CREATED`, `FileVersionCreatedEvent`) tras el commit y expone la fachada `IndexableFileGateway` a `intelligence`. **Declara** `IPlanLimitsProvider` y `PlanLimits` en `application/plan-limits.ts` (DF-51, opción A) y no importa `billing` en ningún archivo. Con 017, la fachada `StoragePreviewFacade` (resuelve el archivo accesible y firma la URL de vista, sin tasa ni auditoría) que consume `PreviewService`, y el controlador `POST /files/:fileId/preview-url` vive en `storage/preview/` con su propia tasa (DF-15, DF-96). Con 018b **declara** `IContentMatchReader` (`search/application/ports/i-content-match-reader.port.ts`, DF-95) para la búsqueda por contenido; lo implementa `intelligence` y lo enlaza la raíz (`ContentMatchBindingModule`), sin importar `intelligence` | shared, access, audit, realtime (arista permitida por ADR-0010, sin uso en 005: el progreso de carga es local del cliente, DF-58; 015 tampoco la usa, P-7) |
 | `sharing` | M3b (escritura) | Comparticiones, enlaces públicos, límite de intentos | shared, access, storage, audit |
 | `editing` | M5 | Sesiones de edición, presencia, callback, autoría e historial. Declara `IUserDirectory` e `IDocumentEditor`. Procesa `editing-save` en el `api` (ADR-0029) | shared, storage, access, realtime, audit (**sin `billing`**: los límites del plan salen de `IPlanLimitsProvider` de `storage`; mantener `editing → billing` cerraría el ciclo `editing → billing → identity → editing`) |
-| `intelligence` | M6 | Indexación (019: oyente de `storage.file-version-created`, extracción, fragmentos con vector, estado y «Reintentar», conciliación), recuperación híbrida y agente con citas (020). `IIndexQueue` es **interno** (DF-78); lee archivos de `storage` por `IndexableFileGateway`. El `api` carga `IntelligenceModule` (oyente, controlador y relay `index-status`) y el `worker`, `IntelligenceWorkerModule` (procesadores `indexing` e `index-reconcile`) | shared, storage, access, audit (resultados de la indexación, 019 CA-21; transversal sin dependencias de negocio, regla 5), billing (`IAgentQuota`, 020), realtime |
-| `optimizer` | M7 | Estimación y optimización de PDF e imágenes | shared, storage, access |
+| `intelligence` | M6 | Indexación (019: oyente de `storage.file-version-created`, extracción, fragmentos con vector, estado y «Reintentar», conciliación), recuperación híbrida y agente con citas (020). `IIndexQueue` es **interno** (DF-78); lee archivos de `storage` por `IndexableFileGateway`. Implementa `IContentMatchReader` de `storage` (`SqlContentMatchReader`, 018b, DF-95). El `api` carga `IntelligenceModule` (oyente, controlador y relay `index-status`) y el `worker`, `IntelligenceWorkerModule` (procesadores `indexing` e `index-reconcile`) | shared, storage, access, audit (resultados de la indexación, 019 CA-21; transversal sin dependencias de negocio, regla 5), billing (`IAgentQuota`, 020), realtime |
+| `optimizer` | M7 | Estimación y optimización de PDF e imágenes | shared, storage, access, audit (resultados terminales de optimización, 021 CA-21; transversal sin dependencias de negocio, regla 5) |
 | `backoffice` | M8 | Administración, soporte, métricas, colas (la salud y `RolesGuard` pasaron a `shared`: DF-49, 003 D-2) | shared, audit, identity, billing, storage (fachadas, DF-04) |
 
 **Reglas**
@@ -116,11 +129,15 @@ No hay paquete `domain` aparte salvo que un ADR lo justifique.
    - Los oyentes son idempotentes y, si perder un evento deja datos inconsistentes, el consumidor tiene una conciliación.
    - Si la arista del consumidor hacia el productor creara un ciclo, se vuelve a la regla 1.
 3. `access` lee tablas de `storage` y `sharing` por SQL de solo lectura. Es la **única** excepción documentada a «cada módulo es dueño de sus tablas», porque la autorización debe resolverse dentro de la consulta (DF-02, ADR-0010).
+   - **Extensión acotada** (012, DF-85): la función `nodos_compartidos()` de `access` lee además `usuario.estado` (tabla de `identity`), solo para descartar lo compartido por una cuenta suspendida (012 CA-17, 011 RN-6). Solo lectura, dentro de la función y sin importar `identity`.
+   - **Patrón «condición SQL que da el dueño de la tabla»** (018b, DF-95): como `accessibleNodes(actor)`, un módulo puede darle a otro una condición SQL de solo lectura **sobre sus propias tablas**, con parámetros con nombre, para que el consumidor la inserte en su consulta; el consumidor le pasa solo rutas de columna propias (`alias.propiedad`) y la ejecuta en el `EntityManager` de `requireActorScope(actor)`. No es una excepción a la propiedad de tablas (el SQL lo escribe su dueño y no lee tablas ajenas por su cuenta) ni a la regla 7. Si la arista directa cerraría un ciclo, va detrás de un puerto del consumidor enlazado en la raíz (regla 1). Caso único: `IContentMatchReader` (`storage` declara, `intelligence` implementa con `fragmento`), §5.
 4. Otro módulo solo importa desde `modules/<x>/index.ts`: fachadas, puertos que ese módulo implementa, eventos y tipos públicos. Se hace cumplir con lint (ADR-0008).
 5. Los transversales (`audit`, `realtime`, `notifications`) declaran sus propios puertos y nunca dependen de un módulo de negocio; entre ellos solo existe `notifications → realtime` (ADR-0010).
 6. **Segunda excepción a «cada módulo es dueño de sus tablas» (DF-59, plan 005 D-5)**: `storage` actualiza la columna `usuario.espacio_usado` (la tabla es de `identity`), y **solo esa columna**, con `SELECT espacio_usado … FOR UPDATE` y `UPDATE usuario SET espacio_usado = espacio_usado + $1`, a través de un único puerto, `IQuotaRepository`. Motivo: el espacio solo puede sumarse en la misma transacción que registra `archivo` y `version_archivo` (RN-10, DF-38), y una tabla propia de uso (`cuota_uso`) duplicaría el contador. No es una arista del grafo: `storage` no importa `identity`. Lo hace cumplir una prueba (`quota.repository.int-spec.ts`: ninguna otra columna cambia), un *fixture* negativo de `boundaries.js` (`storage-imports-identity.ts`) y la revisión del `architect`. Ningún otro módulo copia el patrón sin un DF y un ADR.
 
 7. **Tercera excepción a «cada módulo es dueño de sus tablas» (DF-83, ADR-0036, Aceptado)**: `intelligence` lee por SQL, de solo lectura y dentro de la misma consulta que `accessibleNodes(actor)`, solo `archivo(id, carpeta_id, version_actual_id, nombre)` y `carpeta(id, ruta)`, en un único archivo (`chunk-sql.ts`); `nombre` (enmienda de ADR-0036, PD-136) solo viaja en el evento `citation` al navegador del dueño, nunca al prompt ni a bitácoras. No escribe ni importa `storage`. Ningún otro módulo copia el patrón sin DF y ADR.
+
+8. **Qué entra en `shared`** (plan 000 R-11, precisada por el plan 013 D-2): lo que usan ≥ 3 módulos, lo que el proceso necesita antes de que exista un módulo **o** una capacidad técnica sin reglas de negocio ni tablas (aísla una librería o Redis, Art. V.2 a) que necesitan dos módulos entre los que la regla 1 no admite arista. Primer caso: `IPasswordHasher`/`IAttemptLockout` (013: `identity` y `sharing`, porque ya existe `identity → sharing`). Se mueve sin cambiar firmas ni comportamiento, y las reglas de uso (claves, valores de `LockoutPolicy`, variables) se quedan en cada consumidor. Lo que tiene reglas de negocio, tablas o un dueño funcional no entra por esta vía: se resuelve con un puerto declarado por el consumidor (regla 1) o con un evento.
 
 **DF-51 (opción A, Fátima, 2026-09-28)**: `storage` declara `IPlanLimitsProvider`, `PlanLimits` e `I_PLAN_LIMITS_PROVIDER` y `billing` los implementa importándolos de `storage/index.ts`; el ciclo `storage ↔ billing` desaparece y queda solo `billing → storage`. `editing` reutiliza el puerto desde `storage`. Con 016 (DF-73) `PlanLimits` suma `retainedVersions` (límite de almacenamiento: la poda es de `storage`) y `maxEditors` (lo consume `editing`, pero se acepta ensanchar el tipo porque `PlanLimitsAdapter.toLimits` ya lee la fila y un segundo puerto de `billing` sería una abstracción de una sola fila; a la tercera familia de límites ajenos a `storage` se separa en un puerto propio). Con la 010 (ADR-0032, regla 1) `PlanLimits` describe las **condiciones de almacenamiento de la cuenta del actor** que consume `storage`: límites, retención, nombre visible y `readOnly`; otro módulo que necesite algo que `storage` no consume lo pide por un puerto de `billing`. El enlace del token vive en la raíz de composición (`AppModule`). `boundaries.js` prohíbe cualquier import de `billing` desde `storage`.
 
@@ -159,7 +176,8 @@ modules/storage/
 
 | Puerto | Implementación | Módulo dueño del puerto → implementador |
 |---|---|---|
-| `IPasswordHasher` | `Argon2idHasher` | identity (también lo usa sharing, DF-10) |
+| `IPasswordHasher` | `Argon2idHasher` (con el VO `PasswordHash`) | shared desde 013 (lo declara y lo implementa; lo consumen identity y sharing; DF-10, regla 8 de §3; antes en identity) |
+| `IAttemptLockout` | `RedisAttemptLockout` (`check`, `recordFailure`, `reserveAttempt`, `clear`) | shared desde 013 (lo declara y lo implementa; lo consumen identity, 002, y sharing, bloqueo por enlace e IP de la 013; regla 8 de §3). La política (`LockoutPolicy`) y las claves las pone cada consumidor |
 | `ITokenService` | `JwtTokenService` | identity |
 | Puerto token→`Actor` (nombre en el plan 003) | verificador de `identity` (002 D-14) | shared → identity (lo usan `JwtAuthGuard` y el handshake de `realtime`, sin importar `identity`) |
 | `IMailer` | `SmtpMailer` (encola en `mail`; `MailProcessor` + `SmtpTransport` entregan en el `worker`; Mailpit en local, SMTP de Resend en staging, ADR-0018) | notifications (lo declara y lo implementa; lo consume identity, ADR-0010) |
@@ -179,6 +197,7 @@ modules/storage/
 | `ITransactionRunner` | TypeORM sobre `TransactionContext` (`AsyncLocalStorage`) | shared (lo consumen los servicios que escriben en más de una tabla; `withActor` de 003 usa el mismo contexto). Con 011 (Propuesto, T1, DF-65): `run` se une a **cualquier** transacción en curso, con o sin actor (antes solo a un `withActor`); `withActor` dentro de un `run` sin actor sigue lanzando |
 | `IDocumentEditor` | `OnlyOfficeEditor` (ADR-0004) | editing |
 | `IUserDirectory` | `UserDirectoryAdapter` (016, DF-74) | lo declara `editing`; lo implementa `identity` importándolo de `editing/index.ts`; se enlaza en la raíz (`UserDirectoryBindingModule`). Recibe ids de participantes y devuelve solo el nombre visible (excepción de §6 punto 9) |
+| `IShareeDirectory` | `ShareeDirectoryAdapter` (012, DF-84) | lo declara `sharing`; lo implementa `identity` importándolo de `sharing/index.ts`; se enlaza en la raíz (`ShareeDirectoryBindingModule`). `findClientByEmail` da solo un cliente verificado y activo (`null` igual para los demás motivos, RN-8), `profiles` el nombre y el correo de quienes ya tienen un acceso (CA-8) y `displayNames` el nombre visible (excepción de §6 punto 10); con 013, `activeDisplayName` (§6 puntos 10 y 11) |
 | `IDomainEventPublisher` | `EventEmitterDomainEventPublisher` (publica en proceso; un oyente que lanza se registra y no se propaga) | shared (lo declara y lo implementa; lo usa `storage` desde 019; `identity` y `realtime` migran después, PD-125; ADR-0019, DF-80) |
 | `IIndexQueue` | `BullmqIndexQueue` (cola `indexing`; `enqueue` y `enqueueRetry`) | **interno** de `intelligence`: ya no es `editing → intelligence` (DF-78, cierra PD-18) |
 | `IIndexStatusNotifier` | `RealtimeIndexStatusNotifier` (`api`, directo a `IRealtimePublisher.toUser`) y `QueuedIndexStatusNotifier` (`worker`, cola `index-status`) | interno de `intelligence` (019, ADR-0033 d) |
@@ -190,11 +209,12 @@ modules/storage/
 | `IAgentQuota` | `AgentQuotaService` (`reserve`/`release`/`status`; tabla `uso_agente` por `(usuario_id, periodo_inicio)`, reserva atómica con `INSERT … ON CONFLICT DO UPDATE … WHERE`, 020 D-3) | lo **declara e implementa** `billing` (`application/ports/i-agent-quota.port.ts`, token `I_AGENT_QUOTA` en `billing/index.ts`); lo consume `intelligence` (intelligence → billing; PD-18, DF-27) |
 | `IOptimizer` | `PdfOptimizer`, `ImageOptimizer` (vía `BaseOptimizer`) | optimizer |
 | `IIntegrityValidator` | `DefaultIntegrityValidator` | optimizer |
-| `ICommandRunner` | `ChildProcessRunner` (sin shell, tiempo límite y salida acotada) | **interno** de `intelligence` desde 019 (Ghostscript para PDF; DF-80, ADR-0033 b); 021 lo mueve a `shared` al ser el segundo consumidor (`optimizer`) |
-| `IHealthIndicator` | `PostgresHealthIndicator`, `RedisHealthIndicator`, `MinioHealthIndicator` (shared); ~~`OnlyOfficeHealthIndicator` (editing, DF-29)~~ omitido (PD-113): `editing` revisa ONLYOFFICE con `IDocumentEditor.isAvailable` al abrir | shared (DF-49); cada módulo puede aportar un indicador y la raíz de composición lo registra en `HealthModule.forRoot({ indicators })` |
+| `ICommandRunner` | `ChildProcessRunner` (sin shell, tiempo límite y salida acotada) | **interno** de `intelligence` desde 019 (Ghostscript para PDF; DF-80, ADR-0033 b); 021b (PDF) lo mueve a `shared` al ser el segundo consumidor (`optimizer`) |
+| `IHealthIndicator` | `PostgresHealthIndicator`, `RedisHealthIndicator`, `MinioHealthIndicator` (shared); ~~`OnlyOfficeHealthIndicator` (editing, DF-29)~~ omitido (PD-113): `editing` revisa ONLYOFFICE con `IDocumentEditor.isAvailable` al abrir; con 022 (propuesto en su plan) la caída se mide con `OnlyOfficeProbe` en `shared`, que no es `IHealthIndicator` ni entra en `ready` (DF-29) | shared (DF-49); cada módulo puede aportar un indicador y la raíz de composición lo registra en `HealthModule.forRoot({ indicators })` |
 | `IQueueInspector` | `BullMqInspector` | backoffice |
+| `IContentMatchReader` | `SqlContentMatchReader` (condición de solo lectura sobre `fragmento` de la versión vigente, parámetro `contentText`; no ejecuta nada) | lo declara `storage` (`search/application/ports/`, token `I_CONTENT_MATCH_READER` en `storage/index.ts`); lo implementa `intelligence` importándolo de `storage`; se enlaza en la raíz (`ContentMatchBindingModule`, solo `api`). Patrón de §3 regla 3 (018b, DF-95) |
 | `INodeMetadataReader` | `SqlNodeMetadataReader` (solo columnas de `archivo`, dentro de `withActor` y con RLS) | storage (lo **declara e implementa**; lo consume `backoffice`, arista `backoffice → storage`; sin `storage → backoffice`, cierra PD-31). Plan 011, Propuesto |
-| Repositorios `I*Repository` | TypeORM | cada módulo. `storage` (005) agrega `IUploadSessionRepository`, `IQuotaRepository` (único punto que toca `usuario`, regla 6 de §3) e `IExpiredUploadScanner` (único acceso sin actor, §6 punto 6) |
+| Repositorios `I*Repository` | TypeORM | cada módulo. `storage` (005) agrega `IUploadSessionRepository`, `IQuotaRepository` (único punto que toca `usuario`, regla 6 de §3) e `IExpiredUploadScanner` (único acceso sin actor, §6 punto 6). `sharing` (013) agrega `IPublicLinkRepository` e `IPublicLinkResolver` (único acceso sin actor del módulo, función `enlace_por_token`, §6 punto 11, ADR-0039) |
 
 Todo adaptador externo tiene una prueba de contrato compartida (Liskov).
 
@@ -210,8 +230,9 @@ export interface Actor {
 ```
 
 1. Guards globales en `shared`, no en M8 (spec 003 D-2, DF-50), que niegan por defecto: `JwtAuthGuard` verifica el token con el puerto token→`Actor` de `shared` (lo implementa `identity`, 002 D-14) y construye el `Actor`; `RolesGuard` valida el rol requerido por `@Roles()`; solo las rutas con `@Public()` se atienden sin sesión.
-2. Los servicios reciben `actor` y los repositorios de datos de cliente solo exponen `findAccessible(actor, …)`.
+2. Los servicios reciben `actor` y los repositorios de datos de cliente solo exponen `findAccessible(actor, …)` (única excepción nombrada: el visitante de un enlace público, punto 11).
 3. `access.accessibleNodes(actor)` es el CTE único que une propiedad, comparticiones y herencia por `carpeta.ruta`. Lo usan listados, búsqueda, descargas, vista previa, edición y el agente (DF-32).
+   - Desde 012 (DF-85), `accessibleNodes` = propios vivos ∪ compartidos con su nivel (`nodos_compartidos()`) y sirve **solo para leer**. Toda escritura y todo destino (subir, crear, renombrar, mover, eliminar, historial, la raíz de «Mis archivos») usan `ownedNodes(actor)`, la propiedad viva; la base lo respalda con RLS y con las FK compuestas `(carpeta, propietario_id)`.
    - **Excepción acotada** (spec 006 SEC-2): las filas de metadatos propias de la cuenta, con clave `usuario_id` y RLS por usuario, que no leen ni devuelven datos de nodos (p. ej. la poda de `acceso_rapido`, que debe alcanzar nodos en la papelera o de comparticiones revocadas) pueden operar sin unir `accessibleNodes`. Nunca aplica a tablas de contenido ni a lecturas que devuelvan nodos.
 4. `PermissionResolver.can(actor, nodeId, action)` sirve para validar una acción sobre un recurso puntual, usando las políticas Strategy.
 5. Roles internos: `SupportService` usa `INodeMetadataReader`, que por construcción no devuelve `clave_objeto`, URLs ni texto. La 011b añade `SupportTrashService` en `storage` para listar raíces de la papelera y restaurarlas; devuelve nombre, tipo, tamaño, fechas, ubicación original y el resultado de la restauración, nunca contenido, versiones, claves de objeto ni URLs (ADR-0035).
@@ -224,6 +245,8 @@ export interface Actor {
 7. **Agente**: `HybridRetriever` busca con `IChunkSearch`, que en la misma consulta une `archivo` por la versión vigente, filtra `fragmento.archivo_id IN (accessibleNodes)` y el ámbito, y recién entonces ordena (`MATERIALIZED` + `ORDER BY embedding <=> $q`, barrido exacto sin HNSW; DF-14, DF-81, ADR-0035).
 8. Suite `test/isolation`: cuentas con contenido casi idéntico; cualquier fuga rompe CI. Corre con los dos roles de BD reales, nunca como superusuario (ADR-0005).
 9. **`IUserDirectory` sin `actor`** (016, DF-74): `displayNames(userIds)` devuelve `id → nombre` de cuentas que `editing` ya autorizó como participantes de una sesión (el nombre visible a los coeditores es el comportamiento pedido, 016 CA-6). `usuario` no tiene RLS (§6.6), así que el adaptador lee solo `id` y `nombre` con `WHERE id = ANY($1)` y no devuelve correo, rol ni estado. Es un segundo caso acotado del punto 3 (no devuelve nodos ni contenido); el token `I_USER_DIRECTORY` solo se resuelve en `editing` (el módulo de enlace no lo exporta globalmente).
+10. **`IShareeDirectory` sin `actor`** (012, DF-84): `findClientByEmail(email)` devuelve `{ id, displayName, email }` solo si la cuenta es `CLIENT`, `activa` y verificada, con el filtro en la consulta (`null` igual para los cuatro motivos de 012 CA-3, RN-8); `profiles(ids)` da `{ id, displayName, email }` de las cuentas pedidas sin filtrar estado (un suspendido conserva su acceso, CA-17), solo para la lista de accesos del propietario (CA-8); `displayNames(ids)` delega en el adaptador del punto 9. Lee solo `usuario` (sin RLS) y no devuelve nodos ni contenido; lo usa `sharing` después de verificar que el actor es dueño del nodo y del límite de intentos (012 CA-7). Con 013 suma `activeDisplayName(userId)`: el nombre visible solo si la cuenta es `CLIENT`, `activa` y verificada (mismo filtro que `findClientByEmail`), `null` en otro caso; lo usa el visitante de un enlace (punto 11).
+11. **Visitante de un enlace público sin `actor`** (013, ADR-0039, DF-86): única excepción a «el servicio recibe `actor`». `PublicLinkAccessService` (`openLink`, `downloadLink`) recibe `{ token, ip }`; tras el límite por IP llama a `enlace_por_token(hash)` (`IPublicLinkResolver`, función `SECURITY DEFINER` con la lista de ADR-0021: lee solo `enlace_publico`, devuelve 0 o 1 fila `(enlace_id, archivo_id, propietario_id)` no revocada ni vencida, `EXECUTE` solo `nimbo_app`). Con `activeDisplayName` confirmado, construye `createActor(propietario_id, CLIENT)`, que no sale del servicio, y con él, en `withActor` y RLS normal, relee el enlace por `id`, pide el archivo propio y vivo y la URL a `LinkedFileGateway` (`storage`, `ownedNodes`) y audita con `trigger: 'public_link'`. Los ids salen de la fila de la función, nunca de la petición: los cuerpos públicos solo admiten `token` y `password` (`.strict()`). Es la excepción de la constitución Art. IX.2 y de `CLAUDE.md`, actualizadas en el mismo PR que ADR-0039. Ningún otro servicio fabrica un actor con datos de una petición.
 
 ## 7. Flujos críticos (con clases de los diagramas)
 
@@ -273,10 +296,27 @@ módulo con `PlanLimits.readOnly` (ADR-0032; en `storage`, `WritableAccountPolic
 global. Si la pasada falla, se dispara una alerta.
 
 ### 7.6 Optimización (RF-35, RF-36, DF-21)
-`OptimizerController.estimate` → `OptimizationService.estimate` → `IOptimizer.estimate` → `SavingsEstimate.isWorthIt(min)`; si no conviene, no se ofrece.
-`run` → `OptimizationJob` → `OptimizationProcessor` → `optimize` → `IIntegrityValidator.validate` → nueva `version_archivo(origen=optimizacion)`;
-el original sigue restaurable durante la retención en papelera del plan y no cuenta en `espacio_usado` desde el registro
-(spec 014b, ADR-0013: `version_archivo.conservada_hasta`); lo purga la pasada de `usage-reconcile` al vencer.
+021 procesa solo JPEG y PNG, archivo por archivo; el PDF queda para 021b y GIF/WebP no se ofrecen. El estado vive en
+`optimizacion`, bajo RLS `CLIENT` propietario, no en BullMQ. La ficha consulta `GET …/optimization` mientras hay
+`pollAfterMs`, sin realtime. `OptimizerModule` no carga `sharp`; `OptimizerWorkerModule` entra por `optimizer/worker.ts` y
+solo lo compone `WorkerOptimizerModule`, en el proceso `worker-optimizer`, con `StorageFacadesWorkerModule` (ADR-0038).
+
+`POST …/estimate` → `OptimizationService.estimate` → cola `optimization/estimate` → `OptimizationRunner.estimate`:
+lee la versión vigente por la fachada de storage, inspecciona, recomprime y valida en memoria (también hash de píxeles
+PNG), sin guardar candidato. `SavingsEstimate` exige mínimo de bytes **y** porcentaje para dejar `estimada`.
+
+`POST …/run { optimizationId }` exige cuenta escribible y última estimación de la versión vigente; CAS
+`estimada → optimizando` fija `version_resultado_id` una sola vez. Repetir mientras está `optimizando` recupera el mismo
+trabajo; un terminal no se reabre (`409 OPTIMIZER_ESTIMATE_STALE`). El worker vuelve al original, usa `ImageOptimizer`
+y `ImageIntegrityValidator` (ADR-0037), reaplica ambos umbrales reales y entrega el contenido a `OptimizableFileGateway`.
+Solo `OptimizedVersionRegistrar` sube, revalida bajo `lockUsage`, registra y compensa. `registered`/`duplicate` completan;
+`file_changed`, `file_missing` y `not_smaller` descartan; `corrupt` falla por integridad. Los reintentos recuperan los
+metadatos de la versión preasignada ya registrada antes de intentar releer un origen que dejó de ser current.
+
+La versión nueva tiene origen `optimizacion`; el original sigue restaurable durante `trashRetentionDays` y deja de
+contar en `espacio_usado` en la misma transacción: delta `Y−X`, sin exigir cuota libre (014b, ADR-0013). La fecha real
+es `version_archivo.conservada_hasta`; `usage-reconcile` lo purga al vencer sin alterar cuota. La restauración existente
+de 014/014b vuelve a contar el contenido y puede rechazar por cuota. No hay endpoint de restauración propio de optimizer.
 
 ## 8. Colas y trabajos (worker)
 
@@ -286,7 +326,7 @@ el original sigue restaurable durante la retención en papelera del plan y no cu
 | `index-status` (productor `worker`, **procesada en el `api`** por `IndexStatusRelay`; ADR-0033 d) | `QueuedIndexStatusNotifier` | sin reintentos (aviso de mejor esfuerzo) | no aplica: el estado guardado no depende de él; solo lleva `{ownerId, fileId, state, reason}` |
 | `index-reconcile` (repetible con `upsertJobScheduler`, cada `INDEX_RECONCILE_INTERVAL_MINUTES`, 019 RN-12) | `IndexReconcileScheduler` (worker, al arrancar) y `pnpm --filter api index:reconcile` | 3, backoff exponencial desde 30 s; concurrencia 1 | por cuenta, con su propio actor: encola versiones vigentes indexables sin fila y `pendiente`/`indexando` de más de 30 min; mismo `jobId` y fila única |
 | `editing-save` (**procesada en el `api`**, concurrencia 1, ADR-0029) | `SaveCallbackHandler` | 3, backoff exponencial | CAS `activa → guardando` + `UNIQUE sesion_edicion_id` (sin candado Redis, DF-72) |
-| `optimization` | `OptimizationService` | 2 | por `optimizacion.id` |
+| `optimization` (`estimate` y `run`; **solo `worker-optimizer`**, concurrencia 1; ADR-0038) | `OptimizationService` → `IJobQueue` (`BullmqJobQueue`) | `OPTIMIZER_MAX_ATTEMPTS` (3 intentos), backoff exponencial desde 2 s; `giveUp` al agotarlos | `estimate-<optimizacion.id>` / `run-<optimizacion.id>`; CAS de estado y fecha, id de versión preasignado, `registered`/`duplicate` convergen sin doble cuota. Se borran los jobs al terminar; el estado queda en `optimizacion`. Caducidad perezosa: intentos × 3 × timeout + 5 min |
 | `subscription-renewal` (repetible con `upsertJobScheduler`, cada `SUBSCRIPTION_RENEWAL_INTERVAL_MINUTES`, 010) | `RenewalScheduler` (worker, al arrancar) | 3, backoff exponencial; concurrencia 1 | idempotente por suscripción y `vence_en` con `FOR UPDATE`; lista con funciones de mantenimiento (ADR-0021) y renueva como cada dueño bajo RLS; alerta en fallo |
 | `mail` | `SmtpMailer` (notifications) | 5 (`attempts: 6`, exponencial desde 5 s) | por `idempotencyKey` del productor como `jobId` (sin `:`) + marca `mail:sent:<jobId>` en Redis + `Message-ID` determinista (ADR-0018); no usa `notificacion` |
 | `upload-cleanup` (repetible con `upsertJobScheduler`, cada `UPLOAD_CLEANUP_INTERVAL_MINUTES`, 005) | `UploadCleanupScheduler` (worker, al arrancar) | 3, backoff exponencial; concurrencia 1 | compare-and-set sobre `carga.estado`; opera bajo RLS con la función de mantenimiento de ADR-0021 |
@@ -335,3 +375,6 @@ apps/web/src/
 | 0021 | Mantenimiento sin actor bajo RLS: función `SECURITY DEFINER` mínima y RLS también en `carga`; enmienda 0005 (Propuesto) |
 | 0029 | `editing-save` se procesa en el `api`; excepción acotada a ADR-0001 (Aceptado) |
 | 0030 | Socket.IO en el `api` sin adaptador de Redis (Aceptado) |
+| 0038 | El optimizador corre en `worker-optimizer` (misma imagen glibc, otro comando); enmienda 0001 y 0037 (Aceptado) |
+| 0039 | Visitante de un enlace público: función `SECURITY DEFINER` de identificadores + `withActor` del propietario; amplía 0021 (spec 013; Propuesto) |
+| 0040 | Observabilidad con `prom-client`, Prometheus, Grafana Alerting por SMTP y cAdvisor (spec 022; Propuesto) |

@@ -14,11 +14,12 @@ import { act, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
 import { AppLayout } from '../../components/nimbo/app-layout';
+import { PREPARING_DELAY_MS } from '../../lib/use-preparing-download';
 import { SessionProvider } from '../identity/session/session-provider';
 
 import { CancelUploadDialog } from './components/cancel-upload-dialog';
 import { FileExplorer, type FileExplorerProps } from './components/file-explorer';
-import { DownloadNoticeBanner, FileRowMenu, PREPARING_DELAY_MS } from './components/file-row-menu';
+import { DownloadNoticeBanner, FileRowMenu } from './components/file-row-menu';
 import { FolderBreadcrumbs } from './components/folder-breadcrumbs';
 import { FolderNotFoundState } from './components/folder-not-found-state';
 import { NameConflictDialog } from './components/name-conflict-dialog';
@@ -153,6 +154,7 @@ function renderExplorer(overrides: Partial<FileExplorerProps> = {}): Promise<voi
     <main>
       <FileExplorer
         status="ready"
+        accessLevel="OWNER"
         folderId={null}
         breadcrumbs={[]}
         nodes={[]}
@@ -180,6 +182,7 @@ function rowMenu(file: FileSummary, pinned = false): ReactElement {
       onMove={jest.fn()}
       onMoveToTrash={jest.fn()}
       pin={{ pinned, onToggle: jest.fn() }}
+      sharing={{ level: 'OWNER', onShare: jest.fn() }}
     />
   );
 }
@@ -433,6 +436,7 @@ describe('Accesibilidad de los estados de carga y descarga (CA-21)', () => {
           <main>
             <FileExplorer
               status="ready"
+              accessLevel="OWNER"
               folderId={null}
               breadcrumbs={[]}
               nodes={[PROMPTS, FILE_NODE]}

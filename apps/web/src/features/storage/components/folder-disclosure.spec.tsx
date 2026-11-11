@@ -40,7 +40,13 @@ const IN_ALPHA = [folder(FASE3, ALPHA.id), file('f-a', 'acta.pdf', ALPHA.id)];
 const IN_FASE3 = [file('f-3', 'prompts.pdf', FASE3.id)];
 
 function contents(items: readonly NodeSummary[]): FolderContentsResponse {
-  return { folder: null, breadcrumbs: [], items: [...items], nextCursor: null };
+  return {
+    folder: null,
+    breadcrumbs: [],
+    items: [...items],
+    nextCursor: null,
+    accessLevel: 'OWNER',
+  };
 }
 
 function Harness({
@@ -55,6 +61,7 @@ function Harness({
     <main>
       <FileExplorer
         status="ready"
+        accessLevel="OWNER"
         folderId={null}
         breadcrumbs={[]}
         nodes={ROOT_NODES}

@@ -4,6 +4,7 @@ import type { DynamicModule } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule } from '@nestjs/throttler';
 
+import { ContentMatchBindingModule } from './content-match-binding.module';
 import { AccessModule } from './modules/access';
 import { AuditHttpModule } from './modules/audit';
 import { BackofficeModule } from './modules/backoffice';
@@ -12,7 +13,9 @@ import { EditingModule } from './modules/editing';
 import { IDENTITY_THROTTLERS, IdentityModule } from './modules/identity';
 import { IntelligenceModule } from './modules/intelligence';
 import { NotificationsModule } from './modules/notifications';
+import { OptimizerModule } from './modules/optimizer';
 import { RealtimeModule } from './modules/realtime';
+import { SharingModule } from './modules/sharing';
 import { StorageModule } from './modules/storage';
 import { PreviewModule } from './modules/storage/preview';
 import { PlanLimitsBindingModule } from './plan-limits-binding.module';
@@ -29,6 +32,7 @@ import {
   SharedModule,
 } from './shared';
 import type { Env } from './shared';
+import { ShareeDirectoryBindingModule } from './sharee-directory-binding.module';
 import { UserDirectoryBindingModule } from './user-directory-binding.module';
 
 /**
@@ -44,14 +48,17 @@ import { UserDirectoryBindingModule } from './user-directory-binding.module';
  * módulo dinámico por referencia) y la edición (016), que recibe así las mismas instancias de `StorageModule` y de
  * `RealtimeModule`, y la indexación (019), que escucha `storage.file-version-created`, expone su estado y recibe las
  * mismas instancias de `StorageModule` (`IndexableFileGateway`) y de `RealtimeModule` (aviso en vivo);
- * `IUserDirectory` lo enlaza `UserDirectoryBindingModule` con la de `IdentityModule`.
+ * `IUserDirectory` lo enlaza `UserDirectoryBindingModule` con la de `IdentityModule`, e `IShareeDirectory` (012),
+ * `ShareeDirectoryBindingModule` con la misma, que usa la compartición (012) junto con la misma instancia de `StorageModule`. El optimizador (021) recibe la misma instancia de
+ * `StorageModule` (`OptimizableFileGateway`). La búsqueda por contenido (018b) recibe `I_CONTENT_MATCH_READER` de
+ * `ContentMatchBindingModule`, que lo enlaza con el lector de `intelligence` (`storage` no conoce a `intelligence`).
  */
 @Module({})
 export class AppModule {
   static forRoot(env: Env): DynamicModule {
     const identity = IdentityModule.forRoot(env);
-    // Una sola instancia de `storage`: `billing`, `backoffice`, `editing` y la vista previa la importan de forma
-    // explícita (009, ampliación de la decisión 1; 011; 016; 017 plan §2.3).
+    // Una sola instancia de `storage`: `billing`, `backoffice`, `editing`, `sharing` y la vista previa la importan de
+    // forma explícita (009, ampliación de la decisión 1; 011; 016; 012; 017 plan §2.3).
     const storage = StorageModule.forRoot(env);
     const realtime = RealtimeModule.forRoot(env, identity);
     return {
@@ -71,7 +78,9 @@ export class AppModule {
         identity,
         AccessModule,
         PlanLimitsBindingModule,
+        ContentMatchBindingModule,
         UserDirectoryBindingModule.forRoot(identity),
+        ShareeDirectoryBindingModule.forRoot(identity),
         storage,
         PreviewModule.register({
           storageModule: storage,
@@ -85,6 +94,8 @@ export class AppModule {
         realtime,
         EditingModule.forRoot(env, { storage, realtime }),
         IntelligenceModule.forRoot(env, { storage, realtime }),
+        SharingModule.forRoot(env, storage),
+        OptimizerModule.forRoot(env, { storage }),
       ],
       providers: [PingQueue],
     };

@@ -252,7 +252,8 @@ function stateOf(to: UploadState, patch: UploadTransitionPatch) {
 }
 
 /**
- * Árbol en memoria: archivos y carpetas por id. Ve solo lo propio y vivo, como `accessibleNodes(actor)`; no pagina
+ * Árbol en memoria: archivos y carpetas por id. Ve solo lo propio y vivo (sin comparticiones: `accessibleNodes` y
+ * `ownedNodes` coinciden); no pagina
  * (`nextCursor` siempre `null`).
  */
 export class FakeNodeRepository implements INodeRepository {
@@ -267,6 +268,13 @@ export class FakeNodeRepository implements INodeRepository {
 
   findAccessibleById(actor: Actor, id: string): Promise<File | null> {
     this.journal.add('nodes:findAccessibleById');
+    const file = this.files.get(id);
+    return Promise.resolve(isLiveOf(actor, file) ? file : null);
+  }
+
+  /** En el doble no hay comparticiones: lo propio y vivo es lo accesible. */
+  findOwnedLiveFile(actor: Actor, id: string): Promise<File | null> {
+    this.journal.add('nodes:findOwnedLiveFile');
     const file = this.files.get(id);
     return Promise.resolve(isLiveOf(actor, file) ? file : null);
   }
@@ -304,6 +312,12 @@ export class FakeNodeRepository implements INodeRepository {
 
   findAccessibleFolder(actor: Actor, id: string): Promise<Folder | null> {
     this.journal.add('nodes:findAccessibleFolder');
+    const folder = this.folders.get(id);
+    return Promise.resolve(isLiveOf(actor, folder) ? folder : null);
+  }
+
+  findOwnedFolder(actor: Actor, id: string): Promise<Folder | null> {
+    this.journal.add('nodes:findOwnedFolder');
     const folder = this.folders.get(id);
     return Promise.resolve(isLiveOf(actor, folder) ? folder : null);
   }

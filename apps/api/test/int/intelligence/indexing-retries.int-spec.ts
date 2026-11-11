@@ -58,6 +58,11 @@ describe('reintentos de la indexación (019 CA-12)', () => {
       motivo: 'proveedor_no_disponible',
       intentos: MAX_ATTEMPTS,
     });
+    // El estado se confirma antes de escribir `indexing.failed` (IndexingOutcomeRecorder.settle): se espera la línea.
+    await waitForLog(
+      world.worker.logs,
+      (line) => line.event === 'indexing.failed' && line.versionId === file.versionId,
+    );
     expect(linesOf(file.versionId, 'indexing.attempt_failed')).toHaveLength(MAX_ATTEMPTS);
     expect(linesOf(file.versionId, 'indexing.failed')).toHaveLength(1);
     expect(await world.chunksOf(file.fileId)).toEqual([]);

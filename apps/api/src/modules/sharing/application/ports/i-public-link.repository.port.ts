@@ -1,0 +1,38 @@
+import type { Actor } from '../../../../shared';
+import type { PublicLink } from '../../domain/public-link';
+
+/** Lo que hizo `replace`: el enlace sin revocar que había (vigente o vencido) y que ahora quedó revocado, o `null`. */
+export interface PublicLinkReplacement {
+  readonly previous: PublicLink | null;
+}
+
+/**
+ * Enlaces públicos del propietario (`enlace_publico`, plan 013 §2). Cada método corre dentro de `withActor(actor, …)`:
+ * el adaptador usa `requireActorScope` y la RLS es la segunda barrera.
+ */
+export interface IPublicLinkRepository {
+  /**
+   * CA-1, CA-4: serializa por archivo (`pg_advisory_xact_lock`), revoca el enlace sin revocar del archivo e inserta
+   * `link`, ambos solo si el archivo está en `ownedNodes(actor)` (dentro de la consulta). `null`, sin escribir, si el
+   * archivo ya no es propio y vivo.
+   */
+  replace(actor: Actor, link: PublicLink): Promise<PublicLinkReplacement | null>;
+
+  /** CA-7: el enlace sin revocar (vigente o vencido) de un archivo en `ownedNodes(actor)`, o `null`. */
+  findCurrent(actor: Actor, fileId: string): Promise<PublicLink | null>;
+
+  /**
+   * CA-8: marca `revocado_en` = `revokedAt` del enlace sin revocar del actor y lo devuelve; `null`, sin escribir, si es
+   * ajeno, inexistente o ya revocado. No exige el archivo vivo: se revoca también con el archivo en la papelera.
+   */
+  revoke(actor: Actor, linkId: string, revokedAt: Date): Promise<PublicLink | null>;
+
+  /**
+   * 013 CA-9, ADR-0039 regla 3: el enlace `linkId` del actor si no está revocado ni vencido (`vence_en > now()` de la
+   * base, el mismo filtro de `enlace_por_token()`), con la clave y el vencimiento; `null` en otro caso. Solo lo llama
+   * `PublicLinkAccessService` con el actor derivado del propietario y el id de la fila de la función.
+   */
+  findAvailable(actor: Actor, linkId: string): Promise<PublicLink | null>;
+}
+
+export const I_PUBLIC_LINK_REPOSITORY = Symbol('IPublicLinkRepository');

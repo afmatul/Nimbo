@@ -55,8 +55,8 @@ describe('parámetros de la bitácora de auditoría', () => {
     expect(AUDIT_ORIGINS).toEqual(['self', 'staff']);
   });
 
-  it('CA-7: la purga la pide el cliente (`manual`) o la hace el ciclo programado (`scheduled`)', () => {
-    expect(AUDIT_TRIGGERS).toEqual(['manual', 'scheduled']);
+  it('CA-7, 013 CA-18: lo dispara el cliente, el ciclo programado o alguien con el enlace público', () => {
+    expect(AUDIT_TRIGGERS).toEqual(['manual', 'scheduled', 'public_link']);
   });
 
   it('un único código de error con los motivos de campo del plan §4', () => {
@@ -95,13 +95,19 @@ describe('auditEventResponseSchema', () => {
     expect(auditEventResponseSchema.safeParse({ ...staffEvent, note }).success).toBe(false);
   });
 
-  it.each(AUDIT_TRIGGERS)('CA-7: una purga admite `trigger` `%s`', (trigger) => {
+  it.each(['manual', 'scheduled'])('CA-7: una purga admite `trigger` `%s`', (trigger) => {
     const purge = { ...selfEvent, action: 'node.purged', trigger };
 
     expect(auditEventResponseSchema.parse(purge)).toEqual(purge);
   });
 
-  it('CA-7: rechaza un `trigger` fuera de `manual` y `scheduled`', () => {
+  it('013 CA-18: una descarga por enlace público lleva `trigger` `public_link`', () => {
+    const download = { ...selfEvent, action: 'public_link.downloaded', trigger: 'public_link' };
+
+    expect(auditEventResponseSchema.parse(download)).toEqual(download);
+  });
+
+  it('CA-7: rechaza un `trigger` fuera de `manual`, `scheduled` y `public_link`', () => {
     const purge = { ...selfEvent, action: 'node.purged', trigger: 'system' };
 
     expect(auditEventResponseSchema.safeParse(purge).success).toBe(false);

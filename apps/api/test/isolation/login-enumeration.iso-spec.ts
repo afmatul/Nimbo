@@ -5,8 +5,8 @@ import request from 'supertest';
 import type { Response } from 'supertest';
 import type { DataSource } from 'typeorm';
 
-import { Argon2idHasher } from '../../src/modules/identity/infrastructure/argon2id.hasher';
 import { FixedClock, I_CLOCK, Role } from '../../src/shared';
+import { Argon2idHasher } from '../../src/shared/infrastructure/security/argon2id.hasher';
 import { createIdentityTestApp } from '../int/identity/identity-test-app';
 import type { TestApp } from '../int/setup/test-app';
 import { connectAsOwner } from '../support/database-urls';

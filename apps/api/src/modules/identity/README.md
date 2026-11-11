@@ -3,9 +3,9 @@
 - **Dueño**: Juan Marcos (`specs/README.md`).
 - **Diagrama de origen**: M1 en `docs/sdd/design-model.md` §3 y `docs/design/diagramas/`.
 - **Responsabilidad**: Registro, verificación, login, refresh, sesiones y dispositivos.
-- **Puede depender de**: shared, notifications, audit y `editing` solo para implementar `IUserDirectory` (016, DF-74) (`docs/sdd/architecture.md` §3; el lint de fronteras lo hace cumplir).
+- **Puede depender de**: shared, notifications, audit, `editing` y `sharing` solo para implementar `IUserDirectory` (016, DF-74) e `IShareeDirectory` (012, DF-84) (`docs/sdd/architecture.md` §3; el lint de fronteras lo hace cumplir).
 - **Specs que lo construyen**: 001 (registro y verificación del correo), 002 (autenticación, sesiones y dispositivos),
-  011 (fachadas de cuentas para el backoffice y enlace de alta interna), 016 (`IUserDirectory`).
+  011 (fachadas de cuentas para el backoffice y enlace de alta interna), 016 (`IUserDirectory`), 012 (`IShareeDirectory`).
 - **Decisiones**: ADR-0017 (`argon2` y `@nestjs/throttler`), ADR-0019 (eventos en proceso), ADR-0020 (validación con
   la fábrica de errores de cada módulo).
 
@@ -20,7 +20,6 @@ modules/identity/
 │  ├─ verification-token.entity.ts          # VerificationToken: issue, stateAt, isValid, consume, invalidate
 │  ├─ email-address.vo.ts                   # EmailAddress.of: recorta y pasa a minúsculas (D-16)
 │  ├─ opaque-token.vo.ts                    # OpaqueToken: 32 bytes base64url, SHA-256, comparación en tiempo constante
-│  ├─ password-hash.vo.ts                   # PasswordHash: PHC opaco; toString/toJSON → '[REDACTED]'
 │  ├─ legal-acceptance.vo.ts                # versiones de Términos y Privacidad + fecha de aceptación
 │  ├─ account-status.enum.ts                # ACTIVE ('activa') | SUSPENDED ('suspendida')
 │  ├─ client-account-verified.event.ts      # CLIENT_ACCOUNT_VERIFIED + ClientAccountVerifiedEvent { userId }
@@ -55,8 +54,6 @@ modules/identity/
 │  ├─ persistence/                          # entidades ORM (usuario, token_cuenta, sesion, dispositivo), mappers y
 │  │                                        # repositorios TypeORM
 │  ├─ jwt/                                  # JwtTokenService (emite y verifica) y JwtStrategy (002)
-│  ├─ redis-attempt-lockout.ts              # RedisAttemptLockout: bloqueos de login y cambio de contraseña (002)
-│  ├─ argon2id.hasher.ts                    # Argon2idHasher (m=19456, t=2, p=1; RN-3)
 │  └─ event-emitter-account-events.publisher.ts
 ├─ presentation/
 │  ├─ auth.controller.ts                    # AuthController: register, resend-verification, verify-email (abre sesión),
@@ -83,16 +80,18 @@ Un puerto nuevo solo existe si cumple una regla del Art. V.2 de la constitución
 | ------------------------------ | --------------------------------------- | --------------------------------------------------------- |
 | `IUserRepository`              | `TypeormUserRepository`                 | (b) repositorio; está en el diagrama M1                   |
 | `IVerificationTokenRepository` | `TypeormVerificationTokenRepository`    | (b) repositorio; 002 lo reutiliza (recuperación)          |
-| `IPasswordHasher`              | `Argon2idHasher`                        | (a) aísla Argon2; está en el diagrama M1                  |
 | `IAccountEventsPublisher`      | `EventEmitterAccountEventsPublisher`    | (a) aísla `@nestjs/event-emitter` (ADR-0019)              |
 | `ISessionRepository`           | `TypeOrmSessionRepository`              | (b) repositorio; está en el diagrama M1 (002)             |
 | `IDeviceRepository`            | `TypeOrmDeviceRepository`               | (b) repositorio de `dispositivo` (002, DF-11)             |
 | `ITokenService`                | `JwtTokenService`                       | (a) aísla `@nestjs/jwt`; está en el diagrama M1           |
-| `IAttemptLockout`              | `RedisAttemptLockout`                   | (a) aísla Redis (bloqueos por fallos, 002 D-5/D-7)        |
 | `IAdminRosterRepository`       | `TypeormUserRepository` (`useExisting`) | (b) repositorio; padrón interno del backoffice (011, ISP) |
 | `IAccountDirectoryRepository`  | `TypeOrmAccountDirectoryRepository`     | (b) modelo de lectura de cuentas del backoffice (011)     |
 
-Consume `IMailer` (`notifications`) e `IRateLimiter`, `ITransactionRunner` e `IClock` (`shared`). La recuperación
+Consume `IMailer` (`notifications`) e `IRateLimiter`, `ITransactionRunner`, `IClock`, `IPasswordHasher` (con el VO
+`PasswordHash`) e `IAttemptLockout` (`shared`). Los dos últimos, con `Argon2idHasher` y `RedisAttemptLockout`, vivían
+aquí hasta la 013: se movieron a `shared` sin cambiar firmas ni comportamiento porque también los usa `sharing` (plan
+013 D-2, regla 8 de `architecture.md` §3), y `SharedModule` provee sus tokens. Las claves y las políticas de bloqueo
+(`LOGIN_LOCKOUT_POLICY`, `PASSWORD_CHANGE_LOCKOUT_POLICY`) siguen en `identity-limit-keys.ts`. La recuperación
 (002) suma a `IUserRepository` `findById` y `updatePasswordHash`. `JwtTokenService` implementa además
 `IAccessTokenVerifier`, el puerto de `shared` que declara 003 (`useExisting`): `identity` lo exporta como
 `I_ACCESS_TOKEN_VERIFIER` y nadie importa `identity` para verificar un token.

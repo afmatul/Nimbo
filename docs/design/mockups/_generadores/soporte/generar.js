@@ -473,10 +473,10 @@ const VARIANTES = [
     referencia: 'restauración de la papelera por Soporte (011b, CA-10 a CA-12)',
     cuerpo: () => encabezadoPapelera() + busqueda(LAURA.correo) + clientePapelera(LAURA, tablaPapelera(LAURA, PAPELERA)),
     dialogo: dialogoRestaurar({
-      item: PAPELERA[1], error: 'Escribe un motivo de 1 a 500 caracteres.',
+      item: PAPELERA[1], error: 'Escribe el motivo de la restauración.',
       errores: A.resumenErrores({
         titulo: 'Escribe un motivo para restaurar.', texto: 'Nada cambió.',
-        items: [['motivo', 'El motivo debe tener entre 1 y 500 caracteres.']],
+        items: [['motivo', 'Escribe el motivo de la restauración.']],
       }),
     }) },
   { estado: 'papelera-restaurando', titulo: 'restauración en curso: botón ocupado y motivo conservado', rotulo: 'Papelera', spec: '011b',

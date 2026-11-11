@@ -8,6 +8,7 @@ node_modules/
 .pnpm-store/
 dist/
 dist-worker/
+dist-worker-optimizer/
 dist-int/
 dist-scripts/
 .next/

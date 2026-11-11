@@ -10,6 +10,9 @@ infra
 **/node_modules
 **/dist
 **/dist-worker
+**/dist-worker-optimizer
+**/dist-int
+**/dist-scripts
 **/.next
 **/coverage
 **/*.tsbuildinfo

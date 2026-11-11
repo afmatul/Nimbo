@@ -6,12 +6,12 @@ import { act, useState, type ReactElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 
 import { DropdownMenuItem } from '../../../components/ui/dropdown-menu';
+import { PREPARING_DELAY_MS } from '../../../lib/use-preparing-download';
 import { StorageRequestError } from '../storage-request-error';
 
 import {
   DownloadNoticeBanner,
   FileRowMenu,
-  PREPARING_DELAY_MS,
   type DownloadNotice,
   type FileRowMenuProps,
 } from './file-row-menu';
@@ -89,6 +89,7 @@ function renderMenu(overrides: Partial<HarnessProps> = {}): Promise<void> {
     onMove: jest.fn(),
     onMoveToTrash: jest.fn(),
     pin: { pinned: false, onToggle: jest.fn() },
+    sharing: { level: 'OWNER', onShare: jest.fn() },
     ...overrides,
   };
   return mount(<Harness {...props} />);
@@ -169,6 +170,7 @@ describe('FileRowMenu (CA-13, CA-21)', () => {
       'Mover a…',
       'Fijar en la barra lateral',
       'Editar',
+      'Compartir',
       'Mover a la papelera',
     ]);
   });
@@ -177,8 +179,8 @@ describe('FileRowMenu (CA-13, CA-21)', () => {
     await renderMenu();
     await press('Enter');
 
-    // `.docx`: además de lo de 005/006, «Ver historial» (014) y «Editar» (016).
-    expect(items()).toHaveLength(7);
+    // `.docx`: además de lo de 005/006, «Ver historial» (014), «Editar» (016) y «Compartir» (012b).
+    expect(items()).toHaveLength(8);
     expect(items()[0]?.textContent?.trim()).toBe('Descargar');
   });
 
@@ -226,6 +228,7 @@ describe('FileRowMenu (CA-13, CA-21)', () => {
         onMove={jest.fn()}
         onMoveToTrash={jest.fn()}
         pin={{ pinned: false, onToggle: jest.fn() }}
+        sharing={{ level: 'OWNER', onShare: jest.fn() }}
       />,
     );
     await press('Enter');
@@ -258,6 +261,7 @@ describe('FileRowMenu (CA-13, CA-21)', () => {
       'Mover a…',
       'Fijar en la barra lateral',
       'Editar',
+      'Compartir',
       'Mover a la papelera',
     ]);
     await act(async () => items()[4]?.click());
@@ -331,6 +335,24 @@ describe('FileRowMenu (CA-13, CA-21)', () => {
 
     expect(openUrl).toHaveBeenCalledWith('https://objetos.local/lenta');
     expect(document.querySelector('[role="status"]')?.textContent).toBe('');
+  });
+
+  it('013b CA-3: doble clic en «Descargar»: una sola petición y el segundo no cierra ni limpia el aviso', async () => {
+    const pending = deferred();
+    const requestUrl = jest.fn(() => pending.promise);
+    const onNotice = jest.fn();
+    await renderMenu({ requestUrl, onNotice });
+
+    await chooseDownload();
+    await act(async () => items()[0]?.click());
+
+    expect(requestUrl).toHaveBeenCalledTimes(1);
+    expect(onNotice).toHaveBeenCalledTimes(1);
+    expect(document.querySelector('[role="menu"]')).not.toBeNull();
+
+    await act(async () => pending.resolve(SIGNED));
+
+    expect(document.querySelector('[role="menu"]')).toBeNull();
   });
 
   it('CA-21: 429: aviso arriba con el texto de la spec y «Reintentar» vuelve a pedir la URL', async () => {
@@ -418,5 +440,30 @@ describe('FileRowMenu (CA-13, CA-21)', () => {
     expect(alertBox()?.className).toContain('border-destructive/40');
     expect(document.querySelector('[role="menu"]')).not.toBeNull();
     expect(document.body.innerHTML).not.toMatch(RAW_COLOR);
+  });
+
+  it('012b CA-1: como propietario, «Compartir» abre el diálogo', async () => {
+    const onShare = jest.fn();
+    await renderMenu({ sharing: { level: 'OWNER', onShare } });
+    await press('Enter');
+
+    const share = items().find((item) => item.textContent?.trim() === 'Compartir');
+    await act(async () => share?.click());
+
+    expect(onShare).toHaveBeenCalledTimes(1);
+  });
+
+  it('012b CA-6: como Editor de un .docx solo ofrece «Descargar» y «Editar»', async () => {
+    await renderMenu({ sharing: { level: 'EDITOR', onShare: jest.fn() } });
+    await press('Enter');
+
+    expect(items().map((item) => item.textContent?.trim())).toEqual(['Descargar', 'Editar']);
+  });
+
+  it('012b CA-6: como Lector solo ofrece «Descargar»', async () => {
+    await renderMenu({ sharing: { level: 'VIEWER', onShare: jest.fn() } });
+    await press('Enter');
+
+    expect(items().map((item) => item.textContent?.trim())).toEqual(['Descargar']);
   });
 });

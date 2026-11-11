@@ -1,6 +1,7 @@
 'use client';
 
 import { CreditCard, History, LogOut, ShieldCheck } from 'lucide-react';
+import Link from 'next/link';
 import * as React from 'react';
 
 import {
@@ -42,6 +43,8 @@ export interface AccountMenuProps {
   readonly activityHref?: string;
   /** Ruta de «Plan y facturación» (009); solo la recibe un cliente: sin ella, el ítem no se ofrece. */
   readonly billingHref?: string;
+  /** Rol de una cuenta interna («Administrador», 011 CA-17), bajo el correo; el cliente no lo muestra. */
+  readonly roleLabel?: string;
 }
 
 function initialsOf(fullName: string): string {
@@ -94,10 +97,10 @@ function BillingItem({ href }: { readonly href: string | undefined }): React.JSX
   if (href === undefined) return null;
   return (
     <DropdownMenuItem asChild>
-      <a href={href}>
+      <Link href={href}>
         <CreditCard aria-hidden="true" className="h-4 w-4 text-secondary-foreground" />
         Plan y facturación
-      </a>
+      </Link>
     </DropdownMenuItem>
   );
 }
@@ -111,16 +114,16 @@ function AccountItems({
   return (
     <div role="menu" aria-orientation="vertical" aria-labelledby={triggerId}>
       <DropdownMenuItem asChild>
-        <a href={SECURITY_HREF}>
+        <Link href={SECURITY_HREF}>
           <ShieldCheck aria-hidden="true" className="h-4 w-4 text-secondary-foreground" />
           Seguridad
-        </a>
+        </Link>
       </DropdownMenuItem>
       <DropdownMenuItem asChild>
-        <a href={activityHref}>
+        <Link href={activityHref}>
           <History aria-hidden="true" className="h-4 w-4 text-secondary-foreground" />
           Mi actividad
-        </a>
+        </Link>
       </DropdownMenuItem>
       <BillingItem href={billingHref} />
       <DropdownMenuSeparator />
@@ -167,6 +170,7 @@ export function AccountMenu({
   onSignOut,
   activityHref = ACTIVITY_HREF,
   billingHref,
+  roleLabel,
 }: AccountMenuProps): React.JSX.Element {
   const triggerId = React.useId();
   const triggerRef = React.useRef<HTMLButtonElement>(null);
@@ -179,6 +183,9 @@ export function AccountMenu({
           <div className="mb-1.5 border-b border-border px-3 pb-3 pt-2.5">
             <p className="text-sm font-semibold text-foreground">{fullName}</p>
             <p className="break-all text-sm text-muted-foreground">{email}</p>
+            {roleLabel === undefined ? null : (
+              <p className="mt-1 text-xs font-medium text-secondary-foreground">{roleLabel}</p>
+            )}
           </div>
           <AccountItems
             triggerId={triggerId}

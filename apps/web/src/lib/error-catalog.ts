@@ -293,8 +293,11 @@ export function folderMoveConflictMessage(storedName: string, destinationName: s
   return `Ya existe una carpeta llamada «${storedName}» en ${destinationName}. Elige otro destino o cambia el nombre de la carpeta.`;
 }
 
+/** `422 *_INVALID_INPUT` con `fields`: el formulario marca cada campo; el resumen solo orienta. */
+const FIELDS_MARKED = 'Revisa los campos marcados y corrígelos para continuar.';
+
 const CODE_MESSAGES: Readonly<Record<string, string>> = {
-  [IDENTITY_ERROR_CODES.INVALID_INPUT]: 'Revisa los campos marcados y corrígelos para continuar.',
+  [IDENTITY_ERROR_CODES.INVALID_INPUT]: FIELDS_MARKED,
   [IDENTITY_ERROR_CODES.WEAK_PASSWORD]:
     'Tu contraseña no cumple estos requisitos. Elige otra que los cumpla.',
   [IDENTITY_ERROR_CODES.VERIFICATION_LINK_EXPIRED]:
@@ -332,6 +335,8 @@ const CODE_MESSAGES: Readonly<Record<string, string>> = {
   [IDENTITY_ERROR_CODES.ENROLLMENT_CONFLICT]:
     'Ya existe una cuenta con estos datos. Corrige los campos marcados y vuelve a intentarlo.',
   // Ajustes de cuota y vigencia (011b CA-2, CA-3, CA-7): el mismo texto que el servidor.
+  // 011b CA-12: motivo, tipo o correo que no valen al restaurar; el formulario ya marca el motivo antes de enviar.
+  [BACKOFFICE_ERROR_CODES.INVALID_INPUT]: FIELDS_MARKED,
   [BACKOFFICE_ERROR_CODES.QUOTA_INVALID]:
     'Revisa el espacio extra: debe ser mayor que cero, la fecha de fin no puede ser anterior a hoy y la cuota total no puede superar el máximo admitido.',
   [BACKOFFICE_ERROR_CODES.QUOTA_BELOW_USAGE]:
@@ -399,7 +404,8 @@ function isReason(value: string): value is FieldIssueReason {
   return Object.prototype.hasOwnProperty.call(IDENTITY_FIELD_MESSAGES, value);
 }
 
-function minutesFrom(seconds: number): string {
+/** Minutos de espera para un texto: hacia arriba y nunca menos de 1. */
+export function minutesFrom(seconds: number): string {
   return String(Math.max(1, Math.ceil(seconds / SECONDS_PER_MINUTE)));
 }
 

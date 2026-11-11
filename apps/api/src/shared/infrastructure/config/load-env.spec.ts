@@ -97,6 +97,7 @@ describe('loadEnv(apiEnvSchema)', () => {
         CORS_ORIGIN: ['http://localhost', 'http://localhost:3002'],
         APP_VERSION: 'dev',
         PORT: 3000,
+        METRICS_PORT: 9464,
         WORKER_PORT: 3001,
         MINIO_BUCKET: 'nimbo',
         MINIO_REGION: 'us-east-1',
@@ -109,11 +110,22 @@ describe('loadEnv(apiEnvSchema)', () => {
         EDITING_MAX_DOC_BYTES: 52_428_800,
         INDEXING_MAX_ATTEMPTS: 3,
         RATE_LIMIT_INDEX_RETRY_PER_MINUTE: 10,
+        OPTIMIZER_MAX_FILE_BYTES: 40_000_000,
+        OPTIMIZER_MAX_ATTEMPTS: 3,
+        OPTIMIZER_TIMEOUT_MS: 100_000,
+        OPTIMIZER_POLL_INTERVAL_MS: 3000,
+        RATE_LIMIT_OPTIMIZER_PER_MINUTE: 10,
         GEMINI_EMBEDDING_MODEL: 'gemini-embedding-001',
         GEMINI_CHAT_MODEL: 'gemini-3.5-flash',
         AGENT_MAX_QUESTION_CHARS: 1000,
         AGENT_MODEL_FIRST_CHUNK_TIMEOUT_MS: 5_000,
         AGENT_MODEL_IDLE_TIMEOUT_MS: 5_000,
+        SHARING_RATE_LIMIT_PER_MINUTE: 20,
+        PUBLIC_LINK_RATE_LIMIT_PER_MINUTE: 30,
+        PUBLIC_LINK_MAX_FAILURES: 5,
+        PUBLIC_LINK_FAILURE_WINDOW_MINUTES: 15,
+        PUBLIC_LINK_LOCK_MINUTES: 15,
+        PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR: 100,
         RATE_LIMIT_DOWNLOAD_URL_PER_MINUTE: 120,
         RATE_LIMIT_PREVIEW_URL_PER_MINUTE: 120,
         RATE_LIMIT_VERSION_RESTORE_PER_MINUTE: 30,
@@ -237,6 +249,21 @@ describe('loadEnv(workerEnvSchema)', () => {
         '`MAIL_FROM` es obligatoria',
       ],
     });
+  });
+
+  it.each([
+    'OPTIMIZER_MAX_ATTEMPTS',
+    'OPTIMIZER_TIMEOUT_MS',
+    'OPTIMIZER_MAX_PIXELS',
+    'OPTIMIZER_MIN_SAVED_PERCENT',
+    'OPTIMIZER_MIN_SAVED_BYTES',
+    'OPTIMIZER_JPEG_QUALITY',
+    'WORKER_OPTIMIZER_PORT',
+  ])('ADR-0038: `%s=0` no afecta al general ni aparece en su entorno validado', (key) => {
+    const result = loadEnv(workerEnvSchema, { ...VALID_WORKER, [key]: '0' });
+
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.env).not.toHaveProperty(key);
   });
 
   it('CA-18: `SMTP_TLS` solo admite `none`, `starttls` o `implicit`', () => {
@@ -460,6 +487,48 @@ describe('loadEnv: carga y descarga de archivos (005 T-20)', () => {
       ok: false,
       issues: ['`MINIO_PUBLIC_ENDPOINT` debe ser una URL válida'],
     });
+  });
+});
+
+describe('loadEnv(apiEnvSchema): techo global de fallos de los enlaces públicos (013b CA-12, PD-175)', () => {
+  const ceilingOf = (ceiling: string) =>
+    loadEnv(apiEnvSchema, {
+      ...VALID_API,
+      PUBLIC_LINK_MAX_FAILURES: '5',
+      PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR: ceiling,
+    });
+
+  it('CA-12: un techo menor que el máximo por red se rechaza', () => {
+    expect(ceilingOf('4')).toEqual({
+      ok: false,
+      issues: [
+        '`PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR` debe ser mayor o igual que `PUBLIC_LINK_MAX_FAILURES`',
+      ],
+    });
+  });
+
+  it.each(['5', '10000'])('CA-12: un techo de %s es válido', (ceiling) => {
+    const result = ceilingOf(ceiling);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.env.PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR).toBe(Number(ceiling));
+  });
+
+  it('CA-12: un techo de más de 10000 se rechaza', () => {
+    expect(ceilingOf('10001')).toEqual({
+      ok: false,
+      issues: ['`PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR` debe ser un entero entre 1 y 10000'],
+    });
+  });
+
+  it('CA-12: por omisión el techo es 100 y el máximo por red 5', () => {
+    const result = loadEnv(apiEnvSchema, VALID_API);
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.env.PUBLIC_LINK_GLOBAL_MAX_FAILURES_PER_HOUR).toBe(100);
+    expect(result.env.PUBLIC_LINK_MAX_FAILURES).toBe(5);
   });
 });
 

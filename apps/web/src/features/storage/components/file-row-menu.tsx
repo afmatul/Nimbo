@@ -12,6 +12,7 @@ import {
   Pencil,
   Pin,
   PinOff,
+  Share2,
   X,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -25,7 +26,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../../../components/ui/dropdown-menu';
+import { openInBrowser, usePreparingDownload } from '../../../lib/use-preparing-download';
 import { editorPath } from '../../editing/routes';
+import { canEditDocx, isOwner, type RowSharing } from '../node-access';
 import { fileDetailPath } from '../routes';
 import { StorageRequestError } from '../storage-request-error';
 
@@ -38,9 +41,6 @@ export interface DownloadNotice {
   readonly actionLabel: string;
   readonly onAction: () => void;
 }
-
-/** Pasado este tiempo sin URL, el ítem muestra «Preparando…» (RNF-14). */
-export const PREPARING_DELAY_MS = 2_000;
 
 export interface FileRowMenuProps {
   readonly file: FileSummary;
@@ -56,15 +56,14 @@ export interface FileRowMenuProps {
   /** «Mover a la papelera», sin confirmación (006 CA-10). */
   readonly onMoveToTrash: () => void;
   readonly pin: PinToggle;
+  /** Nivel sobre el archivo y «Compartir» (012b): sin `OWNER`, solo descargar y, como Editor, editar un `.docx`. */
+  readonly sharing: RowSharing;
   /**
    * Primer ítem del menú, antes de «Descargar» (017: «Previsualizar»), ya renderizado: `MyFiles` lo crea desde su
    * `FirstFileAction`. Storage no conoce quién lo provee.
    */
   readonly firstAction?: React.ReactNode;
 }
-
-/** Abre la URL firmada en la pestaña: el navegador descarga (005 CA-13). */
-export const openInBrowser = (url: string): void => window.location.assign(url);
 
 function codeOf(error: unknown): string | null {
   return error instanceof StorageRequestError ? error.code : null;
@@ -121,36 +120,23 @@ export function FileRowMenu({
   onMove,
   onMoveToTrash,
   pin,
+  sharing,
   firstAction,
 }: FileRowMenuProps): React.JSX.Element {
   const [open, setOpen] = React.useState(false);
-  const [preparing, setPreparing] = React.useState(false);
-  const inFlight = React.useRef(false);
-  const preparingTimer = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
-  React.useEffect(() => () => clearTimeout(preparingTimer.current), []);
+  const flow = usePreparingDownload<FileSummary>(
+    (target) => {
+      onNotice(null);
+      return requestUrl(target.id);
+    },
+    (target, error, retry) =>
+      onNotice(downloadFailureNotice(target.name, error, { retry, refresh: onRefresh })),
+    openUrl,
+  );
+  const preparing = flow.preparing !== null;
 
   const download = async (): Promise<void> => {
-    if (inFlight.current) return;
-    inFlight.current = true;
-    onNotice(null);
-    preparingTimer.current = setTimeout(() => setPreparing(true), PREPARING_DELAY_MS);
-    try {
-      const { url } = await requestUrl(file.id);
-      openUrl(url);
-    } catch (error) {
-      onNotice(
-        downloadFailureNotice(file.name, error, {
-          retry: () => void download(),
-          refresh: onRefresh,
-        }),
-      );
-    } finally {
-      clearTimeout(preparingTimer.current);
-      inFlight.current = false;
-      setPreparing(false);
-      setOpen(false);
-    }
+    if (await flow.download(file)) setOpen(false);
   };
 
   const handleSelect = (event: Event): void => {
@@ -179,16 +165,52 @@ export function FileRowMenu({
             )}
             {preparing ? 'Preparando…' : 'Descargar'}
           </DropdownMenuItem>
-          <HistoryMenuItem fileId={file.id} />
-          <OrganizeMenuItems onRename={onRename} onMove={onMove} />
-          <PinMenuItem pin={pin} />
-          {file.kind === 'docx' ? <EditMenuItem fileId={file.id} /> : null}
-          <MoveToTrashMenuItem onSelect={onMoveToTrash} />
+          <FileActionItems
+            file={file}
+            sharing={sharing}
+            organize={{ onRename, onMove }}
+            onMoveToTrash={onMoveToTrash}
+            pin={pin}
+          />
         </DropdownMenuContent>
       </DropdownMenu>
       <span role="status" aria-live="polite" className="sr-only">
         {preparing ? `Preparando la descarga de ${file.name}…` : ''}
       </span>
+    </>
+  );
+}
+
+type FileActionItemsProps = Pick<FileRowMenuProps, 'file' | 'sharing' | 'onMoveToTrash' | 'pin'> & {
+  readonly organize: OrganizeMenuItemsProps;
+};
+
+/** Lo que sigue a «Descargar»: las acciones del propietario o, compartido, solo «Editar» de un `.docx` (012b CA-6). */
+function FileActionItems({
+  file,
+  sharing,
+  organize,
+  onMoveToTrash,
+  pin,
+}: FileActionItemsProps): React.JSX.Element {
+  const owner = isOwner(sharing.level);
+  const editable = file.kind === 'docx' && canEditDocx(sharing.level);
+  return (
+    <>
+      {owner ? (
+        <>
+          <HistoryMenuItem fileId={file.id} />
+          <OrganizeMenuItems {...organize} />
+          <PinMenuItem pin={pin} />
+        </>
+      ) : null}
+      {editable ? <EditMenuItem fileId={file.id} /> : null}
+      {owner ? (
+        <>
+          <ShareMenuItem onShare={sharing.onShare} />
+          <MoveToTrashMenuItem onSelect={onMoveToTrash} />
+        </>
+      ) : null}
     </>
   );
 }
@@ -216,6 +238,16 @@ function EditMenuItem({ fileId }: { readonly fileId: string }): React.JSX.Elemen
         <FilePen className="h-4 w-4 text-secondary-foreground" aria-hidden="true" />
         Editar
       </Link>
+    </DropdownMenuItem>
+  );
+}
+
+/** «Compartir»: abre el diálogo con el formulario y la lista de accesos (012b CA-1); solo para el propietario. */
+export function ShareMenuItem({ onShare }: { readonly onShare: () => void }): React.JSX.Element {
+  return (
+    <DropdownMenuItem onSelect={onShare}>
+      <Share2 className="h-4 w-4 text-secondary-foreground" aria-hidden="true" />
+      Compartir
     </DropdownMenuItem>
   );
 }

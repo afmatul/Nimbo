@@ -173,7 +173,7 @@ Prefijos: **I** = `apps/api/test/int/storage/`; **A** = `apps/api/test/isolation
 - PD-41 sigue abierto: `test:e2e` marcador no acredita Playwright/axe; coordinar arnés real con Adrián. Esta revisión documental no ejecuta ni declara aprobadas esas suites.
 
 ## 7. Riesgos y coherencia con el diseño
-- **H-1 — Ownership/DI (Alta propuesta):** falta frontera pública suficiente y extensión UI. Diseño §2 aceptado por Adrián (Q-2/Q-6) con ajustes; sin imports internos ni segundo MinIO. Registrado como DF-84 en `design-findings.md` (Aceptado).
+- **H-1 — Ownership/DI (Alta propuesta):** falta frontera pública suficiente y extensión UI. Diseño §2 aceptado por Adrián (Q-2/Q-6) con ajustes; sin imports internos ni segundo MinIO. Registrado como DF-96 en `design-findings.md` (Aceptado).
 - **H-2 — retirado.** Existía solo por el MIME/procedencia; la opción 4 elimina ambos. No queda residuo: el desfase 006 (UI fija sufijo, backend permite renombrar) ya no afecta a preview, pues el lector falla seguro.
 - **Memoria:** rangos no garantizan memoria acotada: PDF.js reserva Uint8Array del largo del documento; zip.js puede almacenar directorio central completo; saxes acumula tokens/atributos sin tope intrínseco; imágenes/canvas/XML hostil añaden expansión. No se garantiza viabilidad hasta 2 GB por seleccionar librerías.
 - Un archivo admitido por la carga puede agotar la memoria del visor. Ese fallo es CA-2: causa saneada y Descargar. No se agrega un límite de tamaño distinto del de la 005.
@@ -181,11 +181,11 @@ Prefijos: **I** = `apps/api/test/int/storage/`; **A** = `apps/api/test/isolation
 - **Tiempo:** dependencias nuevas y habilitaciones ajenas amenazan ≤3 días; avisar a Adrián según workflow. Un recorte/división requiere decisión y actualización de spec, no reducir CA unilateralmente.
 - DF-15 queda parcial al aceptar `PreviewService`; fachada/controlador deben reflejarse en M2; sin cambio de puertos ni E-R. Architect registra H-1/H-2 y pendientes de habilitación/documentación cuando tenga permisos; ninguna aceptación se inventa aquí.
 - Dueños históricos y posible `tipo_mime` de design-model/DF-60 no prevalecen sobre backlog/RN-6. PD-46 cubre redibujado existente; PD-49/52 son cabeceras transversales, no resueltas por este plan.
-- ADR: [ADR-0027](../../docs/adr/0027-inline-solo-en-previsualizacion-aislada.md) Rechazado (lo actualiza architect); PD-129 ya no es necesario. El ADR de motores de previsualización lo redacta architect. Este plan no escribe ADR.
+- ADR: [ADR-0027](../../docs/adr/0027-inline-solo-en-previsualizacion-aislada.md) Rechazado (lo actualiza architect); PD-206 ya no es necesario. El ADR de motores de previsualización lo redacta architect. Este plan no escribe ADR.
 
 | ID | Estado técnico | Lo pendiente para aprobación / responsable |
 |---|---|---|
-| Q-1 | `[RESUELTA]` por opción 4 (2026-10-06) | IX.7 se respeta literalmente; ADR-0027 Rechazado; sin G-1 ni PD-129 |
+| Q-1 | `[RESUELTA]` por opción 4 (2026-10-06) | IX.7 se respeta literalmente; ADR-0027 Rechazado; sin G-1 ni PD-206 |
 | Q-2 | `[RESUELTA]` aceptada con ajuste DRY | Fachada delgada + `AccessibleFileUrlIssuer` extraído de `FileService`; tasa en `PreviewService`; sin ensanchar `INodeRepository` |
 | Q-3 | Eliminada | Sin procedencia, índice ni migración |
 | Q-4 | `[RESUELTA]` aceptada por Adrián (G-3) | `pdfjs-dist@6.4.299`, `@zip.js/zip.js@2.23.0`, `saxes@6.0.0`; architect redacta el ADR de motores y evalúa el riesgo de memoria |

@@ -1,7 +1,8 @@
 # Compose base (spec 000, CA-3): el mismo archivo en local y staging.
 # Local: `docker compose up -d` carga automáticamente `compose.override.yml` (puertos, Mailpit, apps por perfil).
 # Staging: `COMPOSE_FILE=compose.yml:compose.staging.yml` (imágenes por SHA, Traefik con TLS, sin puertos internos).
-# `WORKER_PORT` nunca aparece en `ports:` (CA-23). ONLYOFFICE solo con `--profile onlyoffice` (CA-2).
+# `WORKER_PORT` y `WORKER_OPTIMIZER_PORT` nunca aparecen en `ports:` (CA-23, ADR-0038). ONLYOFFICE solo con
+# `--profile onlyoffice` (CA-2). Respaldos de la base solo con `--profile backups` (022c S-4).
 name: nimbo
 
 services:
@@ -57,7 +58,8 @@ services:
     mem_limit: 512m
     restart: unless-stopped
 
-  # Crea el bucket con versionado (D-7) y termina. Idempotente: `mc mb --ignore-existing`.
+  # Crea el bucket con versionado (D-7), le aplica la única regla de ciclo de vida (versiones no vigentes, 7 días;
+  # 022c CA-7) y termina. Idempotente: `mc mb --ignore-existing` y `mc ilm import` reemplaza la configuración entera.
   minio-init:
     image: pgsty/mc:RELEASE.2026-09-16T00-00-00Z
     depends_on:
@@ -104,8 +106,61 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+    # Sin swap del contenedor (`memswap_limit` = `mem_limit`, ADR-0038): al tope se reinicia, no se degrada.
     mem_limit: ${WORKER_MEM_LIMIT:-768m}
+    memswap_limit: ${WORKER_MEM_LIMIT:-768m}
     restart: unless-stopped
+    # Cierre ordenado: `init` reenvía SIGTERM a `node` (y recoge a los hijos de Ghostscript) y Nest cierra cada `Worker`
+    # esperando su trabajo activo. Paso acotado más largo: Ghostscript (45 s) + una petición de embeddings (30 s) + 15 s;
+    # un trabajo más largo queda atascado y BullMQ lo reintenta (los del general son idempotentes).
+    init: true
+    stop_grace_period: 90s
+
+  # Optimizador de imágenes (021, ADR-0038): la misma imagen que `worker`, otro comando; consume solo `optimization`.
+  # Su memoria y sus fallos quedan aislados del `worker` general. Salud interna en `WORKER_OPTIMIZER_PORT`.
+  worker-optimizer:
+    image: ${WORKER_IMAGE:-ghcr.io/afmatul/nimbo-worker}:${IMAGE_TAG:-latest}
+    command: ['node', 'dist/worker-optimizer.main.js']
+    # Catálogo completo en `.env.example`; inyección solo del schema de este proceso (PD-159).
+    # La contraseña de aplicación se interpola en la URL, no se inyecta como variable auxiliar ni se usa el rol dueño.
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      APP_ENV: ${APP_ENV}
+      APP_VERSION: ${APP_VERSION:-dev}
+      LOG_LEVEL: ${LOG_LEVEL}
+      DATABASE_URL: postgres://nimbo_app:${NIMBO_APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET:-nimbo}
+      MINIO_REGION: ${MINIO_REGION:-us-east-1}
+      OPTIMIZER_TIMEOUT_MS: ${OPTIMIZER_TIMEOUT_MS:-100000}
+      OPTIMIZER_MAX_PIXELS: ${OPTIMIZER_MAX_PIXELS:-36000000}
+      OPTIMIZER_MIN_SAVED_PERCENT: ${OPTIMIZER_MIN_SAVED_PERCENT:-20}
+      OPTIMIZER_MIN_SAVED_BYTES: ${OPTIMIZER_MIN_SAVED_BYTES:-1000000}
+      OPTIMIZER_JPEG_QUALITY: ${OPTIMIZER_JPEG_QUALITY:-80}
+      WORKER_OPTIMIZER_PORT: ${WORKER_OPTIMIZER_PORT:-3003}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'node', 'dist/healthcheck.js', 'WORKER_OPTIMIZER_PORT']
+      interval: 20s
+      timeout: 5s
+      retries: 2
+      start_period: 30s
+    mem_limit: ${WORKER_OPTIMIZER_MEM_LIMIT:-768m}
+    memswap_limit: ${WORKER_OPTIMIZER_MEM_LIMIT:-768m}
+    restart: unless-stopped
+    # Cierre ordenado sin cortar una optimización válida: cada intento hace a lo sumo 3 operaciones de `sharp` acotadas
+    # por `OPTIMIZER_TIMEOUT_MS` (100 s, la misma cota de la caducidad perezosa, plan 021 §5) + E/S (30 s).
+    init: true
+    stop_grace_period: 330s
 
   web:
     image: ${WEB_IMAGE:-ghcr.io/afmatul/nimbo-web}:${IMAGE_TAG:-latest}
@@ -113,6 +168,68 @@ services:
     environment:
       API_INTERNAL_URL: http://api:3000
     mem_limit: 512m
+    restart: unless-stopped
+
+  # Observabilidad (022, ADR-0040). Ninguno publica puertos de métricas ni lleva etiquetas de Traefik (CA-2).
+  # Prometheus recolecta los procesos y cAdvisor por la red interna; Grafana solo escucha en el anfitrión (127.0.0.1).
+  prometheus:
+    image: prom/prometheus:v3.15.0
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--storage.tsdb.retention.size=1GB'
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    mem_limit: 256m
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:13.2.4
+    ports:
+      - '127.0.0.1:${GRAFANA_PORT}:3000'
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_AUTH_ANONYMOUS_ENABLED: 'false'
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      GF_ANALYTICS_REPORTING_ENABLED: 'false'
+      # CA-9, P-6: ningún tablero se ve sin cuenta (ni público ni en snapshots.raintank.io) y el Viewer no edita ni explora
+      GF_PUBLIC_DASHBOARDS_ENABLED: 'false'
+      GF_SNAPSHOTS_EXTERNAL_ENABLED: 'false'
+      GF_USERS_VIEWERS_CAN_EDIT: 'false'
+      # Enlaces de los correos de alerta (H-6); sin esto Grafana usa localhost:3000, que es el api.
+      GF_SERVER_ROOT_URL: http://localhost:${GRAFANA_PORT}/
+      GF_SMTP_ENABLED: 'true'
+      GF_SMTP_HOST: ${GRAFANA_SMTP_HOST}
+      GF_SMTP_USER: ${GRAFANA_SMTP_USER}
+      GF_SMTP_PASSWORD: ${GRAFANA_SMTP_PASSWORD}
+      GF_SMTP_FROM_ADDRESS: ${GRAFANA_SMTP_FROM}
+      # Destinatario de las alertas; `provisioning/alerting/alertas.json` lo lee como `$ALERT_EMAIL_TO` (P-3)
+      ALERT_EMAIL_TO: ${ALERT_EMAIL_TO}
+      # 022d H-2: con 256m Grafana murió por OOM en la demo T-06; el recolector de Go recupera memoria antes del tope.
+      GOMEMLIMIT: 690MiB
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    mem_limit: 768m
+    restart: unless-stopped
+
+  # Sin `privileged`: solo lectura sobre el anfitrión y el socket de Docker (ADR-0040, R-2). Sin `ports:`.
+  cadvisor:
+    image: ghcr.io/google/cadvisor:v0.60.6
+    command:
+      - '--docker_only=true'
+      - '--store_container_labels=false'
+      - '--enable_metrics=cpu,memory,disk'
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    mem_limit: 128m
     restart: unless-stopped
 
   onlyoffice:
@@ -132,8 +249,44 @@ services:
     mem_limit: 3g
     restart: unless-stopped
 
+  # Respaldo diario cifrado de la base (022c, ADR-0041; `docs/operations/respaldos.md`). Misma imagen que `postgres`
+  # (misma versión de `pg_dump`/`pg_restore`, trae `gpg`) con `entrypoint` propio: el de la imagen inicializaría un
+  # clúster. Solo recibe las credenciales del dueño (el volcado necesita saltar la RLS forzada, plan D-2), sin
+  # `env_file` ni puertos, y es el único que monta `backup_data`. Corre como `root` (usuario por defecto de la imagen):
+  # el volumen nombrado nace de `root` y la clave privada que el Operador monta con `-v` solo para `restore` suele
+  # ser legible solo por su dueño. Solo la clave **pública** entra como secreto; sin `BACKUP_PUBLIC_KEY_FILE` apunta a
+  # `/dev/null` y cada corrida responde `BACKUP_KEY_MISSING` (R-3).
+  backup:
+    image: pgvector/pgvector:pg17
+    profiles: [backups]
+    entrypoint: ['bash', '/opt/nimbo-backup/backup.sh']
+    command: ['schedule']
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      BACKUP_TIME: ${BACKUP_TIME:-03:00}
+      TZ: ${BACKUP_TZ:-America/Guatemala}
+    volumes:
+      - backup_data:/backups
+      - ./infra/backup:/opt/nimbo-backup:ro
+    secrets:
+      - backup_public_key
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 256m
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   redis_data:
   minio_data:
+  prometheus_data:
+  grafana_data:
   onlyoffice_data:
+  backup_data:
+
+secrets:
+  backup_public_key:
+    file: ${BACKUP_PUBLIC_KEY_FILE:-/dev/null}

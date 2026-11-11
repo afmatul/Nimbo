@@ -21,7 +21,9 @@ pnpm install                         # instala el workspace y compila packages/c
 cp .env.example .env                 # valores locales listos; no hace falta editar nada
 docker compose up -d                 # Postgres (pgvector), Redis, MinIO, Traefik y Mailpit
 pnpm --filter api migration:run      # migraciones de la API (llega con el PR-2 de la spec 000)
-pnpm dev                             # api (3000), worker (3001, salud interna) y web (3002)
+pnpm start:all                       # Todo en uno: Docker + migraciones + api, worker y web (Ctrl+C para parar)
+pnpm start:all --prod                # igual, pero con la web compilada (`next build` + `next start`) para medir velocidad real
+pnpm dev                             # solo api (3000), worker (3001, salud interna) y web (3002), con Docker ya arriba
 ```
 
 `api`, `worker` y las migraciones leen ese `.env` de la raíz al arrancar (`process.loadEnvFile`, integrado en
@@ -39,11 +41,12 @@ Resultado esperado (menos de 10 minutos sin contar descargas de imágenes):
 | `http://localhost:8080`                | Panel de Traefik (solo local)                      |
 | `http://localhost:9001`                | Consola de MinIO (`MINIO_ROOT_USER` / `_PASSWORD`) |
 
-El proceso `worker` escribe la bitácora `worker.started` con su `correlationId` al arrancar.
+Los procesos `worker` y `worker-optimizer` (ADR-0038) escriben la bitácora `worker.started` (con `process`) y su
+`correlationId` al arrancar.
 
 ### Puertos en el host
 
-`api` 3000 · `worker` 3001 (solo salud interna, nunca publicado en compose) · `web` 3002. Traefik (puerto 80) enruta
+`api` 3000 · `worker` 3001 y `worker-optimizer` 3003 (solo salud interna, nunca publicados en compose) · `web` 3002. Traefik (puerto 80) enruta
 `/` → 3002 y `/api` → 3000 hacia el host (`infra/traefik/local-routes.yml`); `/s3` → MinIO y `/docs` → ONLYOFFICE.
 
 ### Perfiles de compose
@@ -51,8 +54,8 @@ El proceso `worker` escribe la bitácora `worker.started` con su `correlationId`
 - Sin perfil (`docker compose up -d`): `postgres`, `redis`, `minio`, `minio-init`, `traefik`, `mailpit`.
 - `--profile onlyoffice`: agrega ONLYOFFICE Docs (≈ 3 GB de memoria); `http://localhost/docs/healthcheck` responde
   `true`. Solo hace falta para la edición colaborativa (spec 016).
-- `--profile apps`: construye y corre `api`, `worker` y `web` en contenedores en lugar de `pnpm dev` (requiere los
-  `Dockerfile` del PR-4 de la spec 000).
+- `--profile apps`: construye y corre `api`, `worker`, `worker-optimizer` y `web` en contenedores en lugar de `pnpm dev`
+  (la imagen de los `worker` existe desde 021 T-10; las de `api` y `web` llegan con el PR-4 de la spec 000).
 
 ## Comandos del día a día
 
@@ -71,7 +74,7 @@ pnpm seed                       # marcador hasta 005/019
 ## Estructura
 
 ```
-apps/api        NestJS: módulos de la lógica del sistema + shared (T1); worker.main.ts es la raíz del worker
+apps/api        NestJS: módulos de la lógica del sistema + shared (T1); worker.main.ts y worker-optimizer.main.ts son las raíces de los worker
 apps/worker     paquete delgado del proceso worker (healthcheck, Dockerfile); compone módulos de api
 apps/web        Next.js (App Router)
 packages/contracts   contratos HTTP compartidos web ↔ api (zod)

@@ -1,18 +1,17 @@
 import { randomUUID } from 'node:crypto';
 
-import { FixedClock } from '../../../shared';
+import { FixedClock, PasswordHash } from '../../../shared';
+import type { IPasswordHasher } from '../../../shared';
 import {
   IdentityWeakPasswordError,
   SetupLinkExpiredError,
   SetupLinkInvalidError,
 } from '../domain/errors';
 import { OpaqueToken } from '../domain/opaque-token.vo';
-import { PasswordHash } from '../domain/password-hash.vo';
 import { VerificationToken } from '../domain/verification-token.entity';
 import type { VerificationTokenType } from '../domain/verification-token.entity';
 
 import { AccountSetupService } from './account-setup.service';
-import type { IPasswordHasher } from './ports/i-password-hasher.port';
 import { aClientUser } from './testing/client-user.builder';
 import { InMemoryUserRepository } from './testing/in-memory-user.repository';
 import { InMemoryVerificationTokenRepository } from './testing/in-memory-verification-token.repository';

@@ -4,7 +4,7 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 import type { DataSource } from 'typeorm';
 
-import { Argon2idHasher } from '../../../src/modules/identity/infrastructure/argon2id.hasher';
+import { Argon2idHasher } from '../../../src/shared/infrastructure/security/argon2id.hasher';
 import { employeeCodeFor } from '../../support/employee-codes';
 
 export const LOGIN_PATH = '/api/v1/auth/login';

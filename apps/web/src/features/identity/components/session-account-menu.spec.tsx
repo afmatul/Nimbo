@@ -54,6 +54,27 @@ describe('SessionAccountMenu (CA-14)', () => {
   });
 
   it.each([
+    ['CLIENT', null],
+    ['SUPPORT', 'Soporte'],
+    ['ADMIN', 'Administrador'],
+    ['OPERATOR', 'Operador'],
+  ] as const)('011 CA-17: con el rol %s, bajo el correo se lee %s', async (role, label) => {
+    rememberSession(sessionFixture({ role }));
+    const user = userEvent.setup();
+    render(
+      <SessionProvider apiPublicUrl="http://localhost/api/v1">
+        <SessionAccountMenu />
+      </SessionProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Ana López (menú de la cuenta)' }));
+
+    for (const other of ['Cliente', 'Soporte', 'Administrador', 'Operador']) {
+      expect(screen.queryByText(other) !== null).toBe(other === label);
+    }
+  });
+
+  it.each([
     ['CLIENT', '/actividad'],
     ['SUPPORT', '/interno/actividad'],
     ['ADMIN', '/interno/actividad'],

@@ -6,6 +6,7 @@ import request from 'supertest';
 import { EnvModule } from '../infrastructure/config/env.module';
 import type { Env, SharedEnvBase } from '../infrastructure/config/env.schema';
 import { createLoggerModule, LOG_STREAM } from '../infrastructure/logging/logger.module';
+import { MetricsModule } from '../infrastructure/metrics/metrics.module';
 
 import { configureHttpApp } from './configure-http-app';
 
@@ -47,7 +48,12 @@ describe('configureHttpApp: `no-store` antes del analizador (001 CA-6)', () => {
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [DiscardLogsModule, EnvModule.forRoot(HTTP_ENV), createLoggerModule()],
+      imports: [
+        DiscardLogsModule,
+        EnvModule.forRoot(HTTP_ENV),
+        createLoggerModule(),
+        MetricsModule,
+      ],
       controllers: [EchoController],
     }).compile();
     app = moduleRef.createNestApplication<NestExpressApplication>({

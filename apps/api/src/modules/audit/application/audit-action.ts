@@ -54,6 +54,34 @@ export enum AuditAction {
   FILE_INDEX_UNINDEXABLE = 'file.index_unindexable',
   FILE_INDEX_FAILED = 'file.index_failed',
   FILE_INDEX_RETRIED = 'file.index_retried',
+  /**
+   * Comparticiones (012 CA-19, plan §5): en la actividad del propietario, `attributes { nodeType, level }` y el nodo
+   * como recurso; nunca nombres de archivo ni correos. Revocar y salir (CA-23) son `share.revoked`.
+   */
+  SHARE_GRANTED = 'share.granted',
+  SHARE_LEVEL_CHANGED = 'share.level_changed',
+  SHARE_REVOKED = 'share.revoked',
+  /**
+   * Enlaces públicos (013 CA-15, plan §5): en la actividad del propietario, el archivo como recurso; al generar,
+   * `attributes { expiresInDays, protection }`, y al revocar o reemplazar, `{ reason }`. Nunca token, contraseña, IP,
+   * nombre de archivo ni correo.
+   */
+  PUBLIC_LINK_CREATED = 'public_link.created',
+  PUBLIC_LINK_REVOKED = 'public_link.revoked',
+  /**
+   * Descarga de un visitante (013 CA-10, CA-18, ADR-0039 regla 5): con el actor derivado del propietario («en nombre
+   * de») y `attributes { trigger: 'public_link' }`, que la distingue de una descarga suya.
+   */
+  PUBLIC_LINK_DOWNLOADED = 'public_link.downloaded',
+  /**
+   * Bloqueo por contraseñas fallidas de un enlace desde una red (013 CA-13, CA-18): una vez por bloqueo, con el actor
+   * derivado del propietario y `attributes { trigger: 'public_link' }`. Los fallos sueltos no se auditan; nunca IP.
+   */
+  PUBLIC_LINK_LOCKED = 'public_link.locked',
+  /** Optimización (021 §5, CA-21): solo resultados terminales; estimar no se audita. */
+  FILE_OPTIMIZED = 'file.optimized',
+  FILE_OPTIMIZATION_DISCARDED = 'file.optimization_discarded',
+  FILE_OPTIMIZATION_FAILED = 'file.optimization_failed',
 }
 
 const AUDIT_ACTIONS: ReadonlySet<string> = new Set(Object.values(AuditAction));

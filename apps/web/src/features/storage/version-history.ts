@@ -5,6 +5,13 @@ import type { FileVersionSummary } from '@nimbo/contracts';
  * la más nueva a la más antigua (`GET /files/:fileId/versions`).
  */
 
+/** La versión vigente del historial (la que marca `isCurrent`). */
+export function currentVersionOf(
+  versions: readonly FileVersionSummary[],
+): FileVersionSummary | undefined {
+  return versions.find((version) => version.isCurrent);
+}
+
 /**
  * Número de la versión que la poda eliminaría al registrar una nueva (CA-15): la más antigua retenida si el archivo ya
  * está en el límite del plan (D-2, cuenta la actual); `null` si queda lugar.
@@ -17,9 +24,12 @@ export function versionToPrune(
   return versions.at(-1)?.number ?? null;
 }
 
-/** Espacio que ocupan todas las versiones: todas cuentan en la cuota (D-1). */
+/** Espacio de las versiones que cuentan: el original conservado queda exento (014b CA-1). */
 export function totalVersionBytes(versions: readonly FileVersionSummary[]): number {
-  return versions.reduce((sum, version) => sum + version.sizeBytes, 0);
+  return versions.reduce(
+    (sum, version) => sum + (version.keptUntil === null ? version.sizeBytes : 0),
+    0,
+  );
 }
 
 /** «3 versiones · tu plan Personal conserva 3, contando la actual»; sin el nombre del plan si aún no llegó. */

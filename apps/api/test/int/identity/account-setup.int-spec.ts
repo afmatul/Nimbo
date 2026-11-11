@@ -6,9 +6,9 @@ import { DataSource } from 'typeorm';
 
 import { AccountAdministration, InternalAccountEnrollment } from '../../../src/modules/identity';
 import { OpaqueToken } from '../../../src/modules/identity/domain/opaque-token.vo';
-import { Argon2idHasher } from '../../../src/modules/identity/infrastructure/argon2id.hasher';
 import { createActor, FixedClock, I_CLOCK, I_TRANSACTION_RUNNER, Role } from '../../../src/shared';
 import type { ITransactionRunner } from '../../../src/shared';
+import { Argon2idHasher } from '../../../src/shared/infrastructure/security/argon2id.hasher';
 import { uniqueEmployeeCode } from '../../support/employee-codes';
 import type { TestApp } from '../setup/test-app';
 

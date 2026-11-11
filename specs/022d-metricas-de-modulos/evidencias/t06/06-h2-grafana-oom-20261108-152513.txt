@@ -1,0 +1,8 @@
+022d T-06, H-2: OOM de Grafana. Registrado 2026-11-08 15:25:13 -06:00
+Contenedor nimbo-022d-t06-grafana-1, mem_limit 256m (compose.yml, sin cambios). Reinicio por unless-stopped: inicio 2026-11-08T21:18:00Z, RestartCount=1.
+Registros del kernel (dmesg de la VM, uptime actual 3241.95 s; 2807,4 s corresponde a las 15:18:00 UTC-6):
+  [ 2807.386521] grafana invoked oom-killer: gfp_mask=0xcc0(GFP_KERNEL), order=0, oom_score_adj=0
+  [ 2807.600169] Memory cgroup out of memory: Killed process 53375 (grafana) total-vm:2233964kB, anon-rss:234964kB, file-rss:43776kB, shmem-rss:0kB, UID:472 pgtables:1836kB oom_score_adj:0
+Tras una carga del tablero (15:24:39): RestartCount=1, 243,4 MiB (95,08 %), memory.peak 256,0 MiB, memory.events max=10725 oom=0 oom_kill=0.
+Captura 05-h2 (15:19:44): el tablero responde 'Failed to load dashboard / Failed to fetch' unos 100 s despues del reinicio; causa de ese fallo concreto sin demostrar.
+La captura 04 (15:24:39) es la carga valida posterior.

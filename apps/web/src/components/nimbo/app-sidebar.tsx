@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
+import Link from 'next/link';
 import type * as React from 'react';
 
 import { cn } from '../../lib/utils';
@@ -101,9 +102,9 @@ function NavEntry({ item, styles, trashCount }: NavEntryProps): React.JSX.Elemen
   const { onSelect } = item;
   if (onSelect === undefined) {
     return (
-      <a href={item.href} className={className}>
+      <Link href={item.href} className={className} aria-current={item.active ? 'page' : undefined}>
         {content}
-      </a>
+      </Link>
     );
   }
   const select = (): void => {

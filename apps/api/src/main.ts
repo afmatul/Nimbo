@@ -12,13 +12,14 @@ import {
   CorrelationContext,
   loadDotenvFile,
   loadEnv,
+  startMetricsServer,
 } from './shared';
 
 /**
  * Arranque de `api` (plan 000 §6.2, plan 001 §6.8): cargar el `.env` de la raíz si existe → validar entorno → si falla,
  * `config.invalid` en stderr y salir con `1` (el logger aún no existe) → app con logger Pino y sin analizadores por
  * defecto → `configureHttpApp` (correlación, versión, `trust proxy`, CORS, solo JSON, prefijo y filtro) → canal en vivo
- * (`configureRealtime`, 015) → escuchar.
+ * (`configureRealtime`, 015) → servidor privado de métricas en `METRICS_PORT` (022, fuera de `/api/v1`) → escuchar.
  */
 async function bootstrap(): Promise<void> {
   loadDotenvFile();
@@ -38,6 +39,7 @@ async function bootstrap(): Promise<void> {
   configureHttpApp(app, env);
   configureRealtime(app);
 
+  startMetricsServer(app, env.METRICS_PORT);
   await app.listen(env.PORT);
   logger.log({
     event: 'api.started',

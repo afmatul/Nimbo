@@ -124,7 +124,7 @@ export class UploadRegistrar {
   ): Promise<Registration> {
     const now = this.clock.now();
     await this.quotas.lockUsage(actor);
-    const file = await this.nodes.findAccessibleById(actor, session.fileId);
+    const file = await this.nodes.findOwnedLiveFile(actor, session.fileId);
     if (file === null) return this.cancel(actor, session, now);
     if (!(await this.closeSession(actor, session, now))) return RACE_LOST;
     const registered = await this.fileVersions.register(actor, {
@@ -134,10 +134,10 @@ export class UploadRegistrar {
     return { outcome: 'registered', ...registered };
   }
 
-  /** `true` si la carga va a la raíz o su carpeta sigue viva y accesible. */
+  /** `true` si la carga va a la raíz o su carpeta sigue viva y es del actor. */
   private async destinationAlive(actor: Actor, session: UploadSession): Promise<boolean> {
     if (session.folderId === null) return true;
-    return (await this.nodes.findAccessibleFolder(actor, session.folderId)) !== null;
+    return (await this.nodes.findOwnedFolder(actor, session.folderId)) !== null;
   }
 
   /** CAS `activa → completada`; `false` si otra petición ya la cerró. */

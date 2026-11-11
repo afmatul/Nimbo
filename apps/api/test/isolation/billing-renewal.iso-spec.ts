@@ -5,6 +5,7 @@ import { TEST_CARDS } from '@nimbo/contracts';
 import request from 'supertest';
 import type { DataSource } from 'typeorm';
 
+import { ContentMatchBindingModule } from '../../src/content-match-binding.module';
 import { BillingHttpModule } from '../../src/modules/billing';
 import { StorageModule } from '../../src/modules/storage';
 import { PlanLimitsBindingModule } from '../../src/plan-limits-binding.module';
@@ -32,6 +33,9 @@ const SRC = join(__dirname, '../../src');
 /** El código sin comentarios: la regla de ADR-0031 es sobre consultas, no sobre la documentación que nombra la columna. */
 const withoutComments = (code: string): string =>
   code.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+/** Ruta con `/` también en Windows, donde `join` y `relative` devuelven `\\`. */
+const posix = (path: string): string => path.split('\\').join('/');
 
 /** Todos los `.ts` de producción de `apps/api/src` (sin pruebas). */
 const sourceFiles = (dir: string): string[] =>
@@ -190,6 +194,7 @@ describe('aislamiento de la renovación por cuenta (spec 010 CA-23, CA-24; ADR-0
       modules: [
         ...composition.modules,
         PlanLimitsBindingModule,
+        ContentMatchBindingModule,
         storage,
         BillingHttpModule.forRoot(env, storage),
       ],
@@ -308,11 +313,11 @@ describe('aislamiento de la renovación por cuenta (spec 010 CA-23, CA-24; ADR-0
 
   it('ADR-0031, 010a-4: solo el repositorio de pagos y la redacción del logger usan `referencia_instrumento` en código', () => {
     const naming = sourceFiles(SRC)
-      .filter((path) => !path.includes('/migrations/'))
+      .filter((path) => !posix(path).includes('/migrations/'))
       .filter((path) =>
         withoutComments(readFileSync(path, 'utf8')).includes('referencia_instrumento'),
       )
-      .map((path) => relative(SRC, path))
+      .map((path) => posix(relative(SRC, path)))
       .sort();
     const repository = readFileSync(
       join(SRC, 'modules/billing/infrastructure/persistence/typeorm-payment.repository.ts'),

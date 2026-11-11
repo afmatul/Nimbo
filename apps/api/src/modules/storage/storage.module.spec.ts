@@ -11,10 +11,13 @@ import { FileVersionService } from './application/file-version.service';
 import { FOLDER_CONFIG } from './application/folder-config';
 import { FolderService } from './application/folder.service';
 import { IndexableFileGateway } from './application/indexable-file.gateway';
+import { LinkedFileGateway } from './application/linked-file.gateway';
+import { OptimizableFileGateway } from './application/optimizable-file.gateway';
 import { I_PLAN_LIMITS_PROVIDER } from './application/plan-limits';
 import { I_NODE_METADATA_READER } from './application/ports/i-node-metadata-reader.port';
 import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
 import { I_QUICK_ACCESS_REPOSITORY } from './application/ports/i-quick-access.repository.port';
+import { I_SUPPORT_TRASH_REPOSITORY } from './application/ports/i-support-trash.repository.port';
 import { I_TRASH_PURGE_QUEUE } from './application/ports/i-trash-purge-queue.port';
 import { I_VERSION_REPOSITORY } from './application/ports/i-version.repository.port';
 import { QUICK_ACCESS_CONFIG } from './application/quick-access-config';
@@ -22,13 +25,16 @@ import { QuickAccessService } from './application/quick-access.service';
 import { SpaceMeasurer } from './application/space-measurer';
 import { SpaceSummaryService } from './application/space-summary.service';
 import { StoragePreviewFacade } from './application/storage-preview.facade';
+import { SupportTrashService } from './application/support-trash.service';
 import { TrashPurger } from './application/trash-purger';
 import { UPLOAD_CONFIG } from './application/upload-config';
 import { VersionHistoryService } from './application/version-history.service';
 import { VersionPruner } from './application/version-pruner';
 import { VERSION_RESTORE_CONFIG } from './application/version-restore-config';
 import { VersionRestoreService } from './application/version-restore.service';
+import { WritableAccountPolicy } from './application/writable-account.policy';
 import { SqlNodeMetadataReader } from './infrastructure/persistence/sql-node-metadata.reader';
+import { TypeOrmSupportTrashRepository } from './infrastructure/persistence/typeorm-support-trash.repository';
 import { TrashPurgeProcessor } from './infrastructure/trash-purge.processor';
 import { TRASH_PURGE_QUEUE, TrashPurgeScheduler } from './infrastructure/trash-purge.scheduler';
 import { FileVersionsController } from './presentation/file-versions.controller';
@@ -38,6 +44,11 @@ import { QuickAccessController } from './presentation/quick-access.controller';
 import { SpaceController } from './presentation/space.controller';
 import { TrashController } from './presentation/trash.controller';
 import { UploadsController } from './presentation/uploads.controller';
+import { I_CONTENT_MATCH_READER } from './search/application/ports/i-content-match-reader.port';
+import { I_NODE_SEARCH_REPOSITORY } from './search/application/ports/i-node-search.repository.port';
+import { SearchService } from './search/application/search.service';
+import { TypeOrmNodeSearchRepository } from './search/infrastructure/typeorm-node-search.repository';
+import { SearchController } from './search/presentation/search.controller';
 import { StorageModule } from './storage.module';
 
 const ENV = {
@@ -110,7 +121,7 @@ describe('StorageModule', () => {
     expect(providers.map(tokenOf)).not.toContain(TrashPurgeProcessor);
   });
 
-  it('CA-17: monta los controladores de cargas, archivos, versiones, carpetas, papelera, accesos rápidos y espacio', () => {
+  it('CA-17: monta los controladores de cargas, archivos, versiones, carpetas, papelera, accesos rápidos, espacio y búsqueda', () => {
     expect(module.controllers).toEqual([
       UploadsController,
       FilesController,
@@ -119,7 +130,22 @@ describe('StorageModule', () => {
       TrashController,
       QuickAccessController,
       SpaceController,
+      SearchController,
     ]);
+  });
+
+  it('018 CA-1: registra la búsqueda con su repositorio sobre Postgres, sin exportarla', () => {
+    expect(providers).toContain(SearchService);
+    expect(providers).toContainEqual({
+      provide: I_NODE_SEARCH_REPOSITORY,
+      useClass: TypeOrmNodeSearchRepository,
+    });
+    expect(module.exports).not.toContain(SearchService);
+  });
+
+  it('018b D-1: no enlaza `I_CONTENT_MATCH_READER` (lo hace la raíz de composición con `intelligence`)', () => {
+    expect(providers.map(tokenOf)).not.toContain(I_CONTENT_MATCH_READER);
+    expect(module.exports).not.toContain(I_CONTENT_MATCH_READER);
   });
 
   it('014 CA-5, CA-13: registra el registro y la poda de versiones con su repositorio', () => {
@@ -141,7 +167,7 @@ describe('StorageModule', () => {
     expect(providers).toEqual(expect.arrayContaining([SpaceMeasurer, SpaceSummaryService]));
   });
 
-  it('011 PD-31: provee el lector de metadatos con su adaptador SQL y exporta su token, el de objetos (009) y las fachadas de edición (016), de vista previa (017) y de indexación (019)', () => {
+  it('011 PD-31: provee el lector de metadatos con su adaptador SQL y exporta su token, el de objetos (009) y las fachadas de edición (016), de vista previa (017), de indexación (019), de optimización (021) y de enlaces públicos (013), la política de solo lectura (012 PD-121) y la papelera de Soporte (011b)', () => {
     const reader = providers.find((provider) => tokenOf(provider) === I_NODE_METADATA_READER);
 
     expect(reader).toEqual({ provide: I_NODE_METADATA_READER, useClass: SqlNodeMetadataReader });
@@ -151,7 +177,20 @@ describe('StorageModule', () => {
       EditableFileGateway,
       StoragePreviewFacade,
       IndexableFileGateway,
+      WritableAccountPolicy,
+      SupportTrashService,
+      LinkedFileGateway,
+      OptimizableFileGateway,
     ]);
+    expect(providers).toContain(LinkedFileGateway);
+  });
+
+  it('011b CA-10, CA-11: registra la papelera de Soporte con su repositorio SQL y exporta la fachada', () => {
+    expect(providers).toContainEqual({
+      provide: I_SUPPORT_TRASH_REPOSITORY,
+      useClass: TypeOrmSupportTrashRepository,
+    });
+    expect(providers).toContain(SupportTrashService);
   });
 
   it('017 CA-11: registra el emisor compartido y la fachada de vista previa', () => {

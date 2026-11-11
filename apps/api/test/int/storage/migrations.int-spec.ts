@@ -7,6 +7,12 @@ import { CrearCarga20260930100200 } from '../../../src/migrations/20260930100200
 import { PoliticasRlsArchivoVersionCarga20260930100300 } from '../../../src/migrations/20260930100300-politicas-rls-archivo-version-carga';
 import { CrearAccesoRapido20261003100000 } from '../../../src/migrations/20261003100000-crear-acceso-rapido';
 import { CrearIndexacionYFragmento20261022100000 } from '../../../src/migrations/20261022100000-crear-indexacion-y-fragmento';
+import { CrearOptimizacion20261026110000 } from '../../../src/migrations/20261026110000-crear-optimizacion';
+import { CrearComparticion20261101100000 } from '../../../src/migrations/20261101100000-crear-comparticion';
+import { PoliticasRlsNodosCompartidos20261101100100 } from '../../../src/migrations/20261101100100-politicas-rls-nodos-compartidos';
+import { PoliticasRlsEdicionYAgenteCompartidos20261101100200 } from '../../../src/migrations/20261101100200-politicas-rls-edicion-y-agente-compartidos';
+import { AuditoriaAlSalirDeComparticion20261101100300 } from '../../../src/migrations/20261101100300-auditoria-al-salir-de-comparticion';
+import { CrearEnlacePublico20261102100000 } from '../../../src/migrations/20261102100000-crear-enlace-publico';
 import type { Actor } from '../../../src/shared';
 import { buildDataSourceOptions, createActor, Role } from '../../../src/shared';
 import { connectAsOwner } from '../../support/database-urls';
@@ -195,7 +201,13 @@ describe('migración crear-archivo-y-version-archivo (CA-1, CA-6)', () => {
     const migration = new CrearArchivoYVersionArchivo20260930100100();
 
     const [afterDown, indexes] = await inRolledBackTransaction(owner, async (runner) => {
-      /** `indexacion`/`fragmento` (019) y `acceso_rapido` (006 §9.2) referencian `archivo`: se revierten antes, como en un `migration:revert` en orden. */
+      /** `enlace_publico` (013), las políticas y `comparticion` (012), `optimizacion` (021), `indexacion`/`fragmento` (019) y `acceso_rapido` (006 §9.2) dependen de `archivo`: se revierten antes, como en un `migration:revert` en orden. */
+      await new CrearEnlacePublico20261102100000().down(runner);
+      await new AuditoriaAlSalirDeComparticion20261101100300().down(runner);
+      await new PoliticasRlsEdicionYAgenteCompartidos20261101100200().down(runner);
+      await new PoliticasRlsNodosCompartidos20261101100100().down(runner);
+      await new CrearComparticion20261101100000().down(runner);
+      await new CrearOptimizacion20261026110000().down(runner);
       await new CrearIndexacionYFragmento20261022100000().down(runner);
       await new CrearAccesoRapido20261003100000().down(runner);
       await migration.down(runner);
@@ -537,11 +549,13 @@ describe('migración politicas-rls-archivo-version-carga (CA-16, CA-17, DF-52)',
 
   it('CA-16: el `down` quita función, políticas y RLS, y el `up` las devuelve', async () => {
     const migration = new PoliticasRlsArchivoVersionCarga20260930100300();
-    // `archivo_mantenimiento` es de 006 y el `down` de 005 no la toca.
+    // `archivo_mantenimiento` (006), las políticas de 012 y las dos `archivo_soporte_*` de 011b no son de 005: su `down` no las toca.
     const snapshot = async (runner: QueryRunner) => {
       const [state] = (await runner.query(
         `SELECT (SELECT count(*)::int FROM pg_policies WHERE tablename IN ('archivo', 'version_archivo', 'carga')
-                    AND policyname <> 'archivo_mantenimiento')
+                    AND policyname NOT IN ('archivo_mantenimiento', 'archivo_nodos_compartidos',
+                                           'archivo_compartido', 'version_archivo_compartida',
+                                           'archivo_soporte_restauracion', 'archivo_soporte_destino'))
                   AS policies,
                 (SELECT count(*)::int FROM pg_class
                   WHERE relname IN ('archivo', 'version_archivo', 'carga') AND (relrowsecurity OR relforcerowsecurity))

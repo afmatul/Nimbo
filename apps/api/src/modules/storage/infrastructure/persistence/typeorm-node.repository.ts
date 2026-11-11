@@ -2,9 +2,10 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { EntityManager, ObjectLiteral, SelectQueryBuilder } from 'typeorm';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 
-import { TransactionContext } from '../../../../shared';
+import { escapeLike, TransactionContext } from '../../../../shared';
 import type { Actor } from '../../../../shared';
-import { accessibleNodes, ownedFiles } from '../../../access';
+import { accessibleNodes, ownedFiles, ownedNodes } from '../../../access';
+import type { AccessibleNodesFragment } from '../../../access';
 import type {
   FileVersionRef,
   IdPage,
@@ -17,7 +18,6 @@ import { FileName } from '../../domain/file-name.vo';
 import type { FileVersion } from '../../domain/file-version';
 import { Folder } from '../../domain/folder';
 import { FolderName } from '../../domain/folder-name.vo';
-import { FolderPath } from '../../domain/folder-path';
 import type { NodeGroup, NodeOrder } from '../../domain/node-order';
 import type { StorageNode } from '../../domain/storage-node';
 
@@ -25,20 +25,16 @@ import { ArchivoOrmEntity } from './archivo.orm-entity';
 import { CarpetaOrmEntity } from './carpeta.orm-entity';
 import { decodeNodeListCursor, encodeNodeListCursor } from './node-list-cursor';
 import type { NodeListPosition } from './node-list-cursor';
+import { toFile, toFolder } from './node-mappers';
 import { afterCondition, orderByOf } from './node-order-sql';
 import { nodesIn, rebaseSubtree } from './node-sql';
 import type { Condition, NodeTable } from './node-sql';
-import { toTrashState, trashColumns } from './trash-columns';
+import { trashColumns } from './trash-columns';
 import { toVersionRow } from './typeorm-version.repository';
 import { VersionArchivoOrmEntity } from './version-archivo.orm-entity';
 
 const FILE_ALIAS = 'archivo';
 const FOLDER_ALIAS = 'carpeta';
-/** Comodines de `LIKE` y su carácter de escape: en un nombre son texto, no patrones. */
-const LIKE_SPECIAL_CHARACTERS = /[\\%_]/g;
-
-const escapeLike = (text: string): string => text.replace(LIKE_SPECIAL_CHARACTERS, '\\$&');
-
 /** Patrón `LIKE` de las copias «base (n)tail» (D-4); `tail` es «.ext» en archivos y vacío en carpetas. */
 const copiesPattern = (base: string, tail: string): string =>
   `${escapeLike(base)} (%)${escapeLike(tail)}`;
@@ -49,42 +45,36 @@ const fileCopiesPattern = (name: FileName): string => {
   return copiesPattern(name.value.slice(0, -(extension.length + 1)), `.${extension}`);
 };
 
-/** `idColumn` está entre los nodos de `table` que el actor ve: el fragmento de `access` va dentro (ADR-0005). */
-const accessibleCondition = (actor: Actor, idColumn: string, table: NodeTable): Condition =>
-  nodesIn(accessibleNodes(actor), idColumn, table);
+/** Una tabla de nodos con su entidad y su alias en las consultas de este repositorio. */
+interface NodeSource<T extends ObjectLiteral> {
+  readonly entity: new () => T;
+  readonly alias: string;
+  readonly table: NodeTable;
+}
+
+const FILES: NodeSource<ArchivoOrmEntity> = {
+  entity: ArchivoOrmEntity,
+  alias: FILE_ALIAS,
+  table: 'archivo',
+};
+const FOLDERS: NodeSource<CarpetaOrmEntity> = {
+  entity: CarpetaOrmEntity,
+  alias: FOLDER_ALIAS,
+  table: 'carpeta',
+};
+
+/**
+ * Contenido de una carpeta: la raíz es solo lo propio (si no, lo que el dueño compartió desde su raíz aparecería en
+ * «Mis archivos» del destinatario, 012 R-2); dentro de una carpeta, lo accesible (lo compartido, 012 CA-13).
+ */
+const contentsFragment = (actor: Actor, folderId: string | null): AccessibleNodesFragment =>
+  folderId === null ? ownedNodes(actor) : accessibleNodes(actor);
 
 /** Hijos de `folderId`; en la raíz, `IS NULL` para que el planificador use los índices parciales de raíz (T-01). */
 const childOf = (parentColumn: string, folderId: string | null): Condition =>
   folderId === null
     ? { sql: `${parentColumn} IS NULL`, parameters: {} }
     : { sql: `${parentColumn} = :parentFolderId`, parameters: { parentFolderId: folderId } };
-
-/** Fila → `File`; también la usa `TypeOrmTrashRepository` (un archivo no guarda ruta: no hay nada que rehacer). */
-export const toFile = (row: ArchivoOrmEntity): File =>
-  File.rehydrate({
-    id: row.id,
-    ownerId: row.propietarioId,
-    folderId: row.carpetaId,
-    name: FileName.of(row.nombre),
-    kind: row.tipo,
-    sizeBytes: row.tamanoBytes,
-    currentVersionId: row.versionActualId,
-    createdAt: row.creadoEn,
-    updatedAt: row.actualizadoEn,
-    trash: toTrashState(row),
-  });
-
-const toFolder = (row: CarpetaOrmEntity): Folder =>
-  Folder.rehydrate({
-    id: row.id,
-    ownerId: row.propietarioId,
-    parentId: row.carpetaPadreId,
-    name: FolderName.of(row.nombre),
-    path: FolderPath.of(row.ruta),
-    createdAt: row.creadoEn,
-    updatedAt: row.actualizadoEn,
-    trash: toTrashState(row),
-  });
 
 const toFolderRow = (folder: Folder): CarpetaOrmEntity => ({
   id: folder.id,
@@ -159,10 +149,10 @@ const takenNames = async <T extends { nombre: string }>(
 };
 
 /**
- * `INodeRepository` sobre Postgres (plan 005 §6 «Puertos», plan 006 §2). Toda lectura y toda escritura por id une
- * `accessibleNodes(actor)` (filtrado por `tipo_nodo`) en la misma consulta y todo método toma el `EntityManager` de
- * `requireActorScope(actor)`: la RLS es la segunda barrera, no la única. `@Inject` explícito: con `tsx` (esbuild) no
- * hay `design:paramtypes`.
+ * `INodeRepository` sobre Postgres (plan 005 §6 «Puertos», plan 006 §2, plan 012 §2). Toda lectura une
+ * `accessibleNodes(actor)` y toda escritura, destino o nombre ocupado une `ownedNodes(actor)` (filtrados por
+ * `tipo_nodo`) en la misma consulta; todo método toma el `EntityManager` de `requireActorScope(actor)`: la RLS es la
+ * segunda barrera, no la única. `@Inject` explícito: con `tsx` (esbuild) no hay `design:paramtypes`.
  */
 @Injectable()
 export class TypeOrmNodeRepository implements INodeRepository {
@@ -170,6 +160,13 @@ export class TypeOrmNodeRepository implements INodeRepository {
 
   async findAccessibleById(actor: Actor, id: string): Promise<File | null> {
     const row = await this.liveFiles(actor).andWhere(`${FILE_ALIAS}.id = :id`, { id }).getOne();
+    return row === null ? null : toFile(row);
+  }
+
+  async findOwnedLiveFile(actor: Actor, id: string): Promise<File | null> {
+    const row = await this.ownedLiveFiles(actor)
+      .andWhere(`${FILE_ALIAS}.id = :id`, { id })
+      .getOne();
     return row === null ? null : toFile(row);
   }
 
@@ -203,7 +200,7 @@ export class TypeOrmNodeRepository implements INodeRepository {
     folderId: string | null,
   ): Promise<File | null> {
     const sibling = childOf(`${FILE_ALIAS}.carpetaId`, folderId);
-    const row = await this.liveFiles(actor)
+    const row = await this.ownedLiveFiles(actor)
       .andWhere(sibling.sql, sibling.parameters)
       .andWhere(`lower(${FILE_ALIAS}.nombre) = lower(:name)`, { name: name.value })
       .getOne();
@@ -212,6 +209,13 @@ export class TypeOrmNodeRepository implements INodeRepository {
 
   async findAccessibleFolder(actor: Actor, id: string): Promise<Folder | null> {
     const row = await this.liveFolders(actor).andWhere(`${FOLDER_ALIAS}.id = :id`, { id }).getOne();
+    return row === null ? null : toFolder(row);
+  }
+
+  async findOwnedFolder(actor: Actor, id: string): Promise<Folder | null> {
+    const row = await this.ownedLiveFolders(actor)
+      .andWhere(`${FOLDER_ALIAS}.id = :id`, { id })
+      .getOne();
     return row === null ? null : toFolder(row);
   }
 
@@ -253,7 +257,7 @@ export class TypeOrmNodeRepository implements INodeRepository {
     exceptId?: string,
   ): Promise<readonly string[]> {
     return takenNames(
-      this.liveFiles(actor),
+      this.ownedLiveFiles(actor),
       FILE_ALIAS,
       childOf(`${FILE_ALIAS}.carpetaId`, folderId),
       { exact: name.value, copies: fileCopiesPattern(name), exceptId },
@@ -267,7 +271,7 @@ export class TypeOrmNodeRepository implements INodeRepository {
     exceptId?: string,
   ): Promise<readonly string[]> {
     return takenNames(
-      this.liveFolders(actor),
+      this.ownedLiveFolders(actor),
       FOLDER_ALIAS,
       childOf(`${FOLDER_ALIAS}.carpetaPadreId`, parentId),
       { exact: name.value, copies: copiesPattern(name.value, ''), exceptId },
@@ -276,7 +280,7 @@ export class TypeOrmNodeRepository implements INodeRepository {
 
   /** La ruta solo lleva UUID y «/» (`FolderPath`): no hay comodines que escapar en el prefijo. */
   async maxSubtreeDepth(actor: Actor, folder: Folder): Promise<number> {
-    const row = await this.liveFolders(actor)
+    const row = await this.ownedLiveFolders(actor)
       .select(`MAX(${FOLDER_ALIAS}.profundidad)`, 'deepest')
       .andWhere(`${FOLDER_ALIAS}.ruta LIKE :subtree`, { subtree: `${folder.path.value}%` })
       .getRawOne<{ deepest: number | null }>();
@@ -304,9 +308,8 @@ export class TypeOrmNodeRepository implements INodeRepository {
     await this.context.requireActorScope(actor).insert(CarpetaOrmEntity, toFolderRow(folder));
   }
 
-  /** Por el fragmento de acceso o por propiedad (incluida la papelera, 016 RN-11), en la misma consulta. */
+  /** Por propiedad, viva o en la papelera (`ownedFiles`, 016 RN-11), en la misma consulta. */
   async updateCurrentVersion(actor: Actor, file: File): Promise<void> {
-    const access = accessibleCondition(actor, 'id', 'archivo');
     const owned = nodesIn(ownedFiles(actor), 'id', 'archivo');
     await this.context
       .requireActorScope(actor)
@@ -317,42 +320,41 @@ export class TypeOrmNodeRepository implements INodeRepository {
         tamanoBytes: file.sizeBytes,
         actualizadoEn: file.updatedAt,
       })
-      .where(`(${access.sql} OR ${owned.sql})`, { ...access.parameters, ...owned.parameters })
+      .where(owned.sql, { ...owned.parameters })
       .andWhere('id = :id', { id: file.id })
       .execute();
   }
 
   renameFolder(actor: Actor, folder: Folder): Promise<void> {
-    return this.updateAccessible(actor, CarpetaOrmEntity, 'carpeta', folder.id, {
-      nombre: folder.name.value,
-      actualizadoEn: folder.updatedAt,
+    return this.updateOwned(actor, FOLDERS, {
+      id: folder.id,
+      values: { nombre: folder.name.value, actualizadoEn: folder.updatedAt },
     });
   }
 
   renameFile(actor: Actor, file: File): Promise<void> {
-    return this.updateAccessible(actor, ArchivoOrmEntity, 'archivo', file.id, {
-      nombre: file.name.value,
-      actualizadoEn: file.updatedAt,
+    return this.updateOwned(actor, FILES, {
+      id: file.id,
+      values: { nombre: file.name.value, actualizadoEn: file.updatedAt },
     });
   }
 
   moveFile(actor: Actor, file: File): Promise<void> {
-    return this.updateAccessible(actor, ArchivoOrmEntity, 'archivo', file.id, {
-      carpetaId: file.folderId,
-      nombre: file.name.value,
-      actualizadoEn: file.updatedAt,
+    return this.updateOwned(actor, FILES, {
+      id: file.id,
+      values: { carpetaId: file.folderId, nombre: file.name.value, actualizadoEn: file.updatedAt },
     });
   }
 
   /**
-   * Primero el padre de la carpeta (por el fragmento de acceso); después, un `UPDATE` por prefijo de `ruta` que reubica
+   * Primero el padre de la carpeta (por propiedad); después, un `UPDATE` por prefijo de `ruta` que reubica
    * todo el subárbol del dueño, incluida la propia carpeta y lo que está en la papelera (al restaurarse vuelve a una
    * ruta coherente). `idx_carpeta_ruta` sirve al prefijo.
    */
   async moveFolderSubtree(actor: Actor, before: Folder, moved: Folder): Promise<void> {
-    await this.updateAccessible(actor, CarpetaOrmEntity, 'carpeta', before.id, {
-      carpetaPadreId: moved.parentId,
-      actualizadoEn: moved.updatedAt,
+    await this.updateOwned(actor, FOLDERS, {
+      id: before.id,
+      values: { carpetaPadreId: moved.parentId, actualizadoEn: moved.updatedAt },
     });
     await rebaseSubtree(
       this.context.requireActorScope(actor),
@@ -362,9 +364,14 @@ export class TypeOrmNodeRepository implements INodeRepository {
     );
   }
 
-  /** Archivos vivos que el actor ve. */
+  /** Archivos vivos que el actor ve (propios o compartidos). */
   private liveFiles(actor: Actor): SelectQueryBuilder<ArchivoOrmEntity> {
-    return this.liveNodes(actor, ArchivoOrmEntity, FILE_ALIAS, 'archivo');
+    return this.liveNodes(actor, FILES, accessibleNodes(actor));
+  }
+
+  /** Archivos vivos del actor (`ownedNodes`). */
+  private ownedLiveFiles(actor: Actor): SelectQueryBuilder<ArchivoOrmEntity> {
+    return this.liveNodes(actor, FILES, ownedNodes(actor));
   }
 
   /** Archivos del actor, vivos o en la papelera (`ownedFiles`, PD-112). */
@@ -376,55 +383,66 @@ export class TypeOrmNodeRepository implements INodeRepository {
       .where(owned.sql, { ...owned.parameters });
   }
 
-  /** Carpetas vivas que el actor ve. */
+  /** Carpetas vivas que el actor ve (propias o compartidas). */
   private liveFolders(actor: Actor): SelectQueryBuilder<CarpetaOrmEntity> {
-    return this.liveNodes(actor, CarpetaOrmEntity, FOLDER_ALIAS, 'carpeta');
+    return this.liveNodes(actor, FOLDERS, accessibleNodes(actor));
   }
 
+  /** Carpetas vivas del actor (`ownedNodes`). */
+  private ownedLiveFolders(actor: Actor): SelectQueryBuilder<CarpetaOrmEntity> {
+    return this.liveNodes(actor, FOLDERS, ownedNodes(actor));
+  }
+
+  /** Nodos vivos de `source` dentro de `fragment` (`accessibleNodes` u `ownedNodes`), en la misma consulta. */
   private liveNodes<T extends ObjectLiteral>(
     actor: Actor,
-    entity: new () => T,
-    alias: string,
-    table: NodeTable,
+    source: NodeSource<T>,
+    fragment: AccessibleNodesFragment,
   ): SelectQueryBuilder<T> {
     const manager: EntityManager = this.context.requireActorScope(actor);
-    const access = accessibleCondition(actor, `${alias}.id`, table);
+    const within = nodesIn(fragment, `${source.alias}.id`, source.table);
     return manager
-      .createQueryBuilder(entity, alias)
-      .where(access.sql, { ...access.parameters })
-      .andWhere(`${alias}.eliminadoEn IS NULL`);
+      .createQueryBuilder(source.entity, source.alias)
+      .where(within.sql, { ...within.parameters })
+      .andWhere(`${source.alias}.eliminadoEn IS NULL`);
   }
 
   private async childFolders(actor: Actor, page: GroupPage): Promise<Folder[]> {
-    const children = childOf(`${FOLDER_ALIAS}.carpetaPadreId`, page.query.folderId);
-    const builder = this.liveFolders(actor).andWhere(children.sql, children.parameters);
+    const { folderId } = page.query;
+    const children = childOf(`${FOLDER_ALIAS}.carpetaPadreId`, folderId);
+    const builder = this.liveNodes(actor, FOLDERS, contentsFragment(actor, folderId)).andWhere(
+      children.sql,
+      children.parameters,
+    );
     const rows = await ordered(builder, FOLDER_ALIAS, page).getMany();
     return rows.map(toFolder);
   }
 
   private async childFiles(actor: Actor, page: GroupPage): Promise<File[]> {
-    const children = childOf(`${FILE_ALIAS}.carpetaId`, page.query.folderId);
-    const builder = this.liveFiles(actor).andWhere(children.sql, children.parameters);
+    const { folderId } = page.query;
+    const children = childOf(`${FILE_ALIAS}.carpetaId`, folderId);
+    const builder = this.liveNodes(actor, FILES, contentsFragment(actor, folderId)).andWhere(
+      children.sql,
+      children.parameters,
+    );
     const rows = await ordered(builder, FILE_ALIAS, page).getMany();
     return rows.map(toFile);
   }
 
-  /** `UPDATE` de un nodo por id, solo si el actor lo ve vivo (mismo fragmento que las lecturas). */
-  private async updateAccessible<T extends ObjectLiteral>(
+  /** `UPDATE` de un nodo vivo y propio por id (`ownedNodes`, 012 CA-14): lo compartido nunca se escribe aquí. */
+  private async updateOwned<T extends ObjectLiteral>(
     actor: Actor,
-    entity: new () => T,
-    table: NodeTable,
-    id: string,
-    values: QueryDeepPartialEntity<T>,
+    source: NodeSource<T>,
+    change: { readonly id: string; readonly values: QueryDeepPartialEntity<T> },
   ): Promise<void> {
-    const access = accessibleCondition(actor, 'id', table);
+    const owned = nodesIn(ownedNodes(actor), 'id', source.table);
     await this.context
       .requireActorScope(actor)
       .createQueryBuilder()
-      .update(entity)
-      .set(values)
-      .where(access.sql, { ...access.parameters })
-      .andWhere('id = :id', { id })
+      .update(source.entity)
+      .set(change.values)
+      .where(owned.sql, { ...owned.parameters })
+      .andWhere('id = :id', { id: change.id })
       .execute();
   }
 }

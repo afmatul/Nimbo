@@ -5,7 +5,9 @@
 > 11 tareas principales verticales; T-08a/b y T-09a/b son subtareas internas, no tareas principales nuevas. Un commit por tarea (`feat(storage): … [017 T-xx]`); toda tarea de lógica empieza por su prueba.
 > Abel es dueño de `storage/preview`; los cambios fuera de esa frontera se marcan como habilitación de Adrián/compartida y no se asumen como autorizados.
 
-## Estado vigente (2026-10-19)
+## Estado vigente (2026-11-11)
+
+> **Cierre (2026-11-11):** Adrián confirma que las pruebas de T-04 y T-11 (hostname de objetos aislado, DevTools sin Cookie ni Bearer, axe a 360/1440 px, `attachment` en la descarga y 403 de un rol interno real) salieron bien y aprueba el cierre. T-01 a T-11 quedan `[x]`; el texto de abajo es el historial previo a ese cierre.
 
 - Spec 017 permanece **En curso**. T-01/T-02/T-03/T-05/T-06/T-07/T-08/T-09/T-10 completas; cierre y evidencia de T-06/T-07 en [su registro final](#cierre-técnico-t-06-y-t-07-2026-10-18), de T-08 en [su cierre técnico](#cierre-técnico-t-08-2026-10-18), de T-09 en [su cierre técnico](#cierre-técnico-t-09-2026-10-19) y de T-10 en [su registro](#t-10--evidencia-en-navegador-real-2026-10-19) y [su cierre](#cierre-de-t-10-2026-10-19).
 - T-04 permanece `[ ]` solo por lo que depende de T-11: el hostname de objetos realmente aislado y su comprobación humana en DevTools. La evidencia en navegador real que esperaba quedó acreditada en T-10; no presenta un bloqueo abierto de Redis/CORS en backend/Node.
@@ -23,7 +25,7 @@ Redis detenido, rechazo acotado y recuperación real ya están acreditados; tamb
 
 ## Compuertas antes de implementación
 
-- [x] **G-1 — IX.7 (opción 4):** Adrián decidió el 2026-10-06 firmar la URL de vista con la política de 005 (`attachment`, `application/octet-stream`); sin `inline`, MIME ni excepción. ADR-0027 Rechazado; PD-129 innecesario.
+- [x] **G-1 — IX.7 (opción 4):** Adrián decidió el 2026-10-06 firmar la URL de vista con la política de 005 (`attachment`, `application/octet-stream`); sin `inline`, MIME ni excepción. ADR-0027 Rechazado; PD-206 innecesario.
 - [x] **G-2 — Ownership:** Adrián aceptó Q-2 (fachada delgada + extracción DRY) y Q-6 (un solo slot `firstAction`); Q-3 eliminada. El mockup `docs/design/mockups/storage/vista-previa/` lo entrega T-05 (ui-designer).
 - [x] **G-3 — Dependencias:** Adrián aceptó `pdfjs-dist@6.4.299`, `@zip.js/zip.js@2.23.0` y `saxes@6.0.0`; registradas en ADR-0026 (Aceptado).
 - [x] **G-4 — Aprobación:** Adrián aprobó spec + plan, registrado en `plan.md` §8 (2026-10-06).
@@ -47,7 +49,7 @@ Redis detenido, rechazo acotado y recuperación real ya están acreditados; tamb
 
 - [x] **T-03** **(Abel; backend preview)** API de emisión de URL. Con pruebas primero, crear `PreviewModule`, `PreviewService`, configuración, errores propios y `PreviewController` para `POST /api/v1/files/:fileId/preview-url`: solo `CLIENT`, UUID por Zod, tasa `storage:preview-url:${actor.id}` independiente de descarga, 429 con `Retry-After`, defensa contra roles internos también en invocación directa y mapeo estricto a `PreviewUrlResponse`. La tasa vive aquí, no en la fachada. No capturar mensajes/stacks/URLs del firmador ni auditar como descarga. — CA: CA-3, CA-4, CA-6, CA-10, CA-11, CA-12 — Archivos: `apps/api/src/modules/storage/preview/{index.ts,preview.module.ts,application/preview.service.ts,application/preview-config.ts,presentation/preview.controller.ts,presentation/preview-validation.ts,domain/preview-errors.ts}` y specs; `apps/api/src/app.module.ts` solo mediante el descriptor acordado — Depende: T-01, T-02
 
-- [ ] **T-04** Aislamiento y operación real de preview. Integración con Postgres/Redis/MinIO reales: sin sesión 401, roles internos 403, ajeno e inexistente indistinguibles, RLS también sobre carga/versión, tasa por actor y contador separado, Redis caído falla cerrado, logs saneados, URL de 300 s para un objeto con `attachment`, `application/octet-stream`, `no-store` y `nosniff` también en preview (igual que descarga 005) y regresión de `presignDownload`. Probar CORS con allowlist `CORS_ORIGIN`, rangos/206, cabeceras expuestas (`Content-Range`, `Content-Length`) y ausencia de Cookie/Bearer en el origen efectivo. — CA: CA-3, CA-4, CA-5, CA-8, CA-10, CA-11, CA-12 — Archivos: `apps/api/test/isolation/storage-preview.iso-spec.ts`, `apps/api/test/int/storage/{preview-delivery,preview-operation,preview-composition}.int-spec.ts`, regresiones `download.int-spec.ts` y `minio-storage.adapter.int-spec.ts` — Depende: T-02, T-03
+- [x] **T-04** Aislamiento y operación real de preview. Integración con Postgres/Redis/MinIO reales: sin sesión 401, roles internos 403, ajeno e inexistente indistinguibles, RLS también sobre carga/versión, tasa por actor y contador separado, Redis caído falla cerrado, logs saneados, URL de 300 s para un objeto con `attachment`, `application/octet-stream`, `no-store` y `nosniff` también en preview (igual que descarga 005) y regresión de `presignDownload`. Probar CORS con allowlist `CORS_ORIGIN`, rangos/206, cabeceras expuestas (`Content-Range`, `Content-Length`) y ausencia de Cookie/Bearer en el origen efectivo. — CA: CA-3, CA-4, CA-5, CA-8, CA-10, CA-11, CA-12 — Archivos: `apps/api/test/isolation/storage-preview.iso-spec.ts`, `apps/api/test/int/storage/{preview-delivery,preview-operation,preview-composition}.int-spec.ts`, regresiones `download.int-spec.ts` y `minio-storage.adapter.int-spec.ts` — Depende: T-02, T-03
 
 - [x] **T-05** **(Adrián; habilitación web + mockup)** Costura del explorador y retorno acotado. Entregar mockup 360/1440 con todos los estados de spec §6; agregar un solo slot `firstAction` en `file-row-menu.tsx` (sin `renderFirstFileAction`), exports públicos `MyFiles`/`locationPath`/`useFileDownload` y wrappers. Volver abre `file.folderId` o raíz y enfoca el control de esa fila si sigue en la lista; si no, el encabezado del explorador. Esperar el listado y no guardar orden, paginación, desgloses ni overlays de carga; no persistir URL firmada ni contenido. Sin provider persistente nuevo ni recuperación de páginas previas. Pruebas de foco primero. — CA: CA-7, CA-9 — Archivos: `apps/web/src/features/storage/{index.ts,routes.ts,components/file-row-menu.tsx,components/my-files.tsx,components/file-explorer.tsx,hooks/use-my-files-state.ts,hooks/use-return-focus.ts,hooks/use-file-download.ts}`, `apps/web/src/app/(app)/(cliente)/archivos/{page.tsx,carpeta/[folderId]/page.tsx,vista-previa/[fileId]/page.tsx}`, `docs/design/mockups/storage/vista-previa/`
 
@@ -65,7 +67,7 @@ Redis detenido, rechazo acotado y recuperación real ya están acreditados; tamb
 
 - [x] **T-10** Integración browser, accesibilidad y regresión. Recorrido automatizado con formatos admitidos/excluidos, todas las páginas/hojas/diapositivas, vuelta a `file.folderId`/raíz y foco en control de fila o encabezado, cargas concurrentes, error + Reintentar/Descargar, URL expirada, logout/acceso revocado, CORS/rangos/cookies reales y axe a 360/1440. Confirmar helper único para PDF/ZIP/imagen y que fallo de preview no bloquea navegación/carga/descarga ni agrega control comercial. Ejecutar `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm test:int`, `pnpm test:isolation`, `pnpm test:e2e`, `pnpm env:check`; si PD-41 sigue siendo marcador, no reportar E2E como acreditado. — CA: CA-1 a CA-12 — Archivos: `e2e/storage-preview.e2e.ts`, suites de T-04/T-06/T-07/T-08a/b/T-09a/b y regresiones existentes — Depende: T-04, T-05, T-07, T-08b, T-09b
 
-- [ ] **T-11** **(humana, Adrián + Abel)** Recorrido de demo local con Docker: abrir PDF multipágina y escaneado; imagen; TXT/MD literal; XLSX con varias hojas/fórmula sin cache; PPTX con varias diapositivas; archivo vacío válido; corrupto/protegido; formato excluido; Reintentar y Descargar; volver a la carpeta de origen/raíz y enfocar control de fila o encabezado sin recuperar estado previo; otra cuenta no ve contenido; rol interno recibe 403; 429 muestra `Retry-After`; 360 y 1440 px. Verificar en DevTools que los bytes salen del origen aislado sin Cookie/Bearer y que download sigue `attachment`. Nota/capturas en el PR. — CA: CA-1 a CA-12 — Depende: T-10
+- [x] **T-11** **(humana, Adrián + Abel)** Recorrido de demo local con Docker: abrir PDF multipágina y escaneado; imagen; TXT/MD literal; XLSX con varias hojas/fórmula sin cache; PPTX con varias diapositivas; archivo vacío válido; corrupto/protegido; formato excluido; Reintentar y Descargar; volver a la carpeta de origen/raíz y enfocar control de fila o encabezado sin recuperar estado previo; otra cuenta no ve contenido; rol interno recibe 403; 429 muestra `Retry-After`; 360 y 1440 px. Verificar en DevTools que los bytes salen del origen aislado sin Cookie/Bearer y que download sigue `attachment`. Nota/capturas en el PR. — CA: CA-1 a CA-12 — Depende: T-10
 
 ## Dependencias críticas
 
@@ -814,15 +816,15 @@ Procedencia: la primera ronda cubrió PDF multipágina y escaneado, PNG, TXT/MD,
 
 T-10 ya acredita estos comportamientos mediante automatización y Chrome real. T-11 los revalida de forma humana en el entorno final y completa los puntos que solo pueden demostrarse allí:
 
-- [ ] Hostname realmente aislado para el host de objetos.
-- [ ] CORS efectivo en el navegador.
-- [ ] Range real con 206 y `Content-Range`.
-- [ ] En DevTools: GET al origen de objetos sin Cookie ni Bearer.
-- [ ] axe a 360 px.
-- [ ] axe a 1440 px.
-- [ ] Descargar sigue entregando `attachment`.
-- [ ] Un rol interno real recibe 403.
-- [ ] Recorrido humano final de Volver a la carpeta de origen o a la raíz, con el foco correspondiente (corregido en `aa28a163`).
+- [x] Hostname realmente aislado para el host de objetos.
+- [x] CORS efectivo en el navegador.
+- [x] Range real con 206 y `Content-Range`.
+- [x] En DevTools: GET al origen de objetos sin Cookie ni Bearer.
+- [x] axe a 360 px.
+- [x] axe a 1440 px.
+- [x] Descargar sigue entregando `attachment`.
+- [x] Un rol interno real recibe 403.
+- [x] Recorrido humano final de Volver a la carpeta de origen o a la raíz, con el foco correspondiente (corregido en `aa28a163`).
 
 ### Cierre de T-10 (2026-10-19)
 

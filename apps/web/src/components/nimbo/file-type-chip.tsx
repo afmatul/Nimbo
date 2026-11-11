@@ -66,6 +66,15 @@ const FILE_TYPE_MAP: Record<FileType, FileTypeConfig> = {
   },
 };
 
+/**
+ * Color del texto y del fondo del tipo, los mismos del chip, para una baldosa con su ícono (ficha del enlace público,
+ * 013b). Son variables de `globals.css`: no hay utilidades `file-*` de Tailwind.
+ */
+export function fileTypeColors(fileType: FileType): React.CSSProperties {
+  const { textColorVar, bgColorVar } = FILE_TYPE_MAP[fileType];
+  return { color: textColorVar, backgroundColor: bgColorVar };
+}
+
 /** Ícono del tipo, el mismo del chip, decorativo (p. ej. junto al nombre en «Accesos rápidos», 006 CA-27). */
 export function FileTypeIcon({
   fileType,

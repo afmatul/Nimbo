@@ -1,0 +1,108 @@
+022d T-06: Grafana con 512 MiB (solo entorno aislado). 2026-11-08 15:49:27 -06:00
+Desviacion local por H-2: compose.yml fija mem_limit 256m (sin cambios); .env.022d-t06/compose.isolated.yml fija 512m.
+
+== Limite efectivo
+compose config grafana mem_limit: nimbo-022d-t06 536870912
+HostConfig: memory=536870912 memswap=1073741824 id=142f6fd2e19b restarts=0 oom=false status=running inicio=2026-11-08T21:41:10.200333842Z
+cgroup memory.max: 536870912
+cgroup memory.events: low 0 high 0 max 25062 oom 0 oom_kill 0 oom_group_kill 0
+volumen: nimbo-022d-t06_grafana_data creado=2026-11-08T20:49:47Z
+OOM en el kernel (total desde el arranque de la VM): 1 (el unico es el de H-2, 15:18:00)
+docker stats grafana: 494.7MiB / 512MiB 96.63% cpu 1.34%
+
+== Ronda 1 (cinco cargas seguidas)
+inicio Sun Nov 08 2026 15:41:29 GMT-0600 (hora estándar central)
+límite: memory.max=536870912 bytes (512.0 MiB)
+base: actual=508.6 MiB anon=235.2 MiB pico=512.0 MiB max=1487 oom=0 oom_kill=0 reinicios=0 estado=running
+login HTTP 200
+carga 1: 15 s cinco_filas=true paneles=30 sin_datos=12 error_panel=0 failedLoad=false failedFetch=false problemas=0
+memoria 1: actual=508.4 MiB anon=388.0 MiB pico=512.0 MiB max=2703 oom=0 oom_kill=0 reinicios=0 estado=running
+carga 2: 15 s cinco_filas=true paneles=30 sin_datos=12 error_panel=0 failedLoad=false failedFetch=false problemas=0
+memoria 2: actual=508.0 MiB anon=444.3 MiB pico=512.0 MiB max=3438 oom=0 oom_kill=0 reinicios=0 estado=running
+carga 3: 15 s cinco_filas=true paneles=30 sin_datos=12 error_panel=0 failedLoad=false failedFetch=false problemas=0
+memoria 3: actual=508.3 MiB anon=457.1 MiB pico=512.0 MiB max=3774 oom=0 oom_kill=0 reinicios=0 estado=running
+carga 4: 15 s cinco_filas=true paneles=30 sin_datos=12 error_panel=0 failedLoad=false failedFetch=false problemas=0
+memoria 4: actual=508.3 MiB anon=465.1 MiB pico=512.0 MiB max=4742 oom=0 oom_kill=0 reinicios=0 estado=running
+carga 5: 15 s cinco_filas=true paneles=30 sin_datos=12 error_panel=0 failedLoad=false failedFetch=false problemas=0
+memoria 5: actual=508.3 MiB anon=449.8 MiB pico=512.0 MiB max=6834 oom=0 oom_kill=0 reinicios=0 estado=running
+simultánea A: 15 s cinco_filas=true paneles=0 sin_datos=0 error_panel=0 failedLoad=false failedFetch=false problemas=0
+simultánea B: 15 s cinco_filas=true paneles=30 sin_datos=12 error_panel=0 failedLoad=false failedFetch=false problemas=0
+memoria simultánea: actual=508.0 MiB anon=450.2 MiB pico=512.0 MiB max=8467 oom=0 oom_kill=0 reinicios=0 estado=running
+carga final (captura): 15 s cinco_filas=true paneles=0 sin_datos=0 error_panel=0 failedLoad=false failedFetch=false problemas=0
+captura 07-grafana-512mib-tablero-20261108-154408.png a las Sun Nov 08 2026 15:44:08 GMT-0600 (hora estándar central)
+memoria tras captura: actual=508.5 MiB anon=469.6 MiB pico=512.0 MiB max=9941 oom=0 oom_kill=0 reinicios=0 estado=running
+reposo 60 s sin navegador
+reposo 20 s: actual=508.3 MiB anon=457.7 MiB pico=512.0 MiB max=10526 oom=0 oom_kill=0 reinicios=0 estado=running
+reposo 40 s: actual=507.9 MiB anon=457.1 MiB pico=512.0 MiB max=10528 oom=0 oom_kill=0 reinicios=0 estado=running
+reposo 60 s: actual=508.4 MiB anon=457.2 MiB pico=512.0 MiB max=10529 oom=0 oom_kill=0 reinicios=0 estado=running
+fin Sun Nov 08 2026 15:45:11 GMT-0600 (hora estándar central)
+
+Nota: en la ronda 1, simultanea A y la carga final salieron con 0 paneles porque esa pestana estaba en segundo plano (ver diagnostico de la ronda 2). La captura de esa carga se descarto.
+
+== Ronda 2 (diagnostico de visibilidad y cargas simultaneas)
+inicio Sun Nov 08 2026 15:45:52 GMT-0600 (hora estándar central)
+límite: memory.max=536870912 bytes (512.0 MiB)
+base: actual=507.8 MiB anon=456.0 MiB pico=512.0 MiB max=11039 oom=0 oom_kill=0 reinicios=0 estado=running
+login HTTP 200
+control: una pestaña: 16 s visibilidad=visible cinco_filas=true paneles=30 sin_datos=12 error_panel=0 failedLoad=false failedFetch=false problemas=0
+memoria control: actual=508.2 MiB anon=458.5 MiB pico=512.0 MiB max=14308 oom=0 oom_kill=0 reinicios=0 estado=running
+diagnóstico: A con B delante: 15 s visibilidad=hidden cinco_filas=true paneles=0 sin_datos=0 error_panel=0 failedLoad=false failedFetch=false problemas=0
+memoria diagnóstico: actual=508.5 MiB anon=447.5 MiB pico=512.0 MiB max=14623 oom=0 oom_kill=0 reinicios=0 estado=running
+simultánea 1 A: 16 s visibilidad=visible cinco_filas=true paneles=30 sin_datos=12 error_panel=0 failedLoad=false failedFetch=false problemas=0
+simultánea 1 B: 15 s visibilidad=visible cinco_filas=true paneles=30 sin_datos=12 error_panel=0 failedLoad=false failedFetch=false problemas=0
+memoria simultánea 1: actual=508.3 MiB anon=477.3 MiB pico=512.0 MiB max=17278 oom=0 oom_kill=0 reinicios=0 estado=running
+simultánea 2 A: 15 s visibilidad=visible cinco_filas=true paneles=30 sin_datos=12 error_panel=0 failedLoad=false failedFetch=false problemas=0
+simultánea 2 B: 15 s visibilidad=visible cinco_filas=true paneles=30 sin_datos=12 error_panel=0 failedLoad=false failedFetch=false problemas=0
+memoria simultánea 2: actual=508.2 MiB anon=467.7 MiB pico=512.0 MiB max=19398 oom=0 oom_kill=0 reinicios=0 estado=running
+simultánea 3 A: 20 s visibilidad=visible cinco_filas=true paneles=30 sin_datos=12 error_panel=0 failedLoad=false failedFetch=false problemas=0
+simultánea 3 B: 16 s visibilidad=visible cinco_filas=true paneles=30 sin_datos=12 error_panel=0 failedLoad=false failedFetch=false problemas=0
+memoria simultánea 3: actual=507.8 MiB anon=461.6 MiB pico=512.0 MiB max=22668 oom=0 oom_kill=0 reinicios=0 estado=running
+carga final (captura): 16 s visibilidad=visible cinco_filas=true paneles=30 sin_datos=12 error_panel=0 failedLoad=false failedFetch=false problemas=0
+captura 07-grafana-512mib-tablero-20261108-154754.png a las Sun Nov 08 2026 15:47:54 GMT-0600 (hora estándar central)
+memoria tras captura: actual=508.1 MiB anon=440.6 MiB pico=512.0 MiB max=24460 oom=0 oom_kill=0 reinicios=0 estado=running
+reposo 60 s sin navegador
+reposo 20 s: actual=508.5 MiB anon=438.1 MiB pico=512.0 MiB max=24514 oom=0 oom_kill=0 reinicios=0 estado=running
+reposo 40 s: actual=508.2 MiB anon=432.4 MiB pico=512.0 MiB max=24544 oom=0 oom_kill=0 reinicios=0 estado=running
+reposo 60 s: actual=508.8 MiB anon=432.7 MiB pico=512.0 MiB max=24550 oom=0 oom_kill=0 reinicios=0 estado=running
+fin Sun Nov 08 2026 15:48:57 GMT-0600 (hora estándar central)
+
+== Aprovisionamiento y Prometheus
+health tras 0 s: database=ok version=13.2.4
+uid=nimbo-operacion title=Operación editable=false provisioned=true ref=operacion.json folder="General" canSave=true canEdit=true
+paneles=35 filas=[16:Identidad, 20:Almacenamiento, 24:Indexación, 28:Optimizador, 32:Agente]
+orden exacto de filas: true
+datasource health: HTTP 200 status=OK message=Successfully queried the Prometheus API.
+reglas: HTTP 200 total=6 (repo=6) provenance=file
+usuarios de la organización: 1 (Admin)
+  api http://api:29464/metrics health=up lastScrape=2026-11-08T21:49:25.657002609Z error=
+  cadvisor http://cadvisor:8080/metrics health=up lastScrape=2026-11-08T21:49:28.457230849Z error=
+  worker http://worker:23001/metrics health=up lastScrape=2026-11-08T21:49:19.608487333Z error=
+  worker-optimizer http://worker-optimizer:23003/metrics health=up lastScrape=2026-11-08T21:49:30.803911932Z error=
+series nimbo_*: 347
+  up{job="cadvisor"} = 1
+  up{job="worker-optimizer"} = 1
+  up{job="worker"} = 1
+  up{job="api"} = 1
+
+== Aplicaciones
+http://127.0.0.1:23000/api/v1/health/ready 200
+http://127.0.0.1:23001/health/ready 200
+http://127.0.0.1:23003/health/ready 200
+http://localhost:23002/ 200
+http://localhost:28000/api/v1/health/ready 200
+http://127.0.0.1:29464/metrics 200
+http://127.0.0.1:23001/metrics 200
+http://127.0.0.1:23003/metrics 200
+Node: 12 procesos, 3219 MiB
+RAM libre GB: 4.4; C libre GB: 15.2
+
+== Otros proyectos
+nimbo: exited(1), running(5)
+nimbo-022c-t08: exited(1), running(6)
+nimbo-022d-t06: exited(1), running(8)
+nimbo-t09: exited(1), running(8)
+contenedores antes=37 después=37; cambios=3
+  /nimbo-022d-t06-grafana-1: id cambió
+  /nimbo-022d-t06-grafana-1: startedAt cambió
+  /nimbo-022d-t06-grafana-1: restarts cambió
+t09 grafana restarts=0

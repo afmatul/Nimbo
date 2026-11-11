@@ -37,14 +37,11 @@ import { assessObjectSize, assessParts } from '../domain/uploaded-size';
 import type { SizeVerdict } from '../domain/uploaded-size';
 
 import { toFileSummary } from './file-summary';
+import { objectByteReader } from './object-byte-reader';
 import { I_PLAN_LIMITS_PROVIDER } from './plan-limits';
 import type { IPlanLimitsProvider, PlanLimits } from './plan-limits';
 import { I_FILE_TYPE_DETECTOR } from './ports/i-file-type-detector.port';
-import type {
-  ByteReader,
-  DetectionResult,
-  IFileTypeDetector,
-} from './ports/i-file-type-detector.port';
+import type { DetectionResult, IFileTypeDetector } from './ports/i-file-type-detector.port';
 import { I_NODE_REPOSITORY } from './ports/i-node.repository.port';
 import type { INodeRepository } from './ports/i-node.repository.port';
 import { I_OBJECT_STORAGE } from './ports/i-object-storage.port';
@@ -217,7 +214,7 @@ export class UploadService {
     try {
       return await this.transactions.withActor(actor, async () => {
         await this.quota.assertCanUpload(actor, input.declaredBytes, input.limits);
-        await this.assertDestinationAccessible(actor, input.folderId);
+        await this.assertDestinationOwned(actor, input.folderId);
         const target = await resolveUploadTarget(
           { nodes: this.nodes, versions: this.versions },
           actor,
@@ -246,10 +243,10 @@ export class UploadService {
     }
   }
 
-  /** 006 CA-6: la carpeta destino debe estar viva y ser del actor; `null` es la raíz. */
-  private async assertDestinationAccessible(actor: Actor, folderId: string | null): Promise<void> {
+  /** 006 CA-6: la carpeta destino debe estar viva y ser del actor (no basta compartida, 012 CA-14); `null` es la raíz. */
+  private async assertDestinationOwned(actor: Actor, folderId: string | null): Promise<void> {
     if (folderId === null) return;
-    if ((await this.nodes.findAccessibleFolder(actor, folderId)) === null) {
+    if ((await this.nodes.findOwnedFolder(actor, folderId)) === null) {
       throw new NodeNotFoundError();
     }
   }
@@ -426,25 +423,14 @@ export class UploadService {
     extension: string,
   ): Promise<DetectionResult | null> {
     try {
-      return await this.detector.detect(this.readerFor(session, sizeBytes), extension);
+      return await this.detector.detect(
+        objectByteReader(this.storage, session.objectKey.value, sizeBytes),
+        extension,
+      );
     } catch (error) {
       if ((await this.storage.headObject(session.objectKey.value)) !== null) throw error;
       return null;
     }
-  }
-
-  private readerFor(session: UploadSession, sizeBytes: bigint): ByteReader {
-    const key = session.objectKey.value;
-    const size = Number(sizeBytes);
-    return {
-      size,
-      read: (offset, length) => {
-        const end = Math.min(offset + length, size);
-        return end <= offset
-          ? Promise.resolve(Buffer.alloc(0))
-          : this.storage.getRange(key, offset, end - 1);
-      },
-    };
   }
 
   /**

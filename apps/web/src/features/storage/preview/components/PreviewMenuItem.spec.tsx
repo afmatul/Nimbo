@@ -35,6 +35,7 @@ function renderMenu(kind: FileKind) {
       onMove={jest.fn()}
       onMoveToTrash={jest.fn()}
       pin={{ pinned: false, onToggle: jest.fn() }}
+      sharing={{ level: 'OWNER', onShare: jest.fn() }}
       firstAction={<PreviewMenuItem file={selected} />}
     />,
   );

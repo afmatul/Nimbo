@@ -33,6 +33,7 @@ function listingOf(order: NodeOrder, files: readonly FileSummary[]): FolderListi
     breadcrumbs: [],
     items,
     nextCursor: null,
+    accessLevel: 'OWNER',
   };
   return { status: 'ready', contents, order };
 }

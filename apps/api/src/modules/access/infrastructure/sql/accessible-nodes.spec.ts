@@ -1,12 +1,18 @@
 import { ALL_ROLES, createActor, Role } from '../../../../shared';
 
-import { accessibleNodes, ownedFiles, ownedTrashedNodes } from './accessible-nodes';
+import { accessibleNodes, ownedFiles, ownedNodes, ownedTrashedNodes } from './accessible-nodes';
 
 const ACTOR_ID = '7d0e1c9a-3b2f-4c5d-8e6f-1a2b3c4d5e6f';
 const EMPTY_TYPED_SET =
   'SELECT NULL::uuid AS nodo_id, NULL::text AS tipo_nodo, NULL::text AS nivel WHERE false';
 const PARAMETER_PREFIX = 'access_';
 const INTERNAL_ROLES = ALL_ROLES.filter((role) => role !== Role.CLIENT);
+const OWNED_LIVE_SQL =
+  "SELECT a.id AS nodo_id, 'archivo'::text AS tipo_nodo, 'OWNER'::text AS nivel FROM archivo a " +
+  'WHERE a.propietario_id = :access_actor_id AND a.eliminado_en IS NULL ' +
+  'UNION ALL ' +
+  "SELECT c.id AS nodo_id, 'carpeta'::text AS tipo_nodo, 'OWNER'::text AS nivel FROM carpeta c " +
+  'WHERE c.propietario_id = :access_actor_id AND c.eliminado_en IS NULL';
 
 describe('accessibleNodes', () => {
   it.each(INTERNAL_ROLES)(
@@ -18,15 +24,11 @@ describe('accessibleNodes', () => {
     },
   );
 
-  it('CA-22 (006): para `CLIENT` devuelve sus archivos y carpetas fuera de la papelera, con nivel `OWNER`', () => {
+  it('CA-13 (012): para `CLIENT` une lo propio vivo (`OWNER`) y lo compartido con él (`nodos_compartidos()`)', () => {
     const fragment = accessibleNodes(createActor(ACTOR_ID, Role.CLIENT));
 
     expect(fragment.sql).toBe(
-      "SELECT a.id AS nodo_id, 'archivo'::text AS tipo_nodo, 'OWNER'::text AS nivel FROM archivo a " +
-        'WHERE a.propietario_id = :access_actor_id AND a.eliminado_en IS NULL ' +
-        'UNION ALL ' +
-        "SELECT c.id AS nodo_id, 'carpeta'::text AS tipo_nodo, 'OWNER'::text AS nivel FROM carpeta c " +
-        'WHERE c.propietario_id = :access_actor_id AND c.eliminado_en IS NULL',
+      `${OWNED_LIVE_SQL} UNION ALL SELECT s.nodo_id, s.tipo_nodo, s.nivel FROM nodos_compartidos() s`,
     );
     expect(fragment.parameters).toEqual({ access_actor_id: ACTOR_ID });
   });
@@ -46,6 +48,36 @@ describe('accessibleNodes', () => {
       expect(Object.isFrozen(fragment)).toBe(true);
       expect(Object.isFrozen(fragment.parameters)).toBe(true);
       expect(accessibleNodes(actor)).toEqual(fragment);
+    },
+  );
+});
+
+describe('ownedNodes', () => {
+  it.each(INTERNAL_ROLES)('CA-14 (012): para %s devuelve el conjunto vacío tipado', (role) => {
+    const fragment = ownedNodes(createActor(ACTOR_ID, role));
+
+    expect(fragment.sql).toBe(EMPTY_TYPED_SET);
+    expect(fragment.parameters).toEqual({});
+  });
+
+  it('CA-14 (012): para `CLIENT` devuelve solo sus archivos y carpetas fuera de la papelera, sin lo compartido', () => {
+    const fragment = ownedNodes(createActor(ACTOR_ID, Role.CLIENT));
+
+    expect(fragment.sql).toBe(OWNED_LIVE_SQL);
+    expect(fragment.parameters).toEqual({ access_actor_id: ACTOR_ID });
+  });
+
+  it.each(ALL_ROLES)(
+    'CA-14 (012): para %s es puro, inmutable y con parámetros `access_`',
+    (role) => {
+      const actor = createActor(ACTOR_ID, role);
+      const fragment = ownedNodes(actor);
+
+      expect(Object.isFrozen(fragment)).toBe(true);
+      expect(
+        Object.keys(fragment.parameters).every((key) => key.startsWith(PARAMETER_PREFIX)),
+      ).toBe(true);
+      expect(ownedNodes(actor)).toEqual(fragment);
     },
   );
 });

@@ -65,6 +65,7 @@ export class FoldersController {
       breadcrumbs: result.breadcrumbs.map(toFolderRef),
       items: result.page.items.map(toNodeSummary),
       nextCursor: result.page.nextCursor,
+      accessLevel: result.accessLevel,
     };
   }
 

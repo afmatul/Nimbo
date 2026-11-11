@@ -40,6 +40,7 @@ function setup() {
   const files = {
     rename: jest.fn().mockResolvedValue(file()),
     move: jest.fn().mockResolvedValue(file()),
+    getDetail: jest.fn().mockResolvedValue({ file: file(), accessLevel: 'VIEWER' }),
     getDownloadUrl: jest.fn().mockResolvedValue({
       url: 'https://s3.test/x',
       expiresAt: new Date('2026-09-30T10:05:00.000Z'),
@@ -50,6 +51,15 @@ function setup() {
 }
 
 describe('FilesController', () => {
+  it('012 CA-12: `GET /files/:id` delega con el actor y responde `{ file: FileSummary, accessLevel }`', async () => {
+    const { files, controller } = setup();
+
+    const response = await controller.detail(ACTOR, FILE_ID);
+
+    expect(files.getDetail).toHaveBeenCalledWith(ACTOR, FILE_ID);
+    expect(response).toEqual({ file: SUMMARY, accessLevel: 'VIEWER' });
+  });
+
   it('CA-4: `PATCH /files/:id` delega con el actor y responde el `FileSummary`', async () => {
     const { files, controller } = setup();
 

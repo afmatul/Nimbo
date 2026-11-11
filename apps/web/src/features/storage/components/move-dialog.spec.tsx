@@ -87,6 +87,7 @@ function contentsOf(folderId: string | null): Promise<FolderContentsResponse> {
       },
     ],
     nextCursor: null,
+    accessLevel: 'OWNER',
   });
 }
 

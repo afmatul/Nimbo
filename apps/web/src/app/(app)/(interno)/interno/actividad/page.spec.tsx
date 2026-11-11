@@ -62,7 +62,7 @@ describe('Mi actividad en el área interna (/interno/actividad)', () => {
     await renderPage();
 
     expect(requestedUrls().some((url) => url.endsWith('/storage/summary'))).toBe(false);
-    expect(screen.queryByRole('link', { name: 'Mis Archivos' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Mis archivos' })).toBeNull();
   });
 
   it.each(['SUPPORT', 'ADMIN', 'OPERATOR'] as const)(

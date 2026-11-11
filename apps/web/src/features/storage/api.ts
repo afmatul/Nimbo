@@ -4,7 +4,9 @@ import {
   fileSummarySchema,
   initUploadResponseSchema,
   resumeUploadResponseSchema,
+  fileDetailResponseSchema,
   type DownloadUrlResponse,
+  type FileDetailResponse,
   type FileSummary,
   type MoveFileRequest,
   type RenameFileRequest,
@@ -27,6 +29,8 @@ import { createVersionsApi, type VersionsApi } from './versions-api';
 export interface StorageApi
   extends UploadClient, FoldersApi, TrashApi, QuickAccessApi, SpaceApi, VersionsApi {
   downloadUrl(fileId: string): Promise<DownloadUrlResponse>;
+  /** `GET /files/:fileId`: la ficha y el nivel del actor; también de lo compartido conmigo (012 CA-12). */
+  fileDetail(fileId: string): Promise<FileDetailResponse>;
   /** Nombre repetido: `409` con `details.suggestedName` salvo con `onConflict: 'keep_both'` (005 CA-6). */
   renameFile(fileId: string, body: RenameFileRequest): Promise<FileSummary>;
   /** `folderId: null` mueve a la raíz; nombre repetido como en `renameFile`. */
@@ -65,6 +69,8 @@ export function createStorageApi(apiPublicUrl: string, authFetch: AuthFetch): St
         await http.post(`/files/${encodeURIComponent(fileId)}/download-url`),
         downloadUrlSchema,
       ),
+    fileDetail: async (fileId) =>
+      parseResponse(await http.get(filePath(fileId)), fileDetailResponseSchema),
     renameFile: async (fileId, body) =>
       parseResponse(await http.patch(filePath(fileId), body), fileSummarySchema),
     moveFile: async (fileId, body) =>

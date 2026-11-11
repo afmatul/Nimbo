@@ -45,6 +45,7 @@ function page(items: readonly FileSummary[]): FolderContentsResponse {
     breadcrumbs: [],
     items: items.map((file) => ({ type: 'file', ...file })),
     nextCursor: null,
+    accessLevel: 'OWNER',
   };
 }
 
@@ -98,6 +99,9 @@ async function chooseFiles(files: readonly File[]): Promise<void> {
 
 describe('página Mis archivos (/archivos)', () => {
   beforeEach(() => {
+    process.env['APP_ENV'] = 'test';
+    process.env['API_INTERNAL_URL'] = 'http://localhost:3000';
+    process.env['API_PUBLIC_URL'] = 'http://localhost/api/v1';
     global.fetch = jest.fn(() => never<Response>());
   });
 
@@ -108,7 +112,8 @@ describe('página Mis archivos (/archivos)', () => {
     expect(await screen.findByText('Aún no tienes archivos')).toBeTruthy();
     expect(screen.queryByText('Tus archivos aparecerán aquí')).toBeNull();
     expect(screen.getByRole('heading', { name: 'Mis archivos' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeTruthy();
+    // «Cerrar sesión» vive solo en el menú de la cuenta: la página no repite el botón.
+    expect(screen.queryByRole('button', { name: 'Cerrar sesión' })).toBeNull();
     expect(api.folderContents).toHaveBeenCalledWith(null, { sort: 'created', dir: 'desc' });
   });
 
@@ -300,7 +305,9 @@ describe('página Mis archivos (/archivos)', () => {
     });
     await renderPage(api);
     await screen.findByRole('table');
-    expect(screen.getByText('Mis archivos', { selector: '[aria-current="page"]' })).toBeTruthy();
+    // En la raíz «Mis archivos» es el título; no se repite como miga en la barra superior.
+    expect(screen.getByRole('heading', { name: 'Mis archivos' })).toBeTruthy();
+    expect(screen.queryByRole('navigation', { name: 'Ruta' })).toBeNull();
 
     await userEvent.click(screen.getByRole('button', { name: 'Nueva carpeta' }));
     expect(screen.getByRole('dialog').textContent).toContain('Se creará en Mis archivos.');

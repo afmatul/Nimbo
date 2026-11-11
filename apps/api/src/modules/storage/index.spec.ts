@@ -109,32 +109,41 @@ type _ListForOwnerSignature = Expect<
  * composición del `api` y el del `worker` (T-51), desde 011 (PD-31) el token del lector de metadatos que consume
  * `backoffice`, el token de `IObjectStorage` para la factura PDF de `billing` (009, decisión 1) y, desde 016, la
  * fachada `EditableFileGateway` para `editing` con el 404 uniforme de un nodo (`NodeNotFoundError`, 005 CA-16:
- * `editing` responde igual que `storage`), desde 017 (plan §2.3) la fachada de vista previa, que usa el mismo 404 y el mismo 429 (`StorageTooManyRequestsError`), y
- * desde 019 el evento `storage.file-version-created` (ADR-0019: lo exporta el productor) y la fachada
- * `IndexableFileGateway` para `intelligence`. El detector, el escáner, los repositorios y el emisor interno de URLs no
- * salen.
+ * `editing` responde igual que `storage`). Desde 019, el evento `storage.file-version-created` (ADR-0019: lo exporta
+ * el productor) y la fachada `IndexableFileGateway` para `intelligence`. Desde 011b, la fachada `SupportTrashService`
+ * para `backoffice` (con vistas de lectura, no entidades) y su error de cursor `InvalidQueryError`. Desde 013, la fachada
+ * `LinkedFileGateway` para los enlaces públicos de `sharing`. Desde 017 (plan §2.3), la fachada de vista previa, que usa el mismo 404 y el mismo 429 (`StorageTooManyRequestsError`). El detector, el escáner y los repositorios no salen.
  */
 const RUNTIME_EXPORTS = [
+  'AccountReadOnlyError',
   'EditableFileGateway',
   'FILE_VERSION_CREATED',
+  'I_CONTENT_MATCH_READER',
   'IndexableFileGateway',
+  'InvalidQueryError',
+  'LinkedFileGateway',
   'I_NODE_METADATA_READER',
   'I_OBJECT_STORAGE',
   'I_PLAN_LIMITS_PROVIDER',
   'NodeNotFoundError',
+  'OptimizableFileGateway',
   'StorageModule',
+  'StorageFacadesWorkerModule',
   'StoragePreviewFacade',
   'StorageTooManyRequestsError',
   'StorageWorkerModule',
+  'WritableAccountPolicy',
+  'SupportTrashService',
   'invoiceObjectKey',
 ] as const;
 
 describe('modules/storage/index.ts', () => {
-  it('CA-3, CA-4, CA-9, RN-1, 011 PD-31, 009, 016 §2, 017 CA-11, 019 RN-11: exporta exactamente los tokens de límites, de metadatos y de objetos, los dos módulos, las fachadas de edición, vista previa e indexación y el evento de versión', () => {
+  it('CA-3, CA-4, CA-9, RN-1, 011 PD-31, 009, 016 §2, 017 CA-11, 019 RN-11, 012 PD-121, 011b, 013, 021 PD-130, 018b D-1: exporta exactamente los tokens de límites, de metadatos, de objetos y de coincidencia por contenido, los tres módulos (`api`, `worker` y fachadas del `worker-optimizer`), las fachadas de edición, vista previa, indexación, optimización, papelera de Soporte (con su error de cursor) y enlaces públicos, el evento de versión y la política de solo lectura', () => {
     expect(storage.FILE_VERSION_CREATED).toBe('storage.file-version-created');
     expect(Object.keys(storage).sort()).toEqual([...RUNTIME_EXPORTS].sort());
     expect(typeof storage.I_PLAN_LIMITS_PROVIDER).toBe('symbol');
     expect(typeof storage.I_NODE_METADATA_READER).toBe('symbol');
+    expect(typeof storage.I_CONTENT_MATCH_READER).toBe('symbol');
   });
 
   it('017 plan §2.3: el emisor interno de URLs (sin tasa ni auditoría) no sale del módulo', () => {

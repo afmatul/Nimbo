@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 
-import { I_CLOCK, I_TRANSACTION_RUNNER } from '../../../shared';
-import type { IClock, ITransactionRunner } from '../../../shared';
+import { I_CLOCK, I_TRANSACTION_RUNNER, I_PASSWORD_HASHER } from '../../../shared';
+import type { IClock, ITransactionRunner, PasswordHash, IPasswordHasher } from '../../../shared';
 import { AccountStatus } from '../domain/account-status.enum';
 import {
   IdentityWeakPasswordError,
@@ -10,15 +10,12 @@ import {
   SetupLinkInvalidError,
 } from '../domain/errors';
 import { InternalUser } from '../domain/internal-user.entity';
-import type { PasswordHash } from '../domain/password-hash.vo';
 import type { User } from '../domain/user.entity';
 import type { VerificationToken } from '../domain/verification-token.entity';
 
 import { findAccountToken } from './account-token-lookup';
 import type { IdentityLogger } from './identity-logger';
 import { weakPasswordIssues } from './password-policy-issues';
-import { I_PASSWORD_HASHER } from './ports/i-password-hasher.port';
-import type { IPasswordHasher } from './ports/i-password-hasher.port';
 import { I_USER_REPOSITORY } from './ports/i-user-repository.port';
 import type { IUserRepository } from './ports/i-user-repository.port';
 import { I_VERIFICATION_TOKEN_REPOSITORY } from './ports/i-verification-token-repository.port';

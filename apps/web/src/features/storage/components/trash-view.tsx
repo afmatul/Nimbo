@@ -8,7 +8,6 @@ import * as React from 'react';
 import { AppLayout, DEFAULT_NAV_ITEMS } from '../../../components/nimbo/app-layout';
 import { StateView } from '../../../components/nimbo/state-view';
 import { Button, buttonVariants } from '../../../components/ui/button';
-import { SignOutButton } from '../../identity/components/sign-out-button';
 import { useTrash, type TrashListing } from '../hooks/use-trash';
 import { useTrashActions } from '../hooks/use-trash-actions';
 import { useUploads } from '../hooks/use-upload-manager';
@@ -73,9 +72,6 @@ export function TrashView(): React.JSX.Element {
       quotaCard={<SidebarQuota state={space.state} />}
     >
       <div className="space-y-4">
-        <div className="flex justify-end">
-          <SignOutButton />
-        </div>
         <ReadOnlyNotice />
         <ReadOnlyActionsHint />
         {notice ? <DownloadNoticeBanner notice={notice} onDismiss={() => setNotice(null)} /> : null}

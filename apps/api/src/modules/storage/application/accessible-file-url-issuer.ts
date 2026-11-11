@@ -4,14 +4,13 @@ import { I_CLOCK, I_TRANSACTION_RUNNER } from '../../../shared';
 import type { Actor, IClock, ITransactionRunner } from '../../../shared';
 import { NodeNotFoundError } from '../domain/errors';
 import type { File } from '../domain/file';
-import { ObjectKey } from '../domain/object-key';
 
+import { currentVersionObject, signDownload } from './current-version-download';
+import type { DownloadUrl } from './current-version-download';
 import { I_NODE_REPOSITORY } from './ports/i-node.repository.port';
 import type { INodeRepository } from './ports/i-node.repository.port';
 import { I_OBJECT_STORAGE } from './ports/i-object-storage.port';
 import type { IObjectStorage } from './ports/i-object-storage.port';
-import { signDownload } from './signed-download';
-import type { SignedFileUrl } from './signed-download';
 
 /**
  * Resolver el archivo accesible y firmar su versión actual con la política de descarga de 005 (`presignDownload`:
@@ -37,10 +36,7 @@ export class AccessibleFileUrlIssuer {
     return file;
   }
 
-  sign(file: File): Promise<SignedFileUrl> {
-    return signDownload(this.objects, this.clock, {
-      key: ObjectKey.of(file.ownerId, file.id, file.currentVersionId).value,
-      fileName: file.name.value,
-    });
+  sign(file: File): Promise<DownloadUrl> {
+    return signDownload(this.objects, this.clock, currentVersionObject(file));
   }
 }

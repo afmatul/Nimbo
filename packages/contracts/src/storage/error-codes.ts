@@ -44,6 +44,9 @@ export const STORAGE_FIELD_ISSUE_REASONS = [
   'INVALID_FOLDER',
   'INVALID_SORT',
   'INVALID_DIRECTION',
+  'INVALID_TYPE',
+  'INVALID_DATE',
+  'INVALID_RANGE',
 ] as const;
 export type StorageFieldIssueReason = (typeof STORAGE_FIELD_ISSUE_REASONS)[number];
 
@@ -62,6 +65,10 @@ export const STORAGE_FIELD_MESSAGES: Readonly<Record<StorageFieldIssueReason, st
     'Este orden no es válido. Ordena por nombre, tamaño, fecha de modificación o fecha de creación y vuelve a intentarlo.',
   INVALID_DIRECTION:
     'Esta dirección de orden no es válida. Elige ascendente o descendente y vuelve a intentarlo.',
+  INVALID_TYPE: 'Este tipo no es válido. Elige Documentos, Imágenes u Otros y vuelve a buscar.',
+  INVALID_DATE: 'Esta fecha no es válida. Elige otra fecha y vuelve a buscar.',
+  INVALID_RANGE:
+    'La fecha final debe ser igual o posterior a la inicial. Corrige el rango para buscar.',
 };
 
 /**

@@ -15,6 +15,8 @@ export const REDIS_IMAGE = 'redis:7-alpine';
 export const MINIO_IMAGE = 'pgsty/silo:RELEASE.2026-09-16T00-00-00Z';
 /** Versión fijada del correo de pruebas (001 plan §6.8). */
 export const MAILPIT_IMAGE = 'axllent/mailpit:v1.31.3';
+/** La de `compose.yml` (ADR-0040): trae `promtool`, con el que el banco de reglas de 022 carga sus series. */
+export const PROMETHEUS_IMAGE = 'prom/prometheus:v3.15.0';
 
 /** El mismo script de rol que monta `compose.yml` (plan 003 §6.8, DRY): el entrypoint lo ejecuta al inicializar. */
 export const APP_ROLE_SCRIPT_SOURCE = resolve(

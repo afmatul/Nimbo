@@ -18,9 +18,7 @@ import { PasswordService } from './application/password.service';
 import { I_ACCOUNT_DIRECTORY_REPOSITORY } from './application/ports/i-account-directory.repository.port';
 import { I_ACCOUNT_EVENTS_PUBLISHER } from './application/ports/i-account-events-publisher.port';
 import { I_ADMIN_ROSTER_REPOSITORY } from './application/ports/i-admin-roster.repository.port';
-import { I_ATTEMPT_LOCKOUT } from './application/ports/i-attempt-lockout.port';
 import { I_DEVICE_REPOSITORY } from './application/ports/i-device-repository.port';
-import { I_PASSWORD_HASHER } from './application/ports/i-password-hasher.port';
 import { I_SESSION_REPOSITORY } from './application/ports/i-session-repository.port';
 import { I_TOKEN_SERVICE } from './application/ports/i-token-service.port';
 import { I_USER_REPOSITORY } from './application/ports/i-user-repository.port';
@@ -29,8 +27,8 @@ import { RegistrationAttemptNotifier } from './application/registration-attempt-
 import { RegistrationService } from './application/registration.service';
 import { SessionService } from './application/session.service';
 import { VerificationLinkIssuer } from './application/verification-link-issuer';
+import { ShareeDirectoryAdapter } from './infrastructure/adapters/sharee-directory.adapter';
 import { UserDirectoryAdapter } from './infrastructure/adapters/user-directory.adapter';
-import { Argon2idHasher } from './infrastructure/argon2id.hasher';
 import { EventEmitterAccountEventsPublisher } from './infrastructure/event-emitter-account-events.publisher';
 import { accessTokenOptionsProvider } from './infrastructure/jwt/access-token-options';
 import { JwtTokenService } from './infrastructure/jwt/jwt-token.service';
@@ -40,7 +38,6 @@ import { TypeOrmDeviceRepository } from './infrastructure/persistence/typeorm-de
 import { TypeOrmSessionRepository } from './infrastructure/persistence/typeorm-session.repository';
 import { TypeormUserRepository } from './infrastructure/persistence/typeorm-user.repository';
 import { TypeormVerificationTokenRepository } from './infrastructure/persistence/typeorm-verification-token.repository';
-import { RedisAttemptLockout } from './infrastructure/redis-attempt-lockout';
 import { AccountSetupController } from './presentation/account-setup.controller';
 import { AuthController } from './presentation/auth.controller';
 import { NoStoreMiddleware } from './presentation/no-store.middleware';
@@ -66,9 +63,7 @@ const PORT_ADAPTERS: Provider[] = [
   { provide: I_VERIFICATION_TOKEN_REPOSITORY, useClass: TypeormVerificationTokenRepository },
   { provide: I_SESSION_REPOSITORY, useClass: TypeOrmSessionRepository },
   { provide: I_DEVICE_REPOSITORY, useClass: TypeOrmDeviceRepository },
-  { provide: I_PASSWORD_HASHER, useClass: Argon2idHasher },
   { provide: I_ACCOUNT_EVENTS_PUBLISHER, useClass: EventEmitterAccountEventsPublisher },
-  { provide: I_ATTEMPT_LOCKOUT, useClass: RedisAttemptLockout },
   { provide: I_ACCOUNT_DIRECTORY_REPOSITORY, useClass: TypeOrmAccountDirectoryRepository },
   JwtTokenService,
   { provide: I_TOKEN_SERVICE, useExisting: JwtTokenService },
@@ -99,9 +94,11 @@ const APPLICATION_SERVICES: Provider[] = [
  * `ACCESS_TOKEN_OPTIONS`, une cada puerto con su adaptador y registra la `JwtStrategy` con el nombre
  * `ACCESS_TOKEN_STRATEGY`, que el `JwtAuthGuard` de `shared` encuentra sin importar `identity`. Exporta
  * `I_ACCESS_TOKEN_VERIFIER` (implementado por `JwtTokenService`), las fachadas del backoffice (011 plan §2), sin
- * repositorios ni entidades, y `UserDirectoryAdapter` (`IUserDirectory` de `editing`, que la raíz enlaza, 016).
+ * repositorios ni entidades, `UserDirectoryAdapter` (`IUserDirectory` de `editing`, que la raíz enlaza, 016) y
+ * `ShareeDirectoryAdapter` (`IShareeDirectory` de `sharing`, que la raíz enlaza, 012).
  * Requiere en la raíz `EventEmitterModule.forRoot()` y
- * `ThrottlerModule.forRoot` con `IDENTITY_THROTTLERS`; `shared` aporta reloj, Redis, límites y transacciones (global).
+ * `ThrottlerModule.forRoot` con `IDENTITY_THROTTLERS`; `shared` aporta reloj, Redis, límites, transacciones, hash de
+ * contraseñas y bloqueo por intentos (global; plan 013 D-2).
  * Todas las respuestas de `AuthController`, `PasswordController`, `AccountSetupController` (011) y
  * `SessionsController`, también las de error, llevan `Cache-Control: no-store` (plan §5).
  */
@@ -119,8 +116,14 @@ export class IdentityModule implements NestModule {
         ...PORT_ADAPTERS,
         ...APPLICATION_SERVICES,
         UserDirectoryAdapter,
+        ShareeDirectoryAdapter,
       ],
-      exports: [I_ACCESS_TOKEN_VERIFIER, ...BACKOFFICE_FACADES, UserDirectoryAdapter],
+      exports: [
+        I_ACCESS_TOKEN_VERIFIER,
+        ...BACKOFFICE_FACADES,
+        UserDirectoryAdapter,
+        ShareeDirectoryAdapter,
+      ],
     };
   }
 

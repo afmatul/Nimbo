@@ -4,11 +4,13 @@ import * as React from 'react';
 
 import { useAuthFetch } from '../../identity/session/use-auth-fetch';
 import { createIndexingApi } from '../../intelligence/indexing-api';
+import { createOptimizerApi } from '../../optimizer/optimizer-api';
+import { createSharingApi } from '../../sharing';
 import { createStorageHttp } from '../storage-http';
 
 import { FileDetailView } from './file-detail-view';
 
-/** Arma el cliente de indexación (019) con `auth-fetch` y el token en memoria de la sesión (002), como `editing`. */
+/** Clientes de indexación, optimización y compartición con `auth-fetch` y el token en memoria de la sesión. */
 export function SessionFileDetailView({
   apiPublicUrl,
   fileId,
@@ -20,9 +22,20 @@ export function SessionFileDetailView({
   readonly citedLocation: string | undefined;
 }): React.JSX.Element {
   const authFetch = useAuthFetch();
-  const indexingApi = React.useMemo(
-    () => createIndexingApi(createStorageHttp(apiPublicUrl, authFetch)),
+  const http = React.useMemo(
+    () => createStorageHttp(apiPublicUrl, authFetch),
     [apiPublicUrl, authFetch],
   );
-  return <FileDetailView fileId={fileId} indexingApi={indexingApi} citedLocation={citedLocation} />;
+  const indexingApi = React.useMemo(() => createIndexingApi(http), [http]);
+  const optimizerApi = React.useMemo(() => createOptimizerApi(http), [http]);
+  const sharingApi = React.useMemo(() => createSharingApi(http), [http]);
+  return (
+    <FileDetailView
+      fileId={fileId}
+      indexingApi={indexingApi}
+      optimizerApi={optimizerApi}
+      sharingApi={sharingApi}
+      citedLocation={citedLocation}
+    />
+  );
 }

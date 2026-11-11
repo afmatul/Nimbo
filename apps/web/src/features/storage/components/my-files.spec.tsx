@@ -15,6 +15,7 @@ import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 
 import { DropdownMenuItem } from '../../../components/ui/dropdown-menu';
+import { fakeSharingApi } from '../../sharing/test-sharing';
 import type { StorageApi } from '../api';
 import { StorageRequestError } from '../storage-request-error';
 import { GB, spaceSummaryWith } from '../test-space-summary';
@@ -22,8 +23,6 @@ import { GB, spaceSummaryWith } from '../test-space-summary';
 import { MyFiles, type FirstFileAction, type MyFilesProps } from './my-files';
 import { UploadsSpaceProvider } from './space-provider';
 import { UploadsProvider } from './uploads-provider';
-
-jest.mock('../../identity/components/sign-out-button', () => ({ SignOutButton: () => null }));
 
 const AT = '2026-09-30T10:00:00.000Z';
 const ALPHA: FolderRef = { id: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d', name: 'Proyecto Alpha' };
@@ -57,12 +56,14 @@ const LISTINGS: Readonly<Record<string, FolderContentsResponse>> = {
     breadcrumbs: [],
     items: [folder(ALPHA, null), file('f-root', 'raiz.pdf', null)],
     nextCursor: null,
+    accessLevel: 'OWNER',
   },
   [ALPHA.id]: {
     folder: ALPHA,
     breadcrumbs: [ALPHA],
     items: [folder(FASE3, ALPHA.id), folder(NOTAS, ALPHA.id), file('f-a', 'acta.pdf', ALPHA.id)],
     nextCursor: null,
+    accessLevel: 'OWNER',
   },
 };
 
@@ -104,7 +105,7 @@ function renderMyFiles(api: StorageApi): void {
   render(
     <UploadsProvider api={api}>
       <UploadsSpaceProvider>
-        <MyFiles folderId={null} />
+        <MyFiles folderId={null} sharingApi={fakeSharingApi()} />
       </UploadsSpaceProvider>
     </UploadsProvider>,
   );
@@ -437,11 +438,11 @@ describe('MyFiles avisa cuando fijar o quitar falla (006 CA-27)', () => {
 });
 
 /** Mis archivos al volver de la vista previa (017 §6): ubicación de origen y fila que pide el foco. */
-function renderReturn(api: StorageApi, props: MyFilesProps): void {
+function renderReturn(api: StorageApi, props: Omit<MyFilesProps, 'sharingApi'>): void {
   render(
     <UploadsProvider api={api}>
       <UploadsSpaceProvider>
-        <MyFiles {...props} />
+        <MyFiles {...props} sharingApi={fakeSharingApi()} />
       </UploadsSpaceProvider>
     </UploadsProvider>,
   );
@@ -584,6 +585,7 @@ describe('MyFiles en solo lectura (spec 010 CA-13, CA-14, RN-6)', () => {
       breadcrumbs: [],
       items: [],
       nextCursor: null,
+      accessLevel: 'OWNER',
     };
     renderMyFiles(readOnlyApi({ folderContents: jest.fn(() => Promise.resolve(empty)) }));
 
@@ -617,7 +619,7 @@ describe('MyFiles en solo lectura (spec 010 CA-13, CA-14, RN-6)', () => {
     const tree = (folderId: string | null) => (
       <UploadsProvider api={api}>
         <UploadsSpaceProvider>
-          <MyFiles folderId={folderId} />
+          <MyFiles folderId={folderId} sharingApi={fakeSharingApi()} />
         </UploadsSpaceProvider>
       </UploadsProvider>
     );
@@ -641,5 +643,53 @@ describe('MyFiles en solo lectura (spec 010 CA-13, CA-14, RN-6)', () => {
     expect(
       screen.queryByText(/Tu suscripción venció y tu cuenta está en solo lectura\. Renueva/),
     ).toBeNull();
+  });
+});
+
+describe('MyFiles y la compartición (spec 012b CA-1, CA-6, CA-9)', () => {
+  it('CA-1: «Compartir» de una fila propia abre el diálogo con su nombre y sus accesos', async () => {
+    const sharingApi = fakeSharingApi();
+    render(
+      <UploadsProvider api={fakeApi()}>
+        <UploadsSpaceProvider>
+          <MyFiles folderId={null} sharingApi={sharingApi} />
+        </UploadsSpaceProvider>
+      </UploadsProvider>,
+    );
+    await screen.findByText('raiz.pdf');
+
+    await chooseRowAction('raiz.pdf', 'Compartir');
+
+    expect(screen.getByRole('dialog', { name: 'Compartir «raiz.pdf»' })).toBeTruthy();
+    expect(sharingApi.listAccess).toHaveBeenCalledWith({ nodeType: 'file', nodeId: 'f-root' });
+  });
+
+  it('CA-6, CA-9: en una carpeta compartida como Lector no hay escrituras y las migas empiezan en ella', async () => {
+    const shared: FolderContentsResponse = {
+      ...(LISTINGS[ALPHA.id] as FolderContentsResponse),
+      accessLevel: 'VIEWER',
+    };
+    render(
+      <UploadsProvider api={fakeApi({ folderContents: jest.fn(() => Promise.resolve(shared)) })}>
+        <UploadsSpaceProvider>
+          <MyFiles folderId={ALPHA.id} sharingApi={fakeSharingApi()} />
+        </UploadsSpaceProvider>
+      </UploadsProvider>,
+    );
+    await screen.findByText('acta.pdf');
+
+    expect(screen.queryByRole('button', { name: 'Nueva carpeta' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Subir archivos' })).toBeNull();
+    expect(screen.queryByTestId('upload-dropzone')).toBeNull();
+    const table = screen.getByRole('table');
+    expect(within(table).queryByRole('button', { name: 'Acciones de Fase 3' })).toBeNull();
+    await userEvent.click(within(table).getByRole('button', { name: 'Acciones de acta.pdf' }));
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Descargar']);
+    await userEvent.keyboard('{Escape}');
+    const crumbs = screen.getByRole('navigation', { name: 'Ruta' });
+    expect(
+      within(crumbs).getByRole('link', { name: 'Compartidos conmigo' }).getAttribute('href'),
+    ).toBe('/compartidos');
+    expect(seriousViolationsOf(await axe(document.body))).toEqual([]);
   });
 });

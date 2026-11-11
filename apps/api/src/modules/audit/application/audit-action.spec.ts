@@ -1,7 +1,7 @@
 import { AuditAction, isAuditAction } from './audit-action';
 
 describe('AuditAction', () => {
-  it('CA-20 (005), CA-24 (006), CA-19 (014), 011 §2, 016 §5, 010 CA-22, 019 D-6, 011b §4: carga, descarga, papelera, versiones, acciones internas, edición, suscripción e indexación', () => {
+  it('CA-20 (005), CA-24 (006), CA-19 (014), 011 §2, 016 §5, 010 CA-22, 019 D-6, 011b §4, 012 CA-19, 013 CA-15: carga, descarga, papelera, versiones, acciones internas, edición, suscripción, indexación, compartición y enlaces públicos', () => {
     expect(Object.values(AuditAction).sort()).toEqual(
       [
         'edit.save_failed',
@@ -10,6 +10,9 @@ describe('AuditAction', () => {
         'file.index_unindexable',
         'file.index_failed',
         'file.index_retried',
+        'file.optimized',
+        'file.optimization_discarded',
+        'file.optimization_failed',
         'file.version_created',
         'file.download_url_issued',
         'file.upload_completed',
@@ -38,6 +41,13 @@ describe('AuditAction', () => {
         'subscription.plan_change_cancelled',
         'subscription.plan_change_applied',
         'subscription.plan_change_discarded',
+        'share.granted',
+        'share.level_changed',
+        'share.revoked',
+        'public_link.created',
+        'public_link.revoked',
+        'public_link.downloaded',
+        'public_link.locked',
       ].sort(),
     );
   });
