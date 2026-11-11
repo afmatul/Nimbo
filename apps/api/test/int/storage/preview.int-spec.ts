@@ -4,6 +4,7 @@ import { errorResponseSchema, previewUrlResponseSchema } from '@nimbo/contracts'
 import request from 'supertest';
 import type { DataSource } from 'typeorm';
 
+import { ContentMatchBindingModule } from '../../../src/content-match-binding.module';
 import {
   I_PLAN_LIMITS_PROVIDER,
   StorageModule,
@@ -46,6 +47,7 @@ describe('POST /api/v1/files/:fileId/preview-url (017 T-03)', () => {
       validatedEnv: env,
       modules: [
         PlanLimitsBindingModule,
+        ContentMatchBindingModule,
         PreviewModule.register({ storageModule, config: { previewUrlPerMinute: 3 } }),
       ],
     });

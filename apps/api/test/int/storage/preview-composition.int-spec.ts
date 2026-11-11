@@ -6,6 +6,7 @@ import { ModulesContainer } from '@nestjs/core';
 import type { Module as NestModule } from '@nestjs/core/injector/module';
 
 import { AppModule } from '../../../src/app.module';
+import { ContentMatchBindingModule } from '../../../src/content-match-binding.module';
 import {
   I_PLAN_LIMITS_PROVIDER,
   StorageModule,
@@ -51,7 +52,12 @@ describe('composición de `StoragePreviewFacade` (017 plan §2.3)', () => {
     const storageModule = StorageModule.forRoot(env);
     testApp = await createTestApp({
       validatedEnv: env,
-      modules: [PlanLimitsBindingModule, storageModule, ConsumerModule.register(storageModule)],
+      modules: [
+        PlanLimitsBindingModule,
+        ContentMatchBindingModule,
+        storageModule,
+        ConsumerModule.register(storageModule),
+      ],
       overrides: [
         {
           provide: I_PLAN_LIMITS_PROVIDER,
