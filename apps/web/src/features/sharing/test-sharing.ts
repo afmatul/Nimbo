@@ -1,4 +1,4 @@
-import type { AccessEntry, ReceivedShare } from '@nimbo/contracts';
+import type { AccessEntry, PublicLinkSummary, ReceivedShare } from '@nimbo/contracts';
 
 import type { SharingApi } from './sharing-api';
 
@@ -58,6 +58,24 @@ export const RECEIVED_FOLDER = receivedShare({
   level: 'VIEWER',
 });
 
+export const PUBLIC_LINK_ID = '7a8b9c0d-1e2f-4a3b-8c4d-6e7f8a9b0c1d';
+
+/** Enlace activo sin contraseña del archivo `NODE_ID` (013 CA-7); `overrides` cambia estado o contraseña. */
+export function publicLink(overrides: Partial<PublicLinkSummary> = {}): PublicLinkSummary {
+  return {
+    id: PUBLIC_LINK_ID,
+    fileId: NODE_ID,
+    expiresAt: '2026-11-18T20:30:00.000Z',
+    hasPassword: false,
+    status: 'active',
+    createdAt: '2026-11-11T20:30:00.000Z',
+    ...overrides,
+  };
+}
+
+/** URL ficticia con un token de prueba: solo vive en la respuesta de generar (013 RN-3). */
+export const PUBLIC_LINK_URL = 'https://nimbo.local/enlace#token-de-prueba-0123456789';
+
 export function never<T>(): Promise<T> {
   return new Promise<T>(() => undefined);
 }
@@ -70,6 +88,9 @@ export function fakeSharingApi(overrides: Partial<SharingApi> = {}): jest.Mocked
     revoke: jest.fn(() => never()),
     listReceived: jest.fn(() => never()),
     leave: jest.fn(() => never()),
+    currentPublicLink: jest.fn(() => never()),
+    createPublicLink: jest.fn(() => never()),
+    revokePublicLink: jest.fn(() => never()),
     ...overrides,
   } as jest.Mocked<SharingApi>;
 }

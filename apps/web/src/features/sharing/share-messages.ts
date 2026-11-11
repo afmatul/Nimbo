@@ -9,8 +9,11 @@ import {
 import { messageForCode } from '../../lib/error-catalog';
 import { StorageRequestError } from '../storage/storage-request-error';
 
-/** Acción correctiva de un error de compartir o salir (spec 012b CA-3, CA-11). */
-export type ShareFix = 'retry' | 'fix_email' | 'renew' | 'wait' | 'refresh';
+/**
+ * Acción correctiva de un error de compartir o salir (spec 012b CA-3, CA-11) y del enlace público (013c CA-14):
+ * `reload` repite la lectura del enlace y `none` no ofrece botón.
+ */
+export type ShareFix = 'retry' | 'fix_email' | 'renew' | 'wait' | 'refresh' | 'reload' | 'none';
 
 export interface ShareMessage {
   /** Qué pasó y qué hacer, en tuteo. */
@@ -18,13 +21,15 @@ export interface ShareMessage {
   readonly fix: ShareFix;
 }
 
-/** Rótulo del botón de cada acción; esperar no tiene botón: el texto dice cuánto. */
+/** Rótulo del botón de cada acción; esperar no tiene botón (el texto dice cuánto), ni `none`. */
 export const SHARE_FIX_LABELS: Readonly<Record<ShareFix, string | null>> = {
   retry: 'Reintentar',
   fix_email: 'Corregir el correo',
   renew: 'Renovar plan',
   refresh: 'Actualizar lista',
   wait: null,
+  reload: 'Actualizar',
+  none: null,
 };
 
 const NETWORK_MESSAGE: ShareMessage = {
@@ -89,4 +94,30 @@ export function shareMessageOf(error: unknown): ShareMessage {
   if (error.code === SHARED_ERROR_CODES.TOO_MANY_REQUESTS) return waitMessageOf(error);
   if (error.code === SHARING_ERROR_CODES.SHARING_INVALID_REQUEST) return fieldMessageOf(error);
   return CODE_MESSAGES[error.code] ?? NETWORK_MESSAGE;
+}
+
+/** Los dos casos que la sección «Enlace público» dice distinto que «Compartir» (013c CA-14, D-8, I-2). */
+const PUBLIC_LINK_MESSAGES: Readonly<Record<string, ShareMessage>> = {
+  [SHARING_ERROR_CODES.SHARING_LINK_NOT_FOUND]: {
+    title: 'Este enlace ya no existe. Actualiza para ver el estado actual.',
+    fix: 'reload',
+  },
+  [STORAGE_ERROR_CODES.STORAGE_NODE_NOT_FOUND]: {
+    title: 'Este archivo ya no está disponible. Puede que esté en la papelera.',
+    fix: 'none',
+  },
+};
+
+/** Mensaje y acción de un error del enlace público (013c I-3); el resto, como `shareMessageOf` (`429`, red). */
+export function publicLinkMessageOf(error: unknown): ShareMessage {
+  const own = error instanceof StorageRequestError ? PUBLIC_LINK_MESSAGES[error.code] : undefined;
+  return own ?? shareMessageOf(error);
+}
+
+/** El `403` de solo lectura, que la sección muestra con `ReadOnlyBanner` y no como error (013c CA-10). */
+export function isReadOnlyError(error: unknown): boolean {
+  return (
+    error instanceof StorageRequestError &&
+    error.code === STORAGE_ERROR_CODES.STORAGE_ACCOUNT_READ_ONLY
+  );
 }
