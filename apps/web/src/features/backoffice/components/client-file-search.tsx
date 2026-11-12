@@ -3,12 +3,12 @@
 import { clientFilesQuerySchema, REQUIRED_REASON, toFieldIssues } from '@nimbo/contracts';
 import * as React from 'react';
 
+import { FieldMessage } from '../../../components/nimbo/field-message';
 import { Button } from '../../../components/ui/button';
 import { Label } from '../../../components/ui/label';
 import { backofficeFieldMessage } from '../../../lib/error-catalog';
 
 import { EmailSearchField } from './email-search-field';
-import { FieldMessage } from './field-message';
 
 const INPUT_ID = 'correo-cliente';
 const HELP_ID = `${INPUT_ID}-ayuda`;
@@ -65,7 +65,11 @@ export function ClientFileSearch({ onSearch, inputRef }: ClientFileSearchProps):
       <p id={HELP_ID} className="mt-1.5 text-sm text-muted-foreground">
         Escribe el correo completo con el que el cliente inicia sesión.
       </p>
-      {error === null ? null : <FieldMessage id={ERROR_ID} message={error} />}
+      {error === null ? null : (
+        <FieldMessage id={ERROR_ID} className="mt-1.5">
+          {error}
+        </FieldMessage>
+      )}
     </form>
   );
 }

@@ -9,6 +9,7 @@ import {
 } from '@nimbo/contracts';
 import * as React from 'react';
 
+import { FieldMessage } from '../../../components/nimbo/field-message';
 import { Alert } from '../../../components/ui/alert';
 import { Label } from '../../../components/ui/label';
 import type { ApiClientError } from '../../../lib/api-error';
@@ -16,7 +17,6 @@ import { cn } from '../../../lib/utils';
 import { ServerErrorAlert } from '../../identity/components/server-error-alert';
 import { depthExceededText, locationText } from '../trash-notices';
 
-import { FieldMessage } from './field-message';
 import { FormDialog, FormErrorSummary, useFormSubmission } from './form-dialog';
 
 const NOTE_ID = 'motivo-restauracion';
@@ -95,7 +95,11 @@ function NoteField({ value, onChange, error, locked }: NoteFieldProps): React.JS
         )}
       />
       <NoteCounter value={value} />
-      {error === null ? null : <FieldMessage id={`${NOTE_ID}-error`} message={error} />}
+      {error === null ? null : (
+        <FieldMessage id={`${NOTE_ID}-error`} className="mt-1.5">
+          {error}
+        </FieldMessage>
+      )}
     </div>
   );
 }

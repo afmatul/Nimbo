@@ -19,6 +19,8 @@ export const ORIGIN_FILTER_LABELS: Readonly<Record<ActivityOriginFilter, string>
 const SELF_LABEL = 'Tú';
 /** Origen de la purga programada de la papelera: su actor es el dueño, pero no la pidió (CA-7). */
 const SCHEDULED_LABEL = 'Nimbo (automático)';
+/** Visitante de un enlace público (013 CA-18, 013c CA-16): su actor es el dueño, pero no fue él. */
+const PUBLIC_LINK_LABEL = 'Alguien con el enlace';
 /** Origen `staff` con un rol sin rótulo propio. */
 const STAFF_LABEL = ORIGIN_FILTER_LABELS.staff;
 
@@ -103,6 +105,22 @@ const ACTION_TEXTS: Readonly<Record<string, ActionText>> = {
   'subscription.plan_change_discarded': sameText(
     'Se descartó tu cambio de plan: ese plan ya no está disponible',
   ),
+  /**
+   * Enlace público (013c CA-16, CA-17): generar y revocar los hace el dueño; descargar y el bloqueo vienen del
+   * visitante (`trigger: 'public_link'`) y se leen con `staff`, cuyo sujeto es «Alguien con el enlace».
+   */
+  'public_link.created': {
+    self: (w) => `Generaste un enlace público de ${w}`,
+    staff: (w, a) => `${a} generó un enlace público de ${w}`,
+  },
+  'public_link.revoked': {
+    self: (w) => `Revocaste un enlace público de ${w}`,
+    staff: (w, a) => `${a} revocó un enlace público de ${w}`,
+  },
+  'public_link.downloaded': { staff: (w, a) => `${a} descargó ${w}` },
+  'public_link.locked': {
+    staff: (w) => `Se bloquearon los intentos de contraseña del enlace de ${w}`,
+  },
 };
 
 const UNIT_NOUNS: Readonly<Record<NonNullable<AuditEventResponse['resourceType']>, string>> = {
@@ -120,9 +138,17 @@ function isScheduled(event: AuditEventResponse): boolean {
   return event.trigger === 'scheduled';
 }
 
-/** «Tú», «Nimbo (automático)» o el rol del personal, nunca nombre ni correo (D-2). */
+function isPublicLinkVisit(event: AuditEventResponse): boolean {
+  return event.trigger === 'public_link';
+}
+
+/**
+ * «Tú», «Nimbo (automático)», «Alguien con el enlace» o el rol del personal, nunca nombre ni correo (D-2). El
+ * `trigger` se mira antes que el origen: la purga programada y la visita a un enlace llegan con origen `self`.
+ */
 export function activityActorLabel(event: AuditEventResponse): string {
   if (isScheduled(event)) return SCHEDULED_LABEL;
+  if (isPublicLinkVisit(event)) return PUBLIC_LINK_LABEL;
   if (event.origin === 'self') return SELF_LABEL;
   return STAFF_ROLE_LABELS[event.actorRole] ?? STAFF_LABEL;
 }
@@ -144,7 +170,8 @@ export function activityActionLabel(event: AuditEventResponse): string {
   if (isScheduled(event) && text.scheduled !== undefined) {
     return text.scheduled(what, isPlural(event));
   }
-  if (event.origin === 'self' && text.self !== undefined) return text.self(what);
+  const ownAction = event.origin === 'self' && !isPublicLinkVisit(event);
+  if (ownAction && text.self !== undefined) return text.self(what);
   return text.staff(what, activityActorLabel(event));
 }
 

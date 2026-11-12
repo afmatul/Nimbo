@@ -24,7 +24,6 @@ export function ReadOnlyNotice(): React.JSX.Element | null {
   const plan = planName === null ? 'Tu plan' : `Tu plan ${planName}`;
   return (
     <ReadOnlyBanner
-      title="Tu cuenta está en solo lectura."
       description={`${plan} venció. Tus archivos siguen aquí: puedes verlos y descargarlos, pero no subir ni editar hasta que renueves.`}
       renewHref={RENEW_PATH}
     />

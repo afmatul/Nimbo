@@ -1,11 +1,11 @@
 'use client';
 
-import { SHARED_ERROR_CODES, SHARING_ERROR_CODES, type PublicLinkDetails } from '@nimbo/contracts';
-import { useCallback, useEffect, useState } from 'react';
+import { SHARED_ERROR_CODES, type PublicLinkDetails } from '@nimbo/contracts';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { ApiClientError } from '../../../lib/api-error';
-import { usePreparingDownload, type PreparingDownload } from '../../../lib/use-preparing-download';
 import type { PublicLinkVisitorApi } from '../public-link-visitor-api';
+
+import { hasCode, isUnavailable } from './public-link-errors';
 
 /** Lo que muestra la página según el `POST /open` (013b §6). */
 export type PublicLinkVisitState =
@@ -15,40 +15,30 @@ export type PublicLinkVisitState =
   | { readonly status: 'rate-limited'; readonly retryAfterSeconds: number | undefined }
   | { readonly status: 'load-error' };
 
-/** Cómo terminó el último «Descargar»; la ficha sigue visible en todos (CA-3 a CA-5, CA-7). */
-export type PublicLinkDownloadOutcome =
-  | { readonly status: 'idle' }
-  | { readonly status: 'started' }
-  | { readonly status: 'password-invalid' }
-  | { readonly status: 'rate-limited'; readonly retryAfterSeconds: number | undefined }
-  | { readonly status: 'download-error'; readonly retry: () => void };
+/** Un pedido de la ficha: cada lectura del fragmento o «Reintentar» lleva el número siguiente (PD-200). */
+export interface VisitRequest {
+  readonly number: number;
+  readonly token: string;
+}
 
 export interface PublicLinkVisit {
   readonly state: PublicLinkVisitState;
-  readonly outcome: PublicLinkDownloadOutcome;
-  /** La URL tarda más de 2 s: «Preparando descarga…» y no acepta otro clic (CA-3). */
-  readonly preparing: boolean;
+  /** El pedido vigente; `null` hasta leer el fragmento al montar. */
+  readonly request: VisitRequest | null;
   /** «Reintentar» al abrir (CA-5, CA-7): vuelve a pedir la ficha del fragmento actual. */
   readonly reload: () => void;
-  /** «Descargar»; sin contraseña, `''`, que el cliente no envía. `false` si ya había una en curso. */
-  readonly download: (password?: string) => Promise<boolean>;
+  /** `true` si el pedido con ese número sigue vigente: lo que llegue de uno viejo se descarta (PD-200). */
+  readonly isCurrent: (requestNumber: number) => boolean;
+  /** Un `404` al descargar deja la página sin ficha (CA-6), solo si su pedido sigue vigente. */
+  readonly markUnavailable: (requestNumber: number) => void;
 }
 
 const LOADING: PublicLinkVisitState = { status: 'loading' };
 const UNAVAILABLE: PublicLinkVisitState = { status: 'unavailable' };
 const LOAD_ERROR: PublicLinkVisitState = { status: 'load-error' };
-const IDLE: PublicLinkDownloadOutcome = { status: 'idle' };
-const STARTED: PublicLinkDownloadOutcome = { status: 'started' };
-const PASSWORD_INVALID: PublicLinkDownloadOutcome = { status: 'password-invalid' };
 
 /** El token es el fragmento crudo (`…/enlace#<token>`); se queda en la barra para que recargar funcione (S-1). */
 const readFragment = (): string => window.location.hash.replace(/^#/, '');
-
-const hasCode = (error: unknown, code: string): error is ApiClientError =>
-  error instanceof ApiClientError && error.code === code;
-
-const isUnavailable = (error: unknown): boolean =>
-  hasCode(error, SHARING_ERROR_CODES.SHARING_LINK_UNAVAILABLE);
 
 function failedOpenState(error: unknown): PublicLinkVisitState {
   if (isUnavailable(error)) return UNAVAILABLE;
@@ -68,65 +58,49 @@ async function openState(api: PublicLinkVisitorApi, token: string): Promise<Publ
   }
 }
 
-function failedDownloadOutcome(error: unknown, retry: () => void): PublicLinkDownloadOutcome {
-  if (hasCode(error, SHARING_ERROR_CODES.SHARING_LINK_PASSWORD_INVALID)) return PASSWORD_INVALID;
-  if (hasCode(error, SHARED_ERROR_CODES.TOO_MANY_REQUESTS)) {
-    return { status: 'rate-limited', retryAfterSeconds: error.retryAfterSeconds };
-  }
-  return { status: 'download-error', retry };
-}
-
-interface OpenRequest {
-  readonly token: string;
-}
-
-/** El pedido del fragmento con su ficha y su aviso: otro pedido los vuelve a `loading` e `idle` (CA-8). */
+/** El pedido del fragmento con su ficha: otro pedido la vuelve a `loading` (CA-8). */
 interface VisitSnapshot {
-  readonly request: OpenRequest | null;
+  readonly request: VisitRequest | null;
   readonly state: PublicLinkVisitState;
-  readonly outcome: PublicLinkDownloadOutcome;
 }
 
-type VisitChange = Partial<Pick<VisitSnapshot, 'state' | 'outcome'>>;
+const FIRST_VISIT: VisitSnapshot = { request: null, state: LOADING };
 
-const FIRST_VISIT: VisitSnapshot = { request: null, state: LOADING, outcome: IDLE };
-
-const freshVisit = (token: string): VisitSnapshot => ({
-  request: { token },
-  state: LOADING,
-  outcome: IDLE,
-});
-
-interface VisitRequest {
+interface VisitRequests {
   readonly snapshot: VisitSnapshot;
   readonly reload: () => void;
-  /** Cambia la ficha o el aviso solo si su pedido sigue vigente: una respuesta vieja no pisa al pedido actual. */
-  readonly change: (change: VisitChange) => void;
+  readonly isCurrent: (requestNumber: number) => boolean;
+  /** Cambia la ficha solo si su pedido sigue vigente: una respuesta vieja no pisa al pedido actual. */
+  readonly setStateOf: (requestNumber: number, state: PublicLinkVisitState) => void;
 }
 
 /**
  * El `#token` de la barra: se lee al montar y con `hashchange` si cambió; «Reintentar» pide el mismo de nuevo. Cada
- * pedido es un objeto nuevo y deja sin efecto lo que llegue del anterior.
+ * pedido lleva el número siguiente y deja sin efecto lo que llegue del anterior (PD-200).
  */
-function useVisitRequest(): VisitRequest {
+function useVisitRequests(): VisitRequests {
   const [snapshot, setSnapshot] = useState(FIRST_VISIT);
+  const current = useRef<VisitRequest | null>(null);
+  const start = useCallback((token: string) => {
+    const request = { number: (current.current?.number ?? 0) + 1, token };
+    current.current = request;
+    setSnapshot({ request, state: LOADING });
+  }, []);
   useEffect(() => {
     const follow = (): void => {
       const token = readFragment();
-      setSnapshot((current) => (current.request?.token === token ? current : freshVisit(token)));
+      if (current.current?.token !== token) start(token);
     };
     follow();
     window.addEventListener('hashchange', follow);
     return () => window.removeEventListener('hashchange', follow);
+  }, [start]);
+  const reload = useCallback(() => start(readFragment()), [start]);
+  const isCurrent = useCallback((n: number) => current.current?.number === n, []);
+  const setStateOf = useCallback((n: number, state: PublicLinkVisitState) => {
+    setSnapshot((now) => (now.request?.number === n ? { ...now, state } : now));
   }, []);
-  const reload = useCallback(() => setSnapshot(freshVisit(readFragment())), []);
-  const { request } = snapshot;
-  const change = useCallback(
-    (next: VisitChange) =>
-      setSnapshot((current) => (current.request === request ? { ...current, ...next } : current)),
-    [request],
-  );
-  return { snapshot, reload, change };
+  return { snapshot, reload, isCurrent, setStateOf };
 }
 
 /**
@@ -135,77 +109,29 @@ function useVisitRequest(): VisitRequest {
  */
 function useOpenDetails(
   api: PublicLinkVisitorApi,
-  request: OpenRequest | null,
-  setState: (state: PublicLinkVisitState) => void,
+  request: VisitRequest | null,
+  setStateOf: VisitRequests['setStateOf'],
 ): void {
   useEffect(() => {
     if (request === null) return undefined;
     let current = true;
     void openState(api, request.token).then((next) => {
-      if (current) setState(next);
+      if (current) setStateOf(request.number, next);
     });
     return () => {
       current = false;
     };
-  }, [api, request, setState]);
-}
-
-interface VisitDownloadInput {
-  readonly api: PublicLinkVisitorApi;
-  readonly openUrl: (url: string) => void;
-  readonly token: string;
-  readonly setState: (state: PublicLinkVisitState) => void;
-  readonly setOutcome: (outcome: PublicLinkDownloadOutcome) => void;
-}
-
-/** Limpia el aviso anterior al pedir la URL; un `404` deja la página sin ficha (CA-6) y el resto, un aviso. */
-function useVisitDownload({
-  api,
-  openUrl,
-  token,
-  setState,
-  setOutcome,
-}: VisitDownloadInput): PreparingDownload<string> {
-  return usePreparingDownload<string>(
-    (password) => {
-      setOutcome(IDLE);
-      return api.download(token, password);
-    },
-    (_password, error, retry) => {
-      if (isUnavailable(error)) setState(UNAVAILABLE);
-      else setOutcome(failedDownloadOutcome(error, retry));
-    },
-    (url) => {
-      openUrl(url);
-      setOutcome(STARTED);
-    },
-  );
+  }, [api, request, setStateOf]);
 }
 
 /**
- * Estado de la visita a `/enlace#<token>` (013b CA-3, CA-5 a CA-8): la ficha y la descarga con el patrón de 005
- * («Preparando…» pasados 2 s, una petición a la vez). No guarda nada en el navegador y nunca registra el token.
+ * Estado de la visita a `/enlace#<token>` (013b CA-1, CA-5 a CA-8): la ficha del pedido vigente; la descarga va en
+ * `usePublicLinkDownload`. No guarda nada en el navegador y nunca registra el token.
  */
-export function usePublicLinkVisit(
-  api: PublicLinkVisitorApi,
-  openUrl: (url: string) => void,
-): PublicLinkVisit {
-  const { snapshot, reload, change } = useVisitRequest();
+export function usePublicLinkVisit(api: PublicLinkVisitorApi): PublicLinkVisit {
+  const { snapshot, reload, isCurrent, setStateOf } = useVisitRequests();
   const { request } = snapshot;
-  const setState = useCallback((state: PublicLinkVisitState) => change({ state }), [change]);
-  const setOutcome = useCallback(
-    (outcome: PublicLinkDownloadOutcome) => change({ outcome }),
-    [change],
-  );
-  useOpenDetails(api, request, setState);
-  const token = request?.token ?? '';
-  const prepared = useVisitDownload({ api, openUrl, token, setState, setOutcome });
-
-  return {
-    state: snapshot.state,
-    outcome: snapshot.outcome,
-    preparing: prepared.preparing !== null,
-    reload,
-    download: (password = '') => prepared.download(password),
-  };
+  useOpenDetails(api, request, setStateOf);
+  const markUnavailable = useCallback((n: number) => setStateOf(n, UNAVAILABLE), [setStateOf]);
+  return { state: snapshot.state, request, reload, isCurrent, markUnavailable };
 }

@@ -2,12 +2,20 @@
  * @jest-environment jsdom
  */
 import { SHARED_ERROR_CODES, SHARING_ERROR_CODES } from '@nimbo/contracts';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { StorageRequestError } from '../../storage/storage-request-error';
 import type { SharingApi } from '../sharing-api';
-import { directEntry, fakeSharingApi, NODE_ID } from '../test-sharing';
+import {
+  directEntry,
+  fakeSharingApi,
+  never,
+  NODE_ID,
+  PARENT_FOLDER_ID,
+  PUBLIC_LINK_URL,
+  publicLink,
+} from '../test-sharing';
 
 import { ShareDialog } from './share-dialog';
 
@@ -42,8 +50,8 @@ describe('ShareDialog: compartir y ver accesos (spec 012b CA-1, CA-2, CA-3)', ()
     renderDialog(fakeSharingApi());
 
     await waitFor(() => expect(document.activeElement).toBe(emailInput()));
-    expect(within(dialog()).getByRole('status').textContent).toContain(
-      'Cargando quién tiene acceso…',
+    expect(within(dialog()).getByText('Cargando quién tiene acceso…').getAttribute('role')).toBe(
+      'status',
     );
   });
 
@@ -145,5 +153,187 @@ describe('ShareDialog: compartir y ver accesos (spec 012b CA-1, CA-2, CA-3)', ()
     await userEvent.click(within(dialog()).getByRole('button', { name: 'Cerrar' }));
 
     expect(onClose).toHaveBeenCalled();
+  });
+});
+
+const FOLDER = { nodeType: 'folder', nodeId: PARENT_FOLDER_ID, name: 'Proyecto Alpha' } as const;
+const GENERATED = 'Generamos el enlace. Cópialo ahora: por seguridad, no podrás volver a verlo.';
+
+const withoutLink = (overrides: Partial<SharingApi> = {}): SharingApi =>
+  fakeSharingApi({
+    currentPublicLink: jest.fn(() => Promise.resolve({ link: null })),
+    ...overrides,
+  });
+
+/** Espera la lectura del enlace: si llega después de la prueba, React avisa que no estaba en `act` (m-10). */
+async function sectionRead(): Promise<void> {
+  await within(dialog()).findByRole('button', { name: 'Crear enlace público' });
+}
+
+async function openLinkForm(): Promise<void> {
+  await sectionRead();
+  await userEvent.click(within(dialog()).getByRole('button', { name: 'Crear enlace público' }));
+}
+
+function overlay(): Element {
+  const element = document.querySelector('[data-slot="dialog-overlay"]');
+  if (element === null) throw new Error('Sin velo del diálogo');
+  return element;
+}
+
+describe('ShareDialog: sección «Enlace público» (spec 013c CA-2, CA-11)', () => {
+  it('CA-15: la columna del diálogo puede encogerse, así que un nombre sin espacios no desplaza la página a 360 px', async () => {
+    renderDialog(withoutLink());
+    await sectionRead();
+
+    expect(dialog().className).toContain('grid-cols-[minmax(0,1fr)]');
+  });
+
+  it('CA-2: un archivo muestra la sección después de «Personas con acceso»', async () => {
+    renderDialog(withoutLink());
+    await sectionRead();
+
+    const headings = within(dialog()).getAllByRole('heading', { level: 3 });
+    expect(headings.map((heading) => heading.textContent)).toEqual([
+      'Personas con acceso',
+      'Enlace público',
+    ]);
+  });
+
+  it('CA-2: una carpeta no muestra la sección ni pide nada a la API de enlaces', async () => {
+    const api = withoutLink();
+    render(<ShareDialog api={api} target={FOLDER} onClose={jest.fn()} />);
+    await act(async () => undefined);
+
+    expect(screen.queryByRole('heading', { name: 'Enlace público' })).toBeNull();
+    expect(api.currentPublicLink).not.toHaveBeenCalled();
+  });
+
+  it('CA-11: Escape con el formulario abierto lo cancela y el diálogo sigue abierto', async () => {
+    const onClose = jest.fn();
+    renderDialog(withoutLink(), onClose);
+    await openLinkForm();
+
+    await userEvent.keyboard('{Escape}');
+
+    expect(screen.queryByRole('form', { name: 'Nuevo enlace público' })).toBeNull();
+    expect(dialog()).toBeTruthy();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('CA-11: Escape con la confirmación de revocar abierta la cancela y el diálogo sigue abierto', async () => {
+    const onClose = jest.fn();
+    const currentPublicLink = jest.fn(() => Promise.resolve({ link: publicLink() }));
+    renderDialog(fakeSharingApi({ currentPublicLink }), onClose);
+    await userEvent.click(await within(dialog()).findByRole('button', { name: 'Revocar enlace' }));
+
+    await userEvent.keyboard('{Escape}');
+
+    expect(screen.queryByRole('group', { name: /¿Revocar el enlace\?/ })).toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('CA-11: con una generación en curso, ni Escape, ni la X, ni un clic fuera lo cierran', async () => {
+    const onClose = jest.fn();
+    renderDialog(withoutLink({ createPublicLink: jest.fn(() => never()) }), onClose);
+    await openLinkForm();
+    await userEvent.click(within(dialog()).getByRole('button', { name: 'Generar enlace' }));
+
+    await userEvent.keyboard('{Escape}');
+    const close = within(dialog()).getByRole('button', { name: 'Cerrar' });
+    expect(close.hasAttribute('disabled')).toBe(true);
+    fireEvent.pointerDown(overlay());
+
+    expect(dialog()).toBeTruthy();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('CA-11: sin nada en curso, el clic fuera cierra como la X', async () => {
+    const onClose = jest.fn();
+    renderDialog(withoutLink(), onClose);
+    await within(dialog()).findByRole('button', { name: 'Crear enlace público' });
+
+    fireEvent.pointerDown(overlay());
+
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('CA-11 (D-7): con la URL a la vista y nada abierto, Escape cierra el diálogo', async () => {
+    const onClose = jest.fn();
+    const createPublicLink = jest.fn(() =>
+      Promise.resolve({ link: publicLink(), url: PUBLIC_LINK_URL }),
+    );
+    renderDialog(withoutLink({ createPublicLink }), onClose);
+    await openLinkForm();
+    await userEvent.click(within(dialog()).getByRole('button', { name: 'Generar enlace' }));
+    await within(dialog()).findByText(GENERATED);
+
+    await userEvent.keyboard('{Escape}');
+
+    expect(onClose).toHaveBeenCalled();
+  });
+});
+
+describe('ShareDialog: la URL del enlace solo en memoria (spec 013c RN-1, §5)', () => {
+  it('RN-1: tras generar, la URL no va al título, a la URL de la app ni al historial, y al reabrir ya no se ve', async () => {
+    const titleBefore = document.title;
+    const hrefBefore = window.location.href;
+    const historyBefore = window.history.length;
+    const pushState = jest.spyOn(window.history, 'pushState');
+    const replaceState = jest.spyOn(window.history, 'replaceState');
+    const api = withoutLink({
+      createPublicLink: jest.fn(() =>
+        Promise.resolve({ link: publicLink(), url: PUBLIC_LINK_URL }),
+      ),
+      currentPublicLink: jest
+        .fn()
+        .mockResolvedValueOnce({ link: null })
+        .mockResolvedValue({ link: publicLink() }),
+    });
+    const view = render(<ShareDialog api={api} target={TARGET} onClose={jest.fn()} />);
+    await openLinkForm();
+    await userEvent.click(within(dialog()).getByRole('button', { name: 'Generar enlace' }));
+    await within(dialog()).findByText(GENERATED);
+
+    expect(document.title).toBe(titleBefore);
+    expect(window.location.href).toBe(hrefBefore);
+    expect(window.history.length).toBe(historyBefore);
+    expect(pushState).not.toHaveBeenCalled();
+    expect(replaceState).not.toHaveBeenCalled();
+
+    view.rerender(<ShareDialog api={api} target={null} onClose={jest.fn()} />);
+    view.rerender(<ShareDialog api={api} target={TARGET} onClose={jest.fn()} />);
+
+    expect(await within(dialog()).findByText('Activo')).toBeTruthy();
+    expect(document.body.innerHTML).not.toContain(PUBLIC_LINK_URL);
+    pushState.mockRestore();
+    replaceState.mockRestore();
+  });
+
+  it('SEC-2: al cambiar de archivo con el diálogo montado no quedan la URL ni el resumen del anterior', async () => {
+    const other = {
+      nodeType: 'file',
+      nodeId: '8b9c0d1e-2f3a-4b4c-9d5e-7f8a9b0c1d2e',
+      name: 'Acta de la reunión.docx',
+    } as const;
+    const api = withoutLink({
+      createPublicLink: jest.fn(() =>
+        Promise.resolve({ link: publicLink(), url: PUBLIC_LINK_URL }),
+      ),
+      currentPublicLink: jest.fn((fileId: string) =>
+        fileId === NODE_ID ? Promise.resolve({ link: null }) : never(),
+      ),
+    });
+    const view = render(<ShareDialog api={api} target={TARGET} onClose={jest.fn()} />);
+    await openLinkForm();
+    await userEvent.click(within(dialog()).getByRole('button', { name: 'Generar enlace' }));
+    await within(dialog()).findByText(GENERATED);
+
+    view.rerender(<ShareDialog api={api} target={other} onClose={jest.fn()} />);
+    const switched = screen.getByRole('dialog', { name: 'Compartir «Acta de la reunión.docx»' });
+
+    expect(await within(switched).findByText('Cargando el enlace público…')).toBeTruthy();
+    expect(within(switched).queryByText(GENERATED)).toBeNull();
+    expect(document.body.innerHTML).not.toContain(PUBLIC_LINK_URL);
   });
 });

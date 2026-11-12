@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Clock } from 'lucide-react';
 import Link from 'next/link';
 import type * as React from 'react';
 
@@ -16,9 +16,10 @@ function FixAction({
   fix,
   handlers,
 }: {
-  readonly fix: ShareFix;
+  readonly fix: ShareFix | undefined;
   readonly handlers: ShareFixHandlers;
 }): React.JSX.Element | null {
+  if (fix === undefined) return null;
   const label = SHARE_FIX_LABELS[fix];
   if (label === null) return null;
   if (fix === 'renew') {
@@ -37,17 +38,25 @@ function FixAction({
   );
 }
 
+/** `warning`: el tono del catálogo para el `429` del enlace público (013c CA-12, I-4); por omisión, error. */
+export type ShareErrorVariant = 'error' | 'warning';
+
+const iconClass = 'mt-0.5 h-5 w-5 shrink-0';
+
 /** Error de compartir, quitar o salir con su acción correctiva (spec 012b CA-3, CA-11; texto del catálogo, RN-2). */
 export function ShareErrorAlert({
   message,
   handlers = {},
+  variant = 'error',
 }: {
   readonly message: ShareMessage;
   readonly handlers?: ShareFixHandlers;
+  readonly variant?: ShareErrorVariant;
 }): React.JSX.Element {
+  const Icon = variant === 'warning' ? Clock : AlertCircle;
   return (
-    <Alert variant="error" className="flex flex-wrap items-start gap-3">
-      <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+    <Alert variant={variant} className="flex flex-wrap items-start gap-3">
+      <Icon className={iconClass} aria-hidden="true" />
       <p className="min-w-0 flex-1 basis-48 break-words">{message.title}</p>
       <FixAction fix={message.fix} handlers={handlers} />
     </Alert>

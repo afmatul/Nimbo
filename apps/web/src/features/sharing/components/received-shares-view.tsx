@@ -171,7 +171,6 @@ function ReceivedReadOnlyNotice(): React.JSX.Element | null {
   if (!readOnly) return null;
   return (
     <ReadOnlyBanner
-      title="Tu cuenta está en solo lectura."
       description="Puedes ver y descargar lo que te compartieron, y salir de ello. Para editar o subir archivos, renueva tu plan."
       renewHref={RENEW_PATH}
     />

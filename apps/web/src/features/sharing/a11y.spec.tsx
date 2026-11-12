@@ -31,7 +31,10 @@ import {
   directEntry,
   fakeSharingApi,
   INHERITED_ENTRY,
+  never,
   NODE_ID,
+  PUBLIC_LINK_URL,
+  publicLink,
   RECEIVED_FOLDER,
   receivedShare,
 } from './test-sharing';
@@ -238,6 +241,182 @@ describe('Accesibilidad del diálogo «Compartir» a 360 y 1440 px (spec 012b CA
 
     expect(screen.getByRole('button', { name: 'Quitando…' })).toBeTruthy();
     jest.useRealTimers();
+    await expectNoBlockingViolations();
+  });
+});
+
+const linkOf = (link: ReturnType<typeof publicLink> | null) =>
+  jest.fn(() => Promise.resolve({ link }));
+const EXPIRED_LINK = publicLink({ status: 'expired', expiresAt: '2026-11-03T15:15:00.000Z' });
+
+/** Diálogo de un archivo con el enlace `link` y la lista de accesos vacía (013c §6). */
+function linkApi(link: ReturnType<typeof publicLink> | null, overrides: Partial<SharingApi> = {}) {
+  return fakeSharingApi({ listAccess: accessOf(), currentPublicLink: linkOf(link), ...overrides });
+}
+
+const createdLink = () =>
+  jest.fn(() => Promise.resolve({ link: publicLink(), url: PUBLIC_LINK_URL }));
+
+async function clickInDialog(name: string): Promise<void> {
+  await userEvent.click(await within(screen.getByRole('dialog')).findByRole('button', { name }));
+}
+
+async function generateFrom(api: SharingApi): Promise<void> {
+  await openDialog(api);
+  await clickInDialog('Crear enlace público');
+  await clickInDialog('Generar enlace');
+}
+
+describe('Accesibilidad de la sección «Enlace público» a 360 y 1440 px (spec 013c CA-15)', () => {
+  it('CA-15: enlace-cargando', async () => {
+    await openDialog(fakeSharingApi({ listAccess: accessOf() }));
+    await screen.findByText('Cargando el enlace público…');
+    await expectNoBlockingViolations();
+  });
+
+  it.each([
+    ['enlace-sin-enlace', null, 'Crear enlace público'],
+    ['enlace-activo', publicLink({ hasPassword: true }), 'Generar otro enlace'],
+    ['enlace-vencido', EXPIRED_LINK, 'Revocar enlace'],
+  ])('CA-15: %s', async (_state, link, button) => {
+    await openDialog(linkApi(link));
+    await within(screen.getByRole('dialog')).findByRole('button', { name: button });
+    await expectNoBlockingViolations();
+  });
+
+  it('CA-15: enlace-formulario y enlace-contrasena-invalida', async () => {
+    await openDialog(linkApi(null));
+    await clickInDialog('Crear enlace público');
+    await expectNoBlockingViolations();
+    await userEvent.type(screen.getByLabelText('Contraseña (opcional)'), 'abc12');
+    await clickInDialog('Generar enlace');
+    await screen.findByText('Escribe una contraseña de 8 a 128 caracteres.');
+    await expectNoBlockingViolations();
+  });
+
+  it('CA-15: enlace-generado', async () => {
+    await generateFrom(
+      linkApi(null, {
+        createPublicLink: createdLink(),
+      }),
+    );
+    await screen.findByRole('textbox', { name: 'Enlace generado' });
+    await expectNoBlockingViolations();
+  });
+
+  it('CA-15: enlace-copiado', async () => {
+    await generateFrom(linkApi(null, { createPublicLink: createdLink() }));
+    await clickInDialog('Copiar enlace');
+    await screen.findByRole('button', { name: 'Enlace copiado' });
+    await expectNoBlockingViolations();
+  });
+
+  it('CA-15: enlace-copia-fallida', async () => {
+    await generateFrom(linkApi(null, { createPublicLink: createdLink() }));
+    const writeText = jest
+      .spyOn(navigator.clipboard, 'writeText')
+      .mockRejectedValue(new Error('NotAllowedError'));
+    await clickInDialog('Copiar enlace');
+    await screen.findByText('No pudimos copiar el enlace. Selecciónalo y cópialo a mano.');
+    await expectNoBlockingViolations();
+    writeText.mockRestore();
+  });
+
+  it.each([
+    ['enlace-error-red', jest.fn(() => Promise.reject(new TypeError('Failed to fetch')))],
+    [
+      'enlace-limite',
+      rejectWith(429, SHARED_ERROR_CODES.TOO_MANY_REQUESTS, { retryAfterSeconds: 900 }),
+    ],
+    [
+      'enlace-solo-lectura (403 tardío)',
+      rejectWith(403, STORAGE_ERROR_CODES.STORAGE_ACCOUNT_READ_ONLY),
+    ],
+  ])('CA-15: %s', async (_state, createPublicLink) => {
+    await generateFrom(linkApi(null, { createPublicLink }));
+    await screen.findByText(
+      /Hiciste demasiados intentos|No pudimos completar|No puedes generar enlaces/,
+    );
+    await expectNoBlockingViolations();
+  });
+
+  it('CA-15: enlace-confirmar-reemplazo', async () => {
+    await openDialog(linkApi(publicLink()));
+    await clickInDialog('Generar otro enlace');
+    await screen.findByText('El enlace actual dejará de funcionar para quien lo tenga.');
+    await expectNoBlockingViolations();
+  });
+
+  it('CA-15: enlace-reemplazando', async () => {
+    const dialog = await openDialog(
+      linkApi(publicLink(), { createPublicLink: jest.fn((): Promise<never> => never()) }),
+    );
+    await clickInDialog('Generar otro enlace');
+    jest.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: (ms) => jest.advanceTimersByTime(ms) });
+    await user.click(within(dialog).getByRole('button', { name: 'Generar otro enlace' }));
+    act(() => jest.advanceTimersByTime(2_000));
+
+    expect(within(dialog).getByRole('button', { name: 'Generando…' })).toBeTruthy();
+    jest.useRealTimers();
+    await expectNoBlockingViolations();
+  });
+
+  it('CA-15: enlace-confirmar-revocar y enlace-revocando', async () => {
+    await openDialog(
+      linkApi(publicLink(), { revokePublicLink: jest.fn((): Promise<void> => never()) }),
+    );
+    await clickInDialog('Revocar enlace');
+    const confirm = screen.getByRole('group', { name: /¿Revocar el enlace\?/ });
+    expect(document.activeElement).toBe(within(confirm).getByRole('button', { name: 'Cancelar' }));
+    await expectNoBlockingViolations();
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Revocar enlace' }));
+    await expectNoBlockingViolations();
+  });
+
+  it('CA-15: enlace-revocado', async () => {
+    const currentPublicLink = jest
+      .fn()
+      .mockResolvedValueOnce({ link: publicLink() })
+      .mockResolvedValue({ link: null });
+    await openDialog(
+      linkApi(null, { currentPublicLink, revokePublicLink: jest.fn(() => Promise.resolve()) }),
+    );
+    await clickInDialog('Revocar enlace');
+    const confirm = screen.getByRole('group', { name: /¿Revocar el enlace\?/ });
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Revocar enlace' }));
+    await screen.findByText('Revocamos el enlace. Ya no sirve para descargar el archivo.');
+    await expectNoBlockingViolations();
+  });
+
+  it.each([
+    ['enlace-error-carga', jest.fn(() => Promise.reject(new TypeError('Failed to fetch')))],
+    ['enlace-archivo-no-encontrado', rejectWith(404, STORAGE_ERROR_CODES.STORAGE_NODE_NOT_FOUND)],
+  ])('CA-15: %s', async (_state, currentPublicLink) => {
+    await openDialog(fakeSharingApi({ listAccess: accessOf(), currentPublicLink }));
+    await within(screen.getByRole('dialog')).findByRole('alert');
+    await expectNoBlockingViolations();
+  });
+
+  it('CA-15: enlace-no-existe', async () => {
+    await openDialog(
+      linkApi(publicLink(), {
+        revokePublicLink: rejectWith(404, SHARING_ERROR_CODES.SHARING_LINK_NOT_FOUND),
+      }),
+    );
+    await clickInDialog('Revocar enlace');
+    const confirm = screen.getByRole('group', { name: /¿Revocar el enlace\?/ });
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Revocar enlace' }));
+    await within(screen.getByRole('dialog')).findByRole('button', { name: 'Actualizar' });
+    await expectNoBlockingViolations();
+  });
+
+  it.each([
+    ['enlace-solo-lectura-sin-enlace', null],
+    ['enlace-solo-lectura-con-enlace', publicLink()],
+  ])('CA-15: %s', async (_state, link) => {
+    await openDialog(linkApi(link), true);
+    await screen.findByText('No puedes generar enlaces. Para hacerlo, renueva tu plan.');
     await expectNoBlockingViolations();
   });
 });

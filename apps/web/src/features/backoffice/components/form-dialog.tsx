@@ -3,6 +3,7 @@
 import { AlertCircle, History } from 'lucide-react';
 import * as React from 'react';
 
+import { FieldMessage } from '../../../components/nimbo/field-message';
 import { Button } from '../../../components/ui/button';
 import {
   Dialog,
@@ -16,8 +17,6 @@ import {
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { toApiClientError, type ApiClientError } from '../../../lib/api-error';
-
-import { FieldMessage } from './field-message';
 
 /** Un campo que no vale y su mensaje; el resumen enlaza a `#fieldId`. */
 export interface FormIssue {
@@ -187,7 +186,11 @@ export function FormField({
           suffix={suffix}
         />
       </div>
-      {error === undefined ? null : <FieldMessage id={`${id}-error`} message={error} />}
+      {error === undefined ? null : (
+        <FieldMessage id={`${id}-error`} className="mt-1.5">
+          {error}
+        </FieldMessage>
+      )}
     </div>
   );
 }

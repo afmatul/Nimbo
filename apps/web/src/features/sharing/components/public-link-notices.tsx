@@ -7,7 +7,7 @@ import type { JSX, ReactNode } from 'react';
 import { Alert } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../lib/utils';
-import type { PublicLinkDownloadOutcome } from '../hooks/use-public-link-visit';
+import type { PublicLinkDownloadOutcome } from '../hooks/use-public-link-download';
 import {
   messageText,
   PUBLIC_LINK_DOWNLOAD_FAILED,

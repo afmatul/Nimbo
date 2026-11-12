@@ -4,12 +4,11 @@ import type { InternalRoleName } from '@nimbo/contracts';
 import { Activity, Lock, ShieldCheck, LifeBuoy } from 'lucide-react';
 import type * as React from 'react';
 
+import { FieldMessage } from '../../../components/nimbo/field-message';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { ROLE_LABELS } from '../../access/role-labels';
 import type { EnrollField, EnrollForm, FieldErrors } from '../hooks/use-enroll-form';
-
-import { FieldMessage } from './field-message';
 
 /** Id de cada campo; el resumen de errores enlaza a ellos (`#nombre`). */
 export const ENROLL_FIELD_IDS: Readonly<Record<EnrollField, string>> = {
@@ -111,7 +110,11 @@ function TextInput({
         error={error !== undefined}
         aria-describedby={describedBy(`${id}-ayuda`, error !== undefined && `${id}-error`)}
       />
-      {error === undefined ? null : <FieldMessage id={`${id}-error`} message={error} />}
+      {error === undefined ? null : (
+        <FieldMessage id={`${id}-error`} className="mt-1.5">
+          {error}
+        </FieldMessage>
+      )}
     </div>
   );
 }
@@ -185,7 +188,11 @@ function RoleField({ props }: { readonly props: EnrollFieldsProps }): React.JSX.
           <RoleOption key={option.role} option={option} props={props} />
         ))}
       </ul>
-      {error === undefined ? null : <FieldMessage id="rol-error" message={error} />}
+      {error === undefined ? null : (
+        <FieldMessage id="rol-error" className="mt-1.5">
+          {error}
+        </FieldMessage>
+      )}
       <p id="rol-nota" className="mt-2 flex items-center gap-1.5 text-sm text-secondary-foreground">
         <Lock className="h-4 w-4 shrink-0" aria-hidden="true" />
         Ningún rol ve el contenido de los archivos de los clientes.

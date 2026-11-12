@@ -1,7 +1,6 @@
 'use client';
 
 import { PUBLIC_LINK_PASSWORD_MAX_LENGTH, SHARING_ERROR_CODES } from '@nimbo/contracts';
-import { AlertCircle } from 'lucide-react';
 import {
   useEffect,
   useId,
@@ -13,9 +12,10 @@ import {
   type RefObject,
 } from 'react';
 
+import { FieldMessage } from '../../../components/nimbo/field-message';
 import { PasswordField } from '../../../components/nimbo/password-field';
 import { Label } from '../../../components/ui/label';
-import type { PublicLinkDownloadOutcome } from '../hooks/use-public-link-visit';
+import type { PublicLinkDownloadOutcome } from '../hooks/use-public-link-download';
 import { messageText, publicLinkMessage } from '../public-link-messages';
 
 /** Evita que el visitante la confunda con la de su cuenta de Nimbo (013b CA-2). */
@@ -49,19 +49,6 @@ function useClearAfterRejection(
   }, [inputRef, outcome]);
 }
 
-function FieldMessage({ id, children }: { readonly id: string; readonly children: string }) {
-  return (
-    <p
-      id={id}
-      role="alert"
-      className="flex items-start gap-1.5 text-sm font-medium text-destructive"
-    >
-      <AlertCircle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
-      <span>{children}</span>
-    </p>
-  );
-}
-
 interface PasswordInputProps {
   readonly inputRef: RefObject<HTMLInputElement | null>;
   readonly error: string | null;
@@ -86,7 +73,11 @@ function PasswordInput({ inputRef, error }: PasswordInputProps): JSX.Element {
       <p id={hintId} className="text-sm text-muted-foreground">
         {PASSWORD_HINT}
       </p>
-      {error === null ? null : <FieldMessage id={errorId}>{error}</FieldMessage>}
+      {error === null ? null : (
+        <FieldMessage id={errorId} alert>
+          {error}
+        </FieldMessage>
+      )}
     </div>
   );
 }

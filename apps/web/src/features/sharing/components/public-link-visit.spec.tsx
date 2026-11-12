@@ -1,7 +1,11 @@
 /**
  * @jest-environment jsdom
  */
-import { SHARED_ERROR_CODES, SHARING_ERROR_CODES } from '@nimbo/contracts';
+import {
+  SHARED_ERROR_CODES,
+  SHARING_ERROR_CODES,
+  type DownloadUrlResponse,
+} from '@nimbo/contracts';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -38,6 +42,14 @@ function fakeApi(details = PUBLIC_LINK_DETAILS): jest.Mocked<PublicLinkVisitorAp
 function renderVisit(api: PublicLinkVisitorApi, openUrl = jest.fn()) {
   render(<PublicLinkVisitView api={api} openUrl={openUrl} />);
   return { openUrl };
+}
+
+/** Otro enlace pegado en la misma pestaña: cambia el fragmento y llega `hashchange` (013b CA-8). */
+function pasteLink(fragment: string): void {
+  act(() => {
+    window.history.replaceState(null, '', `/enlace${fragment}`);
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  });
 }
 
 const shareHeading = () =>
@@ -306,5 +318,35 @@ describe('PublicLinkVisitView (013b §6)', () => {
 
     await waitFor(() => expect(openUrl).toHaveBeenCalledWith(SIGNED_DOWNLOAD.url));
     expect(api.download).toHaveBeenCalledTimes(2);
+  });
+
+  it('CA-18: otro enlace con una descarga en curso: sin «Preparando…», sin la URL vieja y «Descargar» sin esperar', async () => {
+    jest.useFakeTimers();
+    try {
+      const api = fakeApi();
+      const staleUrl = { ...SIGNED_DOWNLOAD, url: 'https://objetos.local/del-enlace-anterior' };
+      let resolveStale: (value: DownloadUrlResponse) => void = () => undefined;
+      api.download.mockReturnValueOnce(new Promise((resolve) => (resolveStale = resolve)));
+      const { openUrl } = renderVisit(api);
+      await act(async () => {
+        await Promise.resolve();
+      });
+      act(() => downloadButton().click());
+      act(() => jest.advanceTimersByTime(PREPARING_DELAY_MS));
+      expect(screen.getByRole('button', { name: 'Preparando descarga…' })).toBeTruthy();
+
+      pasteLink('#otro-token');
+      await waitFor(() => expect(api.open).toHaveBeenLastCalledWith('otro-token'));
+      const fresh = await screen.findByRole('button', { name: 'Descargar' });
+
+      expect(screen.queryByText('Preparando descarga…')).toBeNull();
+      await act(async () => fresh.click());
+      expect(api.download).toHaveBeenLastCalledWith('otro-token', '');
+      expect(openUrl).toHaveBeenCalledWith(SIGNED_DOWNLOAD.url);
+      await act(async () => resolveStale(staleUrl));
+      expect(openUrl.mock.calls).toEqual([[SIGNED_DOWNLOAD.url]]);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

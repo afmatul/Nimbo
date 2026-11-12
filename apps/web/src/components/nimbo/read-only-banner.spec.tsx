@@ -4,7 +4,7 @@
 import { render, screen } from '@testing-library/react';
 import { axe } from 'jest-axe';
 
-import { ReadOnlyBanner } from './read-only-banner';
+import { READ_ONLY_TITLE, ReadOnlyBanner } from './read-only-banner';
 
 describe('ReadOnlyBanner (spec 010 CA-14, RF-23; ui-guidelines §4)', () => {
   it('CA-14: título, texto y «Renovar plan» hacia la renovación, como aviso de estado', async () => {
@@ -21,5 +21,13 @@ describe('ReadOnlyBanner (spec 010 CA-14, RF-23; ui-guidelines §4)', () => {
       '/suscripcion/renovar',
     );
     expect((await axe(container)).violations).toEqual([]);
+  });
+
+  it('sin `title` usa el de la cuenta en solo lectura', () => {
+    render(
+      <ReadOnlyBanner description="Puedes ver y descargar." renewHref="/suscripcion/renovar" />,
+    );
+
+    expect(screen.getByText(READ_ONLY_TITLE)).toBeTruthy();
   });
 });

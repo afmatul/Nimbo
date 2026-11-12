@@ -15,7 +15,7 @@
   - enlace-formulario-con-contrasena: la misma con 30 días y una contraseña válida (CA-3)
   - enlace-contrasena-invalida: «Escribe una contraseña de 8 a 128 caracteres.» junto al campo, `aria-invalid`, `role="alert"` y foco; conserva 30 días (CA-5)
   - enlace-generando: pasados 2 s, «Generando…» con `aria-disabled`, «Cancelar» deshabilitado y anuncio (CA-3)
-  - enlace-generado: aviso de éxito «Generamos el enlace. Cópialo ahora: por seguridad, no podrás volver a verlo.», la URL en un campo de una línea y solo lectura, «Copiar enlace» con el foco, el vencimiento y si pide contraseña (CA-3, RN-1). También es el estado «reemplazado» de §6 (CA-8: la URL nueva se ve igual)
+  - enlace-generado: aviso de éxito «Generamos el enlace. Cópialo ahora: por seguridad, no podrás volver a verlo.», la URL en un campo de una línea y solo lectura, «Copiar enlace» con el foco, el vencimiento y si pide contraseña (CA-3, RN-1). También es el estado «reemplazado» de §6 (CA-8: la URL nueva se ve igual) Al reemplazar, el aviso dice «Generamos otro enlace y el anterior dejó de funcionar. Cópialo ahora: por seguridad, no podrás volver a verlo.» (013c CA-8, I-3).
   - enlace-copiado: el botón dice «Enlace copiado» con ícono de visto y se anuncia una vez (CA-6, D-9)
   - enlace-copia-fallida: «No pudimos copiar el enlace. Selecciónalo y cópialo a mano.» y el texto del campo seleccionado (CA-6)
   - enlace-activo: `StatusBadge` «Activo», «Vence el … · Con contraseña», «Creado el …», la nota de seguridad, «Generar otro enlace» y «Revocar enlace», sin URL (CA-7)
