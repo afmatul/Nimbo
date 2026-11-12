@@ -5,8 +5,12 @@ import type * as React from 'react';
 import { Alert } from '../ui/alert';
 import { buttonVariants } from '../ui/button';
 
+/** El título de casi todas las vistas de la cuenta en solo lectura. */
+export const READ_ONLY_TITLE = 'Tu cuenta está en solo lectura.';
+
 export interface ReadOnlyBannerProps {
-  readonly title: string;
+  /** Por omisión, `READ_ONLY_TITLE`. */
+  readonly title?: string;
   readonly description: string;
   /** Pago de la renovación (`/suscripcion/renovar`). */
   readonly renewHref: string;
@@ -17,7 +21,7 @@ export interface ReadOnlyBannerProps {
  * `warning` con candado, el texto de la vista y «Renovar plan». Arriba del contenido de cada vista de escritura.
  */
 export function ReadOnlyBanner({
-  title,
+  title = READ_ONLY_TITLE,
   description,
   renewHref,
 }: ReadOnlyBannerProps): React.JSX.Element {
