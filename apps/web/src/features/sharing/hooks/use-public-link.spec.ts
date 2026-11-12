@@ -13,6 +13,7 @@ import { StorageRequestError } from '../../storage/storage-request-error';
 import type { SharingApi } from '../sharing-api';
 import {
   fakeSharingApi,
+  never,
   NODE_ID,
   PUBLIC_LINK_ID,
   PUBLIC_LINK_URL,
@@ -120,20 +121,19 @@ describe('usePublicLink (spec 013c)', () => {
     expect(result.current.generated).toBeNull();
   });
 
-  it('CA-8: abrir «Generar otro enlace» descarta la URL anterior', async () => {
+  it('CA-9: tras el `204` de revocar queda «sin enlace» aunque la nueva lectura no responda', async () => {
+    const currentPublicLink = currentOf();
     const { result } = await renderReady(
-      fakeSharingApi({
-        currentPublicLink: currentOf(),
-        createPublicLink: jest.fn(() => Promise.resolve(CREATED)),
-      }),
+      fakeSharingApi({ currentPublicLink, revokePublicLink: jest.fn(() => Promise.resolve()) }),
     );
+    currentPublicLink.mockImplementation(() => never());
+
     await act(async () => {
-      await result.current.create(CHOICE);
+      await result.current.revoke(PUBLIC_LINK_ID);
     });
 
-    act(() => result.current.clearGenerated());
-
-    expect(result.current.generated).toBeNull();
+    expect(result.current.reading).toEqual({ status: 'ready', link: null });
+    expect(currentPublicLink.mock.calls.length).toBeGreaterThan(1);
   });
 
   it('CA-9: revocar borra la URL en memoria y relee el estado', async () => {

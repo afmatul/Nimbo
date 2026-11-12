@@ -21,10 +21,8 @@ export interface PublicLinkState {
   readonly reload: () => void;
   /** Rechaza con el error de la API; si sale bien, guarda la URL en memoria, relee el estado y la devuelve. */
   readonly create: (choice: PublicLinkChoice) => Promise<CreatedPublicLink>;
-  /** Rechaza con el error de la API; si sale bien, descarta la URL y relee el estado. */
+  /** Rechaza con el error de la API; si sale bien, descarta la URL, queda «sin enlace» y relee el estado. */
   readonly revoke: (linkId: string) => Promise<void>;
-  /** Descarta la URL al abrir «Generar otro enlace» (013c S-5). */
-  readonly clearGenerated: () => void;
 }
 
 const LOADING: PublicLinkReading = { status: 'loading' };
@@ -54,17 +52,22 @@ function useReading(api: SharingApi, fileId: string) {
     setAttempt((previous) => previous + 1);
   }, []);
 
-  return { reading, reload };
+  /** Fija un enlace conocido sin esperar la lectura (tras revocar, CA-9). */
+  const settle = React.useCallback((link: PublicLinkSummary | null) => {
+    setReading({ status: 'ready', link });
+  }, []);
+
+  return { reading, reload, settle };
 }
 
 /**
- * Enlace público de un archivo propio y sus mutaciones (spec 013c CA-1, CA-3, CA-7 a CA-9, CA-13). Tras generar o
- * revocar vuelve a pedir el estado y conserva el visible hasta la respuesta. La URL nunca sale de la memoria.
+ * Enlace público de un archivo propio y sus mutaciones (spec 013c CA-1, CA-3, CA-7 a CA-9, CA-13). Tras generar
+ * vuelve a pedir el estado y conserva el visible hasta la respuesta; tras revocar queda «sin enlace» de inmediato y
+ * también relee. La URL nunca sale de la memoria.
  */
 export function usePublicLink(api: SharingApi, fileId: string): PublicLinkState {
-  const { reading, reload } = useReading(api, fileId);
+  const { reading, reload, settle } = useReading(api, fileId);
   const [generated, setGenerated] = React.useState<CreatedPublicLink | null>(null);
-  const clearGenerated = React.useCallback(() => setGenerated(null), []);
 
   const create = React.useCallback(
     async (choice: PublicLinkChoice) => {
@@ -80,10 +83,11 @@ export function usePublicLink(api: SharingApi, fileId: string): PublicLinkState 
     async (linkId: string) => {
       await api.revokePublicLink(linkId);
       setGenerated(null);
+      settle(null);
       reload();
     },
-    [api, reload],
+    [api, reload, settle],
   );
 
-  return { reading, generated, reload, create, revoke, clearGenerated };
+  return { reading, generated, reload, create, revoke };
 }

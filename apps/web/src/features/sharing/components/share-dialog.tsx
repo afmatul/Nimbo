@@ -111,14 +111,15 @@ function ShareDialogBody({ api, target }: ShareDialogBodyProps): React.JSX.Eleme
 /**
  * Diálogo «Compartir» (spec 012b CA-1 a CA-5; 013c CA-2, CA-11; mockup `sharing/compartir`): formulario, «Personas
  * con acceso» y, solo para archivos, «Enlace público». Se monta al abrir y se desmonta al cerrar: el correo escrito y
- * la URL generada se descartan (013c RN-1).
+ * la URL generada se descartan (013c RN-1). El `key` por nodo hace lo mismo si cambia el destino con el diálogo
+ * montado (013c SEC-2).
  * Radix pone el foco en el correo (el primer campo) y lo atrapa; al cerrar vuelve a quien lo abrió (el ⋮ de la fila o
  * «Compartir» de la ficha), que no es un `DialogTrigger`.
  */
 export function ShareDialog({ api, target, onClose }: ShareDialogProps): React.JSX.Element {
   return (
     <Dialog open={target !== null} onOpenChange={(open) => !open && onClose()}>
-      {target === null ? null : <ShareDialogBody api={api} target={target} />}
+      {target === null ? null : <ShareDialogBody key={target.nodeId} api={api} target={target} />}
     </Dialog>
   );
 }

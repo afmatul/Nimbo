@@ -82,8 +82,9 @@ function useGuardedDownload(
 
 /**
  * «Descargar» en la ficha de `/enlace#<token>` (013b CA-3 a CA-7, 013c CA-18): una petición a la vez, «Preparando…»
- * pasados 2 s y solo lo del pedido vigente. La ficha se monta con `key` = número de pedido, así la de otro enlace
- * no espera a la descarga del anterior. No guarda nada en el navegador y nunca registra el token.
+ * pasados 2 s y solo lo del pedido vigente: eso lo garantiza el número de pedido. El `key` = número de pedido con
+ * que se monta la ficha es solo una defensa (la ficha ya se desmonta al pasar a `loading` y CA-18 pasa sin él); se
+ * mantiene por decisión de Adrián (013c S-7). No guarda nada en el navegador y nunca registra el token.
  */
 export function usePublicLinkDownload(input: PublicLinkDownloadInput): PublicLinkDownload {
   const [result, setResult] = useState<DownloadResult | null>(null);

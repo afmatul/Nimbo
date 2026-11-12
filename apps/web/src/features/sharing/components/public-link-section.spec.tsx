@@ -317,6 +317,26 @@ describe('PublicLinkSection: revocar (spec 013c CA-9, CA-13, CA-14)', () => {
     await waitFor(() => expect(document.activeElement).toBe(button('Crear enlace público')));
   });
 
+  it('CA-9: tras revocar muestra «sin enlace» sin esperar la nueva lectura', async () => {
+    const currentPublicLink = jest
+      .fn<Promise<CurrentPublicLink>, [string]>()
+      .mockResolvedValueOnce({ link: publicLink() })
+      .mockImplementation(() => never());
+    renderSection(
+      fakeSharingApi({ currentPublicLink, revokePublicLink: jest.fn(() => Promise.resolve()) }),
+    );
+
+    const confirm = await openRevoke();
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Revocar enlace' }));
+
+    expect(await screen.findByText(REVOKED)).toBeTruthy();
+    expect(screen.getByText(HELP)).toBeTruthy();
+    expect(screen.queryByText('Activo')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Revocar enlace' })).toBeNull();
+    await waitFor(() => expect(document.activeElement).toBe(button('Crear enlace público')));
+    expect(currentPublicLink).toHaveBeenCalledTimes(2);
+  });
+
   it('CA-9: pasados 2 s dice «Revocando…» e informa la acción en curso', async () => {
     jest.useFakeTimers();
     const user = userEvent.setup({ advanceTimers: (ms) => jest.advanceTimersByTime(ms) });

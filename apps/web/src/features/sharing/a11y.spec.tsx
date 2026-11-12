@@ -254,6 +254,9 @@ function linkApi(link: ReturnType<typeof publicLink> | null, overrides: Partial<
   return fakeSharingApi({ listAccess: accessOf(), currentPublicLink: linkOf(link), ...overrides });
 }
 
+const createdLink = () =>
+  jest.fn(() => Promise.resolve({ link: publicLink(), url: PUBLIC_LINK_URL }));
+
 async function clickInDialog(name: string): Promise<void> {
   await userEvent.click(await within(screen.getByRole('dialog')).findByRole('button', { name }));
 }
@@ -294,13 +297,29 @@ describe('Accesibilidad de la sección «Enlace público» a 360 y 1440 px (spec
   it('CA-15: enlace-generado', async () => {
     await generateFrom(
       linkApi(null, {
-        createPublicLink: jest.fn(() =>
-          Promise.resolve({ link: publicLink(), url: PUBLIC_LINK_URL }),
-        ),
+        createPublicLink: createdLink(),
       }),
     );
     await screen.findByRole('textbox', { name: 'Enlace generado' });
     await expectNoBlockingViolations();
+  });
+
+  it('CA-15: enlace-copiado', async () => {
+    await generateFrom(linkApi(null, { createPublicLink: createdLink() }));
+    await clickInDialog('Copiar enlace');
+    await screen.findByRole('button', { name: 'Enlace copiado' });
+    await expectNoBlockingViolations();
+  });
+
+  it('CA-15: enlace-copia-fallida', async () => {
+    await generateFrom(linkApi(null, { createPublicLink: createdLink() }));
+    const writeText = jest
+      .spyOn(navigator.clipboard, 'writeText')
+      .mockRejectedValue(new Error('NotAllowedError'));
+    await clickInDialog('Copiar enlace');
+    await screen.findByText('No pudimos copiar el enlace. Selecciónalo y cópialo a mano.');
+    await expectNoBlockingViolations();
+    writeText.mockRestore();
   });
 
   it.each([
@@ -325,6 +344,21 @@ describe('Accesibilidad de la sección «Enlace público» a 360 y 1440 px (spec
     await openDialog(linkApi(publicLink()));
     await clickInDialog('Generar otro enlace');
     await screen.findByText('El enlace actual dejará de funcionar para quien lo tenga.');
+    await expectNoBlockingViolations();
+  });
+
+  it('CA-15: enlace-reemplazando', async () => {
+    const dialog = await openDialog(
+      linkApi(publicLink(), { createPublicLink: jest.fn((): Promise<never> => never()) }),
+    );
+    await clickInDialog('Generar otro enlace');
+    jest.useFakeTimers();
+    const user = userEvent.setup({ advanceTimers: (ms) => jest.advanceTimersByTime(ms) });
+    await user.click(within(dialog).getByRole('button', { name: 'Generar otro enlace' }));
+    act(() => jest.advanceTimersByTime(2_000));
+
+    expect(within(dialog).getByRole('button', { name: 'Generando…' })).toBeTruthy();
+    jest.useRealTimers();
     await expectNoBlockingViolations();
   });
 
@@ -373,7 +407,7 @@ describe('Accesibilidad de la sección «Enlace público» a 360 y 1440 px (spec
     await clickInDialog('Revocar enlace');
     const confirm = screen.getByRole('group', { name: /¿Revocar el enlace\?/ });
     await userEvent.click(within(confirm).getByRole('button', { name: 'Revocar enlace' }));
-    await clickInDialog('Actualizar');
+    await within(screen.getByRole('dialog')).findByRole('button', { name: 'Actualizar' });
     await expectNoBlockingViolations();
   });
 

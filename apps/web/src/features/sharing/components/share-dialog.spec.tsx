@@ -297,4 +297,31 @@ describe('ShareDialog: la URL del enlace solo en memoria (spec 013c RN-1, §5)',
     pushState.mockRestore();
     replaceState.mockRestore();
   });
+
+  it('SEC-2: al cambiar de archivo con el diálogo montado no quedan la URL ni el resumen del anterior', async () => {
+    const other = {
+      nodeType: 'file',
+      nodeId: '8b9c0d1e-2f3a-4b4c-9d5e-7f8a9b0c1d2e',
+      name: 'Acta de la reunión.docx',
+    } as const;
+    const api = withoutLink({
+      createPublicLink: jest.fn(() =>
+        Promise.resolve({ link: publicLink(), url: PUBLIC_LINK_URL }),
+      ),
+      currentPublicLink: jest.fn((fileId: string) =>
+        fileId === NODE_ID ? Promise.resolve({ link: null }) : never(),
+      ),
+    });
+    const view = render(<ShareDialog api={api} target={TARGET} onClose={jest.fn()} />);
+    await openLinkForm();
+    await userEvent.click(within(dialog()).getByRole('button', { name: 'Generar enlace' }));
+    await within(dialog()).findByText(GENERATED);
+
+    view.rerender(<ShareDialog api={api} target={other} onClose={jest.fn()} />);
+    const switched = screen.getByRole('dialog', { name: 'Compartir «Acta de la reunión.docx»' });
+
+    expect(await within(switched).findByText('Cargando el enlace público…')).toBeTruthy();
+    expect(within(switched).queryByText(GENERATED)).toBeNull();
+    expect(document.body.innerHTML).not.toContain(PUBLIC_LINK_URL);
+  });
 });

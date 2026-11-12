@@ -114,8 +114,9 @@ interface SharedFileCardProps extends PublicLinkDownloadInput {
 }
 
 /**
- * La ficha: la ve cualquiera con el enlace, sin escribir nada (RN-2). El candado indica que pide contraseña. Se monta
- * con `key` = número de pedido: cada pedido tiene su propia descarga (013c CA-18).
+ * La ficha: la ve cualquiera con el enlace, sin escribir nada (RN-2). El candado indica que pide contraseña. El
+ * `key` = número de pedido es una defensa: la ficha ya se desmonta al pasar a `loading` y CA-18 pasa sin él; se
+ * mantiene por decisión de Adrián (013c S-7).
  */
 function SharedFileCard({ details, ...input }: SharedFileCardProps) {
   const prepared = usePublicLinkDownload(input);
