@@ -15,7 +15,7 @@ import {
 import { FieldMessage } from '../../../components/nimbo/field-message';
 import { PasswordField } from '../../../components/nimbo/password-field';
 import { Label } from '../../../components/ui/label';
-import type { PublicLinkDownloadOutcome } from '../hooks/use-public-link-visit';
+import type { PublicLinkDownloadOutcome } from '../hooks/use-public-link-download';
 import { messageText, publicLinkMessage } from '../public-link-messages';
 
 /** Evita que el visitante la confunda con la de su cuenta de Nimbo (013b CA-2). */

@@ -1,10 +1,11 @@
 'use client';
 
-import { SHARED_ERROR_CODES, SHARING_ERROR_CODES, type PublicLinkDetails } from '@nimbo/contracts';
+import { SHARED_ERROR_CODES, type PublicLinkDetails } from '@nimbo/contracts';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { ApiClientError } from '../../../lib/api-error';
 import type { PublicLinkVisitorApi } from '../public-link-visitor-api';
+
+import { hasCode, isUnavailable } from './public-link-errors';
 
 /** Lo que muestra la página según el `POST /open` (013b §6). */
 export type PublicLinkVisitState =
@@ -13,14 +14,6 @@ export type PublicLinkVisitState =
   | { readonly status: 'unavailable' }
   | { readonly status: 'rate-limited'; readonly retryAfterSeconds: number | undefined }
   | { readonly status: 'load-error' };
-
-/** Cómo terminó el último «Descargar»; la ficha sigue visible en todos (CA-3 a CA-5, CA-7). */
-export type PublicLinkDownloadOutcome =
-  | { readonly status: 'idle' }
-  | { readonly status: 'started' }
-  | { readonly status: 'password-invalid' }
-  | { readonly status: 'rate-limited'; readonly retryAfterSeconds: number | undefined }
-  | { readonly status: 'download-error'; readonly retry: () => void };
 
 /** Un pedido de la ficha: cada lectura del fragmento o «Reintentar» lleva el número siguiente (PD-200). */
 export interface VisitRequest {
@@ -46,12 +39,6 @@ const LOAD_ERROR: PublicLinkVisitState = { status: 'load-error' };
 
 /** El token es el fragmento crudo (`…/enlace#<token>`); se queda en la barra para que recargar funcione (S-1). */
 const readFragment = (): string => window.location.hash.replace(/^#/, '');
-
-export const hasCode = (error: unknown, code: string): error is ApiClientError =>
-  error instanceof ApiClientError && error.code === code;
-
-export const isUnavailable = (error: unknown): boolean =>
-  hasCode(error, SHARING_ERROR_CODES.SHARING_LINK_UNAVAILABLE);
 
 function failedOpenState(error: unknown): PublicLinkVisitState {
   if (isUnavailable(error)) return UNAVAILABLE;

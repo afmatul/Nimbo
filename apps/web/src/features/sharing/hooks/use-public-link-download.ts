@@ -6,12 +6,16 @@ import { useRef, useState } from 'react';
 import { usePreparingDownload, type PreparingDownload } from '../../../lib/use-preparing-download';
 import type { PublicLinkVisitorApi } from '../public-link-visitor-api';
 
-import {
-  hasCode,
-  isUnavailable,
-  type PublicLinkDownloadOutcome,
-  type PublicLinkVisit,
-} from './use-public-link-visit';
+import { hasCode, isUnavailable } from './public-link-errors';
+import type { PublicLinkVisit } from './use-public-link-visit';
+
+/** Cómo terminó el último «Descargar»; la ficha sigue visible en todos (CA-3 a CA-5, CA-7). */
+export type PublicLinkDownloadOutcome =
+  | { readonly status: 'idle' }
+  | { readonly status: 'started' }
+  | { readonly status: 'password-invalid' }
+  | { readonly status: 'rate-limited'; readonly retryAfterSeconds: number | undefined }
+  | { readonly status: 'download-error'; readonly retry: () => void };
 
 export interface PublicLinkDownload {
   readonly outcome: PublicLinkDownloadOutcome;
