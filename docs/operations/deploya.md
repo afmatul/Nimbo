@@ -11,13 +11,13 @@
 |---|---|
 | Un contenedor por proyecto, en la red `deploya-p-<subdominio>` | 4 proyectos: `nimbo-api`, `nimbo-worker`, `nimbo-optimizer`, `nimbo` (web) |
 | Construye con el builder clásico de Docker (sin BuildKit) y no filtra con `.dockerignore`; 20 min de límite | Los Dockerfiles no usan nada exclusivo de BuildKit; el contexto completo pesa unos 235 MB |
-| El alta exige un `Dockerfile` en la raíz y despliega en el acto | El `Dockerfile` de la raíz es el del api; los otros cambian la ruta en Configuración |
+| El alta exige un `Dockerfile` en la raíz (hasta [derekCmorales/deploya#74](https://github.com/derekCmorales/deploya/pull/74)) y despliega en el acto | El `Dockerfile` de la raíz es el del api; los otros eligen su ruta en el alta (#74) o en Configuración |
 | Inyecta `PORT`; sano si `GET /` responde < 500 antes de 60 s | api 404, worker 404, optimizer 404, web 200 (todos < 500), en 1 a 5 s |
 | `--cap-drop ALL`, `no-new-privileges`, memoria y CPU del plan, sin volúmenes | Las imágenes corren como `node` y no escriben en disco salvo la caché de Next |
 | `comandoInicio` reemplaza solo el `CMD`; se parte en argumentos, sin shell | El optimizer usa la imagen del worker con otro comando |
 | Recursos de datos (Postgres, Redis, S3) compartibles entre proyectos del mismo usuario | Los crea `nimbo-api` y los comparte con worker y optimizer |
 | Variables inyectadas; las del usuario ganan, salvo las `DEPLOYA_*` y `PORT` | El entrypoint las traduce a las de Nimbo (§2) |
-| Sin consola ni `exec` en el contenedor | El primer administrador se crea con un comando de inicio temporal (§3.7) |
+| Sin consola ni `exec` en el contenedor | El primer administrador se crea con un comando de inicio temporal (§3.8) |
 
 ## 2. El entrypoint (`apps/api/deploya-entrypoint.sh`)
 
@@ -53,90 +53,104 @@ Dentro de Deploya:
    - `NIMBO_APP_DB_PASSWORD` (la misma en api, worker y optimizer).
 5. Opcional: `GEMINI_API_KEY` para el agente y la indexación.
 
-### 3.2 Crear los cuatro proyectos
+Los nombres entre «» y en **negrita** son los textos exactos de la interfaz de Deploya. Cada proyecto tiene arriba
+las pestañas **Resumen · Despliegues · Métricas · Bitácoras · Variables · Datos · Configuración** y el botón
+**Desplegar**.
 
-Con **Nuevo proyecto**, repositorio `https://github.com/afmatul/Nimbo` y rama `main`. El nombre fija el subdominio
-(único en toda la plataforma):
+### 3.2 Cómo se crea un proyecto (asistente de 3 pasos)
 
-| Nombre | Puerto interno en el alta | Subdominio |
-|---|---|---|
-| `nimbo-api` | 3000 (lo sugiere el `EXPOSE`) | `nimbo-api.deploya.larasolutions.dev` |
-| `nimbo-worker` | 3001 | `nimbo-worker.deploya.larasolutions.dev` |
-| `nimbo-optimizer` | 3003 | `nimbo-optimizer.deploya.larasolutions.dev` |
-| `nimbo` | 3002 | `nimbo.deploya.larasolutions.dev` |
+**Proyectos** → **Nuevo proyecto**:
 
-No pegar variables en el asistente. **El primer despliegue de los cuatro falla y es lo esperado**: todavía no tienen
-recursos de datos ni variables, y los tres últimos construyen la imagen del api. Un proyecto cuyo último despliegue
-falló no ocupa cupo del plan.
+1. **Paso 1 · Repositorio**:
+   1. «URL del repositorio»: `https://github.com/afmatul/Nimbo`.
+   2. «Rama»: `main`.
+   3. Si aparece el campo «Ruta del Dockerfile» ([derekCmorales/deploya#74](https://github.com/derekCmorales/deploya/pull/74)), escribir la ruta de la tabla de cada proyecto.
+   4. **Continuar**. Aparece «Accesible», la tarjeta «Dockerfile encontrado» y dos campos nuevos:
+      «Nombre del proyecto» y «Puerto interno».
+   5. Escribir el nombre y el puerto de la tabla. Revisar que la «URL:» debajo del nombre sea la esperada.
+   6. **Continuar**.
+2. **Paso 2 · Variables** (opcional): dejarlo vacío y **Continuar**. Las variables se pegan después, con
+   **Pegar .env**.
+3. **Revisar**: **Desplegar**.
 
-Si algún subdominio queda distinto, se corrigen `WEB_PUBLIC_URL` y `CORS_ORIGIN` (api) y `API_INTERNAL_URL` y
-`API_PUBLIC_URL` (web).
+**Ese primer despliegue falla y es lo esperado**: el proyecto todavía no tiene recursos de datos ni variables. Un
+proyecto cuyo último despliegue falló no ocupa cupo del plan. Se arregla con los pasos siguientes y **Desplegar**.
 
-### 3.3 Recursos de datos
+| Proyecto | «Nombre del proyecto» | «Puerto interno» | «Ruta del Dockerfile» | «Comando de inicio (opcional)» | Plantilla |
+|---|---|---|---|---|---|
+| api | `nimbo-api` | `3000` | `Dockerfile` | vacío | `infra/deploya/api.env` |
+| worker | `nimbo-worker` | `3001` | `apps/worker/Dockerfile` | vacío | `infra/deploya/worker.env` |
+| optimizer | `nimbo-optimizer` | `3003` | `apps/worker/Dockerfile` | `node dist/worker-optimizer.main.js` | `infra/deploya/optimizer.env` |
+| web | `nimbo` | `3002` | `apps/web/Dockerfile` | vacío | `infra/deploya/web.env` |
 
-En la pestaña **Datos** de `nimbo-api`:
+Sin #74, el asistente solo acepta el `Dockerfile` de la raíz (el del api) y no muestra el campo de la ruta: se crea
+igual y la ruta se corrige en **Configuración** (§3.3). Si algún subdominio queda distinto de la tabla, se corrigen
+`WEB_PUBLIC_URL` y `CORS_ORIGIN` (api) y `API_INTERNAL_URL` y `API_PUBLIC_URL` (web).
 
-1. Crear **PostgreSQL** (pgvector), **Redis** y **S3**. Deploya crea la extensión `vector` y el bucket `app` con
-   versionado.
-2. En cada uno de los tres, **Compartir con otro proyecto** → `nimbo-worker`; repetir con `nimbo-optimizer`. La web
-   no usa ninguno.
-3. Opcional: la regla de ciclo de vida de `infra/minio/init.sh` (versiones no vigentes, 7 días) con
-   `mc ilm import <alias>/app` contra el endpoint público del S3. Sin ella, las versiones viejas no expiran.
+### 3.3 Pasos comunes de un proyecto ya creado
 
-Las variables de los recursos llegan al contenedor en el **próximo** despliegue.
+- **Configurar el contenedor**: pestaña **Configuración** → sección «Contenedor» → llenar «Ruta del Dockerfile»,
+  «Puerto interno» y «Comando de inicio (opcional)» con la tabla → **Guardar cambios**. Aparece «Cambios guardados ·
+  Aplican en el próximo despliegue».
+- **Pegar las variables**:
+  1. Pestaña **Variables** → **Pegar .env**.
+  2. En «Contenido del .env», pegar la plantilla entera con cada `<…>` ya reemplazado. Las líneas `#` se ignoran.
+     Ningún valor puede llevar ` #` (espacio y almohadilla): Deploya lo toma como comentario.
+  3. **Agregar al borrador** → **Guardar y desplegar** (o **Guardar** si todavía falta algo).
+- **Comprobar**: pestaña **Despliegues** → el último debe quedar sano. Si falla, pestaña **Bitácoras** (§5).
 
-### 3.4 Configuración de cada proyecto
+### 3.4 `nimbo-api` (primero)
 
-Pestaña **Configuración** → **Contenedor** → **Guardar cambios** (aplican en el próximo despliegue):
+1. Crearlo (§3.2) con nombre `nimbo-api` y puerto `3000`. La ruta es `Dockerfile`, la de la raíz, así que no hay
+   que cambiarla.
+2. Pestaña **Datos**: en «PostgreSQL 17 + pgvector», «Redis 7» y «Almacenamiento S3», **Agregar**. Deploya crea la
+   extensión `vector` y el bucket `app` con versionado.
+3. **Pegar las variables** de `infra/deploya/api.env` (§3.3) con `JWT_ACCESS_SECRET` y `NIMBO_APP_DB_PASSWORD` →
+   **Guardar y desplegar**.
+4. Comprobar: `https://nimbo-api.deploya.larasolutions.dev/api/v1/health/ready` → `{"status":"ok",…}`.
 
-| Proyecto | Ruta del Dockerfile | Puerto interno | Comando de inicio |
-|---|---|---|---|
-| `nimbo-api` | `Dockerfile` (sin cambios) | 3000 | vacío |
-| `nimbo-worker` | `apps/worker/Dockerfile` | 3001 | vacío |
-| `nimbo-optimizer` | `apps/worker/Dockerfile` | 3003 | `node dist/worker-optimizer.main.js` |
-| `nimbo` | `apps/web/Dockerfile` | 3002 | vacío |
+### 3.5 `nimbo-worker`
 
-### 3.5 Variables
+1. Crearlo (§3.2) con nombre `nimbo-worker` y puerto `3001`.
+2. En **`nimbo-api`** → pestaña **Datos**: en cada uno de los tres recursos, **Compartir con otro proyecto** →
+   «Proyecto»: `nimbo-worker` → **Compartir**.
+3. En `nimbo-worker` → **Configuración** (§3.3): «Ruta del Dockerfile» `apps/worker/Dockerfile`, «Puerto interno»
+   `3001` → **Guardar cambios**.
+4. **Pegar las variables** de `infra/deploya/worker.env`, con la misma `NIMBO_APP_DB_PASSWORD` del api y el SMTP →
+   **Guardar y desplegar**.
+5. Comprobar: `https://nimbo-worker.deploya.larasolutions.dev/health/ready` → `{"status":"ok",…}`.
 
-Pestaña **Variables** → **Pegar .env** de cada proyecto, con su plantilla:
+### 3.6 `nimbo-optimizer`
 
-| Proyecto | Plantilla | Qué reemplazar |
-|---|---|---|
-| `nimbo-api` | `infra/deploya/api.env` | `JWT_ACCESS_SECRET`, `NIMBO_APP_DB_PASSWORD` |
-| `nimbo-worker` | `infra/deploya/worker.env` | `NIMBO_APP_DB_PASSWORD` y los cinco `SMTP_*`/`MAIL_FROM` |
-| `nimbo-optimizer` | `infra/deploya/optimizer.env` | `NIMBO_APP_DB_PASSWORD` |
-| `nimbo` | `infra/deploya/web.env` | nada |
+1. Crearlo (§3.2) con nombre `nimbo-optimizer` y puerto `3003`.
+2. En **`nimbo-api`** → **Datos**: **Compartir con otro proyecto** → `nimbo-optimizer` → **Compartir**, en los tres
+   recursos.
+3. **Configuración**: «Ruta del Dockerfile» `apps/worker/Dockerfile`, «Puerto interno» `3003`, «Comando de inicio
+   (opcional)» `node dist/worker-optimizer.main.js` → **Guardar cambios**.
+4. **Pegar las variables** de `infra/deploya/optimizer.env` → **Guardar y desplegar**.
+5. Comprobar: `https://nimbo-optimizer.deploya.larasolutions.dev/health/ready` → `{"status":"ok",…}`.
 
-Se pega el archivo entero: Deploya ignora las líneas `#`. Ningún `<…>` debe quedar. Un valor no puede llevar
-` #` (espacio y almohadilla): Deploya lo toma como comentario y corta el valor. Guardar **sin** desplegar todavía.
+### 3.7 `nimbo` (web, último)
 
-Son solo las variables obligatorias de cada esquema zod (`env.schema.ts`, `apps/web/src/env.ts`); el resto toma su
-valor por omisión. No hay que definir `DATABASE_URL`, `REDIS_URL`, `S3_*` ni `MINIO_*`: las pone Deploya y las traduce
-el entrypoint. Cualquier variable de `.env.example` se puede agregar después (máximo 150 por proyecto; `PORT` no).
+1. Crearlo (§3.2) con nombre `nimbo` y puerto `3002`.
+2. **Configuración**: «Ruta del Dockerfile» `apps/web/Dockerfile`, «Puerto interno» `3002` → **Guardar cambios**.
+   No necesita recursos de datos.
+3. **Pegar las variables** de `infra/deploya/web.env`, que no tiene nada que reemplazar → **Guardar y desplegar**.
+4. Comprobar: `https://nimbo.deploya.larasolutions.dev/` muestra la portada con la API disponible.
 
-### 3.6 Desplegar en orden
-
-Con **Desplegar** en cada proyecto, esperando que el anterior quede en línea:
-
-1. **`nimbo-api`**: crea `nimbo_app`, migra y arranca. Abrir
-   `https://nimbo-api.deploya.larasolutions.dev/api/v1/health/ready` → `{"status":"ok",…}`.
-2. **`nimbo-worker`**: `https://nimbo-worker.deploya.larasolutions.dev/health/ready` → `{"status":"ok",…}`.
-3. **`nimbo-optimizer`**: `https://nimbo-optimizer.deploya.larasolutions.dev/health/ready` → `{"status":"ok",…}`.
-4. **`nimbo`**: `https://nimbo.deploya.larasolutions.dev/` muestra la portada con la API disponible.
-
-### 3.7 Primer administrador
+### 3.8 Primer administrador
 
 Deploya no ofrece consola, así que se usa un comando de inicio temporal en `nimbo-api`:
 
-1. **Configuración** → **Comando de inicio** (cambiar nombre, correo y código):
+1. **Configuración** → «Comando de inicio (opcional)» (cambiar nombre, correo y código):
 
    ```text
    sh -c "node dist/scripts/bootstrap-admin.js --name 'Nombre Apellido' --email correo@dominio --employee-code EMP-001; exec node dist/main.js"
    ```
 
-2. **Guardar cambios** y **Desplegar**. En la bitácora aparece `admin.bootstrap.completed`.
-3. Vaciar el **Comando de inicio**, **Guardar cambios** y **Desplegar** otra vez. Si se olvida no pasa nada: en cada
-   arranque el script responde `IDENTITY_ADMIN_ALREADY_EXISTS` y el api arranca igual.
+2. **Guardar cambios** → **Desplegar**. En **Bitácoras** aparece `admin.bootstrap.completed`.
+3. Vaciar el «Comando de inicio (opcional)» → **Guardar cambios** → **Desplegar**. Si se olvida no pasa nada: en
+   cada arranque el script responde `IDENTITY_ADMIN_ALREADY_EXISTS` y el api arranca igual.
 4. El worker envía la invitación por SMTP; el enlace lleva a `https://nimbo.deploya.larasolutions.dev/crear-contrasena`.
 
 ## 4. Límites conocidos
@@ -161,7 +175,7 @@ Deploya no ofrece consola, así que se usa un comando de inicio temporal en `nim
 | El alta dice que no hay `Dockerfile` | La rama no tiene el `Dockerfile` en la raíz, o el repo no es público |
 | El alta dice que GitHub no está disponible | Límite de la API pública de GitHub: esperar unos minutos |
 | `429 Too Many Requests` al construir | Una imagen base sale de Docker Hub; los tres Dockerfiles deben usar `mirror.gcr.io` |
-| El worker, el optimizer o la web construyen la imagen del api | Falta cambiar la «Ruta del Dockerfile» (§3.4) |
+| El worker, el optimizer o la web construyen la imagen del api | Falta cambiar la «Ruta del Dockerfile» en **Configuración** (§3.3) |
 | `deploya.env` con `warnings` sobre `NIMBO_APP_DB_PASSWORD` | Falta la variable: `DATABASE_URL` queda con el dueño y la app no arranca |
 | `db.role_rejected` | `DATABASE_URL` conecta con el dueño o un superusuario |
 | `db.app_role_failed` | El api no pudo crear `nimbo_app` (recurso PostgreSQL no listo o no conectado) |
@@ -195,7 +209,7 @@ Fecha: 2026-11-12. Fiel al código de Deploya:
 | `nimbo-optimizer` | 404 en 2,2 s | `worker.started` (`worker-optimizer`), `/health/ready` 200 | 78 MiB |
 | `nimbo` | 200 en 1,3 s | `/` y `/iniciar-sesion` 200, la portada ve la API | 70 MiB |
 
-El primer administrador con el comando de inicio de la §3.7 dio `admin.bootstrap.completed` y una fila `ADMIN` en
+El primer administrador con el comando de inicio de la §3.8 dio `admin.bootstrap.completed` y una fila `ADMIN` en
 `usuario`. Al repetirlo responde `IDENTITY_ADMIN_ALREADY_EXISTS` y el api arranca igual. Las migraciones de un segundo
 despliegue no aplican nada (`applied: []`).
 
