@@ -261,3 +261,40 @@ describe('ShareDialog: sección «Enlace público» (spec 013c CA-2, CA-11)', ()
     expect(onClose).toHaveBeenCalled();
   });
 });
+
+describe('ShareDialog: la URL del enlace solo en memoria (spec 013c RN-1, §5)', () => {
+  it('RN-1: tras generar, la URL no va al título, a la URL de la app ni al historial, y al reabrir ya no se ve', async () => {
+    const titleBefore = document.title;
+    const hrefBefore = window.location.href;
+    const historyBefore = window.history.length;
+    const pushState = jest.spyOn(window.history, 'pushState');
+    const replaceState = jest.spyOn(window.history, 'replaceState');
+    const api = withoutLink({
+      createPublicLink: jest.fn(() =>
+        Promise.resolve({ link: publicLink(), url: PUBLIC_LINK_URL }),
+      ),
+      currentPublicLink: jest
+        .fn()
+        .mockResolvedValueOnce({ link: null })
+        .mockResolvedValue({ link: publicLink() }),
+    });
+    const view = render(<ShareDialog api={api} target={TARGET} onClose={jest.fn()} />);
+    await openLinkForm();
+    await userEvent.click(within(dialog()).getByRole('button', { name: 'Generar enlace' }));
+    await within(dialog()).findByText(GENERATED);
+
+    expect(document.title).toBe(titleBefore);
+    expect(window.location.href).toBe(hrefBefore);
+    expect(window.history.length).toBe(historyBefore);
+    expect(pushState).not.toHaveBeenCalled();
+    expect(replaceState).not.toHaveBeenCalled();
+
+    view.rerender(<ShareDialog api={api} target={null} onClose={jest.fn()} />);
+    view.rerender(<ShareDialog api={api} target={TARGET} onClose={jest.fn()} />);
+
+    expect(await within(dialog()).findByText('Activo')).toBeTruthy();
+    expect(document.body.innerHTML).not.toContain(PUBLIC_LINK_URL);
+    pushState.mockRestore();
+    replaceState.mockRestore();
+  });
+});

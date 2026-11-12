@@ -441,3 +441,37 @@ describe('PublicLinkSection: Escape (spec 013c CA-11)', () => {
     expect(cancelRef.current?.()).toBe(false);
   });
 });
+
+describe('PublicLinkSection: la contraseña del enlace no sobrevive al formulario (spec 013c §5)', () => {
+  const PASSWORD = 'puente-azul-27';
+  const passwordField = (): HTMLInputElement =>
+    screen.getByLabelText('Contraseña (opcional)') as HTMLInputElement;
+
+  it('§5: al cancelar se descarta: al volver a abrir el formulario el campo está vacío', async () => {
+    renderSection(fakeSharingApi({ currentPublicLink: current(null) }));
+
+    await userEvent.click(await findButton('Crear enlace público'));
+    await userEvent.type(passwordField(), PASSWORD);
+    await userEvent.click(button('Cancelar'));
+    await userEvent.click(button('Crear enlace público'));
+
+    expect(passwordField().value).toBe('');
+    expect(document.body.innerHTML).not.toContain(PASSWORD);
+  });
+
+  it('§5: tras generar, la contraseña no queda en la página ni junto a la URL', async () => {
+    const createPublicLink = created(publicLink({ hasPassword: true }));
+    renderSection(fakeSharingApi({ currentPublicLink: current(null), createPublicLink }));
+
+    await userEvent.click(await findButton('Crear enlace público'));
+    await userEvent.type(passwordField(), PASSWORD);
+    await userEvent.click(button('Generar enlace'));
+    await screen.findByText(GENERATED);
+
+    expect(createPublicLink).toHaveBeenCalledWith(
+      expect.objectContaining({ fileId: NODE_ID, password: PASSWORD }),
+    );
+    expect(screen.queryByLabelText('Contraseña (opcional)')).toBeNull();
+    expect(document.body.innerHTML).not.toContain(PASSWORD);
+  });
+});
