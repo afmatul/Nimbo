@@ -18,8 +18,8 @@
   da el texto de la API (`SHARING_FIELD_MESSAGES.INVALID_PASSWORD`, 013b CA-16, spec S-2) sin regla duplicada.
 - **Estado:** `usePublicLink(api, fileId)` con el patrón de `useAccessList` (una lectura por intento, respuesta vieja
   descartada). Expone la lectura (`loading` / `error` / `ready` con `PublicLinkSummary | null`), `generated` (URL y
-  resumen recién creados, solo en memoria, RN-1), `create`, `revoke` y `reload`. `generated` se limpia al revocar y al
-  abrir «Generar otro enlace» (S-5).
+  resumen recién creados, solo en memoria, RN-1), `create`, `revoke` y `reload`. `generated` se limpia al revocar; con la URL a la
+  vista no se ofrece «Generar otro enlace» (mockup `enlace-generado`), así que no hay más caso que limpiar (S-5, I-2).
 - **Vista:** `PublicLinkSection` decide qué mostrar según la lectura, el modo local (`idle`, `form`, `confirm-replace`,
   `confirm-revoke`) y `useReadOnlyAccount` (D-6, como `access-row`). La solo lectura se muestra con `ReadOnlyBanner` de
   `components/nimbo/`, como «Compartidos conmigo» (012b), y no con un `Alert` propio (M-3). Revocar y reemplazar usan `usePendingConfirm`
@@ -68,8 +68,8 @@
 |---|---|---|
 | web/sharing (cliente) | `features/sharing/sharing-api.ts` (+ `test-sharing.ts`) | `publicLinkBody` (I-1); `currentPublicLink(fileId)` (`GET /public-links?fileId`), `createPublicLink(input)` (`POST /public-links`) y `revokePublicLink(linkId)` (`DELETE /public-links/:linkId`), validados con `currentPublicLinkSchema` y `createdPublicLinkSchema`. El doble de pruebas suma un enlace de ejemplo y una URL ficticia |
 | web/sharing (textos) | `features/sharing/share-messages.ts`, `components/share-error-alert.tsx` | `publicLinkMessageOf` (I-3), `isReadOnlyError` y las acciones `reload` y `none` (§1). `ShareErrorAlert`: `variant` opcional para el tono de advertencia del `429` (I-4); `ShareFixHandlers` excluye también `none` |
-| web/sharing (estado) | `features/sharing/hooks/use-public-link.ts` | `usePublicLink(api, fileId)`: lectura por intento, `generated` solo en memoria y limpiado al revocar y al abrir «Generar otro» (S-5), `create` y `revoke` que rechazan con el error de la API y releen al salir bien, `reload` |
-| web/sharing (sección) | `features/sharing/components/public-link-section.tsx` | `h3` «Enlace público» (D-3) y los estados de spec §6: cargando, error, sin enlace con su ayuda y «Crear enlace público» `outline`, activo con nota y vencido con insignia neutra (`expiresAtLabel` de `lib/format-date.ts`), confirmaciones en línea (D-1) con `usePendingConfirm`, solo lectura (D-6) y `403` tardío con `ReadOnlyBanner` (M-3), avisos con `ShareErrorAlert` y `publicLinkMessageOf`; registra el callback de Escape e informa `busy` con `onBusyChange` (§1). Una sola región `role="status"` (R-4); foco explícito cuando desaparece el botón pulsado (R-2) |
+| web/sharing (estado) | `features/sharing/hooks/use-public-link.ts` | `usePublicLink(api, fileId)`: lectura por intento, `generated` solo en memoria y limpiado al revocar (S-5, I-2), `create` y `revoke` que rechazan con el error de la API y releen al salir bien, `reload` |
+| web/sharing (sección) | `features/sharing/components/public-link-section.tsx` | `h3` «Enlace público» (D-3) y los estados de spec §6: cargando, error, sin enlace con su ayuda y «Crear enlace público» `outline`, activo con nota y vencido con insignia neutra (`expiresAtLabel` de `lib/format-date.ts`), confirmaciones en línea (D-1) con `usePendingConfirm`, solo lectura (D-6) y `403` tardío con `ReadOnlyBanner` (M-3), avisos con `ShareErrorAlert` y `publicLinkMessageOf`; registra el callback de Escape e informa `busy` con `onBusyChange` (§1). Una región `role="status"` por mensaje, siempre presente y vacía en reposo, para que cada aviso se anuncie una sola vez (R-4, S-4 de la revisión); foco explícito cuando desaparece el botón pulsado (R-2) |
 | web/sharing (formulario) | `features/sharing/components/public-link-form.tsx` | `RadioGroup` «Vence en» con `PUBLIC_LINK_EXPIRY_OPTIONS` (D-4; en el reemplazo, foco en la opción marcada), `PasswordField` «Contraseña (opcional)» de `components/nimbo/` con `autoComplete="new-password"`, `name` propio, la ayuda de spec §5 (R-3) y `maxLength` = `PUBLIC_LINK_PASSWORD_MAX_LENGTH`; validación con `publicLinkBody` y el contrato (I-1); error de contraseña junto al campo (I-5); «Generando…» pasados 2 s; conserva lo elegido ante un error; el botón dice «Generar enlace» o, al reemplazar, «Generar otro enlace» |
 | web/sharing (URL) | `features/sharing/components/generated-link-field.tsx` | Campo «Enlace generado» de una línea y solo lectura (R-6, `text-foreground`), «Copiar enlace» con `navigator.clipboard.writeText` y «Enlace copiado» hasta la siguiente interacción (D-9); si falla, el aviso de error de CA-6 y el texto seleccionado (R-7). Recibe la función de copiar por prop, con `navigator.clipboard` por omisión, para probar el fallo |
 | web/sharing (diálogo) | `features/sharing/components/share-dialog.tsx` | Monta `PublicLinkSection` solo si `target.nodeType === 'file'` (CA-2), después de `AccessList`; `useState` de `busy` y `useRef` del callback; con `busy`, `onEscapeKeyDown` y `onInteractOutside` hacen `preventDefault` y la X queda deshabilitada (§1, CA-11, M-2); contenido en funciones de ≤ 30 líneas (S-2). El comentario deja de decir «sin la sección hasta la 013» |
@@ -124,8 +124,9 @@ Socket.IO.
 - **Contraseña:** `new-password` y `name` propio para que el gestor del navegador no ofrezca la de la cuenta (R-3). Se
   borra del estado al generar.
 - **Contraste (R-5, S-6):** solo tokens de `ui-guidelines.md`. El campo de la URL usa `text-foreground`. El borde
-  `secondary-foreground` va solo donde hace falta para llegar a 3:1: el botón `outline` «Revocar enlace» y los botones
-  sobre un aviso de advertencia, como la 013b (PD-189).
+  `secondary-foreground` va solo donde hace falta para llegar a 3:1: los botones `outline` sobre un fondo tintado («Cancelar»
+  en la confirmación de revocar y los botones sobre un aviso de advertencia), como la 013b (PD-189). «Revocar enlace» en
+  reposo lleva el borde normal y el texto `destructive` (5,4:1), como el mockup aprobado (S-1 de la revisión).
 - **Bitácoras y métricas:** ninguna en la web.
 
 ## 6. Estrategia de pruebas (por riesgo)
