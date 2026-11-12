@@ -102,6 +102,33 @@ describe('toShellExports', () => {
     const output = execFileSync('sh', ['-c', `${exports}printf %s "$RARA"`], { encoding: 'utf8' });
     expect(output).toBe(`a'b $HOME \`x\` "c"`);
   });
+
+  /** Lo mismo que `deploya-entrypoint.sh`: `exports=$(node …)` y luego `eval "$exports"`. */
+  const evalLikeEntrypoint = (exports: string, script: string): string =>
+    execFileSync('sh', ['-c', `set -eu; exports=$(cat); eval "$exports"; ${script}`], {
+      encoding: 'utf8',
+      input: exports,
+    });
+
+  it.each([
+    ['comilla simple', "cla've"],
+    ['dólar y llaves', 'a$b${HOME}$(id)'],
+    ['espacios', ' con  espacios '],
+    ['punto y coma', 'x; echo pwned'],
+    ['salto de línea al final', 'linea\n'],
+    ['vacío', ''],
+  ])('sobrevive al eval del entrypoint con %s', (_name, value) => {
+    const exports = toShellExports({ A: value, B: 'segunda' });
+    const output = evalLikeEntrypoint(exports, 'printf "%s|%s" "$A" "$B"');
+    expect(output).toBe(`${value}|segunda`);
+  });
+
+  it('exporta la contraseña de nimbo_app con comillas y $ intacta dentro de DATABASE_URL', () => {
+    const password = `p'a$s w"d`;
+    const { values } = resolveDeployaEnv(deployaEnv({ NIMBO_APP_DB_PASSWORD: password }));
+    const output = evalLikeEntrypoint(toShellExports(values), 'printf %s "$DATABASE_URL"');
+    expect(decodeURIComponent(new URL(output).password)).toBe(password);
+  });
 });
 
 describe('appRoleStatements', () => {
