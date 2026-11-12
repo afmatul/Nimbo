@@ -4,7 +4,7 @@
 
 | Campo | Valor |
 |---|---|
-| Estado | Lista |
+| Estado | En revisión (2026-11-11; T-01 a T-07 hechas, falta T-08 humana) |
 | Dueño | Fátima |
 | Fase | 2 |
 | Requisitos | RF-17, RF-18, RNF-13, RNF-14; apoyan RF-07, RNF-07, RNF-08 |
