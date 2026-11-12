@@ -1,7 +1,9 @@
 # Imagen `nimbo-web` (plan 000 §6.5, CA-28/CA-29). Contexto = raíz del repositorio. Salida `standalone` de Next
 # (`next.config.ts`, con `outputFileTracingRoot` en la raíz): el servidor queda en `apps/web/server.js` con solo los
 # módulos que traza. Nada se hornea en el build (no hay `NEXT_PUBLIC_*`): la misma imagen sirve en cualquier ambiente.
-ARG NODE_IMAGE=node:22.23.3-trixie-slim
+# Misma imagen oficial `node:22.23.3-trixie-slim`, desde el mirror público de Google: Docker Hub limita las descargas
+# anónimas por IP (429 Too Many Requests) y los servidores de construcción compartidos, como el de Deploya, lo agotan.
+ARG NODE_IMAGE=mirror.gcr.io/library/node:22.23.3-trixie-slim
 
 FROM ${NODE_IMAGE} AS base
 ENV CI=true \

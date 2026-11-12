@@ -3,7 +3,9 @@
 # (`node dist/worker-optimizer.main.js`); solo cambia el comando. Todas las etapas usan la misma base glibc
 # (`trixie-slim`, ADR-0038): `node_modules` y binarios nativos (`sharp`/libvips, `argon2`) nunca cruzan de libc.
 # Debian 13 porque su Ghostscript (10.05.1, con parches de seguridad) corrige CVE que Debian 12 deja abiertos.
-ARG NODE_IMAGE=node:22.23.3-trixie-slim
+# Misma imagen oficial `node:22.23.3-trixie-slim`, desde el mirror público de Google: Docker Hub limita las descargas
+# anónimas por IP (429 Too Many Requests) y los servidores de construcción compartidos, como el de Deploya, lo agotan.
+ARG NODE_IMAGE=mirror.gcr.io/library/node:22.23.3-trixie-slim
 
 FROM ${NODE_IMAGE} AS base
 ENV CI=true

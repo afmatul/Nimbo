@@ -3,7 +3,9 @@
 # no extrae texto de PDF (019 D-1). Sirve en compose (perfil `apps`) y en Deploya (docs/operations/deploya.md).
 # Vive en la raíz y no en `apps/api/` porque el alta de un proyecto en Deploya exige un `Dockerfile` en la raíz; los
 # demás proyectos (worker, optimizer, web) cambian después la «Ruta del Dockerfile» a `apps/<app>/Dockerfile`.
-ARG NODE_IMAGE=node:22.23.3-trixie-slim
+# Misma imagen oficial `node:22.23.3-trixie-slim`, desde el mirror público de Google: Docker Hub limita las descargas
+# anónimas por IP (429 Too Many Requests) y los servidores de construcción compartidos, como el de Deploya, lo agotan.
+ARG NODE_IMAGE=mirror.gcr.io/library/node:22.23.3-trixie-slim
 
 FROM ${NODE_IMAGE} AS base
 ENV CI=true
