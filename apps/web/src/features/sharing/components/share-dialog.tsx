@@ -87,7 +87,8 @@ function ShareDialogBody({ api, target }: ShareDialogBodyProps): React.JSX.Eleme
   const guard = useCloseGuard();
   return (
     <DialogContent
-      className="max-h-dvh overflow-y-auto rounded-xl"
+      // Columna `minmax(0,1fr)`: un nombre sin espacios no ensancha la cuadrícula a 360 px (013c CA-15, T-08; PD-209).
+      className="max-h-dvh grid-cols-[minmax(0,1fr)] overflow-y-auto rounded-xl"
       {...returnFocus}
       onEscapeKeyDown={guard.onEscapeKeyDown}
       onInteractOutside={guard.onInteractOutside}

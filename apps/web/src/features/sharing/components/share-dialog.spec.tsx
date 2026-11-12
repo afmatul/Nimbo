@@ -178,6 +178,12 @@ function overlay(): Element {
 }
 
 describe('ShareDialog: sección «Enlace público» (spec 013c CA-2, CA-11)', () => {
+  it('CA-15: la columna del diálogo puede encogerse, así que un nombre sin espacios no desplaza la página a 360 px', () => {
+    renderDialog(withoutLink());
+
+    expect(dialog().className).toContain('grid-cols-[minmax(0,1fr)]');
+  });
+
   it('CA-2: un archivo muestra la sección después de «Personas con acceso»', async () => {
     renderDialog(withoutLink());
 
