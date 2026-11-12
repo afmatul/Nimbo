@@ -83,6 +83,12 @@
 - `activity-labels.ts`;
 - `use-public-link-visit.ts`, `use-public-link-download.ts`, `public-link-visit.tsx`.
 
+Tras la auditoría del #108 (12/11): M-2 partió la sección en `public-link-current.tsx`, `public-link-empty.tsx`,
+`public-link-revoke-confirm.tsx`, `public-link-form-panel.tsx`, `success-notice.tsx`, `use-focus-on-mount.ts`,
+`public-link-section-styles.ts` y los hooks `use-link-section-state.ts`, `use-generate-link.ts` y `use-revoke-link.ts`;
+m-6 sumó `hooks/public-link-errors.ts`, y M-1 llevó `FieldMessage` a `components/nimbo/` y dio título por omisión a
+`ReadOnlyBanner` (con permiso de Adrián para `storage/read-only-notice.tsx`, pedido en su auditoría).
+
 Aparte: `test-sharing.ts` (apoyo de pruebas), las pruebas de §6 y los mockups y capturas de T-01. Es el límite de
 `workflow.md` §4.1. Una pantalla (la sección); «Mi actividad» solo cambia textos.
 

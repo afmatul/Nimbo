@@ -122,3 +122,4 @@ se cierra PD-200 en la página del visitante.
 | 2026-11-11 | Auditoría del PR #107: CA-11 suma el clic fuera del diálogo (M-2); CA-10 y §6 usan `ReadOnlyBanner` para la solo lectura (M-3); estado `Lista` (M-4) | Auditoría de Adrián | Adrián |
 | 2026-11-11 | Revisión de la implementación: CA-8 fija el aviso al reemplazar (I-3); estado `En revisión` | `/review 013c` | Fátima |
 | 2026-11-12 | T-08: Chrome ofrecía guardar la contraseña del enlace con `new-password` (SEC-1); el campo pasa a `off` con las marcas de 1Password y LastPass (§5; Chrome la sigue ofreciendo: PD-208). CA-15: un nombre sin espacios desplazaba el diálogo a 360 px; su columna pasa a `minmax(0,1fr)` (PD-209 para la base) | Recorrido de la T-08 | Fátima |
+| 2026-11-12 | Auditoría del PR #108 (M-1 a M-3, m-3 a m-10): sin cambios de comportamiento; refuerza CA-9: una relectura fallida tras revocar no tapa «sin enlace» (m-7) | Auditoría de Adrián | Adrián |

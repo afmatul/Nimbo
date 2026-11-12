@@ -2,10 +2,10 @@
 
 | Campo | Valor |
 |---|---|
-| Fecha | 2026-11-11 |
-| Rango revisado | `1b1eb49d...fc12e9d0` (T-02 a T-07: 47b6b7a0, db2c4e0b, 109625fa, fd0ed7c8, 32ded278, fc12e9d0) y las pruebas de seguridad sin commit |
-| CI | Local en `apps/web` (Node 22): `tsc` ✅ · `eslint` ✅ · `jest` 249/249 suites, 2422/2422 ✅ (más 3 pruebas de seguridad, 40/40 en sus archivos). Sin cambios en `apps/api`: `test:int` e isolation no aplican |
-| Veredicto | ✅ Aprobar (sin bloqueantes; I-1 a I-3 en este PR, I-4 como pendiente) |
+| Fecha | 2026-11-11 · actualizada el 2026-11-12 (T-08 y auditoría de Adrián en el #108) |
+| Rango revisado | `1b1eb49d...fc12e9d0` (T-02 a T-07: 47b6b7a0, db2c4e0b, 109625fa, fd0ed7c8, 32ded278, fc12e9d0) y las pruebas de seguridad; luego la T-08 y la auditoría del #108 hasta la cabeza de `feat/013c-dialogo-del-enlace-publico` |
+| CI | Local en `apps/web` (Node 22), sobre `main` con la 017 y la auditoría aplicada (12/11): `tsc` ✅ · `eslint` ✅ · `jest` 295/295 suites, 3203/3203 ✅. CI del #108: lint, typecheck, unit e integration ✅. Sin cambios en `apps/api`: isolation no aplica |
+| Veredicto | ✅ Aprobar (sin bloqueantes; I-1 a I-3 en este PR; I-4 = PD-207, cerrado por la auditoría M-1) |
 
 ## Verificación
 | CA | Prueba (`apps/web/src/features/…`) | Estado |
@@ -24,7 +24,7 @@
 | CA-12 | `public-link-form.spec.tsx` › CA-12 (aviso de advertencia; conserva lo elegido); `share-messages.spec.ts` › CA-12 | ✅ |
 | CA-13 | `public-link-section.spec.tsx` › CA-13 (al cargar y al revocar); `public-link-form.spec.tsx` › CA-13 | ✅ |
 | CA-14 | `public-link-section.spec.tsx` › CA-14 (archivo: sin botón; enlace: «Actualizar» relee); `share-messages.spec.ts` › CA-14 | ✅ |
-| CA-15 | `sharing/a11y.spec.tsx` › CA-15 (21 estados) y foco en las pruebas de la sección; 360 px, contraste AA y movimiento reducido van en T-08 (humana) | ✅ (S-2) |
+| CA-15 | `sharing/a11y.spec.tsx` › CA-15 (21 estados) y foco en las pruebas de la sección; 360 px (arreglo PD-209), contraste AA a 360 y 1440 px y movimiento reducido revisados en la T-08 | ✅ (S-2) |
 | CA-16 | `audit/activity-labels.spec.ts` › CA-16 (`downloaded` y `locked` con «Alguien con el enlace») | ✅ |
 | CA-17 | `audit/activity-labels.spec.ts` › CA-17 (`created` y `revoked` en segunda persona) | ✅ |
 | CA-18 | `sharing/components/public-link-visit.spec.tsx` › CA-18; `hooks/use-public-link-download.spec.ts` (11 pruebas mudadas, mismas aserciones) | ✅ (S-3) |
@@ -61,7 +61,7 @@ Veredicto: ✅ Sin hallazgos bloqueantes (`security-auditor`)
   - La URL en `text-foreground` sobre `bg-muted`, y a 360 px los botones a todo el ancho.
   - «Cancelar» sobre el tono destructivo lleva el borde `secondary-foreground` (PD-189).
   - Solo tokens y `motion-reduce:animate-none`.
-  - axe sin violaciones `serious` ni `critical` en jsdom. El contraste real a 360 y 1440 px queda para T-08.
+  - axe sin violaciones `serious` ni `critical` en jsdom. El contraste real a 360 y 1440 px se revisó en la T-08.
 - Desviaciones:
   - El texto del aviso al reemplazar (I-3).
   - El borde de «Revocar enlace» en reposo sigue el mockup y no el plan §5 (S-1).
@@ -91,6 +91,17 @@ Veredicto: ✅ Sin hallazgos bloqueantes (`security-auditor`)
 
 ## DF y pendientes
 - DF-91 actualizado («llegó con la 013c»). Sin DF nuevo.
-- PD-200 cerrado. PD-207 por I-4 (era PD-206, que la 017 ya usa en `main`) y PD-208 por SEC-1. PD-209: la T-08 halló que un nombre sin espacios desplazaba «Compartir» a 360 px; se arregló en `share-dialog.tsx` y la base de los diálogos queda para Adrián.
-- **T-08 (humana) hecha (Fátima, 12/11):** pasos 1–12 ✅; SEC-1 → `off` y marcas, Chrome la sigue ofreciendo (PD-208); 360 px corregido (PD-209) y confirmado; solo lectura (paso 14) no se recorrió: lo cubren las pruebas de CA-10.
+- PD-200 cerrado. PD-207 por I-4 (era PD-206, que la 017 ya usa en `main`), cerrado en el #108 por M-1 y PD-208 por SEC-1. PD-209: la T-08 halló que un nombre sin espacios desplazaba «Compartir» a 360 px; se arregló en `share-dialog.tsx` y la base de los diálogos queda para Adrián.
+- **T-08 (humana) hecha (12/11):** Fátima recorrió los pasos 1 a 13: SEC-1 → `off` y marcas, Chrome la sigue ofreciendo (PD-208); 360 px corregido (PD-209) y confirmado. El paso 14 (solo lectura, CA-10) se recorrió con Playwright sobre una cuenta local en solo lectura a 360 y 1440 px: aviso con «Renovar plan», sin «Crear» ni «Generar otro enlace», «Revocar enlace» disponible.
 - La spec pasa a `Hecha` cuando se integre.
+
+## Auditoría de Adrián en el #108 (2026-11-12, ~93 %, sin bloqueantes)
+- **M-1:** `FieldMessage` único en `components/nimbo/` y título por omisión de `ReadOnlyBanner` (`READ_ONLY_TITLE`); cierra PD-207.
+- **M-2:** `public-link-section.tsx` pasa de 495 a ~200 líneas: vistas sin enlace, enlace actual, confirmación de revocar y
+  formulario en archivos propios, y un estado con acciones con nombre (`use-link-section-state.ts`); ninguna pieza recibe `view`.
+- **M-3:** PR, `review.md`, `tasks.md` y `spec.md` alineados; el paso 14 de la T-08 se recorrió.
+- **Menores:** m-3 `absoluteDateTimeLabel` · m-4 `useGenerateLink` estable · m-5 `ShareMessage.fix` opcional, sin `none` ·
+  m-6 `public-link-errors.ts` y el resultado de la descarga en su hook · m-7 una relectura fallida tras revocar ya no tapa
+  «sin enlace» (prueba nueva) · m-8 `RevokeConfirm` recibe `linkId: string` · m-9 en el diálogo, la consulta va antes del
+  comando (`CancelOpenPart` sigue devolviendo `boolean` porque lo leen las pruebas) · m-10 reproducido y corregido en las
+  pruebas del diálogo. Se mantienen: m-1 (PD-208) y m-2 (S-7, decisión de Adrián).

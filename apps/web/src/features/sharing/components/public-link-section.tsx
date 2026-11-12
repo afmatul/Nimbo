@@ -43,7 +43,6 @@ const TEXT = {
   replaced:
     'Generamos otro enlace y el anterior dejó de funcionar. Cópialo ahora: por seguridad, no podrás volver a verlo.',
   revoked: 'Revocamos el enlace. Ya no sirve para descargar el archivo.',
-  readOnlyTitle: 'Tu cuenta está en solo lectura.',
   readOnly: 'No puedes generar enlaces. Para hacerlo, renueva tu plan.',
 } as const;
 
@@ -189,11 +188,7 @@ export function PublicLinkSection(props: PublicLinkSectionProps): React.JSX.Elem
         Enlace público
       </h3>
       {parts.readOnly ? (
-        <ReadOnlyBanner
-          title={TEXT.readOnlyTitle}
-          description={TEXT.readOnly}
-          renewHref={RENEW_PATH}
-        />
+        <ReadOnlyBanner description={TEXT.readOnly} renewHref={RENEW_PATH} />
       ) : null}
       {parts.view.revoked ? <SuccessNotice>{TEXT.revoked}</SuccessNotice> : null}
       <SectionBody parts={parts} />
