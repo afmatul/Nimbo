@@ -59,11 +59,13 @@ describe('PublicLinkForm: vencimiento y contraseña opcional (spec 013c CA-3, CA
     await waitFor(() => expect(document.activeElement).toBe(expiry('7 días')));
   });
 
-  it('CA-3: la contraseña pide al navegador no rellenarla y lleva su ayuda asociada', () => {
+  it('CA-3: la contraseña pide al navegador no rellenarla ni guardarla y lleva su ayuda asociada', () => {
     renderForm();
 
     const input = passwordInput();
-    expect(input.getAttribute('autocomplete')).toBe('new-password');
+    expect(input.getAttribute('autocomplete')).toBe('off');
+    expect(input.hasAttribute('data-1p-ignore')).toBe(true);
+    expect(input.getAttribute('data-lpignore')).toBe('true');
     expect(input.getAttribute('name')).toBe('enlace-contrasena');
     expect(input.getAttribute('maxlength')).toBe('128');
     expect(input.getAttribute('aria-invalid')).toBeNull();

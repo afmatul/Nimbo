@@ -12,7 +12,7 @@
 |---|---|---|
 | CA-1 | `sharing/components/public-link-section.spec.tsx` › CA-1 (de «Cargando…» a «sin enlace»); `hooks/use-public-link.spec.ts` › CA-1 | ✅ |
 | CA-2 | `components/share-dialog.spec.tsx` › CA-2 (carpeta sin sección ni petición; sección después de «Personas con acceso») | ✅ |
-| CA-3 | `public-link-form.spec.tsx` › CA-3 (opciones, `new-password`, «Generando…» a los 2 s); `public-link-section.spec.tsx` › CA-3; `generated-link-field.spec.tsx` › CA-3 | ✅ |
+| CA-3 | `public-link-form.spec.tsx` › CA-3 (opciones, `off` y marcas de los gestores, «Generando…» a los 2 s); `public-link-section.spec.tsx` › CA-3; `generated-link-field.spec.tsx` › CA-3 | ✅ |
 | CA-4 | `sharing-api.spec.ts` › CA-4 (`publicLinkBody`, POST sin `password`); `public-link-section.spec.tsx` › CA-4 de punta a punta | ✅ |
 | CA-5 | `public-link-form.spec.tsx` › CA-5 (< 8, > 128 y `422` de la API, junto al campo) | ✅ |
 | CA-6 | `generated-link-field.spec.tsx` › CA-6 (copiar y su anuncio; si falla, el texto queda seleccionado; reintento) | ✅ |
@@ -39,11 +39,11 @@ Veredicto: ✅ Sin hallazgos bloqueantes (`security-auditor`)
   - ISO: ninguna, no aplica.
 - **Bitácoras sin contenido, nombres, tokens ni contraseñas:** ✅. El código nuevo no usa `console`, `Storage`, IndexedDB, `document.title`, `history` ni analítica. Lo comprueban los espías de `Storage.prototype.setItem` y `console` en `use-public-link.spec.ts`, `public-link-section.spec.tsx`, `public-link-form.spec.tsx` y `generated-link-field.spec.tsx`.
 - **Hallazgos.**
-  - **[SEC-1]** baja · `apps/web/src/features/sharing/components/public-link-form.tsx:158-162`. `new-password` y `name` propio evitan que el navegador rellene la contraseña de la cuenta, pero no que el gestor de contraseñas ofrezca guardar la del enlace como credencial de Nimbo. Corrección: comprobarlo a mano en T-08 (Chrome, Edge y Firefox). Si aparece la oferta de guardar, agregar `data-1p-ignore` y `data-lpignore="true"` o evaluar `autoComplete="off"`. Si no se corrige, dejarlo en `pendientes.md`.
+  - **[SEC-1]** baja · `apps/web/src/features/sharing/components/public-link-form.tsx:158-162`. `new-password` y `name` propio evitan que el navegador rellene la contraseña de la cuenta, pero no que el gestor de contraseñas ofrezca guardar la del enlace como credencial de Nimbo. Corrección: comprobarlo a mano en T-08 (Chrome, Edge y Firefox). Si aparece la oferta de guardar, agregar `data-1p-ignore` y `data-lpignore="true"` o evaluar `autoComplete="off"`. Si no se corrige, dejarlo en `pendientes.md`. **T-08 (12/11):** Chrome sí lo ofrecía; se aplicaron `off` y las dos marcas, y Chrome lo sigue ofreciendo: queda en **PD-208**.
   - **[SEC-2]** baja · `apps/web/src/features/sharing/hooks/use-public-link.ts:178` y `components/share-dialog.tsx:121`. `generated` y `reading` no se reinician si cambia `fileId` con el diálogo montado. Hoy no se puede provocar, porque el diálogo es modal y se cierra antes de abrir otro, y la URL sería del mismo propietario. Corrección defensiva: `<ShareDialogBody key={target.nodeId} …/>`.
 - **Lista de comprobación.**
   - [x] La URL y el token solo viven en memoria del diálogo.
-  - [x] La contraseña usa `new-password`, nunca se envía vacía y no va en la URL.
+  - [x] La contraseña usa `off` (SEC-1, T-08), nunca se envía vacía y no va en la URL.
   - [x] El cliente del propietario (su sesión) y el del visitante (`credentials: 'omit'`) están separados.
   - [x] Solo el OWNER ve la sección, y una carpeta no hace ninguna petición.
   - [x] Los `404` y `403` no filtran información.
@@ -91,6 +91,6 @@ Veredicto: ✅ Sin hallazgos bloqueantes (`security-auditor`)
 
 ## DF y pendientes
 - DF-91 actualizado («llegó con la 013c»). Sin DF nuevo.
-- PD-200 cerrado. Fila nueva por I-4.
+- PD-200 cerrado. PD-207 por I-4 (era PD-206, que la 017 ya usa en `main`) y PD-208 por SEC-1.
 - **T-08 (humana) pendiente:** el recorrido de la demo y la revisión manual de CA-15 (360 px, contraste AA a 360 y 1440 px, movimiento reducido) y de SEC-1, con nota en el PR. Es pendiente, no bloqueante.
 - La spec pasa a `Hecha` cuando se integre.

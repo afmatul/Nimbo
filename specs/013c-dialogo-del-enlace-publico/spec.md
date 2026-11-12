@@ -64,7 +64,7 @@ se cierra PD-200 en la página del visitante.
 ## 5. Seguridad y privacidad
 - **Toca datos de un cliente: sí, solo por la 013.** Sin rutas, consultas ni contratos nuevos: el aislamiento lo cubre `public-links.iso-spec.ts` (013 CA-17, 013b CA-15). **Sin tarea de aislamiento nueva** por esa razón.
 - **Token:** la URL vive solo en la memoria del diálogo y se descarta al cerrarlo. Nunca va a `localStorage`, `sessionStorage`, la URL de la página, el título, `console` ni mensajes de error; al portapapeles solo cuando el propietario lo pide.
-- **Contraseña:** solo en el estado del formulario; se descarta al generar o cerrar. El campo pide al navegador no rellenarla con la de la cuenta (`new-password`, nombre propio). La ayuda: «Si la pones, se pedirá para descargar. De 8 a 128 caracteres. No uses la de tu cuenta y compártela por otro medio.».
+- **Contraseña:** solo en el estado del formulario; se descarta al generar o cerrar. El campo pide al navegador y a los gestores de contraseñas no rellenarla con la de la cuenta ni ofrecer guardarla (`autocomplete="off"`, nombre propio, `data-1p-ignore`, `data-lpignore`). La ayuda: «Si la pones, se pedirá para descargar. De 8 a 128 caracteres. No uses la de tu cuenta y compártela por otro medio.».
 - **Auditoría:** sin eventos nuevos; CA-16 y CA-17 solo leen los de 013 CA-15 y CA-18, sin nombre de archivo ni token.
 - **Roles internos:** no llegan al diálogo (003 D-5); si llamaran a la API, `403` `SHARED_FORBIDDEN` (013 CA-16).
 
@@ -121,3 +121,4 @@ se cierra PD-200 en la página del visitante.
 | 2026-11-10 | Revisión de documentos: CA-5 solo junto al campo (I-5), CA-11 con acción en curso (I-6), CA-12 con el texto del catálogo en advertencia (I-4), CA-14 «Actualizar» (I-2), §6 con los 24 nombres y tonos del mockup, S-4; tareas partidas (I-8) | Revisión del `reviewer`; decisiones de Fátima; mockup del `ui-designer` | Fátima (decisión); plan por aprobar (Adrián) |
 | 2026-11-11 | Auditoría del PR #107: CA-11 suma el clic fuera del diálogo (M-2); CA-10 y §6 usan `ReadOnlyBanner` para la solo lectura (M-3); estado `Lista` (M-4) | Auditoría de Adrián | Adrián |
 | 2026-11-11 | Revisión de la implementación: CA-8 fija el aviso al reemplazar (I-3); estado `En revisión` | `/review 013c` | Fátima |
+| 2026-11-12 | T-08: Chrome ofrecía guardar la contraseña del enlace con `new-password` (SEC-1); el campo pasa a `off` con las marcas de 1Password y LastPass (§5) | Recorrido de la T-08 | Fátima |

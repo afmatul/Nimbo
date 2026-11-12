@@ -142,7 +142,10 @@ interface PasswordInputProps {
   readonly onChange: (password: string) => void;
 }
 
-/** «Contraseña (opcional)»: el navegador no ofrece la de la cuenta (`new-password` y nombre propio, R-3). */
+/**
+ * «Contraseña (opcional)»: ni el navegador ni los gestores la rellenan con la de la cuenta ni ofrecen guardarla
+ * (`off`, nombre propio y las marcas de 1Password y LastPass; R-3, SEC-1 de la T-08).
+ */
 function PasswordInput({
   inputRef,
   value,
@@ -159,7 +162,9 @@ function PasswordInput({
         ref={inputRef}
         id={id}
         name="enlace-contrasena"
-        autoComplete="new-password"
+        autoComplete="off"
+        data-1p-ignore
+        data-lpignore="true"
         maxLength={PUBLIC_LINK_PASSWORD_MAX_LENGTH}
         value={value}
         error={error !== null}
