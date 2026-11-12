@@ -9,7 +9,12 @@ import { IdentityCard } from '../../../components/nimbo/identity-card';
 import { Button } from '../../../components/ui/button';
 import { expiresAtLabel } from '../../../lib/format-date';
 import { openInBrowser } from '../../../lib/use-preparing-download';
-import { usePublicLinkVisit, type PublicLinkVisit as Visit } from '../hooks/use-public-link-visit';
+import {
+  usePublicLinkDownload,
+  type PublicLinkDownload,
+  type PublicLinkDownloadInput,
+} from '../hooks/use-public-link-download';
+import { usePublicLinkVisit } from '../hooks/use-public-link-visit';
 import { createPublicLinkVisitorApi, type PublicLinkVisitorApi } from '../public-link-visitor-api';
 import { receivedFileType } from '../received-file-type';
 
@@ -82,34 +87,38 @@ function DownloadButton({ preparing, type, onClick }: DownloadButtonProps): JSX.
 
 /** Con contraseña, el formulario antes de «Descargar» (CA-2); sin ella, solo el botón (CA-1). */
 function DownloadAction({
-  visit,
+  prepared,
   details,
 }: {
-  readonly visit: Visit;
+  readonly prepared: PublicLinkDownload;
   readonly details: PublicLinkDetails;
 }) {
-  const download = (password?: string): void => void visit.download(password);
+  const download = (password?: string): void => void prepared.download(password);
   if (!details.requiresPassword) {
-    return <DownloadButton type="button" preparing={visit.preparing} onClick={() => download()} />;
+    return (
+      <DownloadButton type="button" preparing={prepared.preparing} onClick={() => download()} />
+    );
   }
   return (
     <PublicLinkPasswordForm
-      outcome={visit.outcome}
-      preparing={visit.preparing}
+      outcome={prepared.outcome}
+      preparing={prepared.preparing}
       onDownload={download}
-      submit={<DownloadButton type="submit" preparing={visit.preparing} />}
+      submit={<DownloadButton type="submit" preparing={prepared.preparing} />}
     />
   );
 }
 
-/** La ficha: la ve cualquiera con el enlace, sin escribir nada (RN-2). El candado indica que pide contraseña. */
-function SharedFileCard({
-  visit,
-  details,
-}: {
-  readonly visit: Visit;
+interface SharedFileCardProps extends PublicLinkDownloadInput {
   readonly details: PublicLinkDetails;
-}) {
+}
+
+/**
+ * La ficha: la ve cualquiera con el enlace, sin escribir nada (RN-2). El candado indica que pide contraseña. Se monta
+ * con `key` = número de pedido: cada pedido tiene su propia descarga (013c CA-18).
+ */
+function SharedFileCard({ details, ...input }: SharedFileCardProps) {
+  const prepared = usePublicLinkDownload(input);
   const titleId = useId();
   return (
     <IdentityCard
@@ -119,8 +128,8 @@ function SharedFileCard({
       tone="info"
     >
       <FileSummary details={details} />
-      <DownloadNotice outcome={visit.outcome} />
-      <DownloadAction visit={visit} details={details} />
+      <DownloadNotice outcome={prepared.outcome} />
+      <DownloadAction prepared={prepared} details={details} />
     </IdentityCard>
   );
 }
@@ -133,7 +142,7 @@ export interface PublicLinkVisitViewProps {
 
 /** Los estados de la página `/enlace#<token>` (013b §6), con el cliente y la apertura inyectados. */
 export function PublicLinkVisitView({ api, openUrl }: PublicLinkVisitViewProps): JSX.Element {
-  const visit = usePublicLinkVisit(api, openUrl);
+  const visit = usePublicLinkVisit(api);
   const { state } = visit;
   switch (state.status) {
     case 'loading':
@@ -145,7 +154,15 @@ export function PublicLinkVisitView({ api, openUrl }: PublicLinkVisitViewProps):
     case 'rate-limited':
       return <RateLimitedState retryAfterSeconds={state.retryAfterSeconds} reload={visit.reload} />;
     case 'ready':
-      return <SharedFileCard visit={visit} details={state.details} />;
+      return (
+        <SharedFileCard
+          key={visit.request?.number}
+          api={api}
+          openUrl={openUrl}
+          visit={visit}
+          details={state.details}
+        />
+      );
   }
 }
 
