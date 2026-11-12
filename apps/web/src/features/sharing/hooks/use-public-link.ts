@@ -27,19 +27,31 @@ export interface PublicLinkState {
 
 const LOADING: PublicLinkReading = { status: 'loading' };
 
+/**
+ * Cada intento de lectura; `settledFor` es el archivo cuyo estado ya fijó una mutación: si esa relectura falla, el
+ * estado fijado se conserva (m-7).
+ */
+interface ReadAttempt {
+  readonly number: number;
+  readonly settledFor: string | null;
+}
+
+const FIRST_ATTEMPT: ReadAttempt = { number: 0, settledFor: null };
+
 /** Una lectura por intento y por archivo; una respuesta de un intento anterior se descarta. */
 function useReading(api: SharingApi, fileId: string) {
   const [reading, setReading] = React.useState<PublicLinkReading>(LOADING);
-  const [attempt, setAttempt] = React.useState(0);
+  const [attempt, setAttempt] = React.useState(FIRST_ATTEMPT);
 
   React.useEffect(() => {
     let current = true;
+    const keepOnError = attempt.settledFor === fileId;
     api.currentPublicLink(fileId).then(
       ({ link }) => {
         if (current) setReading({ status: 'ready', link });
       },
       (error: unknown) => {
-        if (current) setReading({ status: 'error', error });
+        if (current && !keepOnError) setReading({ status: 'error', error });
       },
     );
     return () => {
@@ -49,13 +61,17 @@ function useReading(api: SharingApi, fileId: string) {
 
   const reload = React.useCallback(() => {
     setReading((previous) => (previous.status === 'error' ? LOADING : previous));
-    setAttempt((previous) => previous + 1);
+    setAttempt(({ number }) => ({ number: number + 1, settledFor: null }));
   }, []);
 
-  /** Fija un enlace conocido sin esperar la lectura (tras revocar, CA-9). */
-  const settle = React.useCallback((link: PublicLinkSummary | null) => {
-    setReading({ status: 'ready', link });
-  }, []);
+  /** Fija un enlace conocido sin esperar la lectura (tras revocar, CA-9) y relee; si la relectura falla, queda el fijado. */
+  const settle = React.useCallback(
+    (link: PublicLinkSummary | null) => {
+      setReading({ status: 'ready', link });
+      setAttempt(({ number }) => ({ number: number + 1, settledFor: fileId }));
+    },
+    [fileId],
+  );
 
   return { reading, reload, settle };
 }
@@ -63,7 +79,7 @@ function useReading(api: SharingApi, fileId: string) {
 /**
  * Enlace público de un archivo propio y sus mutaciones (spec 013c CA-1, CA-3, CA-7 a CA-9, CA-13). Tras generar
  * vuelve a pedir el estado y conserva el visible hasta la respuesta; tras revocar queda «sin enlace» de inmediato y
- * también relee. La URL nunca sale de la memoria.
+ * también relee, sin que una relectura fallida tape ese resultado. La URL nunca sale de la memoria.
  */
 export function usePublicLink(api: SharingApi, fileId: string): PublicLinkState {
   const { reading, reload, settle } = useReading(api, fileId);
@@ -84,9 +100,8 @@ export function usePublicLink(api: SharingApi, fileId: string): PublicLinkState 
       await api.revokePublicLink(linkId);
       setGenerated(null);
       settle(null);
-      reload();
     },
-    [api, reload, settle],
+    [api, settle],
   );
 
   return { reading, generated, reload, create, revoke };

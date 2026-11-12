@@ -33,10 +33,12 @@ const currentOf = (link: PublicLinkSummary | null = publicLink()): Current =>
 
 function deferred<T>() {
   let resolve: (value: T) => void = () => undefined;
-  const promise = new Promise<T>((done) => {
+  let reject: (reason: unknown) => void = () => undefined;
+  const promise = new Promise<T>((done, fail) => {
     resolve = done;
+    reject = fail;
   });
-  return { promise, resolve };
+  return { promise, resolve, reject };
 }
 
 function renderLink(api: SharingApi, fileId = NODE_ID) {
@@ -134,6 +136,25 @@ describe('usePublicLink (spec 013c)', () => {
 
     expect(result.current.reading).toEqual({ status: 'ready', link: null });
     expect(currentPublicLink.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it('CA-9: si la relectura tras revocar falla, sigue «sin enlace» (m-7)', async () => {
+    const currentPublicLink = currentOf();
+    const { result } = await renderReady(
+      fakeSharingApi({ currentPublicLink, revokePublicLink: jest.fn(() => Promise.resolve()) }),
+    );
+    const reread = deferred<CurrentPublicLink>();
+    currentPublicLink.mockImplementation(() => reread.promise);
+
+    await act(async () => {
+      await result.current.revoke(PUBLIC_LINK_ID);
+    });
+    await act(async () => {
+      reread.reject(new StorageRequestError(500, 'INTERNAL_ERROR'));
+      await reread.promise.catch(() => undefined);
+    });
+
+    expect(result.current.reading).toEqual({ status: 'ready', link: null });
   });
 
   it('CA-9: revocar borra la URL en memoria y relee el estado', async () => {
