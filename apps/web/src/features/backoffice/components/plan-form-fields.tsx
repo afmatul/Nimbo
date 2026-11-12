@@ -2,12 +2,11 @@
 
 import type * as React from 'react';
 
+import { FieldMessage } from '../../../components/nimbo/field-message';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import type { PlanField, PlanFieldErrors, PlanForm } from '../hooks/use-plan-form';
 import { MAX_FILE_UNITS, QUOTA_UNITS } from '../plan-form-values';
-
-import { FieldMessage } from './field-message';
 
 /** Id de cada campo; el resumen de errores enlaza a ellos (`#nombre`). */
 export const PLAN_FIELD_IDS: Readonly<Record<PlanField, string>> = {
@@ -129,7 +128,11 @@ function TextField({
         error={error !== undefined}
         aria-describedby={describedBy(`${id}-ayuda`, error !== undefined && `${id}-error`)}
       />
-      {error === undefined ? null : <FieldMessage id={`${id}-error`} message={error} />}
+      {error === undefined ? null : (
+        <FieldMessage id={`${id}-error`} className="mt-1.5">
+          {error}
+        </FieldMessage>
+      )}
     </div>
   );
 }
@@ -152,7 +155,11 @@ function DescriptionField({ props }: { readonly props: PlanFormFieldsProps }): R
         aria-describedby={describedBy(`${id}-ayuda`, error !== undefined && `${id}-error`)}
         className="mt-1.5 w-full rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:opacity-45"
       />
-      {error === undefined ? null : <FieldMessage id={`${id}-error`} message={error} />}
+      {error === undefined ? null : (
+        <FieldMessage id={`${id}-error`} className="mt-1.5">
+          {error}
+        </FieldMessage>
+      )}
     </div>
   );
 }
@@ -292,7 +299,11 @@ function UnitField({
           ariaLabel: `Unidad de ${label.toLowerCase()}`,
         }}
       />
-      {error === undefined ? null : <FieldMessage id={`${id}-error`} message={error} />}
+      {error === undefined ? null : (
+        <FieldMessage id={`${id}-error`} className="mt-1.5">
+          {error}
+        </FieldMessage>
+      )}
     </div>
   );
 }

@@ -9,9 +9,10 @@ import {
   SHARING_FIELD_MESSAGES,
   type PublicLinkExpiryDays,
 } from '@nimbo/contracts';
-import { AlertCircle, LinkIcon, Loader2 } from 'lucide-react';
+import { LinkIcon, Loader2 } from 'lucide-react';
 import * as React from 'react';
 
+import { FieldMessage } from '../../../components/nimbo/field-message';
 import { PasswordField } from '../../../components/nimbo/password-field';
 import { Button } from '../../../components/ui/button';
 import { Label } from '../../../components/ui/label';
@@ -122,19 +123,6 @@ function useFocusOnPasswordRejection(
   }, [passwordRef, failure]);
 }
 
-function FieldMessage({ id, children }: { readonly id: string; readonly children: string }) {
-  return (
-    <p
-      id={id}
-      role="alert"
-      className="flex items-start gap-1.5 text-sm font-medium text-destructive"
-    >
-      <AlertCircle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
-      <span>{children}</span>
-    </p>
-  );
-}
-
 interface PasswordInputProps {
   readonly inputRef: React.RefObject<HTMLInputElement | null>;
   readonly value: string;
@@ -171,7 +159,11 @@ function PasswordInput({
         aria-describedby={error === null ? hintId : `${errorId} ${hintId}`}
         onChange={(event) => onChange(event.target.value)}
       />
-      {error === null ? null : <FieldMessage id={errorId}>{error}</FieldMessage>}
+      {error === null ? null : (
+        <FieldMessage id={errorId} alert>
+          {error}
+        </FieldMessage>
+      )}
       <p id={hintId} className="text-sm text-muted-foreground">
         {PASSWORD_HINT}
       </p>
