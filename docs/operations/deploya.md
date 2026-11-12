@@ -46,40 +46,65 @@ Dentro de Deploya:
 3. Tener a mano un SMTP con TLS (el worker lo exige en `APP_ENV=staging`) y, si se quiere el agente, una
    `GEMINI_API_KEY`.
 
-### 3.2 Crear los proyectos (plan Pro)
+### 3.2 Crear los cuatro proyectos (plan Pro)
 
-| Proyecto | Dockerfile | Puerto | Comando de inicio | Plantilla |
-|---|---|---|---|---|
-| `nimbo-api` | `apps/api/Dockerfile` | 3000 | — | `infra/deploya/api.env` |
-| `nimbo-worker` | `apps/worker/Dockerfile` | 3001 | — | `infra/deploya/worker.env` |
-| `nimbo-optimizer` | `apps/worker/Dockerfile` | 3003 | `node dist/worker-optimizer.main.js` | `infra/deploya/optimizer.env` |
-| `nimbo` (web) | `apps/web/Dockerfile` | 3002 | — | `infra/deploya/web.env` |
+El asistente de alta de Deploya solo acepta repositorios con un `Dockerfile` en la **raíz** de la rama (no deja
+elegir la ruta) y despliega en cuanto se crea el proyecto. Por eso el `Dockerfile` de la raíz es el del api, y los
+otros tres proyectos cambian la ruta en **Configuración** después del alta.
 
-Los subdominios son los de las plantillas: la web en `nimbo.deploya.larasolutions.dev` y el api en
-`nimbo-api.deploya.larasolutions.dev`. Si cambian, se corrigen `WEB_PUBLIC_URL` y `CORS_ORIGIN` (api) y
-`API_INTERNAL_URL` y `API_PUBLIC_URL` (web).
+Crear los cuatro con **Nuevo proyecto**, repositorio `https://github.com/afmatul/Nimbo` y rama `main`. El nombre
+fija el subdominio:
+
+| Nombre | Puerto en el alta | Subdominio |
+|---|---|---|
+| `nimbo-api` | 3000 (lo sugiere el `EXPOSE`) | `nimbo-api.deploya.larasolutions.dev` |
+| `nimbo-worker` | 3001 | `nimbo-worker.deploya.larasolutions.dev` |
+| `nimbo-optimizer` | 3003 | `nimbo-optimizer.deploya.larasolutions.dev` |
+| `nimbo` | 3002 | `nimbo.deploya.larasolutions.dev` |
+
+En el paso de variables del asistente no hace falta pegar nada todavía. **El primer despliegue de los cuatro falla y es
+lo esperado**: todavía no tienen recursos de datos ni variables, y los tres últimos construyen la imagen del api. Un
+proyecto con el último despliegue fallido no ocupa cupo del plan.
+
+Si los subdominios cambian, se corrigen `WEB_PUBLIC_URL` y `CORS_ORIGIN` (api) y `API_INTERNAL_URL` y
+`API_PUBLIC_URL` (web).
 
 ### 3.3 Recursos de datos
 
 En la pestaña **Datos** de `nimbo-api`:
 
 1. Crear **postgres** (pgvector), **redis** y **s3**. Deploya crea el bucket `app` con versionado.
-2. Compartir los tres con `nimbo-worker` y `nimbo-optimizer`. La web no usa ninguno.
+2. En cada recurso, **Compartir con otro proyecto** → `nimbo-worker` y luego `nimbo-optimizer`. La web no usa
+   ninguno.
 3. Opcional: la regla de ciclo de vida de `infra/minio/init.sh` (versiones no vigentes, 7 días) con
    `mc ilm import <alias>/app` contra el endpoint público del s3. Sin ella, las versiones viejas no expiran.
 
-### 3.4 Variables
+### 3.4 Configuración de cada proyecto
 
-Pegar cada plantilla en su proyecto, reemplazando los `<…>`. Son solo las variables obligatorias de cada esquema
-zod (`env.schema.ts`, `apps/web/src/env.ts`); el resto toma su valor por omisión. No hay que definir `DATABASE_URL`,
-`REDIS_URL`, `S3_*` ni `MINIO_*`: las pone Deploya y las traduce el entrypoint. Cualquier variable de `.env.example`
-se puede agregar después (máximo 150 por proyecto).
+En la pestaña **Configuración** → **Contenedor**, **Guardar cambios** (aplican en el próximo despliegue):
 
-### 3.5 Desplegar en orden
+| Proyecto | Ruta del Dockerfile | Puerto interno | Comando de inicio |
+|---|---|---|---|
+| `nimbo-api` | `Dockerfile` (sin cambios) | 3000 | vacío |
+| `nimbo-worker` | `apps/worker/Dockerfile` | 3001 | vacío |
+| `nimbo-optimizer` | `apps/worker/Dockerfile` | 3003 | `node dist/worker-optimizer.main.js` |
+| `nimbo` | `apps/web/Dockerfile` | 3002 | vacío |
+
+### 3.5 Variables
+
+En la pestaña **Variables** de cada proyecto, pegar su plantilla (`infra/deploya/api.env`, `worker.env`,
+`optimizer.env`, `web.env`) reemplazando los `<…>`, y guardar **sin** desplegar todavía. Son solo las variables
+obligatorias de cada esquema zod (`env.schema.ts`, `apps/web/src/env.ts`); el resto toma su valor por omisión. No hay
+que definir `DATABASE_URL`, `REDIS_URL`, `S3_*` ni `MINIO_*`: las pone Deploya y las traduce el entrypoint. Cualquier
+variable de `.env.example` se puede agregar después (máximo 150 por proyecto).
+
+### 3.6 Desplegar en orden
+
+Con **Desplegar** en cada proyecto, esperando que el anterior quede en línea:
 
 1. **`nimbo-api`**: crea `nimbo_app`, migra y arranca. Comprobar `https://nimbo-api.deploya.larasolutions.dev/api/v1/health/ready` → 200.
-2. **`nimbo-worker`**: necesita las migraciones aplicadas.
-3. **`nimbo-optimizer`**.
+2. **`nimbo-worker`**: necesita las migraciones aplicadas. `…/health/ready` → 200.
+3. **`nimbo-optimizer`**: `…/health/ready` → 200.
 4. **`nimbo`** (web): comprobar que `https://nimbo.deploya.larasolutions.dev/` responde 200.
 
 El primer administrador se crea con `admin:bootstrap` desde una consola del contenedor del api, pasando por el
@@ -109,8 +134,10 @@ Si Deploya no ofrece consola, se corre la misma imagen en local con las variable
 
 ## 5. Si algo falla
 
-| Síntoma en los registros | Causa |
+| Síntoma | Causa |
 |---|---|
+| El alta dice que no hay `Dockerfile` | La rama elegida no trae el `Dockerfile` de la raíz (está en `main` desde este cambio) |
+| El worker, el optimizer o la web construyen la imagen del api | Falta cambiar la «Ruta del Dockerfile» (§3.4) |
 | `deploya.env` con `warnings` sobre `NIMBO_APP_DB_PASSWORD` | Falta la variable: `DATABASE_URL` queda con el dueño y la app no arranca |
 | `db.role_rejected` | `DATABASE_URL` conecta con el dueño o un superusuario |
 | `db.app_role_failed` | El api no pudo crear `nimbo_app` (credenciales del postgres o recurso no listo) |
@@ -127,7 +154,7 @@ por proyecto, `pgvector/pgvector:pg17` (usuario `deploya`, base `app`), `redis:7
 
 | Imagen | Dockerfile | Build sin caché | Tamaño |
 |---|---|---|---|
-| `nimbo-api` | `apps/api/Dockerfile` | 65 s | 544 MB |
+| `nimbo-api` | `Dockerfile` (raíz) | 65 s | 544 MB |
 | `nimbo-worker` (worker y optimizer) | `apps/worker/Dockerfile` | 67 s | 656 MB |
 | `nimbo-web` | `apps/web/Dockerfile` | 99 s | 436 MB |
 

@@ -52,7 +52,7 @@ services:
     profiles: [apps]
     build:
       context: .
-      dockerfile: apps/api/Dockerfile
+      dockerfile: Dockerfile
     labels:
       traefik.enable: 'true'
       # `/socket.io`: canal en vivo del `api` (spec 015); el WebSocket pasa sin configuración extra.
