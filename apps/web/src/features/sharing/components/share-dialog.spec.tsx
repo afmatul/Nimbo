@@ -165,10 +165,14 @@ const withoutLink = (overrides: Partial<SharingApi> = {}): SharingApi =>
     ...overrides,
   });
 
+/** Espera la lectura del enlace: si llega después de la prueba, React avisa que no estaba en `act` (m-10). */
+async function sectionRead(): Promise<void> {
+  await within(dialog()).findByRole('button', { name: 'Crear enlace público' });
+}
+
 async function openLinkForm(): Promise<void> {
-  await userEvent.click(
-    await within(dialog()).findByRole('button', { name: 'Crear enlace público' }),
-  );
+  await sectionRead();
+  await userEvent.click(within(dialog()).getByRole('button', { name: 'Crear enlace público' }));
 }
 
 function overlay(): Element {
@@ -178,14 +182,16 @@ function overlay(): Element {
 }
 
 describe('ShareDialog: sección «Enlace público» (spec 013c CA-2, CA-11)', () => {
-  it('CA-15: la columna del diálogo puede encogerse, así que un nombre sin espacios no desplaza la página a 360 px', () => {
+  it('CA-15: la columna del diálogo puede encogerse, así que un nombre sin espacios no desplaza la página a 360 px', async () => {
     renderDialog(withoutLink());
+    await sectionRead();
 
     expect(dialog().className).toContain('grid-cols-[minmax(0,1fr)]');
   });
 
   it('CA-2: un archivo muestra la sección después de «Personas con acceso»', async () => {
     renderDialog(withoutLink());
+    await sectionRead();
 
     const headings = within(dialog()).getAllByRole('heading', { level: 3 });
     expect(headings.map((heading) => heading.textContent)).toEqual([
