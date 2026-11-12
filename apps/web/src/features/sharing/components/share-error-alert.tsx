@@ -10,17 +10,16 @@ import { RENEW_PATH } from '../../billing/routes';
 import { SHARE_FIX_LABELS, type ShareFix, type ShareMessage } from '../share-messages';
 
 /** Qué hace cada acción correctiva en la pantalla que muestra el error; sin manejador, no hay botón. */
-export type ShareFixHandlers = Partial<
-  Record<Exclude<ShareFix, 'renew' | 'wait' | 'none'>, () => void>
->;
+export type ShareFixHandlers = Partial<Record<Exclude<ShareFix, 'renew' | 'wait'>, () => void>>;
 
 function FixAction({
   fix,
   handlers,
 }: {
-  readonly fix: ShareFix;
+  readonly fix: ShareFix | undefined;
   readonly handlers: ShareFixHandlers;
 }): React.JSX.Element | null {
+  if (fix === undefined) return null;
   const label = SHARE_FIX_LABELS[fix];
   if (label === null) return null;
   if (fix === 'renew') {

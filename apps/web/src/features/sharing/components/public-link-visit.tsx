@@ -7,7 +7,7 @@ import { useId, useMemo, type JSX } from 'react';
 import { FileTypeIcon, fileTypeColors } from '../../../components/nimbo/file-type-chip';
 import { IdentityCard } from '../../../components/nimbo/identity-card';
 import { Button } from '../../../components/ui/button';
-import { expiresAtLabel } from '../../../lib/format-date';
+import { absoluteDateTimeLabel } from '../../../lib/format-date';
 import { openInBrowser } from '../../../lib/use-preparing-download';
 import {
   usePublicLinkDownload,
@@ -49,7 +49,7 @@ function FileSummary({ details }: { readonly details: PublicLinkDetails }): JSX.
           <span aria-hidden="true" className="hidden sm:inline">
             ·
           </span>
-          <span>{`Vence el ${expiresAtLabel(details.expiresAt)}`}</span>
+          <span>{`Vence el ${absoluteDateTimeLabel(details.expiresAt)}`}</span>
         </p>
       </div>
     </div>

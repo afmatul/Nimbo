@@ -7,7 +7,7 @@ import * as React from 'react';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
-import { expiresAtLabel } from '../../../lib/format-date';
+import { absoluteDateTimeLabel } from '../../../lib/format-date';
 import type { ShareMessage } from '../share-messages';
 
 import { ShareErrorAlert } from './share-error-alert';
@@ -22,7 +22,6 @@ export interface GeneratedLinkFieldProps {
 const COPIED_LABEL = 'Enlace copiado';
 const COPY_FAILED: ShareMessage = {
   title: 'No pudimos copiar el enlace. Selecciónalo y cópialo a mano.',
-  fix: 'none',
 };
 
 /** Sin contexto seguro `navigator.clipboard` no existe: el fallo llega como rechazo (R-2). */
@@ -81,7 +80,7 @@ function LinkMeta({
       id={id}
       className="flex flex-col text-sm tabular-nums text-secondary-foreground sm:flex-row sm:gap-1.5"
     >
-      <span>{`Vence el ${expiresAtLabel(generated.link.expiresAt)}`}</span>
+      <span>{`Vence el ${absoluteDateTimeLabel(generated.link.expiresAt)}`}</span>
       <span aria-hidden="true" className="hidden sm:inline">
         ·
       </span>

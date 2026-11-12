@@ -142,8 +142,11 @@ export function dateTimeLabel(iso: string, now: number): string {
   return `${relativeDayLabel(instant, now)}, ${clockFormatter.format(new Date(instant))}`;
 }
 
-/** «14 nov 2026, 14:30»: siempre la fecha absoluta, nunca «hoy», con el día y la hora de Guatemala (013b CA-1). */
-export function expiresAtLabel(iso: string): string {
+/**
+ * «14 nov 2026, 14:30»: siempre la fecha absoluta, nunca «hoy», con el día y la hora de Guatemala. Vencimiento y
+ * creación de un enlace público (013b CA-1, 013c CA-7).
+ */
+export function absoluteDateTimeLabel(iso: string): string {
   const instant = new Date(iso);
   return `${startedOnFormatter.format(instant)}, ${clockFormatter.format(instant)}`;
 }

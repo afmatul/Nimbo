@@ -6,7 +6,7 @@ import type * as React from 'react';
 
 import { StatusBadge } from '../../../components/nimbo/status-badge';
 import { Button } from '../../../components/ui/button';
-import { expiresAtLabel } from '../../../lib/format-date';
+import { absoluteDateTimeLabel } from '../../../lib/format-date';
 import type { LinkSectionState } from '../hooks/use-link-section-state';
 import type { ShareMessage } from '../share-messages';
 
@@ -32,11 +32,11 @@ function LinkSummary({ link }: { readonly link: PublicLinkSummary }): React.JSX.
       />
       <div className="grid min-w-0">
         <p className={meta}>
-          <span>{`${active ? 'Vence' : 'Venció'} el ${expiresAtLabel(link.expiresAt)}`}</span>
+          <span>{`${active ? 'Vence' : 'Venció'} el ${absoluteDateTimeLabel(link.expiresAt)}`}</span>
           <span aria-hidden="true">·</span>
           <span>{link.hasPassword ? 'Con contraseña' : 'Sin contraseña'}</span>
         </p>
-        <p className={meta}>{`Creado el ${expiresAtLabel(link.createdAt)}`}</p>
+        <p className={meta}>{`Creado el ${absoluteDateTimeLabel(link.createdAt)}`}</p>
       </div>
     </div>
   );

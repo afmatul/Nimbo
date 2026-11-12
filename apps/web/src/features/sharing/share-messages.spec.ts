@@ -86,7 +86,6 @@ describe('catálogo de mensajes de compartir (spec 012b RN-2)', () => {
       refresh: 'Actualizar lista',
       wait: null,
       reload: 'Actualizar',
-      none: null,
     });
   });
 });
@@ -102,7 +101,6 @@ describe('mensajes de la sección «Enlace público» (spec 013c I-2, I-3)', () 
   it('CA-14: un archivo que ya no está tiene su texto y no ofrece botón', () => {
     expect(publicLinkMessageOf(failure(404, STORAGE_ERROR_CODES.STORAGE_NODE_NOT_FOUND))).toEqual({
       title: 'Este archivo ya no está disponible. Puede que esté en la papelera.',
-      fix: 'none',
     });
   });
 

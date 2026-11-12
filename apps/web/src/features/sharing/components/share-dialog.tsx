@@ -45,7 +45,12 @@ function useCloseGuard() {
   const [busy, setBusy] = React.useState(false);
   const cancelRef = React.useRef<CancelOpenPart | null>(null);
   const onEscapeKeyDown = (event: KeyboardEvent): void => {
-    if (busy || cancelRef.current?.()) event.preventDefault();
+    if (busy) {
+      event.preventDefault();
+      return;
+    }
+    const cancelled = cancelRef.current?.() ?? false;
+    if (cancelled) event.preventDefault();
   };
   const onInteractOutside = (event: Event): void => {
     if (busy) event.preventDefault();

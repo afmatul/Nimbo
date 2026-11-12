@@ -11,17 +11,18 @@ import { StorageRequestError } from '../storage/storage-request-error';
 
 /**
  * Acción correctiva de un error de compartir o salir (spec 012b CA-3, CA-11) y del enlace público (013c CA-14):
- * `reload` repite la lectura del enlace y `none` no ofrece botón.
+ * `reload` repite la lectura del enlace.
  */
-export type ShareFix = 'retry' | 'fix_email' | 'renew' | 'wait' | 'refresh' | 'reload' | 'none';
+export type ShareFix = 'retry' | 'fix_email' | 'renew' | 'wait' | 'refresh' | 'reload';
 
 export interface ShareMessage {
   /** Qué pasó y qué hacer, en tuteo. */
   readonly title: string;
-  readonly fix: ShareFix;
+  /** Sin acción, no hay botón: el texto ya dice qué hacer. */
+  readonly fix?: ShareFix;
 }
 
-/** Rótulo del botón de cada acción; esperar no tiene botón (el texto dice cuánto), ni `none`. */
+/** Rótulo del botón de cada acción; esperar no tiene botón (el texto dice cuánto). */
 export const SHARE_FIX_LABELS: Readonly<Record<ShareFix, string | null>> = {
   retry: 'Reintentar',
   fix_email: 'Corregir el correo',
@@ -29,7 +30,6 @@ export const SHARE_FIX_LABELS: Readonly<Record<ShareFix, string | null>> = {
   refresh: 'Actualizar lista',
   wait: null,
   reload: 'Actualizar',
-  none: null,
 };
 
 const NETWORK_MESSAGE: ShareMessage = {
@@ -104,7 +104,6 @@ const PUBLIC_LINK_MESSAGES: Readonly<Record<string, ShareMessage>> = {
   },
   [STORAGE_ERROR_CODES.STORAGE_NODE_NOT_FOUND]: {
     title: 'Este archivo ya no está disponible. Puede que esté en la papelera.',
-    fix: 'none',
   },
 };
 
