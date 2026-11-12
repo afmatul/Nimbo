@@ -29,7 +29,8 @@ RUN pnpm --filter api deploy --prod --legacy /deploy \
   && mkdir /out \
   && mv /deploy/package.json /deploy/node_modules /out/ \
   && cp -r apps/api/dist /out/dist \
-  && cp apps/worker/dist/healthcheck.js /out/dist/healthcheck.js
+  && cp apps/worker/dist/healthcheck.js /out/dist/healthcheck.js \
+  && cp apps/api/deploya-entrypoint.sh /out/deploya-entrypoint.sh
 
 FROM ${NODE_IMAGE} AS runtime
 # Ghostscript para PDF de 019 (ADR-0033) y futuro 021b; 021 JPEG/PNG no lo usa. Se comparte imagen, no pipeline.
@@ -55,4 +56,8 @@ RUN node -e "const s = require('sharp'); console.log('sharp', s.versions.sharp, 
 # (`node dist/healthcheck.js WORKER_OPTIMIZER_PORT`).
 HEALTHCHECK --interval=20s --timeout=5s --start-period=30s --retries=2 \
   CMD ["node", "dist/healthcheck.js"]
+# Entrypoint compartido con el `api`, sin `--migrate`: en Deploya solo traduce las variables de los recursos de datos
+# (docs/operations/deploya.md); sin variables `DEPLOYA_*` ejecuta el comando tal cual. `command:` de compose y el
+# `comandoInicio` de Deploya reemplazan solo el CMD.
+ENTRYPOINT ["sh", "/app/deploya-entrypoint.sh"]
 CMD ["node", "dist/worker.main.js"]
