@@ -92,5 +92,5 @@ Veredicto: ✅ Sin hallazgos bloqueantes (`security-auditor`)
 ## DF y pendientes
 - DF-91 actualizado («llegó con la 013c»). Sin DF nuevo.
 - PD-200 cerrado. PD-207 por I-4 (era PD-206, que la 017 ya usa en `main`) y PD-208 por SEC-1. PD-209: la T-08 halló que un nombre sin espacios desplazaba «Compartir» a 360 px; se arregló en `share-dialog.tsx` y la base de los diálogos queda para Adrián.
-- **T-08 (humana) pendiente:** el recorrido de la demo y la revisión manual de CA-15 (360 px, contraste AA a 360 y 1440 px, movimiento reducido) y de SEC-1, con nota en el PR. Es pendiente, no bloqueante.
+- **T-08 (humana) hecha (Fátima, 12/11):** pasos 1–12 ✅; SEC-1 → `off` y marcas, Chrome la sigue ofreciendo (PD-208); 360 px corregido (PD-209) y confirmado; solo lectura (paso 14) no se recorrió: lo cubren las pruebas de CA-10.
 - La spec pasa a `Hecha` cuando se integre.
