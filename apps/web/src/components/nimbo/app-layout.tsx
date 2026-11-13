@@ -114,8 +114,10 @@ function AppHeader({
         >
           <Menu className="h-6 w-6" aria-hidden="true" />
         </button>
-        <BrandLogo href={useHeaderHome()} />
-        {topBar ? <div className="hidden min-w-0 md:ml-6 md:flex">{topBar}</div> : null}
+        <div className="md:hidden">
+          <BrandLogo href={useHeaderHome()} />
+        </div>
+        {topBar ? <div className="hidden min-w-0 md:flex">{topBar}</div> : null}
       </div>
       <div className="flex items-center gap-3">
         <HeaderAccount userEmail={userEmail} />
@@ -144,8 +146,7 @@ function CollapseToggle({ collapse }: { readonly collapse: SidebarCollapse }): R
       aria-expanded={!collapse.collapsed}
       title={label}
       className={cn(
-        'mb-2 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-secondary-foreground hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        !collapse.collapsed && 'self-end',
+        'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-secondary-foreground hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
       )}
     >
       <Icon className="h-5 w-5" aria-hidden="true" />
@@ -165,17 +166,26 @@ function DesktopSidebar({
   readonly sidebar: Omit<AppSidebarProps, 'variant'>;
 }): React.JSX.Element {
   const collapse = useSidebarCollapsed();
+  const home = useHeaderHome();
   return (
     <aside
       inert={behindDrawer}
       data-collapsed={collapse.collapsed ? '' : undefined}
       className={cn(
-        'hidden shrink-0 border-r border-border bg-card p-4 md:sticky md:top-header md:flex md:h-below-header md:flex-col md:self-start',
+        'hidden shrink-0 border-r border-border bg-card p-4 md:sticky md:top-0 md:flex md:h-dvh md:flex-col md:self-start',
         collapse.collapsed ? 'w-20 items-center px-3' : 'w-64',
       )}
       aria-label="Barra lateral de escritorio"
     >
-      <CollapseToggle collapse={collapse} />
+      <div
+        className={cn(
+          'mb-4 flex shrink-0 items-center gap-1',
+          collapse.collapsed ? 'flex-col' : 'justify-between',
+        )}
+      >
+        <BrandLogo compact={collapse.collapsed} href={home} />
+        <CollapseToggle collapse={collapse} />
+      </div>
       <AppSidebar variant="desktop" {...sidebar} collapsed={collapse.collapsed} />
     </aside>
   );
@@ -204,13 +214,6 @@ export function AppLayout({
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background text-foreground overflow-x-clip">
-      <AppHeader
-        menuOpen={open}
-        onToggleMenu={toggle}
-        menuButtonRef={menuButtonRef}
-        topBar={topBar}
-        userEmail={userEmail}
-      />
       <div className="flex flex-1 min-w-0">
         <DesktopSidebar behindDrawer={behindDrawer} sidebar={sidebar} />
         {open ? (
@@ -218,15 +221,23 @@ export function AppLayout({
             <AppSidebar variant="mobile" {...sidebar} />
           </MobileNavDrawer>
         ) : null}
-        <main
-          inert={behindDrawer}
+        <div
           className={cn(
-            'flex-1 p-4 md:p-8 min-w-0',
+            'flex min-w-0 flex-1 flex-col',
             agent.reservesPanel && 'mr-(--agent-panel-width)',
           )}
         >
-          {children}
-        </main>
+          <AppHeader
+            menuOpen={open}
+            onToggleMenu={toggle}
+            menuButtonRef={menuButtonRef}
+            topBar={topBar}
+            userEmail={userEmail}
+          />
+          <main inert={behindDrawer} className="flex-1 p-4 md:p-8 min-w-0">
+            {children}
+          </main>
+        </div>
       </div>
       {agent.panel}
       <Toaster />

@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../../../components/ui/dialog';
+import { cn } from '../../../lib/utils';
 import { useAccessList } from '../hooks/use-access-list';
 import type { ShareNodeRef, SharingApi } from '../sharing-api';
 
@@ -63,7 +64,7 @@ function DialogHeading({ name }: { readonly name: string }): React.JSX.Element {
     <DialogHeader className="pr-10">
       <DialogTitle className="break-words">{`Compartir «${name}»`}</DialogTitle>
       <DialogDescription>
-        Escribe el correo de una persona con cuenta en Nimbo y elige qué puede hacer.
+        Comparte con una persona por correo o crea un enlace público.
       </DialogDescription>
     </DialogHeader>
   );
@@ -86,28 +87,89 @@ function CloseButton({ disabled }: { readonly disabled: boolean }): React.JSX.El
   );
 }
 
+type ShareMode = 'email' | 'link';
+
+const MODES: readonly { readonly value: ShareMode; readonly label: string }[] = [
+  { value: 'email', label: 'Por correo' },
+  { value: 'link', label: 'Por enlace' },
+];
+
+/** Interruptor entre compartir con una persona (correo) o con un enlace público; deshabilitado con una acción del enlace en curso. */
+function ModeSwitch({
+  mode,
+  onChange,
+  disabled,
+}: {
+  readonly mode: ShareMode;
+  readonly onChange: (next: ShareMode) => void;
+  readonly disabled: boolean;
+}): React.JSX.Element {
+  return (
+    <div
+      role="group"
+      aria-label="Forma de compartir"
+      className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1"
+    >
+      {MODES.map(({ value, label }) => (
+        <button
+          key={value}
+          type="button"
+          aria-pressed={mode === value}
+          disabled={disabled}
+          onClick={() => onChange(value)}
+          className={cn(
+            'min-h-11 rounded-md px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60',
+            mode === value
+              ? 'bg-card font-semibold text-primary shadow-sm'
+              : 'text-secondary-foreground hover:text-foreground',
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** El foco inicial va al correo (el modo por defecto), no al interruptor. */
+function focusEmailField(event: Event): void {
+  event.preventDefault();
+  document.getElementById('compartir-correo')?.focus();
+}
+
 function ShareDialogBody({ api, target }: ShareDialogBodyProps): React.JSX.Element {
   const access = useAccessList(api, target);
   const returnFocus = useReturnFocus();
   const guard = useCloseGuard();
+  const [mode, setMode] = React.useState<ShareMode>('email');
+  const isFile = target.nodeType === 'file';
   return (
     <DialogContent
       // Columna `minmax(0,1fr)`: un nombre sin espacios no ensancha la cuadrícula a 360 px (013c CA-15, T-08; PD-209).
       className="max-h-dvh grid-cols-[minmax(0,1fr)] overflow-y-auto rounded-xl"
       {...returnFocus}
+      onOpenAutoFocus={(event) => {
+        returnFocus.onOpenAutoFocus(event);
+        focusEmailField(event);
+      }}
       onEscapeKeyDown={guard.onEscapeKeyDown}
       onInteractOutside={guard.onInteractOutside}
     >
       <DialogHeading name={target.name} />
-      <ShareForm node={target} share={access.share} />
-      <AccessList access={access} nodeName={target.name} />
-      {target.nodeType === 'file' ? (
-        <PublicLinkSection
-          api={api}
-          fileId={target.nodeId}
-          onBusyChange={guard.setBusy}
-          cancelRef={guard.cancelRef}
-        />
+      {isFile ? <ModeSwitch mode={mode} onChange={setMode} disabled={guard.busy} /> : null}
+      <div hidden={mode !== 'email'} className="grid gap-4">
+        <ShareForm node={target} share={access.share} />
+        <AccessList access={access} nodeName={target.name} />
+      </div>
+      {isFile ? (
+        <div hidden={mode !== 'link'}>
+          <PublicLinkSection
+            api={api}
+            fileId={target.nodeId}
+            onBusyChange={guard.setBusy}
+            cancelRef={guard.cancelRef}
+          />
+        </div>
       ) : null}
       <CloseButton disabled={guard.busy} />
     </DialogContent>

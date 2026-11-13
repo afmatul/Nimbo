@@ -33,7 +33,9 @@ describe('BrandLogo: el logo de Nimbo en todas las cabeceras', () => {
         <AppLayout>contenido</AppLayout>
       </HeaderAccountProvider>,
     );
-    expect(screen.getByRole('link', { name: 'Nimbo' }).getAttribute('href')).toBe('/archivos');
+    for (const link of screen.getAllByRole('link', { name: 'Nimbo' })) {
+      expect(link.getAttribute('href')).toBe('/archivos');
+    }
   });
 
   it('el marco enfocado (pago, 404) muestra el logo y la cuenta, sin barra lateral', () => {
@@ -44,7 +46,9 @@ describe('BrandLogo: el logo de Nimbo en todas las cabeceras', () => {
         </FocusedLayout>
       </HeaderAccountProvider>,
     );
-    expect(screen.getByRole('link', { name: 'Nimbo' }).getAttribute('href')).toBe('/archivos');
+    for (const link of screen.getAllByRole('link', { name: 'Nimbo' })) {
+      expect(link.getAttribute('href')).toBe('/archivos');
+    }
     expect(screen.getByText('Menú de Ana')).toBeTruthy();
     expect(screen.getByRole('main').textContent).toBe('Pago');
     expect(screen.queryByRole('navigation')).toBeNull();

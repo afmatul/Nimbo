@@ -245,6 +245,12 @@ describe('Accesibilidad del diálogo «Compartir» a 360 y 1440 px (spec 012b CA
   });
 });
 
+async function openLinkDialog(api: SharingApi, readOnly = false): Promise<HTMLElement> {
+  const dialog = await openDialog(api, readOnly);
+  await userEvent.click(within(dialog).getByRole('button', { name: 'Por enlace' }));
+  return dialog;
+}
+
 const linkOf = (link: ReturnType<typeof publicLink> | null) =>
   jest.fn(() => Promise.resolve({ link }));
 const EXPIRED_LINK = publicLink({ status: 'expired', expiresAt: '2026-11-03T15:15:00.000Z' });
@@ -262,14 +268,14 @@ async function clickInDialog(name: string): Promise<void> {
 }
 
 async function generateFrom(api: SharingApi): Promise<void> {
-  await openDialog(api);
+  await openLinkDialog(api);
   await clickInDialog('Crear enlace público');
   await clickInDialog('Generar enlace');
 }
 
 describe('Accesibilidad de la sección «Enlace público» a 360 y 1440 px (spec 013c CA-15)', () => {
   it('CA-15: enlace-cargando', async () => {
-    await openDialog(fakeSharingApi({ listAccess: accessOf() }));
+    await openLinkDialog(fakeSharingApi({ listAccess: accessOf() }));
     await screen.findByText('Cargando el enlace público…');
     await expectNoBlockingViolations();
   });
@@ -279,13 +285,13 @@ describe('Accesibilidad de la sección «Enlace público» a 360 y 1440 px (spec
     ['enlace-activo', publicLink({ hasPassword: true }), 'Generar otro enlace'],
     ['enlace-vencido', EXPIRED_LINK, 'Revocar enlace'],
   ])('CA-15: %s', async (_state, link, button) => {
-    await openDialog(linkApi(link));
+    await openLinkDialog(linkApi(link));
     await within(screen.getByRole('dialog')).findByRole('button', { name: button });
     await expectNoBlockingViolations();
   });
 
   it('CA-15: enlace-formulario y enlace-contrasena-invalida', async () => {
-    await openDialog(linkApi(null));
+    await openLinkDialog(linkApi(null));
     await clickInDialog('Crear enlace público');
     await expectNoBlockingViolations();
     await userEvent.type(screen.getByLabelText('Contraseña (opcional)'), 'abc12');
@@ -341,14 +347,14 @@ describe('Accesibilidad de la sección «Enlace público» a 360 y 1440 px (spec
   });
 
   it('CA-15: enlace-confirmar-reemplazo', async () => {
-    await openDialog(linkApi(publicLink()));
+    await openLinkDialog(linkApi(publicLink()));
     await clickInDialog('Generar otro enlace');
     await screen.findByText('El enlace actual dejará de funcionar para quien lo tenga.');
     await expectNoBlockingViolations();
   });
 
   it('CA-15: enlace-reemplazando', async () => {
-    const dialog = await openDialog(
+    const dialog = await openLinkDialog(
       linkApi(publicLink(), { createPublicLink: jest.fn((): Promise<never> => never()) }),
     );
     await clickInDialog('Generar otro enlace');
@@ -363,7 +369,7 @@ describe('Accesibilidad de la sección «Enlace público» a 360 y 1440 px (spec
   });
 
   it('CA-15: enlace-confirmar-revocar y enlace-revocando', async () => {
-    await openDialog(
+    await openLinkDialog(
       linkApi(publicLink(), { revokePublicLink: jest.fn((): Promise<void> => never()) }),
     );
     await clickInDialog('Revocar enlace');
@@ -379,7 +385,7 @@ describe('Accesibilidad de la sección «Enlace público» a 360 y 1440 px (spec
       .fn()
       .mockResolvedValueOnce({ link: publicLink() })
       .mockResolvedValue({ link: null });
-    await openDialog(
+    await openLinkDialog(
       linkApi(null, { currentPublicLink, revokePublicLink: jest.fn(() => Promise.resolve()) }),
     );
     await clickInDialog('Revocar enlace');
@@ -393,13 +399,13 @@ describe('Accesibilidad de la sección «Enlace público» a 360 y 1440 px (spec
     ['enlace-error-carga', jest.fn(() => Promise.reject(new TypeError('Failed to fetch')))],
     ['enlace-archivo-no-encontrado', rejectWith(404, STORAGE_ERROR_CODES.STORAGE_NODE_NOT_FOUND)],
   ])('CA-15: %s', async (_state, currentPublicLink) => {
-    await openDialog(fakeSharingApi({ listAccess: accessOf(), currentPublicLink }));
+    await openLinkDialog(fakeSharingApi({ listAccess: accessOf(), currentPublicLink }));
     await within(screen.getByRole('dialog')).findByRole('alert');
     await expectNoBlockingViolations();
   });
 
   it('CA-15: enlace-no-existe', async () => {
-    await openDialog(
+    await openLinkDialog(
       linkApi(publicLink(), {
         revokePublicLink: rejectWith(404, SHARING_ERROR_CODES.SHARING_LINK_NOT_FOUND),
       }),
@@ -415,7 +421,7 @@ describe('Accesibilidad de la sección «Enlace público» a 360 y 1440 px (spec
     ['enlace-solo-lectura-sin-enlace', null],
     ['enlace-solo-lectura-con-enlace', publicLink()],
   ])('CA-15: %s', async (_state, link) => {
-    await openDialog(linkApi(link), true);
+    await openLinkDialog(linkApi(link), true);
     await screen.findByText('No puedes generar enlaces. Para hacerlo, renueva tu plan.');
     await expectNoBlockingViolations();
   });

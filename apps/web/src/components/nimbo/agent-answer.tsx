@@ -47,6 +47,15 @@ function splitParagraph(
   return { body, cited: [...cited.values()] };
 }
 
+/** `**texto**` se muestra en negrita como elemento de React; no se interpreta nada más (sin HTML ni otro Markdown). */
+const BOLD_MARK = /\*\*(.+?)\*\*/g;
+
+function renderBold(body: string): React.ReactNode[] {
+  return body
+    .split(BOLD_MARK)
+    .map((part, i) => (i % 2 === 1 ? <strong key={i}>{part}</strong> : part));
+}
+
 /**
  * Parte el texto en párrafos de React (020b D-6, CA-13): nunca se interpreta como HTML ni Markdown. Las citas no van
  * entre las frases: se indican una sola vez al final de cada párrafo.
@@ -61,7 +70,7 @@ function renderAnswerText(
     const { body, cited } = splitParagraph(paragraph, citations);
     return (
       <p key={index} className="whitespace-pre-wrap break-words text-sm leading-7">
-        {body}
+        {renderBold(body)}
         {cited.map((citation) => (
           <CitationChip key={`${citation.fileId}|${citation.label}`} citation={citation} />
         ))}
