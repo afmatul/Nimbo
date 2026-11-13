@@ -14,6 +14,7 @@ import {
   FileTypeIcon,
 } from '../../../components/nimbo/file-type-chip';
 import { DATE_LOCALE } from '../../../lib/format-date';
+import { cn } from '../../../lib/utils';
 import { editorPath } from '../../editing/routes';
 import { CHIP_TYPE_BY_KIND } from '../file-type';
 import { previewPathOf } from '../preview/routes';
@@ -154,6 +155,30 @@ function QuickLookButton({
   );
 }
 
+/** Anchos de los renglones de la hoja: un título corto y párrafos de largo distinto, como un documento de texto. */
+const SHEET_LINES = ['w-2/5', 'w-full', 'w-full', 'w-5/6', 'w-full', 'w-3/5'] as const;
+
+/**
+ * Miniatura de un `.docx`: una hoja con renglones en el color del tipo. No es su contenido: leerlo exigiría pedir la
+ * descarga (con límite de tasa y auditoría) o una conversión en el servidor; la 017 no previsualiza `.docx` (RN-1).
+ */
+function DocumentSheet(): React.JSX.Element {
+  return (
+    <div className="flex h-24 w-[4.5rem] flex-col gap-1.5 rounded-sm border border-current/30 bg-card p-2.5 shadow-sm">
+      {SHEET_LINES.map((width, index) => (
+        <span
+          key={index}
+          className={cn(
+            'rounded-full bg-current',
+            width,
+            index === 0 ? 'h-1.5 opacity-70' : 'h-1 opacity-30',
+          )}
+        />
+      ))}
+    </div>
+  );
+}
+
 function FileCard({
   file,
   actions,
@@ -172,10 +197,14 @@ function FileCard({
         style={fileTypeColors(CHIP_TYPE_BY_KIND[file.kind])}
         data-testid="file-card-preview"
       >
-        <FileTypeIcon
-          fileType={CHIP_TYPE_BY_KIND[file.kind]}
-          className="[&>svg]:h-14 [&>svg]:w-14 [&>svg]:stroke-[1.5]"
-        />
+        {file.kind === 'docx' ? (
+          <DocumentSheet />
+        ) : (
+          <FileTypeIcon
+            fileType={CHIP_TYPE_BY_KIND[file.kind]}
+            className="[&>svg]:h-14 [&>svg]:w-14 [&>svg]:stroke-[1.5]"
+          />
+        )}
         {renderThumbnail?.(file)}
       </div>
       <div className="flex items-start gap-2">
