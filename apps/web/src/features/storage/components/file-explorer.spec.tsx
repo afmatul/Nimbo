@@ -565,6 +565,20 @@ describe('FileExplorer: «Cargar más» (007 CA-9, CA-12)', () => {
     expect(loadMore).toHaveBeenCalledTimes(1);
   });
 
+  it('en tarjetas, «Mostrar más» reemplaza a «Cargar más» y pide la página cuando ya se ve todo', async () => {
+    const loadMore = jest.fn();
+    await renderExplorer({
+      nodes: FILE_NODES,
+      defaultView: 'tarjetas',
+      controls: controls({ loadMore }),
+    });
+
+    expect(text()).not.toContain('Cargar más');
+    await userEvent.click(buttonByText('Mostrar más'));
+
+    expect(loadMore).toHaveBeenCalledTimes(1);
+  });
+
   it('CA-9: sin más páginas no hay «Cargar más»', async () => {
     await renderExplorer({ nodes: FILE_NODES, controls: controls({ hasMore: false }) });
 

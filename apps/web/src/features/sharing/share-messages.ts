@@ -96,6 +96,14 @@ export function shareMessageOf(error: unknown): ShareMessage {
   return CODE_MESSAGES[error.code] ?? NETWORK_MESSAGE;
 }
 
+/**
+ * Texto de un `code` que llega por elemento en `POST /shares/batch` (sin `Error`): el mismo de `shareMessageOf`;
+ * `null` si el código no es propio de compartir.
+ */
+export function shareCodeMessage(code: string): string | null {
+  return CODE_MESSAGES[code]?.title ?? null;
+}
+
 /** Los dos casos que la sección «Enlace público» dice distinto que «Compartir» (013c CA-14, D-8, I-2). */
 const PUBLIC_LINK_MESSAGES: Readonly<Record<string, ShareMessage>> = {
   [SHARING_ERROR_CODES.SHARING_LINK_NOT_FOUND]: {

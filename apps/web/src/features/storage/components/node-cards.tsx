@@ -17,11 +17,12 @@ import { DATE_LOCALE } from '../../../lib/format-date';
 import { cn } from '../../../lib/utils';
 import { editorPath } from '../../editing/routes';
 import { CHIP_TYPE_BY_KIND } from '../file-type';
+import type { NodeSelection } from '../hooks/use-node-selection';
 import { previewPathOf } from '../preview/routes';
 import { folderPath } from '../routes';
 
 import { NodeMarks } from './node-marks';
-import { rowIdOf } from './node-rows';
+import { rowIdOf, type RowSelect } from './node-rows';
 import { useThumbnailRenderer } from './node-thumbnail';
 
 type FolderNode = Extract<NodeSummary, { type: 'folder' }>;
@@ -34,6 +35,8 @@ export interface NodeCardsProps {
   readonly renderRowActions: ((node: NodeSummary) => React.ReactNode) | undefined;
   /** «Vista rápida» de un archivo previsualizable; sin él la tarjeta no ofrece el botón. */
   readonly onQuickLook?: ((file: FileSummary) => void) | undefined;
+  /** Selección múltiple (mockup p. 12); sin ella las tarjetas no muestran casilla. */
+  readonly selection?: NodeSelection | undefined;
 }
 
 const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, { dateStyle: 'medium' });
@@ -47,24 +50,74 @@ const STRETCHED_LINK_CLASS =
 const QUICK_BUTTON_CLASS =
   'flex h-11 w-11 items-center justify-center rounded-md text-secondary-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-8 sm:w-8';
 const ACTIONS_CLASS = 'relative z-10 shrink-0';
+/**
+ * Tarjeta marcada: borde y anillo `brand`. El fondo no cambia: `muted-foreground` sobre `accent` no llega a AA (3,9:1) y
+ * los metadatos de la tarjeta usan ese color.
+ */
+const SELECTED_CARD_CLASS = 'border-brand ring-1 ring-brand';
+/**
+ * Casilla de 16 px (la de la tabla es de 24) dentro de un área clicable de 32 px, 44 px en táctil; queda por encima
+ * del enlace que cubre la tarjeta.
+ */
+const CARD_SELECT_AREA_CLASS =
+  'z-10 flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-md sm:h-8 sm:w-8';
+const CARD_CHECKBOX_CLASS =
+  'h-4 w-4 cursor-pointer accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+
+/** Lo que una tarjeta sabe de la selección: su casilla, o nada si la vista no selecciona. */
+const selectOf = (
+  node: NodeSummary,
+  selection: NodeSelection | undefined,
+): RowSelect | undefined =>
+  selection === undefined
+    ? undefined
+    : { checked: selection.isSelected(node.id), onToggle: () => selection.toggle(node) };
+
+function CardSelect({
+  name,
+  select,
+  className,
+}: {
+  readonly name: string;
+  readonly select: RowSelect | undefined;
+  readonly className: string;
+}): React.JSX.Element | null {
+  if (select === undefined) return null;
+  return (
+    <label className={cn(CARD_SELECT_AREA_CLASS, className)}>
+      <input
+        type="checkbox"
+        className={CARD_CHECKBOX_CLASS}
+        aria-label={`Seleccionar ${name}`}
+        checked={select.checked}
+        onChange={select.onToggle}
+      />
+    </label>
+  );
+}
+
+/** Clase de la tarjeta según esté marcada. */
+const cardClass = (select: RowSelect | undefined, layout: string): string =>
+  cn(CARD_CLASS, layout, select?.checked === true && SELECTED_CARD_CLASS);
 
 function UpdatedAt({ value }: { readonly value: string }): React.JSX.Element {
   return <time dateTime={value}>{dateFormatter.format(new Date(value))}</time>;
 }
 
-function FolderCard({
-  folder,
-  actions,
-}: {
-  readonly folder: FolderNode;
+interface CardProps<T> {
+  readonly node: T;
   readonly actions: React.ReactNode;
-}): React.JSX.Element {
+  readonly select: RowSelect | undefined;
+}
+
+function FolderCard({ node: folder, actions, select }: CardProps<FolderNode>): React.JSX.Element {
   return (
     <li
       id={rowIdOf(folder.id)}
-      className={`${CARD_CLASS} flex min-h-28 flex-col justify-between gap-4 p-4`}
+      className={cardClass(select, 'flex min-h-28 flex-col justify-between gap-4 p-4')}
     >
       <div className="flex items-start gap-3">
+        <CardSelect name={folder.name} select={select} className="relative -ml-2 self-center" />
         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-primary">
           <Folder className="h-6 w-6" aria-hidden="true" />
         </span>
@@ -182,17 +235,21 @@ function DocumentSheet(): React.JSX.Element {
 }
 
 function FileCard({
-  file,
+  node: file,
   actions,
+  select,
   onQuickLook,
-}: {
-  readonly file: FileNode;
-  readonly actions: React.ReactNode;
+}: CardProps<FileNode> & {
   readonly onQuickLook: ((file: FileSummary) => void) | undefined;
 }): React.JSX.Element {
   const renderThumbnail = useThumbnailRenderer();
   return (
-    <li id={rowIdOf(file.id)} className={`${CARD_CLASS} flex flex-col gap-3 p-3`}>
+    <li id={rowIdOf(file.id)} className={cardClass(select, 'flex flex-col gap-3 p-3')}>
+      <CardSelect
+        name={file.name}
+        select={select}
+        className="absolute left-4 top-4 bg-card/90 shadow-sm"
+      />
       <div
         aria-hidden="true"
         className="relative flex h-32 items-center justify-center overflow-hidden rounded-md"
@@ -253,6 +310,7 @@ export function NodeCards({
   placeName,
   renderRowActions,
   onQuickLook,
+  selection,
 }: NodeCardsProps): React.JSX.Element {
   const folders = nodes.filter((node): node is FolderNode => node.type === 'folder');
   const files = nodes.filter((node): node is FileNode => node.type === 'file');
@@ -261,7 +319,12 @@ export function NodeCards({
       {folders.length === 0 ? null : (
         <Section title="Carpetas">
           {folders.map((folder) => (
-            <FolderCard key={folder.id} folder={folder} actions={renderRowActions?.(folder)} />
+            <FolderCard
+              key={folder.id}
+              node={folder}
+              actions={renderRowActions?.(folder)}
+              select={selectOf(folder, selection)}
+            />
           ))}
         </Section>
       )}
@@ -270,8 +333,9 @@ export function NodeCards({
           {files.map((file) => (
             <FileCard
               key={file.id}
-              file={file}
+              node={file}
               actions={renderRowActions?.(file)}
+              select={selectOf(file, selection)}
               onQuickLook={onQuickLook}
             />
           ))}

@@ -21,6 +21,8 @@ const DATE_LABELS: Readonly<Record<DateOption, string>> = {
   rango: 'Rango personalizado',
 };
 
+const DATE_SELECT_OPTIONS = DATE_OPTIONS.map((value) => ({ value, label: DATE_LABELS[value] }));
+
 const SELECT_CLASSES = 'w-full sm:w-60';
 
 export function DateSelect({
@@ -36,15 +38,10 @@ export function DateSelect({
       <Select
         id="buscar-fecha"
         value={date}
-        onChange={(event) => onChange({ date: event.target.value as DateOption })}
+        options={DATE_SELECT_OPTIONS}
+        onValueChange={(value) => onChange({ date: value })}
         className={SELECT_CLASSES}
-      >
-        {DATE_OPTIONS.map((value) => (
-          <option key={value} value={value}>
-            {DATE_LABELS[value]}
-          </option>
-        ))}
-      </Select>
+      />
     </div>
   );
 }

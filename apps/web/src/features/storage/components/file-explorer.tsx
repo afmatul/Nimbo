@@ -16,8 +16,8 @@ import { MY_FILES_LABEL } from '../routes';
 import { AskAgentButton } from './ask-agent-button';
 import { ExplorerErrorState } from './explorer-error-state';
 import { FolderBackLink, SHARED_ROOT_CRUMB } from './folder-breadcrumbs';
+import { LimitedNodeCards } from './limited-node-cards';
 import { LoadMore } from './load-more';
-import { NodeCards } from './node-cards';
 import { NodeOrderSelect } from './node-order-select';
 import { NodeTable, type FolderDisclosure, type NodeTableProps } from './node-table';
 import { ReadOnlyUploadFeedback, useReadOnlyUploads } from './read-only-notice';
@@ -239,6 +239,7 @@ function ExplorerContent(
         </div>
       ) : null}
       <ExplorerBody
+        key={props.folderId ?? ''}
         status={props.status}
         isRoot={place.isRoot}
         placeName={placeNameOf(props.folderId, props.breadcrumbs)}
@@ -428,22 +429,27 @@ function NodesPane({
   );
 }
 
+/** Tarjetas (con tope y «Mostrar más») o tabla; `controls` pagina las tarjetas, la tabla usa «Cargar más» aparte. */
 function NodeListView({
   table,
   view,
   sorting,
+  controls,
 }: {
   readonly table: ListTable;
   readonly view: NodesView;
   readonly sorting?: NodeTableProps['sorting'];
+  readonly controls?: ListControls | undefined;
 }): React.JSX.Element {
   if (view === 'tarjetas') {
     return (
-      <NodeCards
+      <LimitedNodeCards
         nodes={table.nodes}
         placeName={table.placeName}
         renderRowActions={table.renderRowActions}
+        selection={table.selection}
         onQuickLook={table.onQuickLook}
+        controls={controls}
       />
     );
   }
@@ -452,7 +458,7 @@ function NodeListView({
 }
 
 /**
- * «Cargar más» debajo; el orden se pide desde los encabezados de la tabla (007). Mientras llega otro orden la lista visible se conserva con
+ * «Cargar más» debajo de la tabla (las tarjetas traen su «Mostrar más»); el orden se pide desde los encabezados de la tabla (007). Mientras llega otro orden la lista visible se conserva con
  * `aria-busy` y la tabla marca el orden de lo que muestra, no el pedido (CA-12).
  */
 interface ControlledListProps {
@@ -472,16 +478,19 @@ function ControlledList({ table, controls, view }: ControlledListProps): React.J
           table={table}
           view={view}
           sorting={{ order: controls.shownOrder, onSort: controls.changeOrder }}
+          controls={controls}
         />
       </div>
-      <LoadMore
-        status={controls.more}
-        hasMore={controls.hasMore}
-        added={controls.added}
-        placeName={table.placeName}
-        onLoadMore={controls.loadMore}
-        onDismissError={controls.dismissMoreError}
-      />
+      {view === 'lista' ? (
+        <LoadMore
+          status={controls.more}
+          hasMore={controls.hasMore}
+          added={controls.added}
+          placeName={table.placeName}
+          onLoadMore={controls.loadMore}
+          onDismissError={controls.dismissMoreError}
+        />
+      ) : null}
     </div>
   );
 }

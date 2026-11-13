@@ -63,6 +63,12 @@ async function fillForm(): Promise<void> {
   await userEvent.type(screen.getByLabelText('Días en papelera'), '60');
 }
 
+/** Elige el plan de origen en la lista desplegable «Partir de un plan activo». */
+async function pickSource(name: string): Promise<void> {
+  await userEvent.click(screen.getByLabelText('Partir de un plan activo (opcional)'));
+  await userEvent.click(screen.getByRole('option', { name }));
+}
+
 describe('NewPlanView (011 CA-9, CA-11, CA-17)', () => {
   it('CA-9: el formulario tiene los nueve campos y su aviso de inmutabilidad', async () => {
     await renderNewPlan(() => Promise.resolve(CREATED));
@@ -102,6 +108,20 @@ describe('NewPlanView (011 CA-9, CA-11, CA-17)', () => {
     expect(screen.getByText(/Creamos el plan Equipo 2027\./)).toBeTruthy();
   });
 
+  it('CA-9: la unidad se elige en su lista desplegable y cambia los bytes', async () => {
+    const backoffice = await renderNewPlan(() => Promise.resolve(CREATED));
+
+    await fillForm();
+    await userEvent.click(screen.getByRole('combobox', { name: 'Unidad de almacenamiento' }));
+    await userEvent.click(screen.getByRole('option', { name: 'TB' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Crear plan' }));
+    await act(async () => undefined);
+
+    expect(backoffice.createPlan).toHaveBeenCalledWith(
+      expect.objectContaining({ quotaBytes: String(500 * 1000 ** 4) }),
+    );
+  });
+
   it('CA-11: el 422 con los campos se muestra tal cual y lo escrito no se pierde', async () => {
     const backoffice = await renderNewPlan(() =>
       Promise.reject(
@@ -136,10 +156,7 @@ describe('NewPlanView (011 CA-9, CA-11, CA-17)', () => {
   it('CA-9: «partir de un plan activo» llena el formulario con sus valores', async () => {
     await renderNewPlan(() => Promise.resolve(CREATED));
 
-    await userEvent.selectOptions(
-      screen.getByLabelText('Partir de un plan activo (opcional)'),
-      PRO_PLAN.id,
-    );
+    await pickSource(PRO_PLAN.name);
 
     // El nombre se deja vacío: tiene que ser distinto del plan de origen.
     expect((screen.getByLabelText('Nombre') as HTMLInputElement).value).toBe('');
@@ -219,10 +236,7 @@ describe('NewPlanView (011 CA-9, CA-11, CA-17)', () => {
   it('N-6: tras crear desde un plan, se ofrece desactivar el de origen', async () => {
     await renderNewPlan(() => Promise.resolve(CREATED));
 
-    await userEvent.selectOptions(
-      screen.getByLabelText('Partir de un plan activo (opcional)'),
-      PRO_PLAN.id,
-    );
+    await pickSource(PRO_PLAN.name);
     // El nombre va escrito (el de origen no sirve) y el precio, que venía copiado.
     await userEvent.type(screen.getByLabelText('Nombre'), 'Equipo 2027');
     await userEvent.clear(screen.getByLabelText('Precio al mes, en quetzales'));
@@ -237,11 +251,8 @@ describe('NewPlanView (011 CA-9, CA-11, CA-17)', () => {
   it('H-1: al volver a «Empezar de cero» se quita el plan de origen y no se ofrece desactivarlo', async () => {
     await renderNewPlan(() => Promise.resolve(CREATED));
 
-    await userEvent.selectOptions(
-      screen.getByLabelText('Partir de un plan activo (opcional)'),
-      PRO_PLAN.id,
-    );
-    await userEvent.selectOptions(screen.getByLabelText('Partir de un plan activo (opcional)'), '');
+    await pickSource(PRO_PLAN.name);
+    await pickSource('Empezar de cero');
     await userEvent.type(screen.getByLabelText('Nombre'), 'Equipo 2027');
     await userEvent.type(screen.getByLabelText('Descripción'), 'Un plan nuevo');
     await userEvent.type(screen.getByLabelText('Precio al mes, en quetzales'), '125.00');
@@ -261,10 +272,7 @@ describe('NewPlanView (011 CA-9, CA-11, CA-17)', () => {
   it('H-2: tras desactivar el plan de origen sale su aviso y el botón desaparece', async () => {
     const backoffice = await renderNewPlan(() => Promise.resolve(CREATED));
 
-    await userEvent.selectOptions(
-      screen.getByLabelText('Partir de un plan activo (opcional)'),
-      PRO_PLAN.id,
-    );
+    await pickSource(PRO_PLAN.name);
     await userEvent.type(screen.getByLabelText('Nombre'), 'Equipo 2027');
     await userEvent.click(screen.getByRole('button', { name: 'Crear plan' }));
     await act(async () => undefined);
@@ -284,10 +292,7 @@ describe('NewPlanView (011 CA-9, CA-11, CA-17)', () => {
       () => Promise.reject(apiError(403, 'SHARED_FORBIDDEN')),
     );
 
-    await userEvent.selectOptions(
-      screen.getByLabelText('Partir de un plan activo (opcional)'),
-      PRO_PLAN.id,
-    );
+    await pickSource(PRO_PLAN.name);
     await userEvent.type(screen.getByLabelText('Nombre'), 'Equipo 2027');
     await userEvent.click(screen.getByRole('button', { name: 'Crear plan' }));
     await act(async () => undefined);

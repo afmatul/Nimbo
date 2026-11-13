@@ -19,7 +19,11 @@ jest.mock('../readers/pdfjs-runtime', () => ({ createPdfRuntime: jest.fn() }));
 const authFetch = jest.fn();
 const download = jest.fn();
 jest.mock('../../../identity/session/use-auth-fetch', () => ({ useAuthFetch: () => authFetch }));
-jest.mock('../..', () => ({ ...jest.requireActual('../..'), useFileDownload: () => download }));
+jest.mock('../..', () => ({
+  ...jest.requireActual('../..'),
+  useFileDownload: () => download,
+  useRecordedFileOpen: () => undefined,
+}));
 jest.mock('next/link', () => ({
   __esModule: true,
   default: ({ prefetch: _prefetch, ...props }: ComponentProps<'a'> & { prefetch?: boolean }) => (

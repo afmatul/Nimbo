@@ -5,6 +5,7 @@ import * as React from 'react';
 
 import { useAuthFetch } from '../../identity/session/use-auth-fetch';
 import { createStorageApi, type StorageApi } from '../api';
+import { useBottomReserve } from '../hooks/use-bottom-reserve';
 import { useFileDropGuard } from '../hooks/use-file-drop-guard';
 import { UploadsContext, useUploadManager, useUploads } from '../hooks/use-upload-manager';
 import type { UploadManagerOptions } from '../upload/upload-manager';
@@ -58,15 +59,20 @@ export function SessionUploadsProvider({
 /** Panel flotante (abajo a la derecha; en móvil, al pie a todo el ancho) y los diálogos que pide el manager. */
 function UploadCenter(): React.JSX.Element | null {
   const { manager, rows, closePanel, fileInputRef } = useUploads();
+  const panelRef = React.useRef<HTMLDivElement>(null);
+  useBottomReserve(panelRef, rows.length > 0);
   if (rows.length === 0) return null;
   const conflict = rows.find((row) => row.phase === 'conflict');
   const cancelling = rows.find((row) => row.awaitingCancel);
 
   return (
     <>
-      {/* Reserva al pie el alto del panel (lista incluida) para que no tape las últimas filas de la página (UI-4). */}
-      <div data-testid="upload-panel-spacer" aria-hidden="true" className="h-80 sm:h-120" />
-      <div className="fixed inset-x-0 bottom-0 z-30 pb-safe sm:inset-x-auto sm:bottom-6 sm:right-[calc(1.5rem+var(--agent-panel-width,0px))] sm:pb-0">
+      {/* Publica lo que tapa el panel para que `main` lo reserve al pie y no tape las últimas filas (UI-4). */}
+      <div
+        ref={panelRef}
+        data-testid="upload-panel-dock"
+        className="fixed inset-x-0 bottom-0 z-30 pb-safe sm:inset-x-auto sm:bottom-6 sm:right-[calc(1.5rem+var(--agent-panel-width,0px))] sm:pb-0"
+      >
         <UploadPanel
           rows={rows}
           onPause={(id) => manager.pause(id)}

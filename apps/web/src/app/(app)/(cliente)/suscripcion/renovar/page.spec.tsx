@@ -101,7 +101,9 @@ describe('Pago de la renovación, /suscripcion/renovar (spec 010 CA-8 a CA-11, C
       screen.getByText('Empieza cuando termina tu periodo actual: no pierdes días pagados.'),
     ).toBeTruthy();
     expect(
-      screen.getByText(/4000 0000 0000 0341 aprueba ahora y se rechaza en el cobro automático\./),
+      screen.getByRole('button', {
+        name: /4000 0000 0000 0341: aprueba; falla el cobro automático/,
+      }),
     ).toBeTruthy();
     expect(seriousViolations(await axe(container))).toEqual([]);
   });

@@ -7,7 +7,7 @@ import {
   type PaymentReceipt,
   type Plan,
 } from '@nimbo/contracts';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, CircleCheck, CircleX, RefreshCcw, type LucideIcon } from 'lucide-react';
 import * as React from 'react';
 import type { JSX } from 'react';
 
@@ -151,19 +151,93 @@ function PaymentFields({
   );
 }
 
+interface TestCardOption {
+  readonly number: string;
+  readonly outcome: string;
+  readonly Icon: LucideIcon;
+  readonly iconClass: string;
+}
+
 /** Las tres tarjetas del simulador (009 RN-3; 010 RN-2, B-2), con los números de `contracts`. */
-function TestCardsHelp(): JSX.Element {
+const TEST_CARD_OPTIONS: readonly TestCardOption[] = [
+  {
+    number: TEST_CARDS.approved,
+    outcome: 'aprueba',
+    Icon: CircleCheck,
+    iconClass: 'text-success-foreground',
+  },
+  {
+    number: TEST_CARDS.rejected,
+    outcome: 'rechaza',
+    Icon: CircleX,
+    iconClass: 'text-destructive',
+  },
+  {
+    number: TEST_CARDS.recurringDeclined,
+    outcome: 'aprueba; falla el cobro automático',
+    Icon: RefreshCcw,
+    iconClass: 'text-warning-foreground',
+  },
+];
+
+const TEST_CVC = '123';
+const TEST_EXPIRY_YEARS_AHEAD = 3;
+
+/** «12/29»: diciembre de dentro de unos años, siempre vigente para el simulador. */
+const testExpiry = (): string =>
+  `12/${String((new Date().getFullYear() + TEST_EXPIRY_YEARS_AHEAD) % 100).padStart(2, '0')}`;
+
+/** Llena número, vencimiento y CVC con la tarjeta de prueba elegida; el NIT queda como esté. */
+function fillTestCard(state: PaymentFormState, number: string): void {
+  const options = { shouldDirty: true } as const;
+  state.form.setValue('number', groupCardNumber(number), options);
+  state.form.setValue('expiry', testExpiry(), options);
+  state.form.setValue('cvc', TEST_CVC, options);
+  state.form.clearErrors();
+}
+
+function TestCardChip({
+  card,
+  disabled,
+  onPick,
+}: {
+  readonly card: TestCardOption;
+  readonly disabled: boolean;
+  readonly onPick: (number: string) => void;
+}): JSX.Element {
+  const grouped = groupCardNumber(card.number);
   return (
-    <div className="rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-      <p>Tarjetas de prueba:</p>
-      <ul className="mt-1 list-disc space-y-0.5 pl-5">
-        <li>{groupCardNumber(TEST_CARDS.approved)} aprueba siempre.</li>
-        <li>
-          {groupCardNumber(TEST_CARDS.recurringDeclined)} aprueba ahora y se rechaza en el cobro
-          automático.
-        </li>
-        <li>{groupCardNumber(TEST_CARDS.rejected)} rechaza siempre.</li>
-      </ul>
+    <button
+      type="button"
+      disabled={disabled}
+      aria-label={`Usar la tarjeta ${grouped}: ${card.outcome}`}
+      onClick={() => onPick(card.number)}
+      className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-xs text-foreground shadow-sm transition-colors hover:border-primary/40 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-45"
+    >
+      <card.Icon aria-hidden="true" className={`h-4 w-4 shrink-0 ${card.iconClass}`} />
+      <span className="font-mono font-semibold tabular-nums">{grouped}</span>
+      <span className="text-muted-foreground">· {card.outcome}</span>
+    </button>
+  );
+}
+
+/** Atajos del simulador: un clic llena el formulario con la tarjeta y dice qué resultado da. */
+function TestCardsHelp({ state }: { readonly state: PaymentFormState }): JSX.Element {
+  return (
+    <div className="space-y-2 rounded-lg border border-border bg-muted/40 p-3">
+      <p className="text-xs font-medium text-muted-foreground">
+        Tarjetas de prueba · toca una para llenar el formulario
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {TEST_CARD_OPTIONS.map((card) => (
+          <TestCardChip
+            key={card.number}
+            card={card}
+            disabled={state.submitting}
+            onPick={(number) => fillTestCard(state, number)}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -182,7 +256,7 @@ function PaymentCard({
       <PaymentHeader title={title} />
       <OutcomeAlert state={state} />
       <PaymentFields plan={plan} state={state} />
-      <TestCardsHelp />
+      <TestCardsHelp state={state} />
     </Card>
   );
 }

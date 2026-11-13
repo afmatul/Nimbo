@@ -28,4 +28,30 @@ describe('useFileDownload (017 CA-8)', () => {
     await expect(result.current('f-1')).resolves.toEqual(SIGNED);
     expect(downloadUrl).toHaveBeenCalledWith('f-1');
   });
+
+  it('006 CA-27: si la URL llega, el archivo cuenta como reciente', async () => {
+    const recordRecent = jest.fn(() => Promise.resolve());
+    const api = { downloadUrl: jest.fn(() => Promise.resolve(SIGNED)), recordRecent };
+    const wrapper = ({ children }: { readonly children: React.ReactNode }): React.JSX.Element => (
+      <UploadsProvider api={api as unknown as StorageApi}>{children}</UploadsProvider>
+    );
+
+    const { result } = renderHook(() => useFileDownload(), { wrapper });
+    await result.current('f-1');
+
+    expect(recordRecent).toHaveBeenCalledWith('file', 'f-1');
+  });
+
+  it('006 CA-27: si la URL no llega, no registra nada', async () => {
+    const recordRecent = jest.fn(() => Promise.resolve());
+    const api = { downloadUrl: jest.fn(() => Promise.reject(new Error('red'))), recordRecent };
+    const wrapper = ({ children }: { readonly children: React.ReactNode }): React.JSX.Element => (
+      <UploadsProvider api={api as unknown as StorageApi}>{children}</UploadsProvider>
+    );
+
+    const { result } = renderHook(() => useFileDownload(), { wrapper });
+    await expect(result.current('f-1')).rejects.toThrow('red');
+
+    expect(recordRecent).not.toHaveBeenCalled();
+  });
 });

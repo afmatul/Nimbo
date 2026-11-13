@@ -13,6 +13,7 @@ import { PreviewReader } from './PreviewReader';
 
 const authFetch = jest.fn();
 const requestDownload = jest.fn();
+const mockRecordOpen = jest.fn();
 let mockAutoReady = true;
 const mockDisposeReader = jest.fn<Promise<void>, []>();
 jest.mock('./PreviewReader', () => {
@@ -33,6 +34,7 @@ jest.mock('../../../identity/session/use-auth-fetch', () => ({ useAuthFetch: () 
 jest.mock('../..', () => ({
   ...jest.requireActual('../..'),
   useFileDownload: () => requestDownload,
+  useRecordedFileOpen: (fileId: string | null) => mockRecordOpen(fileId),
 }));
 jest.mock('next/link', () => ({
   __esModule: true,
@@ -126,6 +128,8 @@ describe('shell T-06', () => {
     ).toBeNull();
     expect(container.querySelector('canvas,iframe,img,object,embed')).toBeNull();
     expect(authFetch).toHaveBeenCalledTimes(1);
+    // 006 CA-27: previsualizar cuenta como abrir el archivo (Recientes de la barra).
+    expect(mockRecordOpen).toHaveBeenLastCalledWith(ID);
     expect(screen.getByText('100 B')).toBeTruthy();
     expect(container.querySelector('time')?.getAttribute('dateTime')).toBe(DELIVERY.file.updatedAt);
     expect(container.querySelector('time')?.textContent).toBe(

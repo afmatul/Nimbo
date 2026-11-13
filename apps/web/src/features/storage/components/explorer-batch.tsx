@@ -4,6 +4,7 @@ import type * as React from 'react';
 
 import { ConfirmDestructiveDialog } from '../../../components/nimbo/confirm-destructive-dialog';
 import type { BatchApi } from '../batch-api';
+import { elementCount } from '../batch-outcome';
 import { useBatchActions, type BatchActions } from '../hooks/use-batch-actions';
 import type { LoadFolderContents } from '../hooks/use-folder-contents';
 import type { NodeSelection } from '../hooks/use-node-selection';
@@ -20,8 +21,6 @@ export interface ExplorerBatchProps {
   readonly folderContents: LoadFolderContents;
   readonly onChanged: () => void;
 }
-
-const elements = (n: number): string => (n === 1 ? '1 elemento' : `${String(n)} elementos`);
 
 function BatchDialogs({
   actions,
@@ -42,13 +41,14 @@ function BatchDialogs({
   if (dialog === 'share') {
     const onShare = (email: string, level: Parameters<BatchActions['share']>[1]) =>
       void actions.share(email, level);
-    return <BatchShareDialog count={count} pending={pending} onShare={onShare} onClose={close} />;
+    const props = { count, pending, error: actions.shareError, onClose: close };
+    return <BatchShareDialog {...props} onShare={onShare} />;
   }
   return (
     <ConfirmDestructiveDialog
       open={dialog === 'trash'}
       onOpenChange={(open) => !open && close()}
-      title={`¿Mover ${elements(count)} a la papelera?`}
+      title={`¿Mover ${elementCount(count)} a la papelera?`}
       description="Podrás restaurarlos desde la Papelera mientras tu plan los conserve."
       confirmLabel="Mover a la papelera"
       pendingLabel="Moviendo…"

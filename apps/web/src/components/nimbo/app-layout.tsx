@@ -192,6 +192,13 @@ function DesktopSidebar({
 }
 
 /**
+ * Relleno de `main`; abajo suma lo que tapa el panel de cargas (`--upload-panel-reserve`, 0 sin panel). La reserva va
+ * dentro del layout: un espaciador fuera de él alargaba la página por debajo de la barra lateral y del encabezado fijos.
+ */
+const MAIN_CLASS =
+  'min-w-0 flex-1 p-4 pb-[calc(1rem+var(--upload-panel-reserve,0px))] md:p-8 md:pb-[calc(2rem+var(--upload-panel-reserve,0px))]';
+
+/**
  * Layout base responsivo de Nimbo, desde 360 px hasta escritorio, con navegación accesible, áreas táctiles de 44 px y
  * sin desbordamiento horizontal (CA-5). La página se desplaza con la ventana; la barra de escritorio queda fija bajo el
  * encabezado (007 CA-19). `overflow-x-clip` y no `hidden`: `hidden` vuelve la raíz contenedor de desplazamiento y rompe
@@ -234,7 +241,7 @@ export function AppLayout({
             topBar={topBar}
             userEmail={userEmail}
           />
-          <main inert={behindDrawer} className="flex-1 p-4 md:p-8 min-w-0">
+          <main inert={behindDrawer} className={MAIN_CLASS}>
             {children}
           </main>
         </div>

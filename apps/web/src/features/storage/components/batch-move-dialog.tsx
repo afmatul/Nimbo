@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../../../components/ui/dialog';
+import { elementCount } from '../batch-outcome';
 import type { LoadFolderContents } from '../hooks/use-folder-contents';
 import { folderIdOf, TREE_ROOT, useFolderTree, type FolderTree } from '../hooks/use-folder-tree';
 import { useTreeFocus } from '../hooks/use-tree-focus';
@@ -50,7 +51,7 @@ export function BatchMoveDialog(props: BatchMoveDialogProps): React.JSX.Element 
     <Dialog open onOpenChange={(open) => !open && !props.pending && props.onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{`Mover ${String(props.selected.length)} elementos`}</DialogTitle>
+          <DialogTitle>{`Mover ${elementCount(props.selected.length)}`}</DialogTitle>
           <DialogDescription>Elige la carpeta de destino.</DialogDescription>
         </DialogHeader>
         <MoveFolderTree

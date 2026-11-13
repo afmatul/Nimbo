@@ -6,3 +6,4 @@ export { LEVEL_LABELS } from './share-levels';
 export { SessionReceivedSharesView } from './components/session-received-shares-view';
 export { PublicLinkVisit } from './components/public-link-visit';
 export { shareNodesBatch } from './batch-share-api';
+export { shareCodeMessage, shareMessageOf } from './share-messages';

@@ -67,24 +67,23 @@ function PlanPicker({
   readonly locked: boolean;
   readonly onPick: (plan: PlanAdminView | null) => void;
 }): React.JSX.Element {
+  const [picked, setPicked] = useState('');
   return (
     <Select
       id="copiar"
       aria-describedby="copiar-ayuda"
       disabled={locked || active.length === 0}
-      onChange={(event) => {
-        const plan = active.find((item) => item.id === event.target.value);
-        onPick(plan ?? null);
+      value={picked}
+      options={[
+        { value: '', label: 'Empezar de cero' },
+        ...active.map((plan) => ({ value: plan.id, label: plan.name })),
+      ]}
+      onValueChange={(value) => {
+        setPicked(value);
+        onPick(active.find((item) => item.id === value) ?? null);
       }}
       className="mt-1.5 w-full sm:max-w-sm"
-    >
-      <option value="">Empezar de cero</option>
-      {active.map((plan) => (
-        <option key={plan.id} value={plan.id}>
-          {plan.name}
-        </option>
-      ))}
-    </Select>
+    />
   );
 }
 

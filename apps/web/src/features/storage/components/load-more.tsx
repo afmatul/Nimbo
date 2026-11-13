@@ -16,6 +16,8 @@ export interface LoadMoreProps {
   readonly placeName: string;
   readonly onLoadMore: () => void;
   readonly onDismissError: () => void;
+  /** Texto del botón; por defecto «Cargar más» (las tarjetas dicen «Mostrar más»). */
+  readonly label?: string;
 }
 
 const LOAD_MORE_ERROR = {
@@ -33,9 +35,11 @@ function announcement({ status, added, placeName }: LoadMoreProps): string {
 /** Mientras carga queda `aria-disabled` (conserva el foco) y no vuelve a pedir. */
 function LoadMoreButton({
   loading,
+  label,
   onLoadMore,
 }: {
   readonly loading: boolean;
+  readonly label: string;
   readonly onLoadMore: () => void;
 }): React.JSX.Element {
   return (
@@ -49,7 +53,7 @@ function LoadMoreButton({
       {loading ? (
         <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
       ) : null}
-      {loading ? 'Cargando más…' : 'Cargar más'}
+      {loading ? 'Cargando más…' : label}
     </Button>
   );
 }
@@ -60,7 +64,7 @@ function LoadMoreButton({
  * con «Reintentar». La región de estado sigue montada aunque ya no haya más páginas, para anunciar la última.
  */
 export function LoadMore(props: LoadMoreProps): React.JSX.Element {
-  const { status, hasMore, onLoadMore, onDismissError } = props;
+  const { status, hasMore, onLoadMore, onDismissError, label = 'Cargar más' } = props;
   return (
     <div className="flex flex-col items-center gap-2">
       {status === 'error' ? (
@@ -72,7 +76,7 @@ export function LoadMore(props: LoadMoreProps): React.JSX.Element {
         </div>
       ) : null}
       {status !== 'error' && hasMore ? (
-        <LoadMoreButton loading={status === 'loading'} onLoadMore={onLoadMore} />
+        <LoadMoreButton loading={status === 'loading'} label={label} onLoadMore={onLoadMore} />
       ) : null}
       <p role="status" className="sr-only">
         {announcement(props)}

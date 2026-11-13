@@ -3,6 +3,7 @@
 import { SHARE_LEVELS, type ShareLevel } from '@nimbo/contracts';
 import * as React from 'react';
 
+import { Alert } from '../../../components/ui/alert';
 import { Button } from '../../../components/ui/button';
 import {
   Dialog,
@@ -16,10 +17,13 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { RadioGroup } from '../../../components/ui/radio-group';
 import { LEVEL_LABELS } from '../../sharing';
+import { elementCount } from '../batch-outcome';
 
 export interface BatchShareDialogProps {
   readonly count: number;
   readonly pending: boolean;
+  /** Motivo por el que no se compartió (correo, nivel o cuenta); el diálogo conserva lo escrito. */
+  readonly error?: string | null;
   readonly onShare: (email: string, level: ShareLevel) => void;
   readonly onClose: () => void;
 }
@@ -36,6 +40,7 @@ const isShareLevel = (value: string): value is ShareLevel =>
 export function BatchShareDialog({
   count,
   pending,
+  error = null,
   onShare,
   onClose,
 }: BatchShareDialogProps): React.JSX.Element {
@@ -49,9 +54,11 @@ export function BatchShareDialog({
     <Dialog open onOpenChange={(open) => !open && !pending && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{`Compartir ${String(count)} elementos`}</DialogTitle>
+          <DialogTitle>{`Compartir ${elementCount(count)}`}</DialogTitle>
           <DialogDescription>
-            Todos se comparten con la misma persona y el mismo nivel.
+            {count === 1
+              ? 'Se comparte con la persona y el nivel que elijas.'
+              : 'Todos se comparten con la misma persona y el mismo nivel.'}
           </DialogDescription>
         </DialogHeader>
         <form className="space-y-4" onSubmit={submit}>
@@ -73,6 +80,7 @@ export function BatchShareDialog({
             value={level}
             onValueChange={(value) => isShareLevel(value) && setLevel(value)}
           />
+          {error === null ? null : <Alert variant="error">{error}</Alert>}
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <DialogClose asChild>
               <Button type="button" variant="outline" disabled={pending}>
