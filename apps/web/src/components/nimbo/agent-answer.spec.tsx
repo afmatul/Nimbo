@@ -75,11 +75,18 @@ describe('AgentAnswer (020b CA-3, CA-6, CA-13)', () => {
 
   it('CA-13: HTML, Markdown, enlaces e imágenes se muestran como texto plano', () => {
     const text =
-      '<img src="https://x.test/a.png?d=1"> **negrita** [aquí](https://x.test) ![i](https://x.test/i.png) https://x.test <a href="https://x.test">enlace</a>';
+      '<img src="https://x.test/a.png?d=1"> [aquí](https://x.test) ![i](https://x.test/i.png) https://x.test <a href="https://x.test">enlace</a>';
     const answer = renderAnswer({ text });
 
     expect(answer.querySelector('img, a, strong, script')).toBeNull();
     expect(answer.textContent).toContain(text);
+  });
+
+  it('**texto** se muestra en negrita sin los asteriscos', () => {
+    const answer = renderAnswer({ text: 'Es **importante** y **clave**.' });
+
+    expect(answer.querySelectorAll('strong')).toHaveLength(2);
+    expect(answer.textContent).toContain('Es importante y clave.');
   });
 
   it('CA-6: con una cita incierta muestra el aviso de ubicación aproximada', () => {

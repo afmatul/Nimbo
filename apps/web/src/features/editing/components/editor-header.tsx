@@ -1,7 +1,8 @@
 'use client';
 
 import type { EditMode } from '@nimbo/contracts';
-import { Eye, Pencil } from 'lucide-react';
+import { ArrowLeft, Eye, Pencil } from 'lucide-react';
+import Link from 'next/link';
 import * as React from 'react';
 
 import { BrandLogo } from '../../../components/nimbo/brand-logo';
@@ -30,6 +31,13 @@ export function EditorHeader({ title, mode, presence }: EditorHeaderProps): Reac
   return (
     <header className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
       <BrandLogo compact href={MY_FILES_PATH} label={`Volver a ${MY_FILES_LABEL}`} />
+      <Link
+        href={MY_FILES_PATH}
+        className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-secondary-foreground hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        {MY_FILES_LABEL}
+      </Link>
       <FileTypeChip fileType="docx" className="shrink-0" />
       <h1 className="min-w-0 flex-1 truncate text-base font-semibold text-foreground">{title}</h1>
       {mode ? <ModeBadge mode={mode} /> : null}

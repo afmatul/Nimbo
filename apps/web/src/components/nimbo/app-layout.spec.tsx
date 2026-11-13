@@ -333,8 +333,8 @@ describe('AppLayout component (CA-5)', () => {
     expect(root?.className).not.toMatch(/overflow-x-hidden/);
     expect(header?.classList.contains('h-header')).toBe(true);
     expect(sidebar?.classList.contains('md:sticky')).toBe(true);
-    expect(sidebar?.classList.contains('md:top-header')).toBe(true);
-    expect(sidebar?.classList.contains('md:h-below-header')).toBe(true);
+    expect(sidebar?.classList.contains('md:top-0')).toBe(true);
+    expect(sidebar?.classList.contains('md:h-dvh')).toBe(true);
     expect(sidebar?.classList.contains('md:self-start')).toBe(true);
     expect(doc.querySelector('main')?.className).not.toMatch(/overflow-y-auto/);
   });
@@ -495,7 +495,9 @@ describe('AppLayout con la entrada del agente (020b)', () => {
     });
 
     expect(container.querySelector('[aria-label="Panel de prueba"]')).not.toBeNull();
-    expect(container.querySelector('main')?.className).toContain('mr-(--agent-panel-width)');
+    expect(container.querySelector('main')?.parentElement?.className).toContain(
+      'mr-(--agent-panel-width)',
+    );
     await act(async () => {
       root.unmount();
     });
