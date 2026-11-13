@@ -21,7 +21,9 @@ describe('PendingPlanRegistry', () => {
 
   it('registro con plan: no toca la cuenta de otro cliente', async () => {
     const users = new InMemoryUserRepository();
-    const other = aClientUser().withId('9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d').withEmail('otra@ejemplo.com');
+    const other = aClientUser()
+      .withId('9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d')
+      .withEmail('otra@ejemplo.com');
     users.seed(other.withPendingPlan('pro').build());
     const actor = createActor('6f1e0c3a-1b2d-4e5f-8a9b-0c1d2e3f4a5b', Role.CLIENT);
 

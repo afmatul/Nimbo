@@ -12,7 +12,9 @@ const PRO = aPlan({ id: '10000000-0000-4000-8000-000000000002', slug: 'pro', pri
 
 const setup = (plan: Plan | null) => {
   const plans = { findBySlug: jest.fn(() => Promise.resolve(plan)) } as unknown as IPlanRepository;
-  const pendingPlans = { clear: jest.fn(() => Promise.resolve()) } as unknown as PendingPlanRegistry;
+  const pendingPlans = {
+    clear: jest.fn(() => Promise.resolve()),
+  } as unknown as PendingPlanRegistry;
   return { screening: new PendingPlanScreening(plans, pendingPlans), plans, pendingPlans };
 };
 
