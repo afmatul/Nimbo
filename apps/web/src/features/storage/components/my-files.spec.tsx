@@ -5,8 +5,8 @@ import {
   STORAGE_ERROR_CODES,
   type FolderContentsResponse,
   type FolderRef,
-  type FolderSummary,
-  type ExplorerNode,
+  type ExplorerFile,
+  type ExplorerFolder,
   type QuickAccessList,
   quickAccessLimitMessage,
 } from '@nimbo/contracts';
@@ -18,6 +18,7 @@ import { DropdownMenuItem } from '../../../components/ui/dropdown-menu';
 import { fakeSharingApi } from '../../sharing/test-sharing';
 import type { StorageApi } from '../api';
 import { StorageRequestError } from '../storage-request-error';
+import { explorerFile, explorerFolder } from '../test-explorer-nodes';
 import { GB, spaceSummaryWith } from '../test-space-summary';
 
 import { MyFiles, type FirstFileAction, type MyFilesProps } from './my-files';
@@ -29,29 +30,10 @@ const ALPHA: FolderRef = { id: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d', name: 'Pr
 const FASE3: FolderRef = { id: '2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e', name: 'Fase 3' };
 const NOTAS: FolderRef = { id: '4d5e6f7a-8b9c-4d0e-9f1a-2b3c4d5e6f7a', name: 'Notas' };
 
-const folderSummary = (ref: FolderRef, parentId: string | null): FolderSummary => ({
-  ...ref,
-  parentId,
-  createdAt: AT,
-  updatedAt: AT,
-});
-const folder = (ref: FolderRef, parentId: string | null): ExplorerNode => ({
-  type: 'folder',
-  shared: false,
-  ...folderSummary(ref, parentId),
-});
-const file = (id: string, name: string, folderId: string | null): ExplorerNode => ({
-  type: 'file',
-  shared: false,
-  indexStatus: 'indexed',
-  id,
-  name,
-  sizeBytes: 1_500,
-  kind: 'pdf',
-  folderId,
-  createdAt: AT,
-  updatedAt: AT,
-});
+const folder = (ref: FolderRef, parentId: string | null): ExplorerFolder =>
+  explorerFolder({ ...ref, parentId, createdAt: AT, updatedAt: AT });
+const file = (id: string, name: string, folderId: string | null): ExplorerFile =>
+  explorerFile({ id, name, sizeBytes: 1_500, kind: 'pdf', folderId, createdAt: AT, updatedAt: AT });
 
 const LISTINGS: Readonly<Record<string, FolderContentsResponse>> = {
   root: {
@@ -144,7 +126,7 @@ describe('MyFiles con carpetas desglosadas (006 CA-26)', () => {
   it('CA-26: renombrar una subcarpeta actualiza su nivel', async () => {
     const api = fakeApi({
       renameFolder: jest.fn(() =>
-        Promise.resolve(folderSummary({ id: FASE3.id, name: 'Fase 4' }, ALPHA.id)),
+        Promise.resolve(folder({ id: FASE3.id, name: 'Fase 4' }, ALPHA.id)),
       ),
     });
     await renderMyFilesWithAlphaExpanded(api);
@@ -364,7 +346,7 @@ describe('MyFiles mantiene al día los accesos rápidos (006 CA-27)', () => {
     const api = fakeApi({
       quickAccess,
       renameFolder: jest.fn(() =>
-        Promise.resolve(folderSummary({ id: ALPHA.id, name: 'Proyecto Beta' }, null)),
+        Promise.resolve(folder({ id: ALPHA.id, name: 'Proyecto Beta' }, null)),
       ),
     });
     await renderRoot(api);

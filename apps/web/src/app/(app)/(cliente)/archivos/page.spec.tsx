@@ -17,6 +17,10 @@ import type { StorageApi } from '../../../../features/storage/api';
 import { UploadsSpaceProvider } from '../../../../features/storage/components/space-provider';
 import { UploadsProvider } from '../../../../features/storage/components/uploads-provider';
 import { StorageRequestError } from '../../../../features/storage/storage-request-error';
+import {
+  explorerFile,
+  explorerFolder,
+} from '../../../../features/storage/test-explorer-nodes';
 import { GB, spaceSummaryWith } from '../../../../features/storage/test-space-summary';
 import type { UploadManagerOptions } from '../../../../features/storage/upload/upload-manager';
 
@@ -43,7 +47,7 @@ function page(items: readonly FileSummary[]): FolderContentsResponse {
   return {
     folder: null,
     breadcrumbs: [],
-    items: items.map((file) => ({ type: 'file', ...file, shared: false, indexStatus: 'indexed' })),
+    items: items.map((file) => explorerFile(file)),
     nextCursor: null,
     accessLevel: 'OWNER',
   };
@@ -292,13 +296,13 @@ describe('página Mis archivos (/archivos)', () => {
   });
 
   it('006 CA-1: «Nueva carpeta» en la raíz la crea y la lista primero, sin volver a pedir la raíz', async () => {
-    const created = {
+    const created = explorerFolder({
       id: '5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b',
       name: 'Actas',
       parentId: null,
       createdAt: AT,
       updatedAt: AT,
-    };
+    });
     const api = fakeApi({
       folderContents: jest.fn(() => Promise.resolve(page([INFORME]))),
       createFolder: jest.fn(() => Promise.resolve(created)),

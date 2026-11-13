@@ -1,22 +1,23 @@
 /**
  * @jest-environment jsdom
  */
-import { STORAGE_ERROR_CODES, type FolderSummary } from '@nimbo/contracts';
+import { STORAGE_ERROR_CODES, type ExplorerFolder } from '@nimbo/contracts';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { StorageRequestError } from '../storage-request-error';
+import { explorerFolder } from '../test-explorer-nodes';
 
 import { NewFolderDialog, type NewFolderDialogProps } from './new-folder-dialog';
 
 const PARENT_ID = '2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e';
-const CREATED: FolderSummary = {
+const CREATED = explorerFolder({
   id: '3c4d5e6f-7a8b-4c9d-8e1f-2a3b4c5d6e7f',
   name: 'Actas',
   parentId: PARENT_ID,
   createdAt: '2026-09-30T10:00:00.000Z',
   updatedAt: '2026-09-30T10:00:00.000Z',
-};
+});
 
 function renderDialog(overrides: Partial<NewFolderDialogProps> = {}): NewFolderDialogProps {
   const props: NewFolderDialogProps = {
@@ -162,7 +163,7 @@ describe('NewFolderDialog (CA-1, CA-2, CA-3, CA-9)', () => {
   });
 
   it('mientras espera, «Crear carpeta» queda ocupado y no envía dos veces', async () => {
-    const createFolder = jest.fn(() => new Promise<FolderSummary>(() => undefined));
+    const createFolder = jest.fn(() => new Promise<ExplorerFolder>(() => undefined));
     renderDialog({ createFolder });
 
     await submit('Actas');

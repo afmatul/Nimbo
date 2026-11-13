@@ -5,13 +5,13 @@ import {
   STORAGE_ERROR_CODES,
   type FileSummary,
   type FolderSummary,
-  type NodeSummary,
 } from '@nimbo/contracts';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 
 import { StorageRequestError } from '../storage-request-error';
+import { explorerFile, explorerFolder } from '../test-explorer-nodes';
 
 import { RenameDialog, type RenameDialogProps } from './rename-dialog';
 
@@ -36,15 +36,15 @@ const FOLDER: FolderSummary = {
   createdAt: AT,
   updatedAt: AT,
 };
-const FILE_NODE: NodeSummary = { type: 'file', ...FILE };
-const FOLDER_NODE: NodeSummary = { type: 'folder', ...FOLDER };
+const FILE_NODE = explorerFile(FILE);
+const FOLDER_NODE = explorerFolder(FOLDER);
 
 function renderDialog(overrides: Partial<RenameDialogProps> = {}): RenameDialogProps {
   const props: RenameDialogProps = {
     node: FILE_NODE,
     siblingFolderNames: ['Prompts', 'Pruebas de recuperación'],
-    renameFile: jest.fn((_id, body) => Promise.resolve({ ...FILE, name: body.name })),
-    renameFolder: jest.fn((_id, body) => Promise.resolve({ ...FOLDER, name: body.name })),
+    renameFile: jest.fn((_id, body) => Promise.resolve({ ...FILE_NODE, name: body.name })),
+    renameFolder: jest.fn((_id, body) => Promise.resolve({ ...FOLDER_NODE, name: body.name })),
     onRenamed: jest.fn(),
     onClose: jest.fn(),
     ...overrides,
@@ -122,7 +122,7 @@ describe('RenameDialog de un archivo (CA-4)', () => {
     const renameFile = jest
       .fn()
       .mockRejectedValueOnce(conflict('Actas (1).docx'))
-      .mockResolvedValueOnce({ ...FILE, name: 'Actas (1).docx' });
+      .mockResolvedValueOnce({ ...FILE_NODE, name: 'Actas (1).docx' });
     const props = renderDialog({ renameFile });
 
     await submit('Actas');

@@ -18,6 +18,10 @@ import type { StorageApi } from '../../../../../../features/storage/api';
 import { UploadsSpaceProvider } from '../../../../../../features/storage/components/space-provider';
 import { UploadsProvider } from '../../../../../../features/storage/components/uploads-provider';
 import { StorageRequestError } from '../../../../../../features/storage/storage-request-error';
+import {
+  explorerFile,
+  explorerFolder,
+} from '../../../../../../features/storage/test-explorer-nodes';
 import { GB, spaceSummaryWith } from '../../../../../../features/storage/test-space-summary';
 import type { UploadManagerOptions } from '../../../../../../features/storage/upload/upload-manager';
 
@@ -48,8 +52,8 @@ const ROOT: FolderContentsResponse = {
   folder: null,
   breadcrumbs: [],
   items: [
-    { type: 'folder', ...ALPHA, parentId: null, createdAt: AT, updatedAt: AT, shared: false },
-    { type: 'folder', ...FINANZAS, parentId: null, createdAt: AT, updatedAt: AT, shared: false },
+    explorerFolder({ ...ALPHA, parentId: null, createdAt: AT, updatedAt: AT }),
+    explorerFolder({ ...FINANZAS, parentId: null, createdAt: AT, updatedAt: AT }),
   ],
   nextCursor: null,
   accessLevel: 'OWNER',
@@ -65,10 +69,7 @@ function fase3(items: FolderContentsResponse['items']): FolderContentsResponse {
   };
 }
 
-const FASE3_CONTENTS = fase3([
-  { type: 'folder', ...PROMPTS, shared: false },
-  { type: 'file', ...INFORME, shared: false, indexStatus: 'indexed' },
-]);
+const FASE3_CONTENTS = fase3([explorerFolder(PROMPTS), explorerFile(INFORME)]);
 
 function never<T>(): Promise<T> {
   return new Promise<T>(() => undefined);
@@ -170,7 +171,7 @@ describe('página de una carpeta (/archivos/carpeta/[folderId])', () => {
       fakeApi({
         folderContents: contentsBy(() =>
           Promise.resolve(
-            fase3([{ type: 'file', ...plan, shared: false, indexStatus: 'indexed' }]),
+            fase3([explorerFile(plan)]),
           ),
         ),
       }),
@@ -334,13 +335,13 @@ describe('página de una carpeta (/archivos/carpeta/[folderId])', () => {
   });
 
   it('CA-1: «Nueva carpeta» crea dentro de la carpeta abierta y la muestra primero', async () => {
-    const created: FolderSummary = {
+    const created = explorerFolder({
       id: '5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b',
       name: 'Resultados finales',
       parentId: FASE3.id,
       createdAt: AT,
       updatedAt: AT,
-    };
+    });
     const api = fakeApi({ createFolder: jest.fn(() => Promise.resolve(created)) });
     await renderFolder(api);
     await screen.findByRole('table');
