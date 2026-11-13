@@ -2,18 +2,18 @@
 
 > Demo pública de Nimbo en [Deploya](https://deploya.larasolutions.dev): un contenedor por proyecto, construido desde
 > la raíz del repo y publicado en `https://<subdominio>.deploya.larasolutions.dev`. No reemplaza a staging
-> (`ambientes.md`): no hay ONLYOFFICE, Prometheus, Grafana ni respaldos. Contrastada con el código de Deploya
+> (`ambientes.md`): no hay Prometheus, Grafana ni respaldos. Contrastada con el código de Deploya
 > (`derekCmorales/deploya` @ `8e68889`) y probada con una simulación fiel (§6).
 
 ## 1. Cómo encaja Nimbo en Deploya
 
 | Deploya (código) | Nimbo |
 |---|---|
-| Un contenedor por proyecto, en la red `deploya-p-<subdominio>` | 4 proyectos: `nimbo-api`, `nimbo-worker`, `nimbo-optimizer`, `nimbo` (web) |
+| Un contenedor por proyecto, en la red `deploya-p-<subdominio>` | 5 proyectos: `nimbo-api`, `nimbo-worker`, `nimbo-optimizer`, `nimbo` (web) y `nimbo-docs` (ONLYOFFICE, opcional) |
 | Construye con el builder clásico de Docker (sin BuildKit) y no filtra con `.dockerignore`; 20 min de límite | Los Dockerfiles no usan nada exclusivo de BuildKit; el contexto completo pesa unos 235 MB |
 | El alta exige un `Dockerfile` en la raíz (hasta [derekCmorales/deploya#74](https://github.com/derekCmorales/deploya/pull/74)) y despliega en el acto | El `Dockerfile` de la raíz es el del api; los otros eligen su ruta en el alta (#74) o en Configuración |
 | Inyecta `PORT`; sano si `GET /` responde < 500 antes de 60 s | api 404, worker 404, optimizer 404, web 200 (todos < 500), en 1 a 5 s |
-| `--cap-drop ALL`, `no-new-privileges`, memoria y CPU del plan, sin volúmenes | Las imágenes corren como `node` y no escriben en disco salvo la caché de Next |
+| `--cap-drop ALL`, `no-new-privileges`, memoria y CPU del plan, sin volúmenes | Las imágenes corren como `node` (ONLYOFFICE como `ds`) y no escriben en disco salvo cachés efímeras |
 | `comandoInicio` reemplaza solo el `CMD`; se parte en argumentos, sin shell | El optimizer usa la imagen del worker con otro comando |
 | Recursos de datos (Postgres, Redis, S3) compartibles entre proyectos del mismo usuario | Los crea `nimbo-api` y los comparte con worker y optimizer |
 | Variables inyectadas; las del usuario ganan, salvo las `DEPLOYA_*` y `PORT` | El entrypoint las traduce a las de Nimbo (§2) |
@@ -82,6 +82,7 @@ proyecto cuyo último despliegue falló no ocupa cupo del plan. Se arregla con l
 | worker | `nimbo-worker` | `3001` | `apps/worker/Dockerfile` | vacío | `infra/deploya/worker.env` |
 | optimizer | `nimbo-optimizer` | `3003` | `apps/worker/Dockerfile` | `node dist/worker-optimizer.main.js` | `infra/deploya/optimizer.env` |
 | web | `nimbo` | `3002` | `apps/web/Dockerfile` | vacío | `infra/deploya/web.env` |
+| ONLYOFFICE | `nimbo-docs` | `8080` | `infra/deploya/onlyoffice/Dockerfile` | vacío | `infra/deploya/docs.env` |
 
 Sin #74, el asistente solo acepta el `Dockerfile` de la raíz (el del api) y no muestra el campo de la ruta: se crea
 igual y la ruta se corrige en **Configuración** (§3.3). Si algún subdominio queda distinto de la tabla, se corrigen
@@ -153,10 +154,33 @@ Deploya no ofrece consola, así que se usa un comando de inicio temporal en `nim
    cada arranque el script responde `IDENTITY_ADMIN_ALREADY_EXISTS` y el api arranca igual.
 4. El worker envía la invitación por SMTP; el enlace lleva a `https://nimbo.deploya.larasolutions.dev/crear-contrasena`.
 
+### 3.9 `nimbo-docs` (ONLYOFFICE, editor de `.docx`)
+
+Opcional: sin él Nimbo funciona entero y solo «Editar» responde `EDITING_UNAVAILABLE`. La imagen
+(`infra/deploya/onlyoffice/Dockerfile`) es ONLYOFFICE Docs 9.3.1, la misma versión de compose, armada para las reglas
+de Deploya: todo corre como el usuario `ds` sin privilegios, nginx escucha en `PORT`, RabbitMQ va dentro y las tablas
+de ONLYOFFICE van en el esquema `onlyoffice` de su propio PostgreSQL. Usa unos 540 MB de 1 GB en reposo; la primera
+construcción tarda unos 3 a 4 min (baja un paquete de 622 MB).
+
+1. Crearlo (§3.2) con nombre `nimbo-docs`, puerto `8080` y ruta `infra/deploya/onlyoffice/Dockerfile` (si el campo no
+   aparece, se corrige en **Configuración**).
+2. Pestaña **Datos** de `nimbo-docs`: **Agregar** en «PostgreSQL 17 + pgvector». Es una base aparte: ONLYOFFICE no
+   necesita ni recibe la de Nimbo.
+3. **Pegar las variables** de `infra/deploya/docs.env`: `ONLYOFFICE_JWT_SECRET` con una clave nueva de 32
+   caracteres o más (`openssl rand -base64 48 | tr -d '\n=+/'`) → **Guardar y desplegar**.
+4. Comprobar: `https://nimbo-docs.deploya.larasolutions.dev/healthcheck` → `true`.
+5. En **`nimbo-api`** → **Variables**: agregar las cuatro últimas líneas de `infra/deploya/api.env`, con la **misma**
+   `ONLYOFFICE_JWT_SECRET` del paso 3 → **Guardar y desplegar**.
+6. En la web, abrir un `.docx` → **Editar**: el editor carga desde `nimbo-docs` y guarda en Nimbo al cerrar.
+
 ## 4. Límites conocidos
 
-- **Sin ONLYOFFICE**: `ONLYOFFICE_*` y `EDITING_CALLBACK_BASE_URL` quedan sin definir. El api arranca normal y abrir el
-  editor responde `EDITING_UNAVAILABLE` (503); subir, previsualizar, versiones y compartir funcionan.
+- **ONLYOFFICE sin persistencia propia**: su caché vive en el contenedor y se pierde al redesplegar. No se pierde nada
+  de Nimbo: el documento y sus versiones viven en Nimbo; una sesión abierta durante un redespliegue se cierra y hay
+  que volver a abrir el editor. Sin `nimbo-docs` (o sin las cuatro variables en el api), «Editar» responde
+  `EDITING_UNAVAILABLE` (503) y el resto funciona.
+- **Fuentes de ONLYOFFICE**: sin las fuentes de Microsoft (su licencia no deja redistribuirlas); van Carlito,
+  Caladea, Liberation y DejaVu, que ocupan el mismo espacio que Calibri, Cambria, Arial, Times y Courier.
 - **Sin agente ni indexación** si `GEMINI_API_KEY` queda vacía (RNF-09).
 - **Sin Prometheus, Grafana, cAdvisor ni respaldos** (022, 022c). Las métricas del api (`METRICS_PORT`) no se publican.
 - **Worker y optimizer públicos**: Deploya publica todo proyecto, así que su salud queda en una URL pública. No
@@ -182,6 +206,8 @@ Deploya no ofrece consola, así que se usa un comando de inicio temporal en `nim
 | `config.invalid` con el nombre de una variable | Falta una obligatoria o no cumple su formato (nunca se imprime el valor) |
 | El worker u optimizer no encuentran tablas | Se desplegaron antes que el api |
 | `mail.retry_scheduled` en el worker | El SMTP no responde o las credenciales están mal |
+| `onlyoffice.config_invalid` en `nimbo-docs` | Falta `ONLYOFFICE_JWT_SECRET` (o es corta) o el PostgreSQL de su pestaña Datos |
+| El editor dice «Error de descarga» o no guarda | `ONLYOFFICE_JWT_SECRET` distinta entre `nimbo-api` y `nimbo-docs`, o `EDITING_CALLBACK_BASE_URL` mal |
 
 ## 6. Prueba que simula Deploya
 
@@ -201,6 +227,7 @@ Fecha: 2026-11-12. Fiel al código de Deploya:
 | `nimbo-api` | `Dockerfile` | 159 s | 545 MB |
 | `nimbo-worker` (worker y optimizer) | `apps/worker/Dockerfile` | 171 s | 658 MB |
 | `nimbo-web` | `apps/web/Dockerfile` | 171 s | 437 MB |
+| `nimbo-docs` | `infra/deploya/onlyoffice/Dockerfile` | 192 s | 4,08 GB |
 
 | Proyecto | Salud de Deploya (`GET /`) | Comprobación propia | Memoria |
 |---|---|---|---|
@@ -208,10 +235,20 @@ Fecha: 2026-11-12. Fiel al código de Deploya:
 | `nimbo-worker` | 404 en 2,2 s | `worker.started`, `/health/ready` 200 | 85 MiB |
 | `nimbo-optimizer` | 404 en 2,2 s | `worker.started` (`worker-optimizer`), `/health/ready` 200 | 78 MiB |
 | `nimbo` | 200 en 1,3 s | `/` y `/iniciar-sesion` 200, la portada ve la API | 70 MiB |
+| `nimbo-docs` | 200 en 9,4 s | `/healthcheck` `true`, tablas en el esquema `onlyoffice` | 534 MiB |
 
 El primer administrador con el comando de inicio de la §3.8 dio `admin.bootstrap.completed` y una fila `ADMIN` en
 `usuario`. Al repetirlo responde `IDENTITY_ADMIN_ALREADY_EXISTS` y el api arranca igual. Las migraciones de un segundo
 despliegue no aplican nada (`applied: []`).
 
-Lo que la simulación no cubre: el TLS y el proxy reales de Deploya (WebSocket del canal en vivo y los 60 s de
-`readTimeout` de Traefik en cargas lentas) y la entrega real de correo.
+Ciclo de edición de ONLYOFFICE, con un servidor que hace de api de Nimbo:
+
+- conversión firmada con JWT `.docx` → PDF en 1,1 s, descargada por el enlace firmado de nginx;
+- en Chromium, el editor abrió en 1,8 s sin errores, se escribió «Hola desde Nimbo en Deploya» y, al cerrar,
+  ONLYOFFICE envió el aviso de guardado (`status 2`) con la URL del documento; el `.docx` descargado de esa URL trae
+  el texto escrito;
+- memoria tras editar: 537 MiB de 1 GiB.
+
+Lo que la simulación no cubre: el TLS y el proxy reales de Deploya (WebSocket del canal en vivo y del editor, y los
+60 s de `readTimeout` de Traefik en cargas lentas), el ciclo de edición contra el api real de Nimbo (la integración
+016 está probada con compose) y la entrega real de correo.
