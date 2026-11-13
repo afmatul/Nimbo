@@ -16,6 +16,7 @@ import { previewPathOf } from '../preview/routes';
 import { folderPath } from '../routes';
 
 import { rowIdOf } from './node-rows';
+import { useThumbnailRenderer } from './node-thumbnail';
 
 type FolderNode = Extract<NodeSummary, { type: 'folder' }>;
 type FileNode = Extract<NodeSummary, { type: 'file' }>;
@@ -158,11 +159,12 @@ function FileCard({
   readonly actions: React.ReactNode;
   readonly onQuickLook: ((file: FileSummary) => void) | undefined;
 }): React.JSX.Element {
+  const renderThumbnail = useThumbnailRenderer();
   return (
     <li id={rowIdOf(file.id)} className={`${CARD_CLASS} flex flex-col gap-3 p-3`}>
       <div
         aria-hidden="true"
-        className="flex h-32 items-center justify-center rounded-md"
+        className="relative flex h-32 items-center justify-center overflow-hidden rounded-md"
         style={fileTypeColors(CHIP_TYPE_BY_KIND[file.kind])}
         data-testid="file-card-preview"
       >
@@ -170,6 +172,7 @@ function FileCard({
           fileType={CHIP_TYPE_BY_KIND[file.kind]}
           className="[&>svg]:h-14 [&>svg]:w-14 [&>svg]:stroke-[1.5]"
         />
+        {renderThumbnail?.(file)}
       </div>
       <div className="flex items-start gap-2">
         <span className="flex min-w-0 flex-1 flex-col">

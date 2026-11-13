@@ -6,6 +6,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { NodeCards } from './node-cards';
+import { ThumbnailProvider } from './node-thumbnail';
 
 const NOW = '2026-11-10T10:00:00.000Z';
 const FOLDER = {
@@ -95,5 +96,16 @@ describe('NodeCards', () => {
       '/editor/d1',
     );
     expect(screen.queryByRole('button', { name: /Vista rápida/ })).toBeNull();
+  });
+
+  it('con un renderizador de miniaturas, la tarjeta del archivo lo muestra sobre el ícono', () => {
+    render(
+      <ThumbnailProvider value={(file) => <span data-testid="miniatura">{file.name}</span>}>
+        <NodeCards nodes={[PDF]} placeName="Mis archivos" renderRowActions={undefined} />
+      </ThumbnailProvider>,
+    );
+    expect(
+      within(screen.getByTestId('file-card-preview')).getByTestId('miniatura').textContent,
+    ).toBe('modelo.pdf');
   });
 });
