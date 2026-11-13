@@ -4,7 +4,6 @@ import type { PendingPlanRegistry } from '../../identity';
 import type { Payment } from '../domain/entities/payment.entity';
 import { PlanNotAvailableError } from '../domain/errors/plan-not-available.error';
 
-
 import type { InvoiceService } from './invoice.service';
 import type { PaymentService } from './payment.service';
 import type { IPlanRepository } from './ports/i-plan-repository.port';
