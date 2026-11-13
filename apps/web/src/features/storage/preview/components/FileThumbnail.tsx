@@ -11,12 +11,26 @@ import { acquireThumbnailSlot } from '../thumbnail-queue';
 
 import { PreviewReader } from './PreviewReader';
 
-/** Solo imágenes y PDF (primera página); el resto conserva el ícono. Más allá de este tamaño no vale la pena leerlo. */
-const THUMBNAIL_KINDS: ReadonlySet<FileSummary['kind']> = new Set(['imagen', 'pdf']);
-const MAX_THUMBNAIL_BYTES = 10 * 1024 * 1024;
+const MB = 1024 * 1024;
+
+/**
+ * Tipos con miniatura y el tamaño máximo que vale la pena leer: imagen y PDF (primera página) y, con tope menor porque
+ * se analizan completos, la primera hoja de un xlsx o la primera diapositiva de un pptx. `docx` no tiene lector de
+ * vista previa (017 RN-1) y conserva el ícono.
+ */
+const THUMBNAIL_LIMITS: Partial<Record<FileSummary['kind'], number>> = {
+  imagen: 10 * MB,
+  pdf: 10 * MB,
+  xlsx: 3 * MB,
+  pptx: 5 * MB,
+};
+
+/** Los lectores de Office dibujan a tamaño de página: se reducen a la mitad para que quepa una vista de conjunto. */
+const SCALED_KINDS: ReadonlySet<FileSummary['kind']> = new Set(['xlsx', 'pptx']);
 
 export function hasThumbnail(file: FileSummary): boolean {
-  return THUMBNAIL_KINDS.has(file.kind) && file.sizeBytes <= MAX_THUMBNAIL_BYTES;
+  const limit = THUMBNAIL_LIMITS[file.kind];
+  return limit !== undefined && file.sizeBytes <= limit;
 }
 
 /** Verdadero cuando el elemento entra (o está por entrar) en pantalla; una sola vez. Sin `IntersectionObserver`, nunca. */
@@ -71,7 +85,7 @@ function useThumbnailRequest(apiPublicUrl: string): PreviewUrlRequester {
 
 const READER_CLASS = cn(
   'absolute inset-0 bg-card transition-opacity motion-reduce:transition-none',
-  '[&_[aria-label="Páginas del PDF"]]:hidden [&_[role=status]]:hidden',
+  '[&_[aria-label="Páginas del PDF"]]:hidden [&_[role=status]]:hidden [&_[role=tablist]]:hidden',
   '[&_img]:h-full [&_img]:w-full [&_img]:object-cover [&_canvas]:w-full',
 );
 
@@ -98,12 +112,16 @@ function ThumbnailReading({
   if (state.status !== 'success' || failed) return null;
   return (
     <div className={cn(READER_CLASS, ready ? 'opacity-100' : 'opacity-0')}>
-      <PreviewReader
-        kind={file.kind}
-        url={state.delivery.url}
-        onFailure={onFailure}
-        onReady={onReady}
-      />
+      <div
+        className={SCALED_KINDS.has(file.kind) ? 'w-[200%] origin-top-left scale-50' : undefined}
+      >
+        <PreviewReader
+          kind={file.kind}
+          url={state.delivery.url}
+          onFailure={onFailure}
+          onReady={onReady}
+        />
+      </div>
     </div>
   );
 }

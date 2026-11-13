@@ -8,7 +8,11 @@ import { Eye, FilePen, Folder } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 
-import { fileTypeColors, FileTypeIcon } from '../../../components/nimbo/file-type-chip';
+import {
+  fileTypeColors,
+  FileTypeChip,
+  FileTypeIcon,
+} from '../../../components/nimbo/file-type-chip';
 import { DATE_LOCALE } from '../../../lib/format-date';
 import { editorPath } from '../../editing/routes';
 import { CHIP_TYPE_BY_KIND } from '../file-type';
@@ -177,8 +181,11 @@ function FileCard({
       <div className="flex items-start gap-2">
         <span className="flex min-w-0 flex-1 flex-col">
           <FileName file={file} />
-          <span className="text-xs tabular-nums text-muted-foreground">
-            {formatBytes(file.sizeBytes)} · <UpdatedAt value={file.updatedAt} />
+          <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs tabular-nums text-muted-foreground">
+            <FileTypeChip fileType={CHIP_TYPE_BY_KIND[file.kind]} />
+            <span>
+              {formatBytes(file.sizeBytes)} · <UpdatedAt value={file.updatedAt} />
+            </span>
           </span>
         </span>
         <div className={`${ACTIONS_CLASS} flex items-center`}>
