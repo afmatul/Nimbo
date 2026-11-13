@@ -1,11 +1,12 @@
 'use client';
 
-import type { FolderRef, NodeAccessLevel, NodeSummary } from '@nimbo/contracts';
+import type { FileSummary, FolderRef, NodeAccessLevel, NodeSummary } from '@nimbo/contracts';
 import { FolderPlus, Upload } from 'lucide-react';
 import * as React from 'react';
 
 import { StateView } from '../../../components/nimbo/state-view';
 import { Button } from '../../../components/ui/button';
+import { cn } from '../../../lib/utils';
 import type { ListControls } from '../hooks/use-folder-contents';
 import type { NodeSelection } from '../hooks/use-node-selection';
 import { isOwner } from '../node-access';
@@ -16,6 +17,8 @@ import { AskAgentButton } from './ask-agent-button';
 import { ExplorerErrorState } from './explorer-error-state';
 import { FolderBackLink, SHARED_ROOT_CRUMB } from './folder-breadcrumbs';
 import { LoadMore } from './load-more';
+import { NodeCards } from './node-cards';
+import { NodeOrderSelect } from './node-order-select';
 import { NodeTable, type FolderDisclosure, type NodeTableProps } from './node-table';
 import { ReadOnlyUploadFeedback, useReadOnlyUploads } from './read-only-notice';
 import { UploadDropzone } from './upload-dropzone';
@@ -51,7 +54,18 @@ export interface FileExplorerProps {
   readonly notice?: React.ReactNode;
   /** Orden y «Cargar más» del listado (007); sin ellos la lista no se ordena ni pagina. */
   readonly controls?: ListControls;
+  /** Vista con la que abre la lista; el usuario la cambia con «Tarjetas» / «Lista». Sin valor, la tabla. */
+  readonly defaultView?: NodesView;
+  /** «Vista rápida» en las tarjetas de archivos previsualizables (017); sin él no hay botón. */
+  readonly onQuickLook?: ((file: FileSummary) => void) | undefined;
 }
+
+export type NodesView = 'tarjetas' | 'lista';
+
+/** Lo que ambas vistas reciben; `onQuickLook` solo lo usan las tarjetas. */
+type ListTable = Omit<NodeTableProps, 'sorting'> & {
+  readonly onQuickLook?: ((file: FileSummary) => void) | undefined;
+};
 
 const UNKNOWN_FOLDER_TITLE = 'Carpeta';
 const UNKNOWN_FOLDER_PLACE = 'esta carpeta';
@@ -236,6 +250,8 @@ function ExplorerContent(
         disclosure={props.disclosure}
         selection={props.selection}
         controls={props.controls}
+        defaultView={props.defaultView}
+        onQuickLook={props.onQuickLook}
         readOnly={props.readOnly}
         shared={!isOwner(props.accessLevel)}
       />
@@ -294,6 +310,8 @@ interface ExplorerBodyProps {
   readonly disclosure: FolderDisclosure | undefined;
   readonly selection: NodeSelection | undefined;
   readonly controls: ListControls | undefined;
+  readonly defaultView: NodesView | undefined;
+  readonly onQuickLook: ((file: FileSummary) => void) | undefined;
   /** Spec 010 CA-14: la cuenta está en solo lectura. */
   readonly readOnly: boolean;
   /** Carpeta compartida conmigo: el vacío no invita a subir (012b CA-6). */
@@ -312,8 +330,125 @@ function ExplorerBody(props: ExplorerBodyProps): React.JSX.Element {
   }
   if (nodes.length === 0) return <EmptyExplorer {...props} />;
   const { placeName, renderRowActions, disclosure, selection } = props;
-  const table = { nodes, placeName, renderRowActions, disclosure, selection };
-  return controls ? <ControlledList table={table} controls={controls} /> : <NodeTable {...table} />;
+  const onQuickLook = props.onQuickLook;
+  const table = { nodes, placeName, renderRowActions, disclosure, selection, onQuickLook };
+  return <NodesPane table={table} controls={controls} defaultView={props.defaultView ?? 'lista'} />;
+}
+
+/** Última vista elegida, para recordarla entre visitas (solo comodidad del navegador). */
+export const VIEW_STORAGE_KEY = 'nimbo:explorador-vista';
+
+function storedViewOr(fallback: NodesView): NodesView {
+  try {
+    const stored = window.localStorage.getItem(VIEW_STORAGE_KEY);
+    return stored === 'tarjetas' || stored === 'lista' ? stored : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function storeView(view: NodesView): void {
+  try {
+    window.localStorage.setItem(VIEW_STORAGE_KEY, view);
+  } catch {
+    // Sin almacenamiento el explorador sigue funcionando; solo no recuerda la vista.
+  }
+}
+
+const VIEWS: readonly { readonly id: NodesView; readonly label: string }[] = [
+  { id: 'tarjetas', label: 'Tarjetas' },
+  { id: 'lista', label: 'Lista' },
+];
+
+/** «Tarjetas» / «Lista» (mockup `explorador--cuadricula`); `aria-pressed` marca la vista activa. */
+function ViewToggle({
+  view,
+  onChange,
+}: {
+  readonly view: NodesView;
+  readonly onChange: (view: NodesView) => void;
+}): React.JSX.Element {
+  return (
+    <div role="group" aria-label="Vista" className="flex rounded-md border border-border p-0.5">
+      {VIEWS.map(({ id, label }) => (
+        <button
+          key={id}
+          type="button"
+          aria-pressed={view === id}
+          onClick={() => onChange(id)}
+          className={cn(
+            'min-h-8 rounded px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            view === id
+              ? 'bg-muted text-foreground'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** El selector de vista y la lista, en tarjetas o en tabla. */
+function NodesPane({
+  table,
+  controls,
+  defaultView,
+}: {
+  readonly table: ListTable;
+  readonly controls: ListControls | undefined;
+  readonly defaultView: NodesView;
+}): React.JSX.Element {
+  const [view, changeView] = React.useState<NodesView>(() => storedViewOr(defaultView));
+  const setView = (next: NodesView): void => {
+    changeView(next);
+    storeView(next);
+  };
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {controls && view === 'tarjetas' ? (
+          <NodeOrderSelect
+            order={controls.order}
+            busy={controls.sorting}
+            onChange={controls.changeOrder}
+          />
+        ) : (
+          <span />
+        )}
+        <ViewToggle view={view} onChange={setView} />
+      </div>
+      {controls ? (
+        <ControlledList table={table} controls={controls} view={view} />
+      ) : (
+        <NodeListView table={table} view={view} />
+      )}
+    </div>
+  );
+}
+
+function NodeListView({
+  table,
+  view,
+  sorting,
+}: {
+  readonly table: ListTable;
+  readonly view: NodesView;
+  readonly sorting?: NodeTableProps['sorting'];
+}): React.JSX.Element {
+  if (view === 'tarjetas') {
+    return (
+      <NodeCards
+        nodes={table.nodes}
+        placeName={table.placeName}
+        renderRowActions={table.renderRowActions}
+        onQuickLook={table.onQuickLook}
+      />
+    );
+  }
+  const { onQuickLook: _unused, ...tableProps } = table;
+  return <NodeTable {...tableProps} sorting={sorting} />;
 }
 
 /**
@@ -321,19 +456,21 @@ function ExplorerBody(props: ExplorerBodyProps): React.JSX.Element {
  * `aria-busy` y la tabla marca el orden de lo que muestra, no el pedido (CA-12).
  */
 interface ControlledListProps {
-  readonly table: Omit<NodeTableProps, 'sorting'>;
+  readonly table: ListTable;
   readonly controls: ListControls;
+  readonly view: NodesView;
 }
 
-function ControlledList({ table, controls }: ControlledListProps): React.JSX.Element {
+function ControlledList({ table, controls, view }: ControlledListProps): React.JSX.Element {
   return (
     <div className="flex flex-col gap-3">
       <p role="status" className="sr-only">
         {controls.sorting ? `Ordenando por ${orderLabel(controls.order).toLowerCase()}…` : ''}
       </p>
       <div aria-busy={controls.sorting || undefined}>
-        <NodeTable
-          {...table}
+        <NodeListView
+          table={table}
+          view={view}
           sorting={{ order: controls.shownOrder, onSort: controls.changeOrder }}
         />
       </div>

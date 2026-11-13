@@ -135,6 +135,7 @@ interface MyFilesExplorerProps {
   readonly share: RowShare;
   readonly firstAction: FirstFileAction | undefined;
   readonly batch: BatchSelection | null;
+  readonly onQuickLook: ((file: FileSummary) => void) | undefined;
 }
 
 function MyFilesExplorer({
@@ -143,6 +144,7 @@ function MyFilesExplorer({
   share,
   firstAction,
   batch,
+  onQuickLook,
 }: MyFilesExplorerProps): React.JSX.Element {
   const { contents, uploads, folderId } = state;
   return (
@@ -159,6 +161,8 @@ function MyFilesExplorer({
       fileInputRef={uploads.fileInputRef}
       disclosure={state.view.disclosure}
       selection={batch?.selection}
+      defaultView="tarjetas"
+      onQuickLook={onQuickLook}
       controls={contents.controls}
       renderRowActions={(node) => (
         <RowActions
@@ -195,6 +199,8 @@ export interface MyFilesProps {
   readonly firstAction?: FirstFileAction;
   /** Cliente de los lotes (selección múltiple); sin él la lista no tiene casillas. */
   readonly batchApi?: BatchApi;
+  /** «Vista rápida» de una tarjeta (017): quien compone da el diálogo; sin él las tarjetas no ofrecen el botón. */
+  readonly renderQuickLook?: (file: FileSummary | null, onClose: () => void) => React.ReactNode;
 }
 
 const ROOT_SCOPE = 'raiz';
@@ -220,6 +226,7 @@ export function MyFiles({
   returnFocusId = null,
   firstAction,
   batchApi,
+  renderQuickLook,
 }: MyFilesProps): React.JSX.Element {
   const state = useMyFilesState(folderId);
   const { listing } = state.contents;
@@ -227,6 +234,7 @@ export function MyFiles({
   const [sharing, setSharing] = React.useState<ShareTarget | null>(null);
   const share: RowShare = { level: accessLevelOf(listing), open: setSharing };
   const batch = useBatchSelection(state, share.level, batchApi);
+  const [quickFile, setQuickFile] = React.useState<FileSummary | null>(null);
   return (
     <AppLayout
       topBar={topBarOf(state, share.level)}
@@ -245,10 +253,12 @@ export function MyFiles({
             share={share}
             firstAction={firstAction}
             batch={batch}
+            onQuickLook={renderQuickLook ? setQuickFile : undefined}
           />
         )}
       </div>
       <MyFilesDialogs state={state} />
+      {renderQuickLook?.(quickFile, () => setQuickFile(null))}
       <ShareDialog api={sharingApi} target={sharing} onClose={() => setSharing(null)} />
     </AppLayout>
   );

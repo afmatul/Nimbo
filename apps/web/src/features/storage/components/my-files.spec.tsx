@@ -21,9 +21,14 @@ import { StorageRequestError } from '../storage-request-error';
 import { explorerFile, explorerFolder } from '../test-explorer-nodes';
 import { GB, spaceSummaryWith } from '../test-space-summary';
 
+import { VIEW_STORAGE_KEY } from './file-explorer';
 import { MyFiles, type FirstFileAction, type MyFilesProps } from './my-files';
 import { UploadsSpaceProvider } from './space-provider';
 import { UploadsProvider } from './uploads-provider';
+
+// Estas pruebas recorren la tabla (desglose, filas, foco); las tarjetas tienen su propia prueba.
+beforeEach(() => window.localStorage.setItem(VIEW_STORAGE_KEY, 'lista'));
+afterEach(() => window.localStorage.removeItem(VIEW_STORAGE_KEY));
 
 const AT = '2026-09-30T10:00:00.000Z';
 const ALPHA: FolderRef = { id: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d', name: 'Proyecto Alpha' };

@@ -221,6 +221,8 @@ describe('Desglosar carpetas en la lista (006 CA-26)', () => {
     await userEvent.tab();
     await userEvent.tab();
     await userEvent.tab();
+    await userEvent.tab();
+    await userEvent.tab();
     expect(document.activeElement).toBe(toggleOf('Proyecto Alpha'));
 
     await userEvent.keyboard('{Enter}');

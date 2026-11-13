@@ -38,6 +38,7 @@ describe('composición pública T-06', () => {
         sharingApi,
         batchApi,
         firstAction: PreviewMenuItem,
+        renderQuickLook: expect.any(Function),
       },
       undefined,
     );

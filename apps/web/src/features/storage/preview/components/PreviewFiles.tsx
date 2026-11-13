@@ -1,13 +1,19 @@
 'use client';
 
-import type * as React from 'react';
+import type { FileSummary } from '@nimbo/contracts';
+import * as React from 'react';
 
-import { MyFiles, useSessionBatchApi, type MyFilesProps } from '../..';
+import { MyFiles, ThumbnailProvider, useSessionBatchApi, type MyFilesProps } from '../..';
 import { useSessionSharingApi } from '../../../sharing';
 
+import { FileThumbnail } from './FileThumbnail';
 import { PreviewMenuItem } from './PreviewMenuItem';
+import { QuickLookDialog } from './QuickLookDialog';
 
-type PreviewFilesProps = Omit<MyFilesProps, 'firstAction' | 'sharingApi' | 'batchApi'> & {
+type PreviewFilesProps = Omit<
+  MyFilesProps,
+  'firstAction' | 'sharingApi' | 'batchApi' | 'renderQuickLook'
+> & {
   readonly apiPublicUrl: string;
 };
 
@@ -15,7 +21,21 @@ type PreviewFilesProps = Omit<MyFilesProps, 'firstAction' | 'sharingApi' | 'batc
 export function PreviewFiles({ apiPublicUrl, ...props }: PreviewFilesProps): React.JSX.Element {
   const sharingApi = useSessionSharingApi(apiPublicUrl);
   const batchApi = useSessionBatchApi(apiPublicUrl);
+  const renderThumbnail = React.useCallback(
+    (file: FileSummary) => <FileThumbnail file={file} apiPublicUrl={apiPublicUrl} />,
+    [apiPublicUrl],
+  );
   return (
-    <MyFiles {...props} sharingApi={sharingApi} batchApi={batchApi} firstAction={PreviewMenuItem} />
+    <ThumbnailProvider value={renderThumbnail}>
+      <MyFiles
+        {...props}
+        sharingApi={sharingApi}
+        batchApi={batchApi}
+        firstAction={PreviewMenuItem}
+        renderQuickLook={(file, onClose) => (
+          <QuickLookDialog file={file} apiPublicUrl={apiPublicUrl} onClose={onClose} />
+        )}
+      />
+    </ThumbnailProvider>
   );
 }

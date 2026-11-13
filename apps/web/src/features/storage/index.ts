@@ -6,6 +6,7 @@ export { createStorageApi } from './api';
 export { CHIP_TYPE_BY_KIND } from './file-type';
 export { MoveFolderTree } from './components/move-folder-tree';
 export { MyFiles, type FirstFileAction, type MyFilesProps } from './components/my-files';
+export { ThumbnailProvider, type ThumbnailRenderer } from './components/node-thumbnail';
 export { StorageAppLayout } from './components/storage-app-layout';
 export { useFileDownload } from './hooks/use-file-download';
 export { useSessionBatchApi } from './hooks/use-session-batch-api';
