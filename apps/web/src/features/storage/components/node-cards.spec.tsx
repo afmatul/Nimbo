@@ -77,4 +77,23 @@ describe('NodeCards', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Vista rápida de modelo.pdf' }));
     expect(onQuickLook).toHaveBeenCalledWith(PDF);
   });
+
+  it('un .docx se abre en el editor: el nombre y el botón enlazan a él, sin vista rápida', () => {
+    const docx = { ...PDF, id: 'd1', name: 'acta.docx', kind: 'docx' } as unknown as NodeSummary;
+    render(
+      <NodeCards
+        nodes={[docx]}
+        placeName="Mis archivos"
+        renderRowActions={undefined}
+        onQuickLook={jest.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole('link', { name: 'Abrir acta.docx en el editor' }).getAttribute('href'),
+    ).toBe('/editor/d1');
+    expect(screen.getByRole('link', { name: /abrir en el editor/ }).getAttribute('href')).toBe(
+      '/editor/d1',
+    );
+    expect(screen.queryByRole('button', { name: /Vista rápida/ })).toBeNull();
+  });
 });

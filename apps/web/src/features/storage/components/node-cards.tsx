@@ -4,12 +4,13 @@ import {
   type FileSummary,
   type NodeSummary,
 } from '@nimbo/contracts';
-import { Eye, Folder } from 'lucide-react';
+import { Eye, FilePen, Folder } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 
 import { FileTypeChip } from '../../../components/nimbo/file-type-chip';
 import { DATE_LOCALE } from '../../../lib/format-date';
+import { editorPath } from '../../editing/routes';
 import { CHIP_TYPE_BY_KIND } from '../file-type';
 import { previewPathOf } from '../preview/routes';
 import { folderPath } from '../routes';
@@ -36,6 +37,8 @@ const CARD_CLASS =
 /** El enlace del nombre cubre toda la tarjeta; el menú ⋮ queda por encima para seguir siendo clicable. */
 const STRETCHED_LINK_CLASS =
   'truncate rounded-sm font-medium text-foreground after:absolute after:inset-0 after:content-[""] focus-visible:outline-none';
+const QUICK_BUTTON_CLASS =
+  'flex h-11 w-11 items-center justify-center rounded-md text-secondary-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-8 sm:w-8';
 const ACTIONS_CLASS = 'relative z-10 shrink-0';
 
 function UpdatedAt({ value }: { readonly value: string }): React.JSX.Element {
@@ -87,6 +90,14 @@ function FolderCard({
 
 /** Nombre del archivo: enlace a su vista previa si se puede previsualizar, texto si no. */
 function FileName({ file }: { readonly file: FileNode }): React.JSX.Element {
+  if (file.kind === 'docx') {
+    return (
+      <Link href={editorPath(file.id)} title={file.name} className={STRETCHED_LINK_CLASS}>
+        {file.name}
+        <span className="sr-only">, abrir en el editor</span>
+      </Link>
+    );
+  }
   if (!isPreviewableKind(file.kind)) {
     return (
       <span className="truncate font-medium text-foreground" title={file.name}>
@@ -114,13 +125,24 @@ function QuickLookButton({
   readonly file: FileNode;
   readonly onQuickLook: ((file: FileSummary) => void) | undefined;
 }): React.JSX.Element | null {
+  if (file.kind === 'docx') {
+    return (
+      <Link
+        href={editorPath(file.id)}
+        aria-label={`Abrir ${file.name} en el editor`}
+        className={QUICK_BUTTON_CLASS}
+      >
+        <FilePen className="h-4 w-4" aria-hidden="true" />
+      </Link>
+    );
+  }
   if (onQuickLook === undefined || !isPreviewableKind(file.kind)) return null;
   return (
     <button
       type="button"
       aria-label={`Vista rápida de ${file.name}`}
       onClick={() => onQuickLook(file)}
-      className="flex h-11 w-11 items-center justify-center rounded-md text-secondary-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-8 sm:w-8"
+      className={QUICK_BUTTON_CLASS}
     >
       <Eye className="h-4 w-4" aria-hidden="true" />
     </button>
