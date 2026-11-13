@@ -3,6 +3,7 @@
 import { useState, type JSX } from 'react';
 
 import { SIGNUP_STEP, SignupSteps } from '../../../components/nimbo/signup-steps';
+import { cn } from '../../../lib/utils';
 import { saveChosenPlan } from '../chosen-plan-storage';
 import type { RegisterPhase } from '../hooks/use-register-form';
 
@@ -48,7 +49,10 @@ export function RegisterFlow({
   return (
     <section
       aria-labelledby="crear-cuenta"
-      className="mx-auto w-full max-w-lg space-y-6 px-4 py-10"
+      className={cn(
+        'mx-auto w-full space-y-6 px-4 py-10',
+        phase === 'plan' ? 'max-w-3xl' : 'max-w-lg',
+      )}
     >
       <SignupSteps current={SIGNUP_STEP[phase]} />
       <div className="space-y-1">

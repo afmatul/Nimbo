@@ -149,13 +149,14 @@ describe('ReceivedSharesView: «Compartidos conmigo» (spec 012b CA-8, CA-9, CA-
 });
 
 describe('ReceivedSharesView: «Salir» (spec 012b CA-9, CA-10, CA-11)', () => {
-  it('CA-9: el menú de un archivo ofrece Abrir, Descargar y Salir; el de una carpeta, Abrir y Salir', async () => {
+  it('CA-9: el menú de un archivo ofrece Abrir, Editar (.docx como Editor), Descargar y Salir; el de una carpeta, Abrir y Salir', async () => {
     const openUrl = jest.fn();
     await renderReceived(withTwo(), { openUrl });
 
     await userEvent.click(screen.getByRole('button', { name: `Acciones de ${DOCX}` }));
     expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
       'Abrir',
+      'Editar',
       'Descargar',
       'Salir',
     ]);

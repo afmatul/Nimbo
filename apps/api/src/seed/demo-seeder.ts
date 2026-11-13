@@ -9,6 +9,7 @@ import type { IObjectStorage } from '../modules/storage';
 import { createActor, I_PASSWORD_HASHER, I_TRANSACTION_RUNNER, Role } from '../shared';
 import type { Actor, IPasswordHasher, ITransactionRunner } from '../shared';
 
+import { contentOf, kindOf } from './demo-content';
 import { demoEmail } from './demo-corpus';
 import type {
   AccountKey,
@@ -49,21 +50,6 @@ export class SeedRefusedError extends Error {
     this.name = 'SeedRefusedError';
   }
 }
-
-/** `archivo.tipo` por extensión, solo para las que usa el corpus (las demás, `otro`, como `FileKind`). */
-const KIND_BY_EXTENSION: Readonly<Record<string, string>> = { md: 'texto', txt: 'texto' };
-const SHORT_TEXT =
-  'Este archivo es parte de los datos de demostración de Nimbo.\n' +
-  'Puedes abrirlo, compartirlo, moverlo o enviarlo a la papelera.\n';
-const FILLER = 'Nimbo · relleno de demostración para la cuota.\n';
-
-const kindOf = (name: string): string =>
-  KIND_BY_EXTENSION[name.slice(name.lastIndexOf('.') + 1).toLowerCase()] ?? 'otro';
-
-const contentOf = (file: DemoFile): Buffer =>
-  file.sizeBytes === undefined
-    ? Buffer.from(SHORT_TEXT, 'utf8')
-    : Buffer.alloc(file.sizeBytes, FILLER);
 
 /** Clave `u/{propietario}/{archivo}/{versión}` de `ObjectKey` (storage): el adaptador rechaza cualquier otra. */
 const objectKeyOf = (ownerId: string, fileId: string, versionId: string): string =>
@@ -135,7 +121,11 @@ export class DemoSeeder {
           'Faltan planes del catálogo: corre las migraciones antes de sembrar.',
         );
       }
-      return (await this.store.insertPlanIfMissing(corpus.quotaPlan)) ? 1 : 0;
+      let created = 0;
+      for (const plan of corpus.demoPlans) {
+        if (await this.store.insertPlanIfMissing(plan)) created += 1;
+      }
+      return created;
     });
   }
 

@@ -6,11 +6,12 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 
+import { catalogPlan } from './catalog-plan.fixture';
 import { RegisterForm } from './register-form';
 
 const PLANS = [
-  { id: 'personal', slug: 'personal', name: 'Personal', priceCents: 0, free: true as const },
-  { id: 'pro', slug: 'pro', name: 'Pro', priceCents: 4500, free: false as const },
+  catalogPlan({ id: 'personal', name: 'Personal', priceCents: 0 }),
+  catalogPlan({ id: 'pro', name: 'Pro', priceCents: 4500 }),
 ];
 
 /** Paso «Cuenta» completo y «Continuar» al paso «Plan». */

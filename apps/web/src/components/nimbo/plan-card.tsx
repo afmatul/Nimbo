@@ -26,6 +26,8 @@ export interface PlanCardProps {
   readonly meta?: ReactNode;
   /** Recuadro al pie (011: «Plan por defecto», el plan que no se puede desactivar). */
   readonly note?: ReactNode;
+  /** Nivel del título según el lugar de la página donde se use la tarjeta. */
+  readonly headingLevel?: 'h2' | 'h3';
 }
 
 /** Los tres límites del comparador (008 CA-2); la administración muestra los seis del catálogo (011 CA-8). */
@@ -80,13 +82,14 @@ export function PlanCard({
   facts,
   meta,
   note,
+  headingLevel: Heading = 'h2',
 }: PlanCardProps): ReactNode {
   return (
     <Card
       className={cn('flex flex-col gap-4 p-5', highlighted && 'border-2 border-primary', className)}
     >
       <div className="flex items-start justify-between gap-2">
-        <h2 className="text-base font-semibold text-foreground">{plan.name}</h2>
+        <Heading className="text-base font-semibold text-foreground">{plan.name}</Heading>
         {badge}
       </div>
       <p className="min-h-8 text-xs text-muted-foreground">{plan.description}</p>

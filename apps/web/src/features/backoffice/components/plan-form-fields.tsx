@@ -5,6 +5,7 @@ import type * as React from 'react';
 import { FieldMessage } from '../../../components/nimbo/field-message';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
+import { Select } from '../../../components/ui/select';
 import type { PlanField, PlanFieldErrors, PlanForm } from '../hooks/use-plan-form';
 import { MAX_FILE_UNITS, QUOTA_UNITS } from '../plan-form-values';
 
@@ -179,18 +180,13 @@ function UnitSelect({
   readonly locked: boolean;
 }): React.JSX.Element {
   return (
-    <select
-      {...form.register(unitField)}
-      aria-label={ariaLabel}
-      disabled={locked}
-      className="h-11 rounded-md border border-input bg-card px-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
+    <Select {...form.register(unitField)} aria-label={ariaLabel} disabled={locked}>
       {units.map((option) => (
         <option key={option} value={option}>
           {option}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 

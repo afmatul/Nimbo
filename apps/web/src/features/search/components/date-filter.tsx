@@ -6,6 +6,7 @@ import * as React from 'react';
 
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
+import { Select } from '../../../components/ui/select';
 import { DATE_OPTIONS, type DateOption, type SearchFilters } from '../search-url';
 
 /** Fecha de modificación (CA-8): atajos en un `select` y, con «Rango personalizado», «Desde» y «Hasta». */
@@ -20,8 +21,7 @@ const DATE_LABELS: Readonly<Record<DateOption, string>> = {
   rango: 'Rango personalizado',
 };
 
-const SELECT_CLASSES =
-  'h-11 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:w-60';
+const SELECT_CLASSES = 'w-full sm:w-60';
 
 export function DateSelect({
   date,
@@ -33,7 +33,7 @@ export function DateSelect({
   return (
     <div className="flex min-w-0 flex-col gap-2">
       <Label htmlFor="buscar-fecha">Modificado</Label>
-      <select
+      <Select
         id="buscar-fecha"
         value={date}
         onChange={(event) => onChange({ date: event.target.value as DateOption })}
@@ -44,7 +44,7 @@ export function DateSelect({
             {DATE_LABELS[value]}
           </option>
         ))}
-      </select>
+      </Select>
     </div>
   );
 }

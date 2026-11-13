@@ -57,7 +57,9 @@ const removeSeeded = async (owner: DataSource): Promise<void> => {
   await owner.query(`DELETE FROM archivo WHERE propietario_id IN (${ids})`, [DEMO_USERS]);
   await owner.query(`DELETE FROM carpeta WHERE propietario_id IN (${ids})`, [DEMO_USERS]);
   await owner.query('DELETE FROM usuario WHERE correo LIKE $1', [DEMO_USERS]);
-  await owner.query('DELETE FROM plan WHERE slug = $1', [QUOTA_PLAN_SLUG]);
+  await owner.query('DELETE FROM plan WHERE slug = ANY($1)', [
+    [QUOTA_PLAN_SLUG, 'demo-gratuito-cuota'],
+  ]);
 };
 
 const scalar = async <T>(owner: DataSource, sql: string, params: unknown[] = []): Promise<T> => {
@@ -183,10 +185,15 @@ describe('semilla de demostración (`dist/scripts/seed.js`)', () => {
         [emailOf(key)],
       ) as Promise<{ usado: string; cuota: string; archivos: string }[]>;
 
-    const [[full], [almost]] = await Promise.all([usageOf('diego'), usageOf('carla')]);
+    const [[full], [almost], [daniela]] = await Promise.all([
+      usageOf('diego'),
+      usageOf('carla'),
+      usageOf('daniela'),
+    ]);
 
     expect(full).toEqual({ usado: '5000000', cuota: '5000000', archivos: '5000000' });
     expect(almost).toEqual({ usado: '4500000', cuota: '5000000', archivos: '4500000' });
+    expect(daniela).toEqual({ usado: '50000000', cuota: '100000000', archivos: '50000000' });
   });
 
   it('carpetas al máximo de profundidad y nombre de 255 caracteres con unicode', async () => {

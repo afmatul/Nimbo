@@ -46,20 +46,8 @@ describe('plan-catalog (PD-48: lee el catálogo de la 008)', () => {
 
     await expect(loadPlanCatalog('http://internal.test')).resolves.toEqual({
       plans: [
-        {
-          id: '00000000-0000-4000-8000-000000000001',
-          slug: 'personal',
-          name: 'Personal',
-          priceCents: 0,
-          free: true,
-        },
-        {
-          id: '00000000-0000-4000-8000-000000000002',
-          slug: 'pro',
-          name: 'Pro',
-          priceCents: 4500,
-          free: false,
-        },
+        { ...PERSONAL, free: true },
+        { ...PRO, free: false },
       ],
       unavailable: false,
     });
