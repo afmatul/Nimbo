@@ -6,6 +6,8 @@ import { act, render, screen } from '@testing-library/react';
 import { SessionProvider } from '../../../../features/identity/session/session-provider';
 import { fileHit, searchPage } from '../../../../features/search/test-search-hit';
 import { SpaceProvider } from '../../../../features/storage/components/space-provider';
+import { UploadsProvider } from '../../../../features/storage/components/uploads-provider';
+import { sidebarApiFake } from '../../../../features/storage/test-sidebar-api';
 import { GB, spaceSummaryWith } from '../../../../features/storage/test-space-summary';
 import { jsonResponse } from '../../../../lib/test-http';
 
@@ -37,12 +39,14 @@ describe('página de búsqueda (/buscar)', () => {
   it('CA-12: la dirección repite la búsqueda: pide GET /search con su texto y muestra los resultados', async () => {
     render(
       <SessionProvider apiPublicUrl={API}>
-        <SpaceProvider
-          api={{ spaceSummary: () => Promise.resolve(spaceSummaryWith(3 * GB)) }}
-          uploadedCount={0}
-        >
-          <BuscarPage />
-        </SpaceProvider>
+        <UploadsProvider api={sidebarApiFake()}>
+          <SpaceProvider
+            api={{ spaceSummary: () => Promise.resolve(spaceSummaryWith(3 * GB)) }}
+            uploadedCount={0}
+          >
+            <BuscarPage />
+          </SpaceProvider>
+        </UploadsProvider>
       </SessionProvider>,
     );
     await act(async () => undefined);

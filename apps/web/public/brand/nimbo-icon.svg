@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 418 418" width="418" height="418" role="img" aria-label="Nimbo">
+  <g fill="#6B8FD6">
+    <circle cx="258" cy="170" r="110"></circle>
+    <circle cx="122" cy="206" r="78"></circle>
+    <circle cx="348" cy="246" r="60"></circle>
+    <circle cx="69" cy="292" r="67"></circle>
+    <circle cx="351" cy="294" r="65"></circle>
+    <rect x="69" y="200" width="282" height="159"></rect>
+  </g>
+  <path fill="#FFFFFF" d="M210 122Q221 213 315 224Q221 235 210 328Q199 235 105 224Q199 213 210 122Z"></path>
+</svg>

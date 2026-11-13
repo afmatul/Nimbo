@@ -12,6 +12,7 @@ import { useAuthFetch } from '../../identity/session/use-auth-fetch';
 import { LoadMore } from '../../storage/components/load-more';
 import { SidebarQuota } from '../../storage/components/sidebar-quota';
 import { useSpace } from '../../storage/components/space-provider';
+import { useClientSidebar } from '../../storage/components/use-client-sidebar';
 import { createStorageHttp } from '../../storage/storage-http';
 import { SEARCH_PATH } from '../search-url';
 import {
@@ -169,9 +170,15 @@ export function SearchView({
 }): React.JSX.Element {
   const search = useSearch(load, location);
   const space = useSpace();
+  const { banner, ...sidebar } = useClientSidebar();
   return (
-    <AppLayout navItems={SEARCH_NAV_ITEMS} quotaCard={<SidebarQuota state={space.state} />}>
+    <AppLayout
+      navItems={SEARCH_NAV_ITEMS}
+      {...sidebar}
+      quotaCard={<SidebarQuota state={space.state} />}
+    >
       <div className="mx-auto w-full max-w-5xl space-y-5">
+        {banner}
         <header className="space-y-1">
           <h1 className="text-2xl font-semibold text-foreground">Buscar</h1>
           <p className="text-sm text-secondary-foreground">

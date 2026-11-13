@@ -9,7 +9,9 @@ import * as React from 'react';
 import { dayLabel } from '../../../lib/format-date';
 import { SessionProvider } from '../../identity/session/session-provider';
 import { SpaceProvider } from '../../storage/components/space-provider';
+import { UploadsProvider } from '../../storage/components/uploads-provider';
 import { fileDetailPath, folderPath } from '../../storage/routes';
+import { sidebarApiFake } from '../../storage/test-sidebar-api';
 import { GB, spaceSummaryWith } from '../../storage/test-space-summary';
 import { fileHit, folderHit, LOGISTICA, searchPage } from '../test-search-hit';
 import type { LoadSearch, SearchRequest } from '../use-search';
@@ -57,9 +59,11 @@ async function renderView(initial: string, load: LoadSearch): Promise<jest.Mock>
   const spaceSummary = jest.fn(() => Promise.resolve(spaceSummaryWith(3 * GB)));
   render(
     <SessionProvider apiPublicUrl="http://localhost/api/v1">
-      <SpaceProvider api={{ spaceSummary }} uploadedCount={0}>
-        <Harness initial={initial} load={load} navigate={navigate} />
-      </SpaceProvider>
+      <UploadsProvider api={sidebarApiFake()}>
+        <SpaceProvider api={{ spaceSummary }} uploadedCount={0}>
+          <Harness initial={initial} load={load} navigate={navigate} />
+        </SpaceProvider>
+      </UploadsProvider>
     </SessionProvider>,
   );
   await act(async () => undefined);

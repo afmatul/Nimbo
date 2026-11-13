@@ -799,12 +799,8 @@ describe('Accesibilidad del orden y «Cargar más» del explorador (007 CA-9, CA
   }
 
   const states: ReadonlyArray<readonly [string, Partial<ListControls>, string]> = [
-    [
-      'ordenado por tamaño, mayor primero',
-      { order: BY_SIZE, shownOrder: BY_SIZE },
-      'Ordenar: Tamaño, mayor primero',
-    ],
-    ['ordenando', { order: BY_SIZE, sorting: true }, 'Ordenando…'],
+    ['ordenado por tamaño, mayor primero', { order: BY_SIZE, shownOrder: BY_SIZE }, 'Tamaño'],
+    ['ordenando', { order: BY_SIZE, sorting: true }, 'Ordenando por tamaño, mayor primero…'],
     ['más páginas', {}, 'Cargar más'],
     ['cargando más', { more: 'loading' }, 'Cargando más…'],
     ['error al cargar más', { more: 'error' }, 'No pudimos cargar más elementos.'],
@@ -819,14 +815,6 @@ describe('Accesibilidad del orden y «Cargar más» del explorador (007 CA-9, CA
     });
 
     expect(text()).toContain(expected);
-    await expectNoBlockingViolations();
-  });
-
-  it('menú «Ordenar» abierto', async () => {
-    await renderExplorer({ nodes: [PROMPTS, FILE_NODE], controls: listControls({}) });
-    await openMenu();
-
-    expect(document.querySelectorAll('[role="menuitemradio"]')).toHaveLength(6);
     await expectNoBlockingViolations();
   });
 });

@@ -113,6 +113,15 @@ export class TypeOrmSessionRepository implements ISessionRepository {
     return result.affected ?? 0;
   }
 
+  /** Con el dueño en el `WHERE`: el dispositivo de otra cuenta nunca se toca. */
+  async revokeAllOnDevice(userId: string, deviceId: string, now: Date): Promise<number> {
+    const result = await this.rows().update(
+      { usuarioId: userId, dispositivoId: deviceId, revocadaEn: IsNull() },
+      { revocadaEn: now },
+    );
+    return result.affected ?? 0;
+  }
+
   private rows(): Repository<SesionOrmEntity> {
     return this.context.manager().getRepository(SesionOrmEntity);
   }

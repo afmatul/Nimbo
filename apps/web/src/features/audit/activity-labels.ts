@@ -1,4 +1,9 @@
-import { formatBytes, type AuditEventResponse, type RoleName } from '@nimbo/contracts';
+import {
+  formatBytes,
+  type AuditActionName,
+  type AuditEventResponse,
+  type RoleName,
+} from '@nimbo/contracts';
 
 import type { ActivityOriginFilter } from './hooks/use-activity';
 
@@ -25,6 +30,8 @@ const PUBLIC_LINK_LABEL = 'Alguien con el enlace';
 const STAFF_LABEL = ORIGIN_FILTER_LABELS.staff;
 
 const STAFF_ROLE_LABELS: Readonly<Partial<Record<RoleName, string>>> = {
+  /** Otro cliente sobre tu cuenta: quien recibió una compartición y salió de ella (012 CA-23), sin nombre ni correo. */
+  CLIENT: 'Una persona con acceso',
   SUPPORT: 'Soporte de Nimbo',
   ADMIN: 'Administración de Nimbo',
   OPERATOR: 'Operación de Nimbo',
@@ -43,67 +50,98 @@ interface ActionText {
 
 const REJECTED_UPLOAD = 'Se rechazó una carga';
 
-/** La misma frase la lea quien la lea: los cambios de la suscripción (010) no los hace el personal (CA-23). */
-const sameText = (text: string): ActionText => ({ self: () => text, staff: () => text });
+/** La misma frase la lea quien la lea: lo que hace Nimbo o un visitante, no una persona que se nombre (010 CA-23). */
+const sameText = (text: string | ((what: string) => string)): ActionText => {
+  const build = typeof text === 'string' ? (): string => text : text;
+  return { self: build, staff: build };
+};
 
-const ACTION_TEXTS: Readonly<Record<string, ActionText>> = {
-  'file.upload_completed': { self: (w) => `Subiste ${w}`, staff: (w, a) => `${a} subió ${w}` },
-  'file.upload_rejected': { self: () => REJECTED_UPLOAD, staff: () => REJECTED_UPLOAD },
-  'file.download_url_issued': {
-    self: (w) => `Descargaste ${w}`,
-    staff: (w, a) => `${a} descargó ${w}`,
-  },
-  'node.trashed': {
-    self: (w) => `Enviaste ${w} a la papelera`,
-    staff: (w, a) => `${a} envió ${w} a la papelera`,
-  },
-  'node.restored': { self: (w) => `Restauraste ${w}`, staff: (w, a) => `${a} restauró ${w}` },
+/** Acción que hace el cliente o, sobre su cuenta, otra persona (el personal o alguien con acceso compartido). */
+const byWho = (
+  self: (what: string) => string,
+  staff: (what: string, actor: string) => string,
+): ActionText => ({ self, staff });
+
+/** Acción que solo hace el personal (011): el sujeto es solo el rol, nunca la segunda persona. */
+const staffOnly = (staff: (what: string, actor: string) => string): ActionText => ({ staff });
+
+/** Archivos, papelera y versiones (005, 006, 014, 016). */
+const FILE_TEXTS = {
+  'file.upload_completed': byWho(
+    (w) => `Subiste ${w}`,
+    (w, a) => `${a} subió ${w}`,
+  ),
+  'file.upload_rejected': sameText(REJECTED_UPLOAD),
+  'file.download_url_issued': byWho(
+    (w) => `Descargaste ${w}`,
+    (w, a) => `${a} descargó ${w}`,
+  ),
+  'node.trashed': byWho(
+    (w) => `Enviaste ${w} a la papelera`,
+    (w, a) => `${a} envió ${w} a la papelera`,
+  ),
+  'node.restored': byWho(
+    (w) => `Restauraste ${w}`,
+    (w, a) => `${a} restauró ${w}`,
+  ),
   'node.purged': {
     self: (w) => `Eliminaste definitivamente ${w}`,
     staff: (w, a) => `${a} eliminó definitivamente ${w}`,
     scheduled: (w, plural) =>
       `${plural ? 'Se eliminaron' : 'Se eliminó'} definitivamente ${w} al vencer en la papelera`,
   },
-  'trash.emptied': {
-    self: () => 'Vaciaste la papelera',
-    staff: (_w, a) => `${a} vació la papelera`,
-  },
-  /** Acciones internas sobre tu cuenta (011, CA-16): el sujeto es solo el rol. */
-  'account.suspended': {
-    staff: (_w, a) => `${a} suspendió tu cuenta`,
-  },
-  'account.reactivated': {
-    staff: (_w, a) => `${a} reactivó tu cuenta`,
-  },
-  'account.internal_created': {
-    staff: (_w, a) => `${a} creó tu cuenta`,
-  },
-  'client.files_viewed': {
-    staff: (_w, a) => `${a} consultó la lista de tus archivos (sin abrir su contenido)`,
-  },
-  /**
-   * Ajustes de la cuenta (011b CA-9, RN-4): el evento trae `extraBytes` y `until`, o `expiresAt`, pero la frase solo
-   * dice la acción y el rol; las cifras y fechas vigentes se ven en el resumen de espacio y en «Plan y facturación».
-   */
-  'account.quota_adjusted': {
-    staff: (_w, a) => `${a} ajustó la cuota de tu cuenta`,
-  },
-  'account.validity_adjusted': {
-    staff: (_w, a) => `${a} extendió la vigencia de tu plan`,
-  },
-  /** Suscripción (010 CA-6, CA-22): sin plan ni tarjeta en el evento; la pasada automática actúa como el dueño. */
-  'subscription.auto_renew_changed': sameText('Cambiaste la renovación automática'),
-  'subscription.renewed': sameText('Se renovó tu plan'),
-  'subscription.renewal_rejected': sameText('Se rechazó el cobro de la renovación'),
-  'subscription.read_only_entered': sameText(
-    'Tu suscripción venció y tu cuenta quedó en solo lectura',
+  'trash.emptied': byWho(
+    () => 'Vaciaste la papelera',
+    (_w, a) => `${a} vació la papelera`,
   ),
-  'subscription.read_only_exited': sameText('Tu cuenta salió de solo lectura'),
-  'subscription.plan_change_scheduled': sameText('Programaste un cambio de plan'),
-  'subscription.plan_change_cancelled': sameText('Cancelaste el cambio de plan'),
-  'subscription.plan_change_applied': sameText('Se aplicó tu cambio de plan'),
-  'subscription.plan_change_discarded': sameText(
-    'Se descartó tu cambio de plan: ese plan ya no está disponible',
+  'file.version_restored': byWho(
+    (w) => `Restauraste una versión anterior de ${w}`,
+    (w, a) => `${a} restauró una versión anterior de ${w}`,
+  ),
+  'file.version_pruned': sameText(
+    (w) => `Se eliminó una versión antigua de ${w} por el límite de versiones de tu plan`,
+  ),
+  'file.version_created': byWho(
+    (w) => `Guardaste una versión nueva de ${w} al editarlo`,
+    (w, a) => `${a} guardó una versión nueva de ${w} al editarlo`,
+  ),
+  'edit.session_opened': byWho(
+    (w) => `Abriste ${w} para editarlo`,
+    (w, a) => `${a} abrió ${w} para editarlo`,
+  ),
+  'edit.save_failed': sameText((w) => `No se pudo guardar la edición de ${w}`),
+} as const satisfies Readonly<Record<string, ActionText>>;
+
+/** Preparación para el asistente (019) y optimización (021): las hace Nimbo, así que van sin sujeto. */
+const PROCESSING_TEXTS = {
+  'file.indexed': sameText((w) => `Se preparó ${w} para el asistente`),
+  'file.index_unindexable': sameText((w) => `El asistente no puede leer ${w}`),
+  'file.index_failed': sameText((w) => `No se pudo preparar ${w} para el asistente`),
+  'file.index_retried': byWho(
+    (w) => `Reintentaste preparar ${w} para el asistente`,
+    (w, a) => `${a} reintentó preparar ${w} para el asistente`,
+  ),
+  'file.optimized': sameText((w) => `Se optimizó ${w}`),
+  'file.optimization_discarded': sameText((w) => `Se descartó la optimización de ${w}`),
+  'file.optimization_failed': sameText((w) => `No se pudo optimizar ${w}`),
+} as const satisfies Readonly<Record<string, ActionText>>;
+
+/**
+ * Compartición (012) y enlaces públicos (013): sin nombres, correos, tokens ni IP. Quien sale de una compartición es
+ * «Una persona con acceso» (`share.revoked`, CA-23); lo que hace un visitante del enlace va sin sujeto (CA-18).
+ */
+const SHARING_TEXTS = {
+  'share.granted': byWho(
+    (w) => `Compartiste ${w}`,
+    (w, a) => `${a} compartió ${w}`,
+  ),
+  'share.level_changed': byWho(
+    (w) => `Cambiaste el nivel de acceso de ${w}`,
+    (w, a) => `${a} cambió el nivel de acceso de ${w}`,
+  ),
+  'share.revoked': byWho(
+    (w) => `Dejaste de compartir ${w}`,
+    (w, a) => `${a} quitó un acceso compartido a ${w}`,
   ),
   /**
    * Enlace público (013c CA-16, CA-17): generar y revocar los hace el dueño; descargar y el bloqueo vienen del
@@ -121,7 +159,56 @@ const ACTION_TEXTS: Readonly<Record<string, ActionText>> = {
   'public_link.locked': {
     staff: (w) => `Se bloquearon los intentos de contraseña del enlace de ${w}`,
   },
+} as const satisfies Readonly<Record<string, ActionText>>;
+
+/**
+ * Acciones internas sobre tu cuenta o el catálogo (011, 011b CA-9, RN-4): el evento trae `extraBytes` y `until`, o
+ * `expiresAt`, pero la frase solo dice la acción y el rol; las cifras vigentes se ven en el resumen de espacio.
+ */
+const ACCOUNT_TEXTS = {
+  'account.suspended': staffOnly((_w, a) => `${a} suspendió tu cuenta`),
+  'account.reactivated': staffOnly((_w, a) => `${a} reactivó tu cuenta`),
+  'account.internal_created': staffOnly((_w, a) => `${a} creó tu cuenta`),
+  'account.bootstrap_admin': sameText('Se creó la cuenta de administración inicial'),
+  'client.files_viewed': staffOnly(
+    (_w, a) => `${a} consultó la lista de tus archivos (sin abrir su contenido)`,
+  ),
+  'account.quota_adjusted': staffOnly((_w, a) => `${a} ajustó la cuota de tu cuenta`),
+  'account.validity_adjusted': staffOnly((_w, a) => `${a} extendió la vigencia de tu plan`),
+  'plan.created': staffOnly((_w, a) => `${a} creó un plan`),
+  'plan.deactivated': staffOnly((_w, a) => `${a} desactivó un plan`),
+} as const satisfies Readonly<Record<string, ActionText>>;
+
+/** Suscripción (010 CA-6, CA-22): sin plan ni tarjeta en el evento; la pasada automática actúa como el dueño. */
+const SUBSCRIPTION_TEXTS = {
+  'subscription.auto_renew_changed': sameText('Cambiaste la renovación automática'),
+  'subscription.renewed': sameText('Se renovó tu plan'),
+  'subscription.renewal_rejected': sameText('Se rechazó el cobro de la renovación'),
+  'subscription.read_only_entered': sameText(
+    'Tu suscripción venció y tu cuenta quedó en solo lectura',
+  ),
+  'subscription.read_only_exited': sameText('Tu cuenta salió de solo lectura'),
+  'subscription.plan_change_scheduled': sameText('Programaste un cambio de plan'),
+  'subscription.plan_change_cancelled': sameText('Cancelaste el cambio de plan'),
+  'subscription.plan_change_applied': sameText('Se aplicó tu cambio de plan'),
+  'subscription.plan_change_discarded': sameText(
+    'Se descartó tu cambio de plan: ese plan ya no está disponible',
+  ),
+} as const satisfies Readonly<Record<string, ActionText>>;
+
+/** Un texto por cada acción del catálogo de `contracts`: si la API suma una sin texto aquí, la web no compila. */
+const ACTION_TEXTS: Readonly<Record<AuditActionName, ActionText>> = {
+  ...FILE_TEXTS,
+  ...PROCESSING_TEXTS,
+  ...SHARING_TEXTS,
+  ...ACCOUNT_TEXTS,
+  ...SUBSCRIPTION_TEXTS,
 };
+
+/** Si la web tiene un texto propio para `action`; si no, se muestra `UNKNOWN_ACTIVITY_LABEL`. */
+export function hasActivityLabel(action: string): action is AuditActionName {
+  return Object.hasOwn(ACTION_TEXTS, action);
+}
 
 const UNIT_NOUNS: Readonly<Record<NonNullable<AuditEventResponse['resourceType']>, string>> = {
   file: '1 archivo',
@@ -164,8 +251,8 @@ function quantityOf(event: AuditEventResponse): string | null {
 }
 
 export function activityActionLabel(event: AuditEventResponse): string {
+  if (!hasActivityLabel(event.action)) return UNKNOWN_ACTIVITY_LABEL;
   const text = ACTION_TEXTS[event.action];
-  if (text === undefined) return UNKNOWN_ACTIVITY_LABEL;
   const what = quantityOf(event) ?? SOME_ITEM;
   if (isScheduled(event) && text.scheduled !== undefined) {
     return text.scheduled(what, isPlural(event));

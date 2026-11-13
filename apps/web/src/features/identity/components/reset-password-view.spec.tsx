@@ -151,9 +151,10 @@ describe('ResetPasswordView', () => {
     it('default: requisitos en vivo, confirmación y botón de envío', async () => {
       const user = await openValidForm();
 
-      expect(screen.getAllByText('Falta').length).toBeGreaterThan(0);
+      expect(screen.getAllByText(': falta').length).toBeGreaterThan(0);
       await user.type(screen.getByLabelText('Contraseña nueva'), STRONG_PASSWORD);
-      expect(screen.queryAllByText('Falta')).toEqual([]);
+      expect(screen.queryAllByText(': falta')).toEqual([]);
+      expect(screen.getByText('Seguridad: Fuerte')).toBeTruthy();
       expect(screen.getByLabelText('Confirma la contraseña nueva')).toBeTruthy();
     });
 

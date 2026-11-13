@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, type JSX, type ReactNode } from 'react';
 
+import { FocusedLayout } from '../../../components/nimbo/focused-layout';
 import { StateView } from '../../../components/nimbo/state-view';
 import { LOGIN_PATH, SESSION_ENDED_PATH } from '../routes';
 
@@ -28,8 +29,10 @@ export function SessionGate({ children }: { readonly children: ReactNode }): JSX
 
   if (status === 'authenticated') return <>{children}</>;
   return (
-    <div className="mx-auto w-full max-w-md px-4 py-16">
-      <StateView type="loading" title="Cargando tu sesión…" />
-    </div>
+    <FocusedLayout>
+      <div className="mx-auto w-full max-w-md px-4 py-16">
+        <StateView type="loading" title="Cargando tu sesión…" />
+      </div>
+    </FocusedLayout>
   );
 }

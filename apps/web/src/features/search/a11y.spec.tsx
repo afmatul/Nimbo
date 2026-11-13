@@ -7,6 +7,8 @@ import { axe } from 'jest-axe';
 
 import { SessionProvider } from '../identity/session/session-provider';
 import { SpaceProvider } from '../storage/components/space-provider';
+import { UploadsProvider } from '../storage/components/uploads-provider';
+import { sidebarApiFake } from '../storage/test-sidebar-api';
 import { GB, spaceSummaryWith } from '../storage/test-space-summary';
 
 import { SearchView } from './components/search-view';
@@ -24,12 +26,14 @@ function setViewport(width: number): void {
 async function renderSearch(search: string, respond: () => Promise<SearchResponse>): Promise<void> {
   render(
     <SessionProvider apiPublicUrl="http://localhost/api/v1">
-      <SpaceProvider
-        api={{ spaceSummary: () => Promise.resolve(spaceSummaryWith(3 * GB)) }}
-        uploadedCount={0}
-      >
-        <SearchView load={respond} location={{ search, navigate: () => undefined }} />
-      </SpaceProvider>
+      <UploadsProvider api={sidebarApiFake()}>
+        <SpaceProvider
+          api={{ spaceSummary: () => Promise.resolve(spaceSummaryWith(3 * GB)) }}
+          uploadedCount={0}
+        >
+          <SearchView load={respond} location={{ search, navigate: () => undefined }} />
+        </SpaceProvider>
+      </UploadsProvider>
     </SessionProvider>,
   );
   await act(async () => undefined);

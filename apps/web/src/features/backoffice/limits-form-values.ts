@@ -15,7 +15,7 @@ import { bytesOf } from './plan-form-values';
 
 /**
  * Lo que se escribe en los diálogos de cuota y vigencia (011b RN-1, RN-2, RN-8; mockup `backoffice/admin`): el extra en
- * GB enteros del catálogo (base 1024) y los días como `YYYY-MM-DD` de Guatemala. Aquí solo la forma y «hoy»; la suma
+ * GB enteros del catálogo (base 1000, como `formatBytes`) y los días como `YYYY-MM-DD` de Guatemala. Aquí solo la forma y «hoy»; la suma
  * `plan + extra` frente a lo usado y el último día vigente los vuelve a validar el servidor (ADR-0035).
  */
 
@@ -40,7 +40,7 @@ export interface QuotaValues {
 /** Una petición lista para enviar, o los campos que no valen. */
 export type Parsed<Req> = { readonly request: Req } | { readonly issues: readonly FormIssue[] };
 
-const GIB = 1024n ** 3n;
+const BYTES_PER_GB = 1000n ** 3n;
 
 /** El extra vigente no cabe en el campo de GB enteros (RN-8). */
 export const EXTRA_NOT_WHOLE_GIB =
@@ -50,8 +50,8 @@ export const EXTRA_NOT_WHOLE_GIB =
 function wholeGigabytes(bytes: string): string | null {
   if (!/^(0|[1-9][0-9]*)$/.test(bytes)) return null;
   const value = BigInt(bytes);
-  if (value === 0n || value % GIB !== 0n) return null;
-  const gigs = value / GIB;
+  if (value === 0n || value % BYTES_PER_GB !== 0n) return null;
+  const gigs = value / BYTES_PER_GB;
   return gigs > BigInt(Number.MAX_SAFE_INTEGER) ? null : gigs.toString();
 }
 

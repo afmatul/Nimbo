@@ -318,6 +318,15 @@ describe('migraciones de dispositivo y sesión (CA-16, CA-17, CA-24)', () => {
       );
     });
 
+    it('una sola sesión sin revocar por dispositivo (`uq_sesion_dispositivo_id`)', async () => {
+      const { userId, deviceId } = await anOwnedDevice(runner);
+      await insertSession(runner, aSession(userId, deviceId));
+
+      await expect(
+        violatedConstraint(insertSession(runner, aSession(userId, deviceId))),
+      ).resolves.toBe('uq_sesion_dispositivo_id');
+    });
+
     it('CA-24: borrar el dispositivo borra sus sesiones en cascada', async () => {
       const { userId, deviceId } = await anOwnedDevice(runner);
       await insertSession(runner, aSession(userId, deviceId));

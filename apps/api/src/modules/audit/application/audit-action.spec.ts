@@ -1,3 +1,5 @@
+import { AUDIT_ACTIONS } from '@nimbo/contracts';
+
 import { AuditAction, isAuditAction } from './audit-action';
 
 describe('AuditAction', () => {
@@ -50,6 +52,10 @@ describe('AuditAction', () => {
         'public_link.locked',
       ].sort(),
     );
+  });
+
+  it('el catálogo de `contracts` (textos de «Mi actividad» en `web`) es el mismo que el enum', () => {
+    expect([...AUDIT_ACTIONS].sort()).toEqual(Object.values(AuditAction).sort());
   });
 
   it('CA-3: `isAuditAction` acepta el catálogo y rechaza cualquier otra cadena o tipo', () => {

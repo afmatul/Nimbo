@@ -47,7 +47,7 @@ describe('SessionGate', () => {
 
     renderGate();
 
-    expect(screen.getByRole('status').textContent).toContain('Cargando tu sesión');
+    expect(screen.getByText('Cargando tu sesión…')).toBeTruthy();
     expect(screen.queryByText('Contenido privado')).toBeNull();
 
     resolveFetch(jsonResponse(sessionFixture()));

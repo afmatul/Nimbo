@@ -22,8 +22,11 @@ export const EMAIL_MAX_LENGTH = 254;
 export const FULL_NAME_MAX_LENGTH = 100;
 /** Longitud mínima de la contraseña, en puntos de código (D-6). */
 export const PASSWORD_MIN_LENGTH = 12;
-/** Longitud máxima de la contraseña, en puntos de código (D-6). */
-export const PASSWORD_MAX_LENGTH = 128;
+/**
+ * Tope técnico de la contraseña, en puntos de código. No es un requisito de la política (no se muestra en la lista de
+ * requisitos): solo evita que una entrada enorme convierta el hash Argon2id en un vector de denegación de servicio.
+ */
+export const PASSWORD_MAX_LENGTH = 1024;
 
 /*
  * Spec 002 §6. La recuperación de contraseña no tiene límites propios: reutiliza

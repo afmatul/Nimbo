@@ -18,6 +18,8 @@ export interface ISessionRepository {
   ): Promise<readonly ActiveSessionRecord[]>;
   revokeIfActive(id: string, userId: string, now: Date): Promise<boolean>;
   revokeAllExcept(userId: string, exceptId: string | null, now: Date): Promise<number>;
+  /** Revoca las sesiones sin revocar de un dispositivo de la cuenta; devuelve cuántas. */
+  revokeAllOnDevice(userId: string, deviceId: string, now: Date): Promise<number>;
 }
 
 export const I_SESSION_REPOSITORY: unique symbol = Symbol('ISessionRepository');

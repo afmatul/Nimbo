@@ -14,6 +14,7 @@ import { RENEW_PATH } from '../../billing/routes';
 import { DownloadNoticeBanner } from '../../storage/components/file-row-menu';
 import { SidebarQuota } from '../../storage/components/sidebar-quota';
 import { useReadOnlyAccount, useSpace } from '../../storage/components/space-provider';
+import { useClientSidebar } from '../../storage/components/use-client-sidebar';
 import { useUploads } from '../../storage/hooks/use-upload-manager';
 import { MY_FILES_PATH } from '../../storage/routes';
 import { useReceivedShares, type ReceivedListing } from '../hooks/use-received-shares';
@@ -193,6 +194,7 @@ export function ReceivedSharesView({
   openUrl = openInBrowser,
 }: ReceivedSharesViewProps): React.JSX.Element {
   const space = useSpace();
+  const { banner, ...sidebar } = useClientSidebar();
   const received = useReceivedShares(api);
   const { listing } = received;
   const requestUrl = useUploads().api.downloadUrl;
@@ -200,8 +202,13 @@ export function ReceivedSharesView({
   const focusTitle = (): void => titleRef.current?.focus();
   const actions = useReceivedActions({ received, requestUrl, openUrl, focusTitle });
   return (
-    <AppLayout navItems={RECEIVED_NAV_ITEMS} quotaCard={<SidebarQuota state={space.state} />}>
+    <AppLayout
+      navItems={RECEIVED_NAV_ITEMS}
+      {...sidebar}
+      quotaCard={<SidebarQuota state={space.state} />}
+    >
       <div className="mx-auto w-full max-w-5xl space-y-5">
+        {banner}
         <ReceivedReadOnlyNotice />
         <ReceivedHeader titleRef={titleRef} listing={listing} />
         {actions.notice ? (

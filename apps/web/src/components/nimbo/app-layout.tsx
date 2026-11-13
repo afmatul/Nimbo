@@ -1,6 +1,16 @@
 'use client';
 
-import { Menu, Folder, Search, Share2, Trash2, HardDrive, Sparkles } from 'lucide-react';
+import {
+  Menu,
+  Folder,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Search,
+  Share2,
+  Trash2,
+  HardDrive,
+  Sparkles,
+} from 'lucide-react';
 import type * as React from 'react';
 
 import { cn } from '../../lib/utils';
@@ -13,6 +23,7 @@ import { useHeaderAccount, useHeaderHome } from './header-account';
 import { MobileNavDrawer } from './mobile-nav-drawer';
 import { useIsAgentSheet } from './use-agent-sheet';
 import { useMobileNav, type MobileNav } from './use-mobile-nav';
+import { useSidebarCollapsed, type SidebarCollapse } from './use-sidebar-collapsed';
 
 export type { NavItem };
 
@@ -121,7 +132,31 @@ function HeaderAccount({ userEmail }: { readonly userEmail: string | undefined }
   return <span className="hidden text-xs text-muted-foreground sm:inline-block">{userEmail}</span>;
 }
 
-/** Barra lateral de escritorio, fija bajo el encabezado (007 CA-19); `inert` tras el cajón móvil. */
+/** Botón que compacta o expande la barra de escritorio; el estado lo dice `aria-expanded`. */
+function CollapseToggle({ collapse }: { readonly collapse: SidebarCollapse }): React.JSX.Element {
+  const Icon = collapse.collapsed ? PanelLeftOpen : PanelLeftClose;
+  const label = collapse.collapsed ? 'Expandir barra lateral' : 'Contraer barra lateral';
+  return (
+    <button
+      type="button"
+      onClick={collapse.toggle}
+      aria-label={label}
+      aria-expanded={!collapse.collapsed}
+      title={label}
+      className={cn(
+        'mb-2 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-secondary-foreground hover:bg-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        !collapse.collapsed && 'self-end',
+      )}
+    >
+      <Icon className="h-5 w-5" aria-hidden="true" />
+    </button>
+  );
+}
+
+/**
+ * Barra lateral de escritorio, fija bajo el encabezado (007 CA-19); `inert` tras el cajón móvil. Se puede compactar a
+ * solo íconos; la preferencia se recuerda en el navegador.
+ */
 function DesktopSidebar({
   behindDrawer,
   sidebar,
@@ -129,13 +164,19 @@ function DesktopSidebar({
   readonly behindDrawer: true | undefined;
   readonly sidebar: Omit<AppSidebarProps, 'variant'>;
 }): React.JSX.Element {
+  const collapse = useSidebarCollapsed();
   return (
     <aside
       inert={behindDrawer}
-      className="hidden w-64 shrink-0 border-r border-border bg-card p-4 md:sticky md:top-header md:flex md:h-below-header md:flex-col md:self-start"
+      data-collapsed={collapse.collapsed ? '' : undefined}
+      className={cn(
+        'hidden shrink-0 border-r border-border bg-card p-4 md:sticky md:top-header md:flex md:h-below-header md:flex-col md:self-start',
+        collapse.collapsed ? 'w-20 items-center px-3' : 'w-64',
+      )}
       aria-label="Barra lateral de escritorio"
     >
-      <AppSidebar variant="desktop" {...sidebar} />
+      <CollapseToggle collapse={collapse} />
+      <AppSidebar variant="desktop" {...sidebar} collapsed={collapse.collapsed} />
     </aside>
   );
 }

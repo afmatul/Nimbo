@@ -54,8 +54,8 @@ describe('Migraciones de la tabla plan (CA-1, CA-7, CA-9, RN-1, RN-2)', () => {
     expect(personal).toMatchObject({
       id: '10000000-0000-4000-8000-000000000001',
       nombre: 'Personal',
-      cuota_bytes: '16106127360',
-      max_archivo_bytes: '52428800',
+      cuota_bytes: '15000000000',
+      max_archivo_bytes: '50000000',
     });
     expect(Number(personal?.precio_centavos)).toBe(0);
     expect(Number(personal?.max_editores)).toBe(0);
@@ -67,8 +67,8 @@ describe('Migraciones de la tabla plan (CA-1, CA-7, CA-9, RN-1, RN-2)', () => {
     expect(pro).toMatchObject({
       id: '10000000-0000-4000-8000-000000000002',
       nombre: 'Pro',
-      cuota_bytes: '107374182400',
-      max_archivo_bytes: '524288000',
+      cuota_bytes: '100000000000',
+      max_archivo_bytes: '500000000',
     });
     expect(Number(pro?.precio_centavos)).toBe(4500);
     expect(Number(pro?.max_editores)).toBe(3);
@@ -80,8 +80,8 @@ describe('Migraciones de la tabla plan (CA-1, CA-7, CA-9, RN-1, RN-2)', () => {
     expect(equipo).toMatchObject({
       id: '10000000-0000-4000-8000-000000000003',
       nombre: 'Equipo',
-      cuota_bytes: '375809638400',
-      max_archivo_bytes: '1073741824',
+      cuota_bytes: '350000000000',
+      max_archivo_bytes: '1000000000',
     });
     expect(Number(equipo?.precio_centavos)).toBe(11000);
     expect(Number(equipo?.max_editores)).toBe(5);
@@ -93,8 +93,8 @@ describe('Migraciones de la tabla plan (CA-1, CA-7, CA-9, RN-1, RN-2)', () => {
     expect(institucional).toMatchObject({
       id: '10000000-0000-4000-8000-000000000004',
       nombre: 'Institucional',
-      cuota_bytes: '2199023255552',
-      max_archivo_bytes: '2147483648',
+      cuota_bytes: '2000000000000',
+      max_archivo_bytes: '2000000000',
     });
     expect(Number(institucional?.precio_centavos)).toBe(45000);
     expect(Number(institucional?.max_editores)).toBe(5);

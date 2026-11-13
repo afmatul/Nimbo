@@ -13,6 +13,7 @@ import type { StorageApi } from '../../storage/api';
 import { SpaceProvider } from '../../storage/components/space-provider';
 import { UploadsProvider } from '../../storage/components/uploads-provider';
 import { StorageRequestError } from '../../storage/storage-request-error';
+import { sidebarApiFake } from '../../storage/test-sidebar-api';
 import { GB, spaceSummaryWith } from '../../storage/test-space-summary';
 import type { SharingApi } from '../sharing-api';
 import {
@@ -43,9 +44,12 @@ interface RenderOptions {
 
 async function renderReceived(api: SharingApi, options: RenderOptions = {}): Promise<void> {
   const summary = { ...spaceSummaryWith(3 * GB), readOnly: options.readOnly ?? false };
-  const storage = { downloadUrl: jest.fn(() => Promise.resolve(SIGNED)), ...options.storage };
+  const storage = sidebarApiFake({
+    downloadUrl: jest.fn(() => Promise.resolve(SIGNED)),
+    ...options.storage,
+  });
   render(
-    <UploadsProvider api={storage as unknown as StorageApi}>
+    <UploadsProvider api={storage}>
       <SpaceProvider api={{ spaceSummary: () => Promise.resolve(summary) }} uploadedCount={0}>
         <ReceivedSharesView api={api} openUrl={options.openUrl ?? jest.fn()} />
       </SpaceProvider>

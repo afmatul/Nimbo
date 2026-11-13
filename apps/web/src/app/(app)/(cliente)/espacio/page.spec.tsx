@@ -7,7 +7,9 @@ import userEvent from '@testing-library/user-event';
 
 import { SessionProvider } from '../../../../features/identity/session/session-provider';
 import { SpaceProvider } from '../../../../features/storage/components/space-provider';
+import { UploadsProvider } from '../../../../features/storage/components/uploads-provider';
 import type { SpaceApi } from '../../../../features/storage/space-api';
+import { sidebarApiFake } from '../../../../features/storage/test-sidebar-api';
 import { GB, spaceSummaryWith } from '../../../../features/storage/test-space-summary';
 
 import EspacioPage from './page';
@@ -15,9 +17,11 @@ import EspacioPage from './page';
 async function renderPage(api: SpaceApi): Promise<void> {
   render(
     <SessionProvider apiPublicUrl="http://localhost/api/v1">
-      <SpaceProvider api={api} uploadedCount={0}>
-        <EspacioPage />
-      </SpaceProvider>
+      <UploadsProvider api={sidebarApiFake()}>
+        <SpaceProvider api={api} uploadedCount={0}>
+          <EspacioPage />
+        </SpaceProvider>
+      </UploadsProvider>
     </SessionProvider>,
   );
   await act(async () => undefined);

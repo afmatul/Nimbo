@@ -1,5 +1,5 @@
 import type { NodeSort, SortDirection } from '@nimbo/contracts';
-import { ArrowDown, ArrowUp } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import * as React from 'react';
 
 import { cn } from '../../../lib/utils';
@@ -79,7 +79,7 @@ function SortButton({
   readonly active: SortDirection | undefined;
   readonly onClick: () => void;
 }): React.JSX.Element {
-  const Arrow = active === 'asc' ? ArrowUp : ArrowDown;
+  const Arrow = active === undefined ? ArrowUpDown : active === 'asc' ? ArrowUp : ArrowDown;
   return (
     <button
       type="button"
@@ -90,7 +90,10 @@ function SortButton({
       )}
     >
       {label}
-      {active ? <Arrow className="h-3.5 w-3.5 text-primary" aria-hidden="true" /> : null}
+      <Arrow
+        className={cn('h-3.5 w-3.5', active ? 'text-primary' : 'text-muted-foreground')}
+        aria-hidden="true"
+      />
     </button>
   );
 }

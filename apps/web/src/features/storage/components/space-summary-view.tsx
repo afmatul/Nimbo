@@ -20,10 +20,13 @@ import { SpaceBreakdown } from './space-breakdown';
 import type { SpaceSummaryState } from './space-provider';
 import { SpaceSummarySkeleton } from './space-summary-skeleton';
 import { retentionLabel } from './trash-summary';
+import type { ClientSidebar } from './use-client-sidebar';
 
 export interface SpaceSummaryViewProps {
   readonly state: SpaceSummaryState;
   readonly onRetry: () => void;
+  /** Accesos rápidos y contador de la Papelera de la barra lateral; sin él, la barra no los lleva. */
+  readonly sidebar?: ClientSidebar;
 }
 
 const SPACE_NAV_ITEMS = DEFAULT_NAV_ITEMS.map((item) => ({
@@ -233,10 +236,20 @@ function SpaceBody({ state, onRetry }: SpaceSummaryViewProps): React.JSX.Element
  * Resumen de espacio (spec 007, mockup `storage/resumen-espacio`): aviso de tramo, medidor, plan y desglose; cargando
  * y error con «Reintentar» sin bloquear la navegación (CA-8). Recibe el estado de `useSpace()` por props.
  */
-export function SpaceSummaryView({ state, onRetry }: SpaceSummaryViewProps): React.JSX.Element {
+export function SpaceSummaryView({
+  state,
+  onRetry,
+  sidebar,
+}: SpaceSummaryViewProps): React.JSX.Element {
   return (
-    <AppLayout navItems={SPACE_NAV_ITEMS} quotaCard={<SidebarQuota state={state} linked={false} />}>
+    <AppLayout
+      navItems={SPACE_NAV_ITEMS}
+      sidebarSection={sidebar?.sidebarSection}
+      trashCount={sidebar?.trashCount}
+      quotaCard={<SidebarQuota state={state} linked={false} />}
+    >
       <div className="space-y-4">
+        {sidebar?.banner}
         <section className="flex flex-col gap-5" aria-labelledby="espacio-titulo">
           <header>
             <h1

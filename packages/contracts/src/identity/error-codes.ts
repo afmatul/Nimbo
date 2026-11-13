@@ -71,7 +71,7 @@ export const IDENTITY_FIELD_MESSAGES: Readonly<Record<FieldIssueReason, string>>
   UNKNOWN_FIELD: 'Este campo no se admite. Quítalo y vuelve a intentarlo.',
   TERMS_NOT_ACCEPTED: 'Para crear tu cuenta, acepta los Términos y la Política de privacidad.',
   PASSWORD_TOO_SHORT: `${String(PASSWORD_MIN_LENGTH)} caracteres o más`,
-  PASSWORD_TOO_LONG: `${String(PASSWORD_MAX_LENGTH)} caracteres o menos`,
+  PASSWORD_TOO_LONG: `Tu contraseña es demasiado larga. Usa como máximo ${String(PASSWORD_MAX_LENGTH)} caracteres.`,
   PASSWORD_MISSING_UPPERCASE: 'Una mayúscula',
   PASSWORD_MISSING_NUMBER: 'Un número',
   PASSWORD_MISSING_SYMBOL: 'Un símbolo',

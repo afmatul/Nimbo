@@ -9,8 +9,8 @@ export const PERSONAL_PLAN: Plan = Plan.rehydrate({
   description: 'Para uso individual',
   priceCents: 0,
   limits: {
-    quotaBytes: 16_106_127_360n,
-    maxFileBytes: 52_428_800n,
+    quotaBytes: 15_000_000_000n,
+    maxFileBytes: 50_000_000n,
     maxEditors: 0,
     agentQueriesPerMonth: 20,
     retainedVersions: 3,

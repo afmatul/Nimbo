@@ -2,8 +2,8 @@ import type { AccountLimits } from '@nimbo/contracts';
 
 import type { BackofficeApi } from './api';
 
-/** Bytes de `n` GB del catálogo (base 1024, RN-8), como texto decimal (ADR-0016). */
-export const gb = (n: number): string => String(n * 1024 ** 3);
+/** Bytes de `n` GB del catálogo (base 1000, PD-91), como texto decimal (ADR-0016). */
+export const gb = (n: number): string => String(n * 1000 ** 3);
 
 /**
  * Límites de Laura (plan Equipo, mockup `backoffice/admin--ficha`): 350 GB del plan, 304 GB usados, sin extra y vigente

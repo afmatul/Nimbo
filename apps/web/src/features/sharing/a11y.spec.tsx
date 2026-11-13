@@ -15,10 +15,10 @@ import * as React from 'react';
 
 import { ApiClientError } from '../../lib/api-error';
 import { PREPARING_DELAY_MS } from '../../lib/use-preparing-download';
-import type { StorageApi } from '../storage/api';
 import { SpaceProvider } from '../storage/components/space-provider';
 import { UploadsProvider } from '../storage/components/uploads-provider';
 import { StorageRequestError } from '../storage/storage-request-error';
+import { sidebarApiFake } from '../storage/test-sidebar-api';
 import { GB, spaceSummaryWith } from '../storage/test-space-summary';
 
 import { PublicLinkVisitView } from './components/public-link-visit';
@@ -79,9 +79,9 @@ function Providers({
   readonly children: React.ReactNode;
 }): React.JSX.Element {
   const summary = { ...spaceSummaryWith(3 * GB), readOnly };
-  const storage = { downloadUrl: jest.fn(() => new Promise(() => undefined)) };
+  const storage = sidebarApiFake({ downloadUrl: jest.fn(() => new Promise(() => undefined)) });
   return (
-    <UploadsProvider api={storage as unknown as StorageApi}>
+    <UploadsProvider api={storage}>
       <SpaceProvider api={{ spaceSummary: () => Promise.resolve(summary) }} uploadedCount={0}>
         {children}
       </SpaceProvider>

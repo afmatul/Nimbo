@@ -1,8 +1,9 @@
 'use client';
 
-import { Cloud, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import * as React from 'react';
 
+import { BrandMark } from './brand-mark';
 import { SidebarSlotProvider, type SidebarSlot } from './sidebar-slot';
 
 export interface MobileNavDrawerProps {
@@ -31,7 +32,7 @@ function DrawerTitleBar({ onClose }: Pick<MobileNavDrawerProps, 'onClose'>): Rea
   return (
     <div className="flex shrink-0 items-center justify-between border-b border-border pb-4">
       <div className="flex items-center gap-2">
-        <Cloud className="h-6 w-6 text-primary" aria-hidden="true" />
+        <BrandMark className="h-7 w-auto" />
         <span className="font-bold text-lg text-foreground">Nimbo</span>
         <h2 id="mobile-menu-title" className="sr-only">
           Menú de navegación

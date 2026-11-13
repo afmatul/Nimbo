@@ -449,20 +449,6 @@ describe('FileExplorer con carpetas (006: CA-1, CA-5, CA-6, CA-25)', () => {
   });
 });
 
-function radioByText(label: string): HTMLElement {
-  const found = Array.from(document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')).find(
-    (radio) => radio.textContent === label,
-  );
-  if (!found) throw new Error(`Opción «${label}» no encontrada`);
-  return found;
-}
-
-function sortButton(): HTMLButtonElement {
-  const found = document.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]');
-  if (!found) throw new Error('Botón «Ordenar» no encontrado');
-  return found;
-}
-
 function statusTexts(): readonly string[] {
   return Array.from(document.querySelectorAll('[role="status"]')).map(
     (node) => node.textContent ?? '',
@@ -486,86 +472,58 @@ function controls(overrides: Partial<ListControls> = {}): ListControls {
 
 const BY_SIZE: NodeOrder = { sort: 'size', dir: 'desc' };
 
-describe('FileExplorer: control de orden (007 CA-10, CA-12)', () => {
-  it('CA-10: el control dice el orden por defecto «Fecha de creación, más recientes primero»', async () => {
+describe('FileExplorer: orden desde los encabezados (007 CA-10, CA-12)', () => {
+  it('CA-10: no hay botón «Ordenar» aparte: el orden se pide desde la tabla', async () => {
     await renderExplorer({ nodes: FILE_NODES, controls: controls() });
 
-    expect(sortButton().textContent).toBe('Ordenar: Fecha de creación, más recientes primero');
+    expect(document.querySelector('button[aria-haspopup="menu"][aria-expanded]')).toBeNull();
+    expect(text()).not.toContain('Ordenar:');
+    expect(document.querySelectorAll('th button')).toHaveLength(3);
   });
 
-  it('CA-10: el menú lista los cuatro campos y las dos direcciones, con la nota de las carpetas', async () => {
-    await renderExplorer({ nodes: FILE_NODES, controls: controls() });
-
-    await userEvent.click(sortButton());
-
-    const radios = Array.from(document.querySelectorAll('[role="menuitemradio"]'));
-    expect(radios.map((radio) => radio.textContent)).toEqual([
-      'Nombre',
-      'Tamaño',
-      'Fecha de modificación',
-      'Fecha de creación',
-      'Más antiguos primero',
-      'Más recientes primero',
-    ]);
-    const checked = radios.filter((radio) => radio.getAttribute('aria-checked') === 'true');
-    expect(checked.map((radio) => radio.textContent)).toEqual([
-      'Fecha de creación',
-      'Más recientes primero',
-    ]);
-    expect(text()).toContain(
-      'Las carpetas siempre van primero. El tamaño ordena solo los archivos.',
-    );
-  });
-
-  it('CA-10: elegir un campo conserva la dirección; elegir dirección conserva el campo', async () => {
-    const changeOrder = jest.fn();
-    await renderExplorer({ nodes: FILE_NODES, controls: controls({ changeOrder }) });
-
-    await userEvent.click(sortButton());
-    await userEvent.click(radioByText('Tamaño'));
-    await userEvent.click(sortButton());
-    await userEvent.click(radioByText('Más antiguos primero'));
-
-    expect(changeOrder.mock.calls).toEqual([[BY_SIZE], [{ sort: 'created', dir: 'asc' }]]);
-  });
-
-  it('CA-10: los textos de dirección siguen al campo (Tamaño: menor o mayor primero)', async () => {
-    await renderExplorer({
-      nodes: FILE_NODES,
-      controls: controls({ order: BY_SIZE, shownOrder: BY_SIZE }),
-    });
-    expect(sortButton().textContent).toBe('Ordenar: Tamaño, mayor primero');
-
-    await userEvent.click(sortButton());
-
-    expect(text()).toContain('Menor primero');
-    expect(text()).toContain('Mayor primero');
-  });
-
-  it('CA-10: por nombre el control dice «A–Z»', async () => {
+  it('CA-10: cada encabezado lleva una flecha; la de la columna activa marca la dirección', async () => {
     const byName: NodeOrder = { sort: 'name', dir: 'asc' };
     await renderExplorer({
       nodes: FILE_NODES,
       controls: controls({ order: byName, shownOrder: byName }),
     });
 
-    expect(sortButton().textContent).toBe('Ordenar: Nombre, A–Z');
+    expect(document.querySelectorAll('th button svg')).toHaveLength(3);
+    expect(document.querySelectorAll('th button svg.lucide-arrow-up')).toHaveLength(1);
+    expect(document.querySelectorAll('th button svg.lucide-arrow-up-down')).toHaveLength(2);
+    expect(document.querySelector('th[aria-sort="ascending"]')?.textContent).toBe('Nombre');
   });
 
-  it('CA-12: mientras llega otro orden dice «Ordenando…», la lista sigue visible y ocupada', async () => {
+  it('CA-10: primer clic en «Tamaño», mayor primero; en la columna activa invierte', async () => {
+    const changeOrder = jest.fn();
+    await renderExplorer({ nodes: FILE_NODES, controls: controls({ changeOrder }) });
+
+    await userEvent.click(buttonByText('Tamaño'));
+
+    expect(changeOrder).toHaveBeenCalledWith(BY_SIZE);
+  });
+
+  it('CA-10: pulsar la columna activa invierte la dirección', async () => {
+    const changeOrder = jest.fn();
+    await renderExplorer({
+      nodes: FILE_NODES,
+      controls: controls({ changeOrder, order: BY_SIZE, shownOrder: BY_SIZE }),
+    });
+
+    await userEvent.click(buttonByText('Tamaño'));
+
+    expect(changeOrder).toHaveBeenCalledWith({ sort: 'size', dir: 'asc' });
+  });
+
+  it('CA-12: mientras llega otro orden la lista sigue visible y ocupada, y se anuncia', async () => {
     await renderExplorer({
       nodes: FILE_NODES,
       controls: controls({ order: BY_SIZE, sorting: true }),
     });
 
-    expect(sortButton().textContent).toBe('Ordenando…');
-    expect(sortButton().getAttribute('aria-disabled')).toBe('true');
     expect(rows()).toHaveLength(3);
     expect(document.querySelector('[aria-busy="true"] table')).not.toBeNull();
     expect(statusTexts()).toContain('Ordenando por tamaño, mayor primero…');
-
-    await userEvent.click(sortButton());
-    expect(document.querySelector('[role="menu"]')).toBeNull();
   });
 
   it('CA-10: la tabla marca con aria-sort el orden que muestra, no el pedido', async () => {
@@ -586,10 +544,10 @@ describe('FileExplorer: control de orden (007 CA-10, CA-12)', () => {
     expect(changeOrder).toHaveBeenCalledWith({ sort: 'name', dir: 'asc' });
   });
 
-  it('sin listado (cargando) no hay control de orden ni «Cargar más»', async () => {
+  it('sin listado (cargando) no hay encabezados de orden ni «Cargar más»', async () => {
     await renderExplorer({ status: 'loading', controls: controls() });
 
-    expect(document.querySelector('button[aria-haspopup="menu"]')).toBeNull();
+    expect(document.querySelector('th button')).toBeNull();
     expect(text()).not.toContain('Cargar más');
   });
 });

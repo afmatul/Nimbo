@@ -85,6 +85,8 @@ interface OpenDecision {
   readonly refreshToken: string;
   readonly deviceId: string;
   readonly isNew: boolean;
+  /** Sesiones previas del mismo navegador que la nueva reemplazó. */
+  readonly replacedCount: number;
 }
 
 /** Rechazos de renovación sin escritura; `suspended` revoca y tiene su propia decisión. */
@@ -118,7 +120,7 @@ const REFRESH_REJECTION_ERRORS: Readonly<
 
 /** Campos de `identity.session.revoked` (plan §7). */
 interface Revocation {
-  readonly reason: 'logout' | 'user' | 'others' | 'reuse' | 'suspended';
+  readonly reason: 'logout' | 'user' | 'others' | 'reuse' | 'suspended' | 'replaced';
   readonly count: number;
   readonly sessionId?: string;
 }
@@ -183,6 +185,9 @@ export class SessionService {
       this.openInTransaction(user, client, OpaqueToken.hashOf(secret), now),
     );
     const issued = await this.issue(user, decision.session, decision.refreshToken, now);
+    if (decision.replacedCount > 0) {
+      this.logRevoked(user.id, { reason: 'replaced', count: decision.replacedCount });
+    }
     if (origin === 'login' && decision.isNew) {
       await this.notifyNewDevice(user, decision, client);
     }
@@ -408,22 +413,20 @@ export class SessionService {
     return value !== undefined && OpaqueToken.isWellFormed(value) ? value : undefined;
   }
 
+  /**
+   * Una sesión por navegador: el dispositivo es la cookie `nimbo_did` (D-4), así que volver a iniciar sesión desde el
+   * mismo navegador revoca sus sesiones anteriores en vez de sumar otra fila a «Seguridad». Solo se tocan las del
+   * mismo usuario y dispositivo; las de otros navegadores siguen igual, y revocar o «cerrar las demás» no cambian.
+   */
   private async openInTransaction(
     user: User,
     client: ClientContext,
     deviceSecretHash: string,
     now: Date,
   ): Promise<OpenDecision> {
-    const { deviceId, isNew } = await this.devices.upsertSeen(
-      Device.register({
-        id: randomUUID(),
-        userId: user.id,
-        secretHash: deviceSecretHash,
-        userAgent: client.userAgent,
-        ip: client.ip,
-        now,
-      }),
-    );
+    const seen = { secretHash: deviceSecretHash, now };
+    const { deviceId, isNew } = await this.registerDevice(user, client, seen);
+    const replacedCount = isNew ? 0 : await this.sessions.revokeAllOnDevice(user.id, deviceId, now);
     const refresh = RefreshToken.issue(randomUUID());
     const session = Session.open({
       id: refresh.sessionId,
@@ -434,7 +437,24 @@ export class SessionService {
       maxLifetime: MAX_LIFETIME_MS,
     });
     await this.sessions.insert(session);
-    return { session, refreshToken: refresh.value, deviceId, isNew };
+    return { session, refreshToken: refresh.value, deviceId, isNew, replacedCount };
+  }
+
+  private registerDevice(
+    user: User,
+    client: ClientContext,
+    seen: { readonly secretHash: string; readonly now: Date },
+  ): Promise<{ readonly deviceId: string; readonly isNew: boolean }> {
+    return this.devices.upsertSeen(
+      Device.register({
+        id: randomUUID(),
+        userId: user.id,
+        secretHash: seen.secretHash,
+        userAgent: client.userAgent,
+        ip: client.ip,
+        now: seen.now,
+      }),
+    );
   }
 
   /** Después del commit: el token de acceso no retiene la transacción. */

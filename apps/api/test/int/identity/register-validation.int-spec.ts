@@ -55,7 +55,7 @@ const comparableView = (response: Response): unknown => {
 /** Una contraseña por regla de D-6 que incumple **solo** esa regla (CA-5). */
 const WEAK_PASSWORDS: readonly [FieldIssueReason, string][] = [
   ['PASSWORD_TOO_SHORT', 'Nimbo-2026'],
-  ['PASSWORD_TOO_LONG', `Aa1!${'x'.repeat(130)}`],
+  ['PASSWORD_TOO_LONG', `Aa1!${'x'.repeat(1030)}`],
   ['PASSWORD_MISSING_UPPERCASE', 'nimbo-seguro-2026'],
   ['PASSWORD_MISSING_NUMBER', 'Nimbo-Seguro-Dos'],
   ['PASSWORD_MISSING_SYMBOL', 'NimboSeguro2026'],
