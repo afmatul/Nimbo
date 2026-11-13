@@ -125,7 +125,7 @@ describe('SubscriptionSettingsService (spec 010 CA-6, CA-16 a CA-19, CA-22, CA-2
 
     const outcome = await service.scheduleChange(ANA, 'pro');
 
-    expect(outcome.change).toEqual({ plan: PRO, effectiveAt: EXPIRES });
+    expect(outcome.change).toEqual({ plan: PRO, effectiveAt: EXPIRES, appliedNow: false });
   });
 
   it.each(['no-existe', 'viejo', 'equipo'])(
@@ -145,7 +145,7 @@ describe('SubscriptionSettingsService (spec 010 CA-6, CA-16 a CA-19, CA-22, CA-2
 
     const outcome = await service.scheduleChange(ANA, 'personal');
 
-    expect(outcome.change).toEqual({ plan: PERSONAL_PLAN, effectiveAt: NOW });
+    expect(outcome.change).toEqual({ plan: PERSONAL_PLAN, effectiveAt: NOW, appliedNow: true });
     expect(saved).toMatchObject([
       { planId: PERSONAL_PLAN.id, status: 'vigente', expiresAt: null, pendingPlanId: null },
     ]);

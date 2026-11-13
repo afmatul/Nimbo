@@ -160,7 +160,7 @@ describe('ajustes de la suscripción y su vista (spec 010 CA-6, CA-16 a CA-19, C
         status: 'active',
         renewal: null,
       },
-      result: { kind: 'SCHEDULED_FOR_NEXT_BILLING', planSlug: 'personal' },
+      result: { kind: 'APPLIED_IMMEDIATELY', planSlug: 'personal' },
     });
     await expect(subscriptionOf(owner, elena.id)).resolves.toMatchObject({
       plan_id: PERSONAL_ID,

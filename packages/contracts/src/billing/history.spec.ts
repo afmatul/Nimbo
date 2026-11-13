@@ -144,6 +144,14 @@ describe('planChangeResponseSchema (spec 010 CA-16, CA-27)', () => {
     expect(planChangeResponseSchema.safeParse({ subscription: VIEW, result }).success).toBe(true);
   });
 
+  it('CA-27: acepta el cambio aplicado al instante', () => {
+    const applied = { ...result, kind: 'APPLIED_IMMEDIATELY' };
+
+    expect(planChangeResponseSchema.safeParse({ subscription: VIEW, result: applied }).success).toBe(
+      true,
+    );
+  });
+
   it('CA-16: rechaza un tipo de resultado desconocido o una fecha que no es ISO', () => {
     const unknownKind = { subscription: VIEW, result: { ...result, kind: 'FAILED' } };
     const badDate = { subscription: VIEW, result: { ...result, effectiveAt: 'mañana' } };

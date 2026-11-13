@@ -75,6 +75,9 @@ export const subscriptionViewSchema = z
   })
   .strict();
 
+/** Programado para la próxima fecha de cobro o aplicado al instante (en solo lectura, bajar a Personal, CA-27). */
+export const PLAN_CHANGE_KINDS = ['SCHEDULED_FOR_NEXT_BILLING', 'APPLIED_IMMEDIATELY'] as const;
+
 /**
  * `PUT /billing/subscription/plan-change` (spec 010 CA-16 a CA-18, CA-27): la vista nueva y el resultado que confirma
  * la web. Siempre `200`: el plan elegido rige desde `effectiveAt`, la próxima fecha de cobro (o, si en solo lectura se
@@ -85,7 +88,7 @@ export const planChangeResponseSchema = z
     subscription: subscriptionViewSchema,
     result: z
       .object({
-        kind: z.literal('SCHEDULED_FOR_NEXT_BILLING'),
+        kind: z.enum(PLAN_CHANGE_KINDS),
         planSlug: z.string(),
         planName: z.string(),
         effectiveAt: z.string().datetime(),

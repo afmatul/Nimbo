@@ -28,6 +28,8 @@ interface SettingsChange<T> {
 export interface ScheduledPlanChange {
   readonly plan: Plan;
   readonly effectiveAt: Date;
+  /** CA-27: se aplicó al instante (en solo lectura, bajar a Personal) en vez de programarse. */
+  readonly appliedNow: boolean;
 }
 
 /** Respuesta de programar un cambio: la vista nueva y el resultado que confirma la web. */
@@ -81,7 +83,7 @@ export class SubscriptionSettingsService {
       return {
         next,
         events: [scheduled, ...planChangeEvents(current, next, plan)],
-        result: { plan, effectiveAt: effectiveAtOf(next) },
+        result: { plan, effectiveAt: effectiveAtOf(next), appliedNow: next.pendingPlanId === null },
       };
     });
     return { summary, change: result };

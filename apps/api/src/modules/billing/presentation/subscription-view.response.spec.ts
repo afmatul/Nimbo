@@ -86,7 +86,7 @@ describe('toPlanChangeResponse (spec 010 CA-16)', () => {
   it('CA-16: es un éxito con la vista nueva y el plan que rige desde la próxima fecha de cobro', () => {
     const response = toPlanChangeResponse({
       summary: SUMMARY,
-      change: { plan: PRO, effectiveAt: EXPIRES },
+      change: { plan: PRO, effectiveAt: EXPIRES, appliedNow: false },
     });
 
     expect(response.result).toEqual({

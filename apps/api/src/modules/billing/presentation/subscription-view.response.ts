@@ -63,7 +63,7 @@ export const toPlanChangeResponse = ({
 }: PlanChangeOutcome): PlanChangeResponse => ({
   subscription: toAdjustedView(summary),
   result: {
-    kind: 'SCHEDULED_FOR_NEXT_BILLING',
+    kind: change.appliedNow ? 'APPLIED_IMMEDIATELY' : 'SCHEDULED_FOR_NEXT_BILLING',
     planSlug: change.plan.slug,
     planName: change.plan.name,
     effectiveAt: change.effectiveAt.toISOString(),
