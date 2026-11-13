@@ -209,10 +209,8 @@ describe('Accesibilidad del diálogo «Compartir» a 360 y 1440 px (spec 012b CA
   it('CA-7: nivel cambiado', async () => {
     const share = jest.fn(() => Promise.resolve(directEntry({ level: 'VIEWER' })));
     await openDialog(fakeSharingApi({ listAccess: accessOf(directEntry()), share }));
-    await userEvent.selectOptions(
-      await screen.findByRole('combobox', { name: 'Nivel de Juan Cortés' }),
-      'VIEWER',
-    );
+    await userEvent.click(await screen.findByRole('combobox', { name: 'Nivel de Juan Cortés' }));
+    await userEvent.click(screen.getByRole('option', { name: 'Lector' }));
     await screen.findByText('Juan Cortés ahora es Lector.');
     await expectNoBlockingViolations();
   });

@@ -1,6 +1,7 @@
 'use client';
 
 import type * as React from 'react';
+import { Controller } from 'react-hook-form';
 
 import { FieldMessage } from '../../../components/nimbo/field-message';
 import { Input } from '../../../components/ui/input';
@@ -180,13 +181,21 @@ function UnitSelect({
   readonly locked: boolean;
 }): React.JSX.Element {
   return (
-    <Select {...form.register(unitField)} aria-label={ariaLabel} disabled={locked}>
-      {units.map((option) => (
-        <option key={option} value={option}>
-          {option}
-        </option>
-      ))}
-    </Select>
+    <Controller
+      control={form.control}
+      name={unitField}
+      render={({ field }) => (
+        <Select
+          ref={field.ref}
+          aria-label={ariaLabel}
+          disabled={locked}
+          value={field.value}
+          options={units.map((unit) => ({ value: unit, label: unit }))}
+          onValueChange={field.onChange}
+          onBlur={field.onBlur}
+        />
+      )}
+    />
   );
 }
 

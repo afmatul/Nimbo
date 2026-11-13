@@ -75,7 +75,7 @@ describe('AccessList: quién tiene acceso (spec 012b CA-1, CA-4, CA-5)', () => {
     expect(within(juan).getByText('juan@nimbo.gt')).toBeTruthy();
     expect(within(juan).getByText('Acceso directo')).toBeTruthy();
     const level = within(juan).getByRole('combobox', { name: 'Nivel de Juan Cortés' });
-    expect((level as HTMLSelectElement).value).toBe('EDITOR');
+    expect(level.textContent).toBe('Editor');
 
     const laura = personRow('Laura Belmont');
     expect(within(laura).getByText('laura@nimbo.gt')).toBeTruthy();
@@ -112,14 +112,15 @@ describe('AccessList: quién tiene acceso (spec 012b CA-1, CA-4, CA-5)', () => {
     renderList(fakeSharingApi({ listAccess, share }));
 
     const level = await screen.findByRole('combobox', { name: 'Nivel de Juan Cortés' });
-    await userEvent.selectOptions(level, 'VIEWER');
+    await userEvent.click(level);
+    await userEvent.click(screen.getByRole('option', { name: 'Lector' }));
 
     expect(share).toHaveBeenCalledWith({ ...NODE, email: 'juan@nimbo.gt', level: 'VIEWER' });
     expect(await screen.findByText('Juan Cortés ahora es Lector.')).toBeTruthy();
     await waitFor(() =>
-      expect(
-        (screen.getByRole('combobox', { name: 'Nivel de Juan Cortés' }) as HTMLSelectElement).value,
-      ).toBe('VIEWER'),
+      expect(screen.getByRole('combobox', { name: 'Nivel de Juan Cortés' }).textContent).toBe(
+        'Lector',
+      ),
     );
   });
 
@@ -132,18 +133,17 @@ describe('AccessList: quién tiene acceso (spec 012b CA-1, CA-4, CA-5)', () => {
     renderList(fakeSharingApi({ listAccess: jest.fn(() => listOf(directEntry(), lector)) }), true);
 
     const juan = await screen.findByRole('combobox', { name: 'Nivel de Juan Cortés' });
+    await userEvent.click(screen.getByRole('combobox', { name: 'Nivel de Ana' }));
     await waitFor(() =>
-      expect(
-        (
-          within(screen.getByRole('combobox', { name: 'Nivel de Ana' })).getByRole('option', {
-            name: 'Editor',
-          }) as HTMLOptionElement
-        ).disabled,
-      ).toBe(true),
+      expect(screen.getByRole('option', { name: 'Editor' }).getAttribute('aria-disabled')).toBe(
+        'true',
+      ),
     );
-    expect(
-      (within(juan).getByRole('option', { name: 'Lector' }) as HTMLOptionElement).disabled,
-    ).toBe(false);
+    await userEvent.keyboard('{Escape}');
+    await userEvent.click(juan);
+    expect(screen.getByRole('option', { name: 'Lector' }).hasAttribute('aria-disabled')).toBe(
+      false,
+    );
   });
 
   it('CA-5: «Quitar acceso» confirma, quita y la persona desaparece de la lista', async () => {

@@ -20,7 +20,7 @@ export interface DirectAccessActions {
   readonly changingId: string | null;
 }
 
-const SELECT_CLASS = 'sm:[&_select]:h-9';
+const SELECT_CLASS = 'sm:h-9';
 
 /** En solo lectura solo se ofrece bajar a Lector (spec 012b CA-4): subir a Editor queda deshabilitado. */
 function LevelSelect({
@@ -39,18 +39,13 @@ function LevelSelect({
       value={entry.level}
       disabled={changing}
       aria-busy={changing || undefined}
-      onChange={(event) => actions.onChangeLevel(entry, event.target.value as ShareLevel)}
-    >
-      {SHARE_LEVELS.map((level) => (
-        <option
-          key={level}
-          value={level}
-          disabled={readOnly && level === 'EDITOR' && entry.level !== 'EDITOR'}
-        >
-          {LEVEL_LABELS[level]}
-        </option>
-      ))}
-    </Select>
+      options={SHARE_LEVELS.map((level) => ({
+        value: level,
+        label: LEVEL_LABELS[level],
+        disabled: readOnly && level === 'EDITOR' && entry.level !== 'EDITOR',
+      }))}
+      onValueChange={(level) => actions.onChangeLevel(entry, level)}
+    />
   );
 }
 

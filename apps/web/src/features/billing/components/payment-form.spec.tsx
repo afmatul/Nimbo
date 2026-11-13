@@ -66,12 +66,24 @@ describe('PaymentForm (spec 009 §6: formulario, procesando, rechazado, aprobado
     const { container } = renderForm();
 
     expect(screen.getByText('Simulado')).toBeTruthy();
-    expect(screen.getByText(/4242 4242 4242 4242 aprueba/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /4242 4242 4242 4242: aprueba/ })).toBeTruthy();
     expect(screen.getByText('Q98.21')).toBeTruthy();
     expect(screen.getByText('Q11.79')).toBeTruthy();
     expect(screen.getAllByText('Q110.00').length).toBeGreaterThan(0);
     expect((screen.getByLabelText('NIT para la factura') as HTMLInputElement).value).toBe('CF');
     expect(seriousViolations(await axe(container))).toEqual([]);
+  });
+
+  it('tarjetas de prueba: un clic llena número, vencimiento y CVC sin tocar el NIT', async () => {
+    renderForm();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /4000 0000 0000 0002: rechaza/ }));
+
+    const value = (label: string) => (screen.getByLabelText(label) as HTMLInputElement).value;
+    expect(value('Número de tarjeta')).toBe('4000 0000 0000 0002');
+    expect(value('Vencimiento')).toMatch(/^12\/\d{2}$/);
+    expect(value('CVC')).toBe('123');
+    expect(value('NIT para la factura')).toBe('CF');
   });
 
   it('mockup: agrupa el número, muestra VISA, oculta el CVC, explica el vencimiento y dice «mensual»', async () => {

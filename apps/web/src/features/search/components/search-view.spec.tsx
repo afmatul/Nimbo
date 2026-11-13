@@ -324,9 +324,8 @@ describe('SearchView: pantalla /buscar (018 CA-2, CA-6, CA-9 a CA-12)', () => {
     const navigate = await renderView('q=camion', loadOf(searchPage([fileHit(2)])));
     expect(screen.queryByLabelText('Desde')).toBeNull();
 
-    fireEvent.change(screen.getByRole('combobox', { name: 'Modificado' }), {
-      target: { value: 'rango' },
-    });
+    await userEvent.click(screen.getByRole('combobox', { name: 'Modificado' }));
+    await userEvent.click(screen.getByRole('option', { name: 'Rango personalizado' }));
 
     expect(navigate).toHaveBeenLastCalledWith('q=camion&fecha=rango');
     expect(screen.getByLabelText('Desde')).toBeTruthy();
