@@ -59,6 +59,15 @@ export const indexingStatusChangedSchema = z
   .strict()
   .refine(reasonMatchesState, { message: REASON_MESSAGE, path: ['reason'] });
 
+/**
+ * `GET /files/:fileId/thumbnail`: extracto de texto de un `.docx` para su miniatura; `null` si no es un `.docx`, es
+ * muy grande, está dañado o no tiene texto (la web dibuja entonces la hoja de renglones).
+ */
+export const fileThumbnailResponseSchema = z
+  .object({ text: z.string().min(1).max(600).nullable() })
+  .strict();
+
+export type FileThumbnailResponse = z.infer<typeof fileThumbnailResponseSchema>;
 export type IndexingStatusResponse = z.infer<typeof indexingStatusResponseSchema>;
 export type IndexingRetryResponse = z.infer<typeof indexingRetryResponseSchema>;
 export type IndexingStatusChanged = z.infer<typeof indexingStatusChangedSchema>;

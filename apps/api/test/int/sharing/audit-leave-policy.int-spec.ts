@@ -22,6 +22,7 @@ const NEXT_MIGRATIONS = [
   'CrearEnlacePublico20261102100000',
   'CorregirLimitesDePlanesAUnidadesDecimales20261104100000',
   'UnaSesionActivaPorDispositivo20261104100100',
+  'CrearMiniaturaDeDocumento20261112100000',
   'AgregarPlanPendienteAUsuario20261113100000',
 ];
 

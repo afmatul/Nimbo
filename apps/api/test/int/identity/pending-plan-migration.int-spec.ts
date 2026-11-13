@@ -4,7 +4,7 @@ import { columnsOf } from '../storage/storage-test-db';
 
 const PENDING_PLAN_MIGRATION = 'AgregarPlanPendienteAUsuario20261113100000';
 
-/** Registro con plan: `usuario.plan_pendiente_slug` (DF-98), reversible en una base nueva. */
+/** Registro con plan: `usuario.plan_pendiente_slug` (DF-99), reversible en una base nueva. */
 describe('migración agregar-plan-pendiente-a-usuario', () => {
   let fresh: FreshDatabase;
 

@@ -9,7 +9,8 @@
   (`IAgentQuota`, 020), realtime (`docs/sdd/architecture.md` §3; el lint de fronteras lo hace cumplir).
 - **Expone por HTTP** el estado de indexación y «Reintentar» (`GET /files/:fileId/indexing`,
   `POST /files/:fileId/indexing/retry`, 019 plan §4) y el agente (`POST /agent/ask` en `text/event-stream` y
-  `GET /agent/status`, 020 plan §4), todo `@Roles(CLIENT)`; el aviso en vivo `indexing.status-changed` sale
+  `GET /agent/status`, 020 plan §4) y el extracto de texto de un `.docx` para su miniatura (`GET /files/:fileId/thumbnail`,
+  DF-98: tabla `miniatura`, sin auditoría), todo `@Roles(CLIENT)`; el aviso en vivo `indexing.status-changed` sale
   por el canal de 015, directo desde el `api` o por el relay de `index-status` desde el `worker` (ADR-0033 d).
 - **No expone** fragmentos ni texto por HTTP en la 019: los lee la 020 con `accessibleNodes(actor)` antes de ordenar
   por similitud (DF-14). Ningún rol interno ve texto indexado (019 CA-20).
