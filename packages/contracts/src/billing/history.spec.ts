@@ -147,9 +147,9 @@ describe('planChangeResponseSchema (spec 010 CA-16, CA-27)', () => {
   it('CA-27: acepta el cambio aplicado al instante', () => {
     const applied = { ...result, kind: 'APPLIED_IMMEDIATELY' };
 
-    expect(planChangeResponseSchema.safeParse({ subscription: VIEW, result: applied }).success).toBe(
-      true,
-    );
+    expect(
+      planChangeResponseSchema.safeParse({ subscription: VIEW, result: applied }).success,
+    ).toBe(true);
   });
 
   it('CA-16: rechaza un tipo de resultado desconocido o una fecha que no es ISO', () => {
