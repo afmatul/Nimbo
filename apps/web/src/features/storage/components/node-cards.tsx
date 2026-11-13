@@ -20,6 +20,7 @@ import { CHIP_TYPE_BY_KIND } from '../file-type';
 import { previewPathOf } from '../preview/routes';
 import { folderPath } from '../routes';
 
+import { useFileBadgeRenderer } from './node-badge';
 import { rowIdOf } from './node-rows';
 import { useThumbnailRenderer } from './node-thumbnail';
 
@@ -189,6 +190,7 @@ function FileCard({
   readonly onQuickLook: ((file: FileSummary) => void) | undefined;
 }): React.JSX.Element {
   const renderThumbnail = useThumbnailRenderer();
+  const renderBadge = useFileBadgeRenderer();
   return (
     <li id={rowIdOf(file.id)} className={`${CARD_CLASS} flex flex-col gap-3 p-3`}>
       <div
@@ -206,6 +208,7 @@ function FileCard({
           />
         )}
         {renderThumbnail?.(file)}
+        <div className="absolute right-2 top-2">{renderBadge?.(file)}</div>
       </div>
       <div className="flex items-start gap-2">
         <span className="flex min-w-0 flex-1 flex-col">

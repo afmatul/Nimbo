@@ -6,6 +6,7 @@ import { MyFiles } from '../..';
 import { useSessionSharingApi } from '../../../sharing';
 
 jest.mock('../..', () => ({ ...jest.requireActual('../..'), MyFiles: jest.fn(() => null) }));
+jest.mock('../../../identity/session/use-auth-fetch', () => ({ useAuthFetch: () => jest.fn() }));
 jest.mock('../../../sharing', () => ({
   ...jest.requireActual('../../../sharing'),
   useSessionSharingApi: jest.fn(),

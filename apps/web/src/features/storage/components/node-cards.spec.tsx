@@ -5,6 +5,7 @@ import type { NodeSummary } from '@nimbo/contracts';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+import { FileBadgeProvider } from './node-badge';
 import { NodeCards } from './node-cards';
 import { ThumbnailProvider } from './node-thumbnail';
 
@@ -106,6 +107,17 @@ describe('NodeCards', () => {
     );
     expect(
       within(screen.getByTestId('file-card-preview')).getByTestId('miniatura').textContent,
+    ).toBe('modelo.pdf');
+  });
+
+  it('con un renderizador de insignias, la tarjeta del archivo la muestra en su esquina', () => {
+    render(
+      <FileBadgeProvider value={(file) => <span data-testid="insignia">{file.name}</span>}>
+        <NodeCards nodes={[PDF]} placeName="Mis archivos" renderRowActions={undefined} />
+      </FileBadgeProvider>,
+    );
+    expect(
+      within(screen.getByTestId('file-card-preview')).getByTestId('insignia').textContent,
     ).toBe('modelo.pdf');
   });
 });
