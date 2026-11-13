@@ -20,6 +20,7 @@ import { CHIP_TYPE_BY_KIND } from '../file-type';
 import { previewPathOf } from '../preview/routes';
 import { folderPath } from '../routes';
 
+import { NodeMarks } from './node-marks';
 import { rowIdOf } from './node-rows';
 import { useThumbnailRenderer } from './node-thumbnail';
 
@@ -90,6 +91,7 @@ function FolderCard({
           </dd>
         </div>
       </dl>
+      <NodeMarks node={folder} />
     </li>
   );
 }
@@ -216,6 +218,7 @@ function FileCard({
               {formatBytes(file.sizeBytes)} · <UpdatedAt value={file.updatedAt} />
             </span>
           </span>
+          <NodeMarks node={file} />
         </span>
         <div className={`${ACTIONS_CLASS} flex items-center`}>
           <QuickLookButton file={file} onQuickLook={onQuickLook} />
