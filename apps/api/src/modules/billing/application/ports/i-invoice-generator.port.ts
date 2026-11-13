@@ -17,4 +17,7 @@ export interface IInvoiceGenerator {
   generate(document: InvoiceDocument): Promise<Buffer>;
 }
 
+/** Tipo de contenido de lo que devuelve `IInvoiceGenerator`: con él se sube a MinIO y se adjunta al comprobante. */
+export const INVOICE_CONTENT_TYPE = 'application/pdf';
+
 export const I_INVOICE_GENERATOR = Symbol('IInvoiceGenerator');

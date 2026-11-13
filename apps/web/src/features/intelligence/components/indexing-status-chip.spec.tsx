@@ -7,7 +7,7 @@ import { axe } from 'jest-axe';
 
 import { indexingStatus, NOT_INDEXED_TYPE } from '../test-indexing';
 
-import { IndexingPill, IndexingStatusChip } from './indexing-status-chip';
+import { IndexingStatusChip } from './indexing-status-chip';
 
 const CHIPS: readonly (readonly [IndexingState, string, string | null])[] = [
   ['pendiente', 'Indexando…', 'Ya puedes seguir trabajando'],
@@ -48,26 +48,5 @@ describe('IndexingStatusChip (019 CA-14)', () => {
     const { container } = render(<IndexingStatusChip status={null} />);
 
     expect(container.textContent).toBe('');
-  });
-});
-
-describe('IndexingPill en la tarjeta (compact)', () => {
-  it.each([
-    ['indexado', 'Indexado'],
-    ['pendiente', 'Indexando…'],
-    ['indexando', 'Indexando…'],
-    ['no_indexable', 'Sin indexar'],
-    ['fallido', 'Sin indexar'],
-  ] as const)('`%s` dice «%s», sin porcentaje', (state, label) => {
-    render(
-      <IndexingPill compact status={indexingStatus({ state, reason: REASON_OF[state] ?? null })} />,
-    );
-    expect(screen.getByText(label)).toBeTruthy();
-    expect(document.body.textContent).not.toMatch(/%/);
-  });
-
-  it('sin estado (tipo que no se indexa) no dibuja nada', () => {
-    const { container } = render(<IndexingPill compact status={NOT_INDEXED_TYPE} />);
-    expect(container.firstChild).toBeNull();
   });
 });

@@ -1,4 +1,5 @@
 import {
+  batchShareRequestSchema,
   accessEntrySchema,
   accessListQuerySchema,
   accessListSchema,
@@ -353,5 +354,23 @@ describe('contratos de enlaces públicos (plan 013 §4)', () => {
         sharedBy: { displayName: 'Ana López', email: 'ana@ejemplo.com' },
       }).success,
     ).toBe(false);
+  });
+});
+
+describe('batchShareRequestSchema (compartir por lote)', () => {
+  const items = [{ type: 'folder', id: '2f0c1d2e-3a4b-4c5d-8e6f-7a8b9c0d1e2f' }];
+
+  it('normaliza el correo y acepta los mismos niveles que `POST /shares`', () => {
+    expect(
+      batchShareRequestSchema.parse({ items, email: ' Bruno@Ejemplo.com ', level: 'EDITOR' }),
+    ).toEqual({ items, email: 'bruno@ejemplo.com', level: 'EDITOR' });
+  });
+
+  it('rechaza un nivel desconocido, un correo inválido o un lote vacío', () => {
+    const base = { items, email: 'bruno@ejemplo.com', level: 'VIEWER' };
+
+    expect(batchShareRequestSchema.safeParse({ ...base, level: 'OWNER' }).success).toBe(false);
+    expect(batchShareRequestSchema.safeParse({ ...base, email: 'bruno' }).success).toBe(false);
+    expect(batchShareRequestSchema.safeParse({ ...base, items: [] }).success).toBe(false);
   });
 });

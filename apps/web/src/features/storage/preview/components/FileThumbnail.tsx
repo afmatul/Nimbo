@@ -3,7 +3,6 @@
 import type { FileSummary } from '@nimbo/contracts';
 import * as React from 'react';
 
-import { useNearViewport } from '../../../../lib/use-near-viewport';
 import { cn } from '../../../../lib/utils';
 import { useAuthFetch } from '../../../identity/session/use-auth-fetch';
 import { requestPreviewUrl, type PreviewUrlRequester } from '../api';
@@ -32,6 +31,25 @@ const SCALED_KINDS: ReadonlySet<FileSummary['kind']> = new Set(['xlsx', 'pptx'])
 export function hasThumbnail(file: FileSummary): boolean {
   const limit = THUMBNAIL_LIMITS[file.kind];
   return limit !== undefined && file.sizeBytes <= limit;
+}
+
+/** Verdadero cuando el elemento entra (o está por entrar) en pantalla; una sola vez. Sin `IntersectionObserver`, nunca. */
+function useNearViewport(element: HTMLElement | null): boolean {
+  const [near, setNear] = React.useState(false);
+  React.useEffect(() => {
+    if (element === null || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        setNear(true);
+        observer.disconnect();
+      },
+      { rootMargin: '150px' },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [element]);
+  return near;
 }
 
 /** Turno en la cola global de miniaturas; se libera al terminar o al desmontar. */

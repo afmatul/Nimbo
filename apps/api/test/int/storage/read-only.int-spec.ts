@@ -49,7 +49,7 @@ const route = (
   ...(body === undefined ? {} : { body }),
 });
 
-/** ADR-0032 regla 3 y spec 010 CA-13: las diez que la solo lectura bloquea. */
+/** ADR-0032 regla 3 y spec 010 CA-13: las diez que la solo lectura bloquea, más mover por lote. */
 const BLOCKED: readonly WriteRoute[] = [
   route('post', '/uploads', () => '/uploads', {
     name: 'nuevo.pdf',
@@ -86,6 +86,10 @@ const BLOCKED: readonly WriteRoute[] = [
     '/trash/folders/:folderId/restore',
     (ids) => `/trash/folders/${ids.trashedFolderId}/restore`,
   ),
+  route('post', '/nodes/batch/move', () => '/nodes/batch/move', {
+    items: [{ type: 'file', id: '2f0c1d2e-3a4b-4c5d-8e6f-7a8b9c0d1e2f' }],
+    targetFolderId: null,
+  }),
 ];
 
 /**
@@ -122,6 +126,12 @@ const ALLOWED: readonly WriteRoute[] = [
   route('delete', '/files/:fileId', (ids) => `/files/${ids.fileId}`),
   route('delete', '/folders/:folderId', (ids) => `/folders/${ids.folderId}`),
   route('delete', '/trash', () => '/trash'),
+  route('post', '/nodes/batch/delete', () => '/nodes/batch/delete', {
+    items: [{ type: 'file', id: '2f0c1d2e-3a4b-4c5d-8e6f-7a8b9c0d1e2f' }],
+  }),
+  route('post', '/nodes/batch/download', () => '/nodes/batch/download', {
+    items: [{ type: 'file', id: '2f0c1d2e-3a4b-4c5d-8e6f-7a8b9c0d1e2f' }],
+  }),
 ];
 
 /** Rutas del arnés de pruebas, que no son de `storage`. */
@@ -196,7 +206,7 @@ describe('cuenta en solo lectura en `storage` (spec 010 CA-10, CA-12, CA-13, RN-
       .sort();
     const classified = [...BLOCKED, ...ALLOWED].map(describeWrite).sort();
 
-    expect(BLOCKED).toHaveLength(10);
+    expect(BLOCKED).toHaveLength(11);
     expect([...new Set(classified)]).toEqual(declared);
   });
 

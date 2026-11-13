@@ -87,8 +87,13 @@ export class AuthController {
     @Body(new ZodValidationPipe(registerRequestSchema, identityValidationError))
     body: RegisterRequest,
   ): Promise<AcceptedResponse> {
-    const { fullName, email, password } = body;
-    await this.registration.register({ fullName, email, password });
+    const { fullName, email, password, planSlug } = body;
+    await this.registration.register({
+      fullName,
+      email,
+      password,
+      ...(planSlug === undefined ? {} : { planSlug }),
+    });
     return ACCEPTED;
   }
 

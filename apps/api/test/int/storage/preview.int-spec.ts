@@ -5,6 +5,7 @@ import request from 'supertest';
 import type { DataSource } from 'typeorm';
 
 import { ContentMatchBindingModule } from '../../../src/content-match-binding.module';
+import { ExplorerBadgesBindingModule } from '../../../src/explorer-badges-binding.module';
 import {
   I_PLAN_LIMITS_PROVIDER,
   StorageModule,
@@ -48,6 +49,7 @@ describe('POST /api/v1/files/:fileId/preview-url (017 T-03)', () => {
       modules: [
         PlanLimitsBindingModule,
         ContentMatchBindingModule,
+        ExplorerBadgesBindingModule,
         PreviewModule.register({ storageModule, config: { previewUrlPerMinute: 3 } }),
       ],
     });

@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { IdentityReadersModule } from '../identity';
+
 import { AgentQuotaService } from './application/agent-quota.service';
+import { PendingPlanScreening } from './application/pending-plan-screening';
 import { PersonalSubscriptionService } from './application/personal-subscription.service';
 import { PlanCatalogService } from './application/plan-catalog.service';
 import { I_AGENT_QUOTA } from './application/ports/i-agent-quota.port';
@@ -32,16 +35,18 @@ import { AccountVerifiedListener } from './presentation/account-verified.listene
  * `SubscriptionAdministration`; a `intelligence`, `I_AGENT_QUOTA` (el único token que sale de `index.ts`, PD-18); y a
  * esos dos módulos de `billing` sus repositorios (sus tokens no salen de `index.ts`). `I_PLAN_LIMITS_PROVIDER` lo
  * enlaza `PlanLimitsBindingModule`: `storage` no conoce a `billing`. Con la 011b, `SubscriptionAdministration` también
- * ajusta cuota y vigencia por `ISubscriptionAdministrationRepository` (DF-81).
+ * ajusta cuota y vigencia por `ISubscriptionAdministrationRepository` (DF-81). Importa `IdentityReadersModule` para
+ * que el oyente de la cuenta verificada descarte el plan elegido al registrarse si no se puede contratar.
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([PlanOrmEntity])],
+  imports: [TypeOrmModule.forFeature([PlanOrmEntity]), IdentityReadersModule],
   providers: [
     PlanCatalogService,
     PlanLimitsAdapter,
     { provide: I_PLAN_REPOSITORY, useClass: TypeOrmPlanRepository },
     PersonalSubscriptionService,
     { provide: I_SUBSCRIPTION_REPOSITORY, useClass: TypeOrmSubscriptionRepository },
+    PendingPlanScreening,
     AccountVerifiedListener,
     { provide: I_INVOICE_REPOSITORY, useClass: TypeOrmInvoiceRepository },
     {

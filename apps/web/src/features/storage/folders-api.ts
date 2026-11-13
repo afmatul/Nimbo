@@ -1,9 +1,9 @@
 import {
   folderContentsResponseSchema,
-  folderSummarySchema,
+  explorerFolderSchema,
   type CreateFolderInput,
   type FolderContentsResponse,
-  type FolderSummary,
+  type ExplorerFolder,
   type MoveFolderInput,
   type NodeSort,
   type RenameFolderInput,
@@ -28,10 +28,10 @@ export interface FolderPageQuery {
 export interface FoldersApi {
   /** Una página de la carpeta (`null` = raíz): carpetas primero, con las migas desde la raíz. */
   folderContents(folderId: string | null, page?: FolderPageQuery): Promise<FolderContentsResponse>;
-  createFolder(body: CreateFolderInput): Promise<FolderSummary>;
-  renameFolder(folderId: string, body: RenameFolderInput): Promise<FolderSummary>;
+  createFolder(body: CreateFolderInput): Promise<ExplorerFolder>;
+  renameFolder(folderId: string, body: RenameFolderInput): Promise<ExplorerFolder>;
   /** `parentId: null` mueve a la raíz. */
-  moveFolder(folderId: string, body: MoveFolderInput): Promise<FolderSummary>;
+  moveFolder(folderId: string, body: MoveFolderInput): Promise<ExplorerFolder>;
 }
 
 const folderPath = (folderId: string): string => `/folders/${encodeURIComponent(folderId)}`;
@@ -52,10 +52,10 @@ export function createFoldersApi(http: StorageHttp): FoldersApi {
         folderContentsResponseSchema,
       ),
     createFolder: async (body) =>
-      parseResponse(await http.post('/folders', body), folderSummarySchema),
+      parseResponse(await http.post('/folders', body), explorerFolderSchema),
     renameFolder: async (folderId, body) =>
-      parseResponse(await http.patch(folderPath(folderId), body), folderSummarySchema),
+      parseResponse(await http.patch(folderPath(folderId), body), explorerFolderSchema),
     moveFolder: async (folderId, body) =>
-      parseResponse(await http.post(`${folderPath(folderId)}/move`, body), folderSummarySchema),
+      parseResponse(await http.post(`${folderPath(folderId)}/move`, body), explorerFolderSchema),
   };
 }

@@ -3,6 +3,7 @@ import {
   INDEXING_REASONS,
   INDEXING_STATES,
   INTELLIGENCE_ERROR_CODES,
+  fileThumbnailResponseSchema,
   indexingRetryResponseSchema,
   indexingStatusChangedSchema,
   indexingStatusResponseSchema,
@@ -123,5 +124,20 @@ describe('contratos de `intelligence` (plan 019 §4)', () => {
     expect(
       indexingStatusChangedSchema.safeParse({ ...changed, state: null, reason: null }).success,
     ).toBe(false);
+  });
+});
+
+describe('miniatura de un .docx (`GET /files/:fileId/thumbnail`)', () => {
+  it('acepta un extracto, o null cuando no hay texto', () => {
+    expect(fileThumbnailResponseSchema.safeParse({ text: 'Acta de reunión' }).success).toBe(true);
+    expect(fileThumbnailResponseSchema.safeParse({ text: null }).success).toBe(true);
+  });
+
+  it('rechaza un extracto vacío o de más de 600 caracteres, y campos que no son suyos', () => {
+    expect(fileThumbnailResponseSchema.safeParse({ text: '' }).success).toBe(false);
+    expect(fileThumbnailResponseSchema.safeParse({ text: 'x'.repeat(601) }).success).toBe(false);
+    expect(fileThumbnailResponseSchema.safeParse({ text: 'a', name: 'acta.docx' }).success).toBe(
+      false,
+    );
   });
 });

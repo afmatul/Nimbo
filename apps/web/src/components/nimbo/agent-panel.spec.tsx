@@ -346,7 +346,7 @@ describe('AgentPanel (020b CA-1, CA-2, CA-3, CA-5, CA-17, CA-19)', () => {
 const QUOTA_NOTICE: AgentPanelNotice = {
   cause: 'Usaste tus 20 consultas de este mes. Se renuevan el 14 de noviembre.',
   fix: 'Mientras tanto, subir, descargar y buscar archivos funciona igual.',
-  link: { label: 'Ver planes', href: '/planes' },
+  link: { label: 'Ver planes', href: '/suscripcion/cambiar-plan' },
 };
 const READ_ONLY_QUOTA_NOTICE: AgentPanelNotice = {
   cause: 'Usaste tus 20 consultas de este mes.',
@@ -381,7 +381,7 @@ describe('AgentPanel: estados de fallo (020b CA-7, CA-8, CA-9, CA-16, RN-5)', ()
     expect(notice.textContent).toContain(QUOTA_NOTICE.fix);
     expect(screen.queryByRole('alert')).toBeNull();
     expect(within(notice).getByRole('link', { name: 'Ver planes' }).getAttribute('href')).toBe(
-      '/planes',
+      '/suscripcion/cambiar-plan',
     );
     const field = questionField();
     expect(field.hasAttribute('disabled')).toBe(true);

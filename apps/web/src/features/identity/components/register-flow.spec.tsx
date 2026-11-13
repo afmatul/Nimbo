@@ -7,8 +7,8 @@ import userEvent from '@testing-library/user-event';
 import { RegisterFlow } from './register-flow';
 
 const PLANS = [
-  { id: 'personal', name: 'Personal', priceCents: 0, free: true as const },
-  { id: 'pro', name: 'Profesional', priceCents: 45000, free: false as const },
+  { id: 'personal', slug: 'personal', name: 'Personal', priceCents: 0, free: true as const },
+  { id: 'pro', slug: 'pro', name: 'Profesional', priceCents: 45000, free: false as const },
 ];
 
 function jsonResponse(body: unknown, status: number): Response {
@@ -25,6 +25,7 @@ async function fillAccount(user: ReturnType<typeof userEvent.setup>): Promise<vo
   await user.type(screen.getByLabelText('Correo'), 'ana@ejemplo.com');
   await user.type(screen.getByLabelText('Contraseña'), 'UnaClaveSegura!1');
   await user.click(screen.getByRole('checkbox'));
+  await user.click(screen.getByRole('button', { name: 'Continuar' }));
 }
 
 describe('RegisterFlow', () => {
@@ -41,6 +42,16 @@ describe('RegisterFlow', () => {
 
     const steps = screen.getByRole('list', { name: 'Pasos del registro' });
     expect(steps.querySelector('[aria-current="step"]')?.textContent).toContain('Cuenta');
+  });
+
+  it('al continuar, el paso en curso es «Plan»', async () => {
+    const user = userEvent.setup();
+    render(<RegisterFlow apiPublicUrl="http://localhost/api/v1" plans={PLANS} />);
+
+    await fillAccount(user);
+
+    const steps = screen.getByRole('list', { name: 'Pasos del registro' });
+    expect(steps.querySelector('[aria-current="step"]')?.textContent).toContain('Plan');
   });
 
   it('al crear la cuenta muestra Revisa tu correo', async () => {
@@ -61,8 +72,8 @@ describe('RegisterFlow', () => {
     fetchMock.mockResolvedValue(jsonResponse({ status: 'accepted' }, 202));
     render(<RegisterFlow apiPublicUrl="http://localhost/api/v1" plans={PLANS} />);
 
-    await user.click(screen.getByRole('radio', { name: /Profesional/ }));
     await fillAccount(user);
+    await user.click(screen.getByRole('radio', { name: /Profesional/ }));
     await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
     expect(await screen.findByRole('heading', { name: 'Revisa tu correo' })).toBeTruthy();
 
@@ -79,6 +90,9 @@ describe('RegisterFlow', () => {
     expect((screen.getByLabelText('Correo') as HTMLInputElement).value).toBe('ana@ejemplo.com');
     expect((screen.getByLabelText('Contraseña') as HTMLInputElement).value).toBe('');
     expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(false);
+    await user.type(screen.getByLabelText('Contraseña'), 'UnaClaveSegura!1');
+    await user.click(screen.getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: 'Continuar' }));
     expect((screen.getByRole('radio', { name: /Profesional/ }) as HTMLInputElement).checked).toBe(
       true,
     );

@@ -54,6 +54,7 @@ export const FIELD_ISSUE_REASONS = [
   'WRONG_PASSWORD',
   'INVALID_EMPLOYEE_CODE',
   'INVALID_ROLE',
+  'INVALID_PLAN',
   'EMAIL_IN_USE',
   'EMPLOYEE_CODE_IN_USE',
 ] as const;
@@ -80,6 +81,7 @@ export const IDENTITY_FIELD_MESSAGES: Readonly<Record<FieldIssueReason, string>>
   WRONG_PASSWORD: 'La contraseña actual no es correcta.',
   INVALID_EMPLOYEE_CODE: `Usa de 1 a ${String(EMPLOYEE_CODE_MAX_LENGTH)} letras, números o guiones, por ejemplo SOP-014.`,
   INVALID_ROLE: 'Elige Administrador, Soporte u Operador.',
+  INVALID_PLAN: 'Elige un plan de la lista de planes y vuelve a intentarlo.',
   EMAIL_IN_USE: 'Este correo ya tiene una cuenta. Usa otro correo.',
   EMPLOYEE_CODE_IN_USE: 'Este código de empleado ya está en uso. Revísalo y vuelve a intentarlo.',
 };

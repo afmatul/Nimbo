@@ -265,7 +265,9 @@ describe('EditorView (016)', () => {
     await renderEditor(fakeApi(viewingSession('EDITING_PLAN_READ_ONLY', [], 0)));
 
     expect(screen.getAllByText('Tu plan no incluye edición').length).toBeGreaterThan(0);
-    expect(screen.getByRole('link', { name: 'Ver planes' }).getAttribute('href')).toBe('/planes');
+    expect(screen.getByRole('link', { name: 'Ver planes' }).getAttribute('href')).toBe(
+      '/suscripcion/cambiar-plan',
+    );
     expect(screen.queryByText(/de 0 editores/)).toBeNull();
     await expectAccessible();
   });

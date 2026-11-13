@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
 import {
-  fileSummarySchema,
+  explorerFileSchema,
   folderContentsResponseSchema,
-  folderSummarySchema,
+  explorerFolderSchema,
 } from '@nimbo/contracts';
 import type { FolderSummary } from '@nimbo/contracts';
 import type { Response } from 'supertest';
@@ -38,7 +38,7 @@ describe('archivos en carpetas por HTTP (006 CA-4, CA-7)', () => {
   const folder = async (client: StorageClient, name: string): Promise<FolderSummary> => {
     const response = await client.createFolder({ name, parentId: null });
     expect(response.status).toBe(201);
-    return folderSummarySchema.parse(response.body);
+    return explorerFolderSchema.parse(response.body);
   };
 
   const fileOf = async (
@@ -63,6 +63,12 @@ describe('archivos en carpetas por HTTP (006 CA-4, CA-7)', () => {
       .map((item) => item.id);
   };
 
+  const itemsIn = async (client: StorageClient, folderId: string) => {
+    const response = await client.folderContents({ folderId });
+    expect(response.status).toBe(200);
+    return folderContentsResponseSchema.parse(response.body).items;
+  };
+
   const expectError = (response: Response, status: number, code: string): ErrorBody => {
     expect(response.status).toBe(status);
     const body = response.body as ErrorBody;
@@ -77,11 +83,13 @@ describe('archivos en carpetas por HTTP (006 CA-4, CA-7)', () => {
       const response = await ana.renameFile(fileId, { name: 'Acta final.txt' });
 
       expect(response.status).toBe(200);
-      expect(fileSummarySchema.parse(response.body)).toMatchObject({
+      expect(explorerFileSchema.parse(response.body)).toMatchObject({
+        type: 'file',
         id: fileId,
         name: 'Acta final.txt',
         sizeBytes: Number(SIZE_BYTES),
         folderId: null,
+        shared: false,
       });
     });
 
@@ -97,7 +105,7 @@ describe('archivos en carpetas por HTTP (006 CA-4, CA-7)', () => {
         suggestedName: 'PLAN (1).txt',
       });
       expect(kept.status).toBe(200);
-      expect(fileSummarySchema.parse(kept.body).name).toBe('PLAN (1).txt');
+      expect(explorerFileSchema.parse(kept.body).name).toBe('PLAN (1).txt');
     });
 
     it('CA-4: un nombre inválido es 400 `STORAGE_INVALID_NODE_REQUEST`', async () => {
@@ -129,8 +137,9 @@ describe('archivos en carpetas por HTTP (006 CA-4, CA-7)', () => {
       const response = await client.moveFile(fileId, { folderId: destination.id });
 
       expect(response.status).toBe(200);
-      expect(fileSummarySchema.parse(response.body).folderId).toBe(destination.id);
-      await expect(fileIdsIn(client, destination.id)).resolves.toEqual([fileId]);
+      const moved = explorerFileSchema.parse(response.body);
+      expect(moved.folderId).toBe(destination.id);
+      await expect(itemsIn(client, destination.id)).resolves.toEqual([moved]);
       await expect(fileIdsIn(client)).resolves.toEqual([]);
       expect(await usedBytesOf(storage.owner, client.id)).toBe(usedBefore);
     });
@@ -142,7 +151,7 @@ describe('archivos en carpetas por HTTP (006 CA-4, CA-7)', () => {
       const response = await ana.moveFile(fileId, { folderId: null });
 
       expect(response.status).toBe(200);
-      expect(fileSummarySchema.parse(response.body).folderId).toBeNull();
+      expect(explorerFileSchema.parse(response.body).folderId).toBeNull();
     });
 
     it('CA-7: un nombre ocupado en el destino es 409 con `suggestedName`; con `keep_both` llega como «(n)»', async () => {
@@ -159,7 +168,7 @@ describe('archivos en carpetas por HTTP (006 CA-4, CA-7)', () => {
       expect(expectError(asked, 409, 'STORAGE_NAME_CONFLICT').details).toEqual({
         suggestedName: 'repetido (1).txt',
       });
-      expect(fileSummarySchema.parse(kept.body)).toMatchObject({
+      expect(explorerFileSchema.parse(kept.body)).toMatchObject({
         name: 'repetido (1).txt',
         folderId: destination.id,
       });

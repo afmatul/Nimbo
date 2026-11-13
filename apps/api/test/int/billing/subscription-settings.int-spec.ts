@@ -80,11 +80,19 @@ describe('ajustes de la suscripción y su vista (spec 010 CA-6, CA-16 a CA-19, C
 
     expect(scheduled.status).toBe(200);
     expect(scheduled.body).toMatchObject({
-      plan: { slug: 'equipo' },
-      pendingPlan: { slug: 'pro' },
-      pendingPlanDiscarded: false,
-      nextCharge: { planName: 'Pro' },
-      renewal: { available: false, unavailableReason: 'PLAN_CHANGE_PENDING' },
+      subscription: {
+        plan: { slug: 'equipo' },
+        pendingPlan: { slug: 'pro' },
+        pendingPlanDiscarded: false,
+        nextCharge: { planName: 'Pro' },
+        renewal: { available: false, unavailableReason: 'PLAN_CHANGE_PENDING' },
+      },
+      result: {
+        kind: 'SCHEDULED_FOR_NEXT_BILLING',
+        planSlug: 'pro',
+        planName: 'Pro',
+        effectiveAt: scheduled.body.subscription.expiresAt,
+      },
     });
     await expect(subscriptionOf(owner, carla.id)).resolves.toMatchObject({
       plan_id: TEAM_ID,
@@ -146,10 +154,13 @@ describe('ajustes de la suscripción y su vista (spec 010 CA-6, CA-16 a CA-19, C
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
-      plan: { slug: 'personal' },
-      expiresAt: null,
-      status: 'active',
-      renewal: null,
+      subscription: {
+        plan: { slug: 'personal' },
+        expiresAt: null,
+        status: 'active',
+        renewal: null,
+      },
+      result: { kind: 'APPLIED_IMMEDIATELY', planSlug: 'personal' },
     });
     await expect(subscriptionOf(owner, elena.id)).resolves.toMatchObject({
       plan_id: PERSONAL_ID,

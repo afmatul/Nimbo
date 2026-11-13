@@ -27,7 +27,7 @@ describe('BrandLogo: el logo de Nimbo en todas las cabeceras', () => {
     expect(screen.getByRole('link', { name: 'Nimbo' })).toBeTruthy();
   });
 
-  it('con sesión, el logo del AppLayout lleva al inicio del rol y no a la página de estado', () => {
+  it('con sesión, el logo del AppLayout lleva al inicio del rol y no a la raíz', () => {
     render(
       <HeaderAccountProvider account={null} homeHref="/archivos">
         <AppLayout>contenido</AppLayout>

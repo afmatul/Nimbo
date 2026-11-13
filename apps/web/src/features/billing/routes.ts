@@ -1,6 +1,3 @@
-/** Catálogo público de planes (008). */
-export const PLANS_PATH = '/planes';
-
 /** «Plan y facturación» del cliente (spec 009 CA-7, CA-8): plan vigente, pagos y facturas. */
 export const PLAN_AND_BILLING_PATH = '/suscripcion';
 

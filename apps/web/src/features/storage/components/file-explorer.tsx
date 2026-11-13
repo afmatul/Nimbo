@@ -8,6 +8,7 @@ import { StateView } from '../../../components/nimbo/state-view';
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../lib/utils';
 import type { ListControls } from '../hooks/use-folder-contents';
+import type { NodeSelection } from '../hooks/use-node-selection';
 import { isOwner } from '../node-access';
 import { orderLabel } from '../node-order';
 import { MY_FILES_LABEL } from '../routes';
@@ -47,6 +48,8 @@ export interface FileExplorerProps {
   readonly renderRowActions?: (node: NodeSummary) => React.ReactNode;
   /** Desglose de carpetas en la lista (CA-26); sin él, las carpetas solo se abren. */
   readonly disclosure?: FolderDisclosure | undefined;
+  /** Selección múltiple con casillas (mockup p. 12); sin ella la lista no las muestra. */
+  readonly selection?: NodeSelection | undefined;
   /** Aviso que va arriba de la lista (fallo de descarga, CA-21 de 005). */
   readonly notice?: React.ReactNode;
   /** Orden y «Cargar más» del listado (007); sin ellos la lista no se ordena ni pagina. */
@@ -245,6 +248,7 @@ function ExplorerContent(
         onUpload={props.onUpload}
         renderRowActions={props.renderRowActions}
         disclosure={props.disclosure}
+        selection={props.selection}
         controls={props.controls}
         defaultView={props.defaultView}
         onQuickLook={props.onQuickLook}
@@ -304,6 +308,7 @@ interface ExplorerBodyProps {
   readonly onUpload: () => void;
   readonly renderRowActions: FileExplorerProps['renderRowActions'] | undefined;
   readonly disclosure: FolderDisclosure | undefined;
+  readonly selection: NodeSelection | undefined;
   readonly controls: ListControls | undefined;
   readonly defaultView: NodesView | undefined;
   readonly onQuickLook: ((file: FileSummary) => void) | undefined;
@@ -324,8 +329,9 @@ function ExplorerBody(props: ExplorerBodyProps): React.JSX.Element {
     return <ExplorerErrorState title={title} onRetry={props.onRetry} />;
   }
   if (nodes.length === 0) return <EmptyExplorer {...props} />;
-  const { placeName, renderRowActions, disclosure } = props;
-  const table = { nodes, placeName, renderRowActions, disclosure, onQuickLook: props.onQuickLook };
+  const { placeName, renderRowActions, disclosure, selection } = props;
+  const onQuickLook = props.onQuickLook;
+  const table = { nodes, placeName, renderRowActions, disclosure, selection, onQuickLook };
   return <NodesPane table={table} controls={controls} defaultView={props.defaultView ?? 'lista'} />;
 }
 

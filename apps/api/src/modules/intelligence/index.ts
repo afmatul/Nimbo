@@ -12,3 +12,6 @@ export {
   requestIndexReconcile,
 } from './infrastructure/index-reconcile.scheduler';
 export { SqlContentMatchReader } from './infrastructure/persistence/sql-content-match.reader';
+// El estado de indexación del explorador de `storage` (`IIndexStatusReader`): lo enlaza la raíz.
+export { IndexStatusReaderModule } from './index-status-reader.module';
+export { SqlIndexStatusReader } from './infrastructure/persistence/sql-index-status.reader';

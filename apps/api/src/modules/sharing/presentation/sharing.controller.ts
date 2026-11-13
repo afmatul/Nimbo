@@ -11,16 +11,22 @@ import {
   Query,
   Res,
 } from '@nestjs/common';
-import { accessListQuerySchema, shareRequestSchema } from '@nimbo/contracts';
+import {
+  accessListQuerySchema,
+  batchShareRequestSchema,
+  shareRequestSchema,
+} from '@nimbo/contracts';
 import type {
   AccessEntry,
   AccessList as AccessListResponse,
   AccessListQuery,
+  BatchResult,
+  BatchShareRequest,
   ShareRequest,
 } from '@nimbo/contracts';
 import type { Response } from 'express';
 
-import { CurrentActor, Role, Roles, ZodValidationPipe } from '../../../shared';
+import { CurrentActor, Role, Roles, toBatchResult, ZodValidationPipe } from '../../../shared';
 import type { Actor, DomainError, FieldIssue } from '../../../shared';
 import { SharingService } from '../application/sharing.service';
 import { SharingInvalidLevelError, SharingInvalidRequestError } from '../domain/errors';
@@ -60,6 +66,18 @@ export class SharingController {
     const { access, change } = await this.sharing.share(actor, body);
     response.status(change === 'granted' ? HttpStatus.CREATED : HttpStatus.OK);
     return toAccessEntry({ ...access, origin: 'direct' });
+  }
+
+  /** Lote del explorador: los mismos permisos, tasa y auditoría que `POST /shares`, nodo por nodo; siempre `200`. */
+  @Post('batch')
+  @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', NO_STORE)
+  async shareMany(
+    @CurrentActor() actor: Actor,
+    @Body(new ZodValidationPipe(batchShareRequestSchema, invalidShareRequest))
+    body: BatchShareRequest,
+  ): Promise<BatchResult> {
+    return toBatchResult(await this.sharing.shareMany(actor, body));
   }
 
   /** CA-8: directos y heredados con su origen; `404` si el actor no es el propietario (CA-9). */

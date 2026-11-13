@@ -21,7 +21,8 @@ import { toRenewRequest } from '../payment-form-values';
 import { PLAN_AND_BILLING_PATH } from '../routes';
 import { renew } from '../subscription-api';
 
-import { ApprovedCard, PaymentScreen } from './payment-form';
+import { ApprovedCard } from './approved-card';
+import { PaymentScreen } from './payment-form';
 import type { PeriodNote } from './payment-summary';
 
 type Renewal = NonNullable<SubscriptionView['renewal']>;
@@ -83,10 +84,13 @@ export function RenewalForm({
       approved={(payment) => (
         <ApprovedCard
           message={`Renovaste tu plan ${payment.plan.name} hasta el ${longLastDayLabel(payment.expiresAt)}. Te enviamos el comprobante a ${payment.receiptEmail}.`}
-          facts={[
-            { label: 'Referencia', value: payment.reference },
-            { label: 'Periodo nuevo', value: paidRange(renewal, payment.expiresAt) },
-          ]}
+          receipt={{
+            payment,
+            facts: [
+              { label: 'Referencia', value: payment.reference },
+              { label: 'Periodo nuevo', value: paidRange(renewal, payment.expiresAt) },
+            ],
+          }}
           link={{ href: PLAN_AND_BILLING_PATH, label: 'Ir a Plan y facturación' }}
         />
       )}

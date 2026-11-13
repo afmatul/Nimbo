@@ -40,6 +40,7 @@ import { TRASH_PURGE_QUEUE, TrashPurgeScheduler } from './infrastructure/trash-p
 import { FileVersionsController } from './presentation/file-versions.controller';
 import { FilesController } from './presentation/files.controller';
 import { FoldersController } from './presentation/folders.controller';
+import { NodesBatchController } from './presentation/nodes-batch.controller';
 import { QuickAccessController } from './presentation/quick-access.controller';
 import { SpaceController } from './presentation/space.controller';
 import { TrashController } from './presentation/trash.controller';
@@ -121,12 +122,13 @@ describe('StorageModule', () => {
     expect(providers.map(tokenOf)).not.toContain(TrashPurgeProcessor);
   });
 
-  it('CA-17: monta los controladores de cargas, archivos, versiones, carpetas, papelera, accesos rápidos, espacio y búsqueda', () => {
+  it('CA-17: monta los controladores de cargas, archivos, versiones, carpetas, lotes, papelera, accesos rápidos, espacio y búsqueda', () => {
     expect(module.controllers).toEqual([
       UploadsController,
       FilesController,
       FileVersionsController,
       FoldersController,
+      NodesBatchController,
       TrashController,
       QuickAccessController,
       SpaceController,

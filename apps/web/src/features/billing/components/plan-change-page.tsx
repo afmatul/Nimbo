@@ -13,6 +13,7 @@ import { useSpace, type SpaceSummaryState } from '../../storage/components/space
 import { fetchBillingHistory } from '../billing-history-api';
 import { useBillingHistory } from '../hooks/use-billing-history';
 import { fetchPlanCatalogWithSession } from '../plan-catalog-api';
+import { planChangeMessage } from '../plan-change-result';
 import { PLAN_AND_BILLING_PATH } from '../routes';
 import { schedulePlanChange } from '../subscription-api';
 
@@ -33,29 +34,28 @@ export interface PlanChangePageProps {
   readonly apiPublicUrl: string;
   readonly authFetch: AuthFetch;
   readonly space: SpaceSummaryState;
-  /** Al programar, vuelve a «Plan y facturación», que ya muestra el cambio. */
+  /** Tras ver el resultado, vuelve a «Plan y facturación», que ya muestra el cambio. */
   readonly onScheduled: () => void;
 }
 
-function useScheduling({
-  apiPublicUrl,
-  authFetch,
-  onScheduled,
-}: Omit<PlanChangePageProps, 'space'>) {
+/** Programar el cambio: el mensaje de éxito (con la fecha en que se aplica) o el del error. */
+function useScheduling({ apiPublicUrl, authFetch }: Omit<PlanChangePageProps, 'space'>) {
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [success, setSuccess] = React.useState<string | null>(null);
   const onSchedule = React.useCallback(
     (plan: Plan) => {
       setPending(true);
       schedulePlanChange(apiPublicUrl, authFetch, plan.slug)
-        .then(onScheduled, (caught: unknown) =>
-          setError(messageForCode(toApiClientError(caught).code)),
+        .then(
+          ({ result }) => setSuccess(planChangeMessage(result)),
+          (caught: unknown) => setError(messageForCode(toApiClientError(caught).code)),
         )
         .finally(() => setPending(false));
     },
-    [apiPublicUrl, authFetch, onScheduled],
+    [apiPublicUrl, authFetch],
   );
-  return { pending, error, onSchedule, onDismissError: () => setError(null) };
+  return { pending, error, success, onSchedule, onDismissError: () => setError(null) };
 }
 
 /** El historial y el catálogo a la vez: la pantalla necesita los dos para marcar el plan actual. */
@@ -93,6 +93,7 @@ export function PlanChangePage(props: PlanChangePageProps): React.JSX.Element {
           history={state.history}
           plans={state.history.plans}
           usedBytes={space.status === 'ready' ? space.summary.usedBytes : null}
+          onDone={props.onScheduled}
           {...scheduling}
         />
       )}

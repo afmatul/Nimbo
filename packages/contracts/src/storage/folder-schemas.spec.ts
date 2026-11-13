@@ -5,6 +5,9 @@ import { toFieldIssues } from '../validation';
 import { STORAGE_NODE_FIELD_MESSAGES } from './error-codes';
 import {
   createFolderSchema,
+  explorerFileSchema,
+  explorerFolderSchema,
+  FILE_INDEX_STATUSES,
   fileDetailResponseSchema,
   folderContentsQuerySchema,
   folderContentsResponseSchema,
@@ -172,14 +175,62 @@ describe('contenido de una carpeta', () => {
       folder: { id: FOLDER_ID, name: 'Fotos' },
       breadcrumbs: [{ id: FOLDER_ID, name: 'Fotos' }],
       items: [
-        { type: 'folder', ...folder },
-        { type: 'file', ...file },
+        { type: 'folder', ...folder, shared: true },
+        { type: 'file', ...file, shared: false, indexStatus: 'indexed' },
       ],
       nextCursor: null,
       accessLevel: 'VIEWER',
     };
 
     expect(folderContentsResponseSchema.parse(response)).toEqual(response);
+  });
+
+  it('Explorador: cada elemento dice si está compartido y cada archivo su estado de indexación', () => {
+    const page = (items: unknown[]) => ({
+      folder: null,
+      breadcrumbs: [],
+      items,
+      nextCursor: null,
+      accessLevel: 'OWNER',
+    });
+
+    expect(FILE_INDEX_STATUSES).toEqual([
+      'pending',
+      'processing',
+      'indexed',
+      'failed',
+      'unsupported',
+    ]);
+    expect(
+      folderContentsResponseSchema.safeParse(page([{ type: 'folder', ...folder }])).success,
+    ).toBe(false);
+    expect(
+      folderContentsResponseSchema.safeParse(page([{ type: 'file', ...file, shared: true }]))
+        .success,
+    ).toBe(false);
+    expect(
+      folderContentsResponseSchema.safeParse(
+        page([{ type: 'file', ...file, shared: true, indexStatus: 'indexando' }]),
+      ).success,
+    ).toBe(false);
+    expect(
+      folderContentsResponseSchema.safeParse(
+        page([{ type: 'folder', ...folder, shared: false, indexStatus: 'indexed' }]),
+      ).success,
+    ).toBe(false);
+  });
+
+  it('Explorador: crear, renombrar y mover responden la carpeta o el archivo con sus distintivos', () => {
+    const explorerFolder = { type: 'folder', ...folder, shared: false };
+    const explorerFile = { type: 'file', ...file, shared: true, indexStatus: 'pending' };
+
+    expect(explorerFolderSchema.parse(explorerFolder)).toEqual(explorerFolder);
+    expect(explorerFileSchema.parse(explorerFile)).toEqual(explorerFile);
+    expect(explorerFolderSchema.safeParse(folder).success).toBe(false);
+    expect(explorerFileSchema.safeParse({ ...explorerFile, indexStatus: undefined }).success).toBe(
+      false,
+    );
+    expect(explorerFolderSchema.safeParse({ ...explorerFolder, extra: 1 }).success).toBe(false);
   });
 
   it('CA-5: en la raíz `folder` es `null` y no hay migas', () => {

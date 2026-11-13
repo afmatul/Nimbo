@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import {
   completeUploadResponseSchema,
   folderContentsResponseSchema,
-  folderSummarySchema,
+  explorerFolderSchema,
   initUploadResponseSchema,
 } from '@nimbo/contracts';
 
@@ -46,7 +46,7 @@ describe('POST /uploads con `folderId` (006 CA-6)', () => {
   const folderOf = async (client: StorageClient, name: string): Promise<string> => {
     const response = await client.createFolder({ name, parentId: null });
     expect(response.status).toBe(201);
-    return folderSummarySchema.parse(response.body).id;
+    return explorerFolderSchema.parse(response.body).id;
   };
 
   const start = async (

@@ -5,6 +5,7 @@ import { Mail } from 'lucide-react';
 import type { JSX, ReactNode } from 'react';
 
 import { IdentityCard } from '../../../components/nimbo/identity-card';
+import { SIGNUP_STEP } from '../../../components/nimbo/signup-steps';
 import { TextLink } from '../../../components/nimbo/text-link';
 import { Button } from '../../../components/ui/button';
 import { LOGIN_PATH } from '../routes';
@@ -81,7 +82,7 @@ export function CheckEmailPanel(props: CheckEmailPanelProps): JSX.Element {
       title="Revisa tu correo"
       icon={Mail}
       tone="info"
-      step={2}
+      step={SIGNUP_STEP.verification}
       description={
         <p className="text-sm text-secondary-foreground">
           Te enviamos un enlace a <EmailAddress email={email} /> para verificar tu correo. Ábrelo en

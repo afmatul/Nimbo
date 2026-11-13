@@ -1,7 +1,7 @@
 import type { SubscriptionSummary } from '../application/subscription-summary';
 import { aPlan } from '../application/testing/plans';
 
-import { toSubscriptionView } from './subscription-view.response';
+import { toPlanChangeResponse, toSubscriptionView } from './subscription-view.response';
 
 const TEAM = aPlan({
   id: '10000000-0000-4000-8000-000000000003',
@@ -79,5 +79,22 @@ describe('toSubscriptionView (spec 010 §6, CA-25)', () => {
       nextCharge: null,
       renewal: null,
     });
+  });
+});
+
+describe('toPlanChangeResponse (spec 010 CA-16)', () => {
+  it('CA-16: es un éxito con la vista nueva y el plan que rige desde la próxima fecha de cobro', () => {
+    const response = toPlanChangeResponse({
+      summary: SUMMARY,
+      change: { plan: PRO, effectiveAt: EXPIRES, appliedNow: false },
+    });
+
+    expect(response.result).toEqual({
+      kind: 'SCHEDULED_FOR_NEXT_BILLING',
+      planSlug: 'pro',
+      planName: 'Pro',
+      effectiveAt: EXPIRES.toISOString(),
+    });
+    expect(response.subscription).toEqual(toSubscriptionView(SUMMARY));
   });
 });

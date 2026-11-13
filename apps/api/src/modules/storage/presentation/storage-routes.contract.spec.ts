@@ -10,6 +10,7 @@ import {
 
 import { describeRoute, listRouteDeclarations } from '../../../../test/support/route-declarations';
 import { Role, ZodValidationPipe } from '../../../shared';
+import { ExplorerBadgeService } from '../application/explorer-badge.service';
 import { FileService } from '../application/file.service';
 import { SpaceSummaryService } from '../application/space-summary.service';
 import { UploadService } from '../application/upload.service';
@@ -46,6 +47,7 @@ describe('rutas de `storage` (CA-17)', () => {
       providers: [
         { provide: UploadService, useValue: {} },
         { provide: FileService, useValue: {} },
+        { provide: ExplorerBadgeService, useValue: {} },
         { provide: VersionHistoryService, useValue: {} },
         { provide: VersionRestoreService, useValue: {} },
       ],

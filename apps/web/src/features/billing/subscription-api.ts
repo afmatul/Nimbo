@@ -1,7 +1,9 @@
 import {
   paymentReceiptSchema,
+  planChangeResponseSchema,
   renewRequestSchema,
   subscriptionViewSchema,
+  type PlanChangeResponse,
   type RenewRequest,
   type RenewResponse,
   type SubscriptionView,
@@ -37,13 +39,22 @@ export const setAutoRenew = (
 ): Promise<SubscriptionView> =>
   send(apiPublicUrl, authFetch, { path: AUTO_RENEW_PATH, method: 'PUT', body: { enabled } });
 
-/** `PUT /billing/subscription/plan-change` (spec 010 CA-16, CA-17, CA-27): programa (o aplica ya) el plan del siguiente ciclo. */
-export const schedulePlanChange = (
+/**
+ * `PUT /billing/subscription/plan-change` (spec 010 CA-16, CA-17, CA-27): programa (o aplica ya) el plan del siguiente
+ * ciclo. Que se aplique en la próxima fecha de cobro es un resultado válido (`result.kind`), no un error.
+ */
+export async function schedulePlanChange(
   apiPublicUrl: string,
   authFetch: AuthFetch,
   planSlug: string,
-): Promise<SubscriptionView> =>
-  send(apiPublicUrl, authFetch, { path: PLAN_CHANGE_PATH, method: 'PUT', body: { planSlug } });
+): Promise<PlanChangeResponse> {
+  const raw = await authFetch(billingEndpoint(apiPublicUrl, PLAN_CHANGE_PATH), {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ planSlug }),
+  });
+  return planChangeResponseSchema.parse(raw);
+}
 
 /** `DELETE /billing/subscription/plan-change` (spec 010 CA-19): sin cambio programado es `404` con su código. */
 export const cancelPlanChange = (

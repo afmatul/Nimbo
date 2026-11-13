@@ -11,6 +11,7 @@ export class ClientUserBuilder {
   private isVerified = false;
   private isSuspended = false;
   private passwordHashPhc = '$argon2id$v=19$m=19456,t=2,p=1$c2FsdA$aGFzaA';
+  private pendingPlanSlug: string | null = null;
 
   withId(id: string): this {
     this.id = id;
@@ -24,6 +25,11 @@ export class ClientUserBuilder {
 
   withPasswordHash(phc: string): this {
     this.passwordHashPhc = phc;
+    return this;
+  }
+
+  withPendingPlan(slug: string): this {
+    this.pendingPlanSlug = slug;
     return this;
   }
 
@@ -47,6 +53,7 @@ export class ClientUserBuilder {
           email: verified.email,
           passwordHash: verified.passwordHash,
           acceptance: verified.acceptance,
+          pendingPlanSlug: verified.pendingPlanSlug,
           emailVerified: verified.emailVerified,
           status: AccountStatus.SUSPENDED,
         })
@@ -64,6 +71,7 @@ export class ClientUserBuilder {
         privacyVersion: '1.0',
         acceptedAt: new Date('2026-09-30T12:00:00.000Z'),
       }),
+      pendingPlanSlug: this.pendingPlanSlug,
     });
   }
 }

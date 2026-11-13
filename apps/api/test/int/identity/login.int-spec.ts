@@ -92,6 +92,7 @@ describe('POST /auth/login (CA-1 a CA-4)', () => {
       fullName: account.fullName,
       email: account.email,
       role: 'CLIENT',
+      pendingPlanSlug: null,
     });
     expect(setCookie(response.headers, 'nimbo_rt')).toBeDefined();
     expect(setCookie(response.headers, 'nimbo_did')).toBeDefined();

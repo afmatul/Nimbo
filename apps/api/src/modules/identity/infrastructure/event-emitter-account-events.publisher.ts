@@ -20,9 +20,9 @@ export class EventEmitterAccountEventsPublisher implements IAccountEventsPublish
   ) {}
 
   clientAccountVerified(event: ClientAccountVerifiedEvent): void {
-    const { userId } = event;
+    const { userId, pendingPlanSlug } = event;
     try {
-      this.emitter.emit(CLIENT_ACCOUNT_VERIFIED, { userId });
+      this.emitter.emit(CLIENT_ACCOUNT_VERIFIED, { userId, pendingPlanSlug });
     } catch {
       this.logger.warn({ event: 'identity.account_verified.publish_failed', userId });
       return;

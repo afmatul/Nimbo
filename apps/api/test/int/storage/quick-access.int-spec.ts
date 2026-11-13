@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import {
-  folderSummarySchema,
+  explorerFolderSchema,
   quickAccessItemSchema,
   quickAccessLimitMessage,
   quickAccessListSchema,
@@ -82,7 +82,7 @@ describe('accesos rápidos por HTTP (006 CA-27, CA-28)', () => {
   const folderOf = async (client: StorageClient, name: string, parentId: string | null = null) => {
     const response = await client.createFolder({ name, parentId });
     expect(response.status).toBe(201);
-    return folderSummarySchema.parse(response.body).id;
+    return explorerFolderSchema.parse(response.body).id;
   };
 
   const fileOf = async (client: StorageClient, name: string, folderId: string | null = null) =>

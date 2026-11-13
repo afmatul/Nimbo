@@ -124,6 +124,24 @@ describe('lo compartido abierto por el destinatario (012 CA-12, CA-13)', () => {
     expect(contents.accessLevel).toBe('VIEWER');
   });
 
+  it('Explorador: la propietaria ve «Compartido» en lo que compartió y cada archivo con su estado de indexación', async () => {
+    const contents = await contentsOf(ana);
+    const sharedOf = new Map(contents.items.map((item) => [item.id, item.shared]));
+
+    expect(sharedOf.get(tree.projects)).toBe(true);
+    expect(sharedOf.get(tree.report)).toBe(true);
+    expect(sharedOf.get(tree.privateFolder)).toBe(false);
+    expect(sharedOf.get(tree.privateFile)).toBe(false);
+    const files = contents.items.filter((item) => item.type === 'file');
+    expect(files.map((item) => item.indexStatus)).toEqual(files.map(() => 'pending'));
+  });
+
+  it('Explorador: en lo compartido con él, el destinatario no ve el distintivo «Compartido» del dueño', async () => {
+    const contents = await contentsOf(bruno, tree.projects);
+
+    expect(contents.items.map((item) => item.shared)).toEqual([false, false]);
+  });
+
   it('CA-13: en la subcarpeta, las migas siguen desde la compartida y manda el nivel mayor (directo EDITOR)', async () => {
     const contents = await contentsOf(bruno, tree.acme);
 

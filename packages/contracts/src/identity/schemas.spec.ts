@@ -134,6 +134,21 @@ describe('registerRequestSchema', () => {
     ).toEqual(['password:PASSWORD_COMMON']);
   });
 
+  it('registro con plan: acepta el `planSlug` elegido', () => {
+    const registration = { ...VALID_REGISTRATION, planSlug: 'pro' };
+
+    expect(registerRequestSchema.parse(registration)).toEqual(registration);
+  });
+
+  it.each(['', '   ', 'a'.repeat(51), 42, null])(
+    'registro con plan: `planSlug` %p es `INVALID_PLAN`',
+    (planSlug) => {
+      expect(reasonsOf(registerRequestSchema, { ...VALID_REGISTRATION, planSlug })).toEqual([
+        'planSlug:INVALID_PLAN',
+      ]);
+    },
+  );
+
   it.each(['rol', 'role', 'correoVerificado', 'estado', 'version', 'plan', 'planId'])(
     'CA-7: el campo no declarado `%s` es `UNKNOWN_FIELD`',
     (key) => {
@@ -390,12 +405,25 @@ const VALID_SESSION = {
     fullName: 'Ana López',
     email: 'ana@nimbo.me',
     role: 'CLIENT',
+    pendingPlanSlug: null,
   },
 };
 
 describe('sessionResponseSchema', () => {
-  it('CA-1: acepta `{ accessToken, accessTokenExpiresAt, user: { id, fullName, email, role } }`', () => {
+  it('CA-1: acepta `{ accessToken, accessTokenExpiresAt, user: { id, fullName, email, role, pendingPlanSlug } }`', () => {
     expect(sessionResponseSchema.parse(VALID_SESSION)).toEqual(VALID_SESSION);
+  });
+
+  it('registro con plan: acepta el plan pendiente de la cuenta', () => {
+    const session = { ...VALID_SESSION, user: { ...VALID_SESSION.user, pendingPlanSlug: 'pro' } };
+
+    expect(sessionResponseSchema.parse(session)).toEqual(session);
+  });
+
+  it('registro con plan: el `user` siempre trae `pendingPlanSlug`', () => {
+    const { pendingPlanSlug: _omitted, ...user } = VALID_SESSION.user;
+
+    expect(sessionResponseSchema.safeParse({ ...VALID_SESSION, user }).success).toBe(false);
   });
 
   it.each(['2026-09-30T09:15:00-06:00', '2026-09-30', 'mañana'])(

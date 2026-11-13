@@ -7,6 +7,7 @@ import type { Module as NestModule } from '@nestjs/core/injector/module';
 
 import { AppModule } from '../../../src/app.module';
 import { ContentMatchBindingModule } from '../../../src/content-match-binding.module';
+import { ExplorerBadgesBindingModule } from '../../../src/explorer-badges-binding.module';
 import {
   I_PLAN_LIMITS_PROVIDER,
   StorageModule,
@@ -55,6 +56,7 @@ describe('composición de `StoragePreviewFacade` (017 plan §2.3)', () => {
       modules: [
         PlanLimitsBindingModule,
         ContentMatchBindingModule,
+        ExplorerBadgesBindingModule,
         storageModule,
         ConsumerModule.register(storageModule),
       ],

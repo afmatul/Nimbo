@@ -57,6 +57,8 @@ export type {
 export { I_PASSWORD_HASHER } from './application/security/i-password-hasher.port';
 export type { IPasswordHasher } from './application/security/i-password-hasher.port';
 export { attemptEach } from './application/batch/attempt-each';
+export { settleEach } from './application/batch/settle-each';
+export type { Settlement } from './application/batch/settle-each';
 export type { BatchFailure } from './application/batch/attempt-each';
 export { IncompleteBatchError } from './application/batch/incomplete-batch.error';
 export { HealthModule } from './health.module';
@@ -107,6 +109,7 @@ export { Roles, ROLES_KEY } from './presentation/auth/roles.decorator';
 export { DomainExceptionFilter } from './presentation/domain-exception.filter';
 export { VersionHeaderMiddleware } from './presentation/version-header.middleware';
 export { ZodValidationPipe } from './presentation/zod-validation.pipe';
+export { toBatchFailures, toBatchResult } from './presentation/batch-result.response';
 export type { InvalidInputFactory } from './presentation/zod-validation.pipe';
 export { attachMetricsRoute, startMetricsServer } from './infrastructure/metrics/metrics.module';
 export { SharedModule } from './shared.module';

@@ -45,6 +45,27 @@ describe('SmtpTransport contra Mailpit (CA-1, CA-21)', () => {
     expect(received.HTML).toContain('http://localhost/verificar-correo#token=abc');
   });
 
+  it('009 CA-6: Mailpit recibe el adjunto `application/pdf` con su nombre y tamaño', async () => {
+    const pdf = Buffer.from('%PDF-1.3 factura de prueba');
+    const attachment = {
+      filename: 'factura-NB-2026-0042.pdf',
+      contentType: 'application/pdf',
+      contentBase64: pdf.toString('base64'),
+    };
+
+    await new SmtpTransport(env).deliver({ ...message, attachment }, JOB_ID);
+
+    const [summary] = await waitForMessages(1);
+    const received = await getMessage(summary?.ID ?? '');
+    expect(received.Attachments).toEqual([
+      expect.objectContaining({
+        FileName: 'factura-NB-2026-0042.pdf',
+        ContentType: 'application/pdf',
+        Size: pdf.length,
+      }),
+    ]);
+  });
+
   it('CA-21: `Message-ID = <jobId@nimbo.me>`', async () => {
     await new SmtpTransport(env).deliver(message, JOB_ID);
 

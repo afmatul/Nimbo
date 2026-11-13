@@ -41,12 +41,13 @@ describe('IDENTITY_ERROR_CODES', () => {
 });
 
 describe('FIELD_ISSUE_REASONS', () => {
-  it('CA-5/CA-6 (001), CA-23 y 011 CA-6: declara los `reason` de identity', () => {
+  it('CA-5/CA-6 (001), CA-23 y 011 CA-6 y registro con plan: declara los `reason` de identity', () => {
     expect([...FIELD_ISSUE_REASONS].sort()).toEqual([
       'EMAIL_IN_USE',
       'EMPLOYEE_CODE_IN_USE',
       'INVALID_EMAIL',
       'INVALID_EMPLOYEE_CODE',
+      'INVALID_PLAN',
       'INVALID_ROLE',
       'PASSWORD_COMMON',
       'PASSWORD_EQUALS_EMAIL',

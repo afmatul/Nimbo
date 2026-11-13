@@ -3,7 +3,7 @@ import { INTELLIGENCE_ERROR_CODES, type AgentStatusResponse } from '@nimbo/contr
 import type { AgentPanelNotice } from '../../components/nimbo/agent-panel';
 import type { ApiErrorDetails } from '../../lib/api-error';
 import { agentMessage, messageForCode } from '../../lib/error-catalog';
-import { PLANS_PATH, RENEW_PATH } from '../billing';
+import { CHANGE_PLAN_PATH, RENEW_PATH } from '../billing';
 
 import type { AgentFailure, ConversationState } from './agent-conversation';
 import type { AgentScreen } from './agent-screen';
@@ -30,7 +30,7 @@ function quotaNotice(state: ConversationState): AgentPanelNotice | null {
   if (message === null) return null;
   const link =
     typeof details['resetsAt'] === 'string'
-      ? ({ label: 'Ver planes', href: PLANS_PATH } as const)
+      ? ({ label: 'Ver planes', href: CHANGE_PLAN_PATH } as const)
       : ({ label: 'Renovar plan', href: RENEW_PATH } as const);
   return { ...message, link };
 }

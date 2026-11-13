@@ -20,6 +20,10 @@ const POLICY = 'evento_auditoria_salir_comparticion';
 const NEXT_MIGRATIONS = [
   'CarpetaDelMismoPropietario20261101100400',
   'CrearEnlacePublico20261102100000',
+  'CorregirLimitesDePlanesAUnidadesDecimales20261104100000',
+  'UnaSesionActivaPorDispositivo20261104100100',
+  'CrearMiniaturaDeDocumento20261112100000',
+  'AgregarPlanPendienteAUsuario20261113100000',
 ];
 
 /** Lo que el caso de uso de Salir escribe (CA-23, S-8); cada prueba cambia solo lo que quiere falsear. */

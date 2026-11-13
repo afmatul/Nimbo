@@ -10,7 +10,7 @@ import { SessionAccountMenu } from './session-account-menu';
 
 /**
  * Cabecera del grupo con sesión (CA-14): el menú de la cuenta, único lugar para cerrar la sesión en las pantallas, y el
- * logo que lleva al inicio del rol (Mis archivos o el área interna, 003 D-5) en vez de a la página de estado.
+ * logo que lleva al inicio del rol (Mis archivos o el área interna, 003 D-5) en vez de a la raíz `/`.
  */
 export function SessionHeaderProvider({ children }: { readonly children: ReactNode }): JSX.Element {
   const { user } = useSession();

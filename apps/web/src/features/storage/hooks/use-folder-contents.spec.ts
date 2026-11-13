@@ -4,7 +4,7 @@
 import {
   folderContentsResponseSchema,
   type FolderContentsResponse,
-  type NodeSummary,
+  type ExplorerNode,
 } from '@nimbo/contracts';
 import { act, renderHook } from '@testing-library/react';
 
@@ -16,7 +16,7 @@ import { useFolderContents, type LoadFolderContents } from './use-folder-content
 const AT = '2026-09-30T10:00:00.000Z';
 const FOLDER_ID = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
 
-function folderNode(n: number): NodeSummary {
+function folderNode(n: number): ExplorerNode {
   const id = `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
   return {
     type: 'folder',
@@ -25,10 +25,11 @@ function folderNode(n: number): NodeSummary {
     parentId: null,
     createdAt: AT,
     updatedAt: AT,
+    shared: false,
   };
 }
 
-function fileNode(n: number): NodeSummary {
+function fileNode(n: number): ExplorerNode {
   const id = `00000000-0000-4000-9000-${String(n).padStart(12, '0')}`;
   return {
     type: 'file',
@@ -39,11 +40,13 @@ function fileNode(n: number): NodeSummary {
     folderId: null,
     createdAt: AT,
     updatedAt: AT,
+    shared: false,
+    indexStatus: 'indexed',
   };
 }
 
 /** Respuesta simulada validada con el esquema de `contracts` (la API de orden, A T-04, aún no está). */
-function page(items: readonly NodeSummary[], nextCursor: string | null): FolderContentsResponse {
+function page(items: readonly ExplorerNode[], nextCursor: string | null): FolderContentsResponse {
   return folderContentsResponseSchema.parse({
     folder: null,
     breadcrumbs: [],

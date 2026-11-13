@@ -2,8 +2,9 @@
 
 import { useState, type JSX } from 'react';
 
-import { SignupSteps } from '../../../components/nimbo/signup-steps';
+import { SIGNUP_STEP, SignupSteps } from '../../../components/nimbo/signup-steps';
 import { saveChosenPlan } from '../chosen-plan-storage';
+import type { RegisterPhase } from '../hooks/use-register-form';
 
 import { CheckEmailPanel } from './check-email-panel';
 import type { CatalogPlan } from './plan-picker';
@@ -14,6 +15,8 @@ export interface RegisterFlowProps {
   readonly apiPublicUrl: string;
   readonly plans: readonly CatalogPlan[];
   readonly unavailable?: boolean;
+  /** Plan elegido en el catálogo público (`/registro?plan=…`), por `slug`. */
+  readonly initialPlanSlug?: string | undefined;
 }
 
 interface Draft {
@@ -27,9 +30,12 @@ export function RegisterFlow({
   apiPublicUrl,
   plans,
   unavailable = false,
+  initialPlanSlug,
 }: RegisterFlowProps): JSX.Element {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [sentEmail, setSentEmail] = useState<string | null>(null);
+  const [phase, setPhase] = useState<RegisterPhase>('account');
+  const initialPlanId = plans.find((plan) => plan.slug === initialPlanSlug)?.id;
 
   if (sentEmail !== null) {
     return (
@@ -44,7 +50,7 @@ export function RegisterFlow({
       aria-labelledby="crear-cuenta"
       className="mx-auto w-full max-w-lg space-y-6 px-4 py-10"
     >
-      <SignupSteps current={1} />
+      <SignupSteps current={SIGNUP_STEP[phase]} />
       <div className="space-y-1">
         <h1 id="crear-cuenta" className="text-2xl font-semibold text-foreground">
           Crea tu cuenta
@@ -59,7 +65,8 @@ export function RegisterFlow({
         unavailable={unavailable}
         defaultFullName={draft?.fullName ?? ''}
         defaultEmail={draft?.email ?? ''}
-        defaultPlanId={draft?.planId}
+        defaultPlanId={draft?.planId ?? initialPlanId}
+        onStepChange={setPhase}
         onSuccess={(result) => {
           const chosen = plans.find((plan) => plan.id === result.planId);
           if (chosen !== undefined && !chosen.free) {
@@ -70,6 +77,7 @@ export function RegisterFlow({
             );
           }
           setDraft(result);
+          setPhase('account');
           setSentEmail(result.email);
         }}
       />

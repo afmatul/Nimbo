@@ -1,6 +1,8 @@
-import type { SubscriptionView } from '@nimbo/contracts';
+import type { PlanChangeResponse, SubscriptionView } from '@nimbo/contracts';
 
+import type { PlanChangeOutcome } from '../application/subscription-settings.service';
 import type { SubscriptionSummary } from '../application/subscription-summary';
+import { BillingInvariantError } from '../domain/errors/billing-invariant.error';
 
 import { toPlanResponse } from './plan.response';
 
@@ -45,4 +47,25 @@ export const toSubscriptionView = (summary: SubscriptionSummary): SubscriptionVi
   pendingPlanDiscarded: summary.pendingPlanDiscarded,
   nextCharge: toNextChargeView(summary.nextCharge),
   renewal: toRenewalView(summary.renewal),
+});
+
+/** Después de un ajuste la fila siempre existe (el servicio la garantiza antes de bloquear). */
+export const toAdjustedView = (summary: SubscriptionSummary | null): SubscriptionView => {
+  if (summary === null)
+    throw new BillingInvariantError('Un ajuste de la suscripción siempre deja su fila.');
+  return toSubscriptionView(summary);
+};
+
+/** CA-16 a CA-18, CA-27: programar un cambio es un éxito; la web confirma el plan y desde cuándo rige. */
+export const toPlanChangeResponse = ({
+  summary,
+  change,
+}: PlanChangeOutcome): PlanChangeResponse => ({
+  subscription: toAdjustedView(summary),
+  result: {
+    kind: change.appliedNow ? 'APPLIED_IMMEDIATELY' : 'SCHEDULED_FOR_NEXT_BILLING',
+    planSlug: change.plan.slug,
+    planName: change.plan.name,
+    effectiveAt: change.effectiveAt.toISOString(),
+  },
 });

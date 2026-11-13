@@ -28,6 +28,13 @@ const LEAVE_AUDIT_MIGRATION = 'AuditoriaAlSalirDeComparticion20261101100300';
 const SAME_OWNER_FOLDER_MIGRATION = 'CarpetaDelMismoPropietario20261101100400';
 const PUBLIC_LINK_MIGRATION = 'CrearEnlacePublico20261102100000';
 const PUBLIC_LINK_FUNCTION = 'enlace_por_token(character)';
+/** Las migraciones posteriores a la de enlaces públicos: `revertFrom` también las revierte. */
+const LATER_MIGRATIONS = [
+  'CorregirLimitesDePlanesAUnidadesDecimales20261104100000',
+  'UnaSesionActivaPorDispositivo20261104100100',
+  'CrearMiniaturaDeDocumento20261112100000',
+  'AgregarPlanPendienteAUsuario20261113100000',
+] as const;
 
 /** Lo que crea la migración de 013: tabla, índices, restricciones, políticas (con sus roles), RLS y función. */
 const PUBLIC_LINK_SCHEMA_SQL = `SELECT
@@ -286,6 +293,7 @@ describe('migraciones de `sharing` con dueño NOSUPERUSER (planes 012 §3 y 013 
       LEAVE_AUDIT_MIGRATION,
       SAME_OWNER_FOLDER_MIGRATION,
       PUBLIC_LINK_MIGRATION,
+      ...LATER_MIGRATIONS,
     ]);
     expect(names(before)).toEqual(
       expect.arrayContaining([
@@ -332,6 +340,7 @@ describe('migraciones de `sharing` con dueño NOSUPERUSER (planes 012 §3 y 013 
       LEAVE_AUDIT_MIGRATION,
       SAME_OWNER_FOLDER_MIGRATION,
       PUBLIC_LINK_MIGRATION,
+      ...LATER_MIGRATIONS,
     ]);
     expect(created(before)).toEqual(EDITING_POLICIES);
     expect(restrictive(before)).toEqual(RESTRICTIVE_SESSION_POLICIES);
@@ -353,7 +362,11 @@ describe('migraciones de `sharing` con dueño NOSUPERUSER (planes 012 §3 y 013 
     const afterDown = await constraintsOf();
     await owner.runMigrations({ transaction: 'each' });
 
-    expect(reverted).toEqual([SAME_OWNER_FOLDER_MIGRATION, PUBLIC_LINK_MIGRATION]);
+    expect(reverted).toEqual([
+      SAME_OWNER_FOLDER_MIGRATION,
+      PUBLIC_LINK_MIGRATION,
+      ...LATER_MIGRATIONS,
+    ]);
     expect(before).toEqual([
       'fk_archivo_carpeta_propietario: FOREIGN KEY (carpeta_id, propietario_id) REFERENCES carpeta(id, propietario_id) ON DELETE SET NULL (carpeta_id)',
       'fk_archivo_eliminado_con_propietario: FOREIGN KEY (eliminado_con_carpeta_id, propietario_id) REFERENCES carpeta(id, propietario_id)',
@@ -379,7 +392,7 @@ describe('migraciones de `sharing` con dueño NOSUPERUSER (planes 012 §3 y 013 
     const afterDown = await schemaOf();
     await owner.runMigrations({ transaction: 'each' });
 
-    expect(reverted).toEqual([PUBLIC_LINK_MIGRATION]);
+    expect(reverted).toEqual([PUBLIC_LINK_MIGRATION, ...LATER_MIGRATIONS]);
     expect(before).toEqual({
       tabla: 'enlace_publico',
       indices: [
@@ -543,7 +556,11 @@ describe('migraciones de `sharing` con dueño NOSUPERUSER (planes 012 §3 y 013 
       const reverted = await revertFrom(owner, SAME_OWNER_FOLDER_MIGRATION);
       await owner.runMigrations({ transaction: 'each' });
 
-      expect(reverted).toEqual([SAME_OWNER_FOLDER_MIGRATION, PUBLIC_LINK_MIGRATION]);
+      expect(reverted).toEqual([
+        SAME_OWNER_FOLDER_MIGRATION,
+        PUBLIC_LINK_MIGRATION,
+        ...LATER_MIGRATIONS,
+      ]);
       expect(await rlsOf(owner, 'archivo')).toMatchObject({ forced: true });
       expect(await rlsOf(owner, 'carpeta')).toMatchObject({ forced: true });
     });

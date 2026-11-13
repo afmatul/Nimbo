@@ -1,4 +1,5 @@
 import { ContentMatchBindingModule } from '../../../src/content-match-binding.module';
+import { ExplorerBadgesBindingModule } from '../../../src/explorer-badges-binding.module';
 import { BillingHttpModule } from '../../../src/modules/billing';
 import { StorageModule } from '../../../src/modules/storage';
 import { PlanLimitsBindingModule } from '../../../src/plan-limits-binding.module';
@@ -21,6 +22,7 @@ export const createBillingHttpApp = async (
     modules: [
       PlanLimitsBindingModule,
       ContentMatchBindingModule,
+      ExplorerBadgesBindingModule,
       storage,
       BillingHttpModule.forRoot(env, storage),
     ],

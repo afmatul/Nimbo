@@ -30,6 +30,7 @@ function contentsOf(folderId: string | null): Promise<FolderContentsResponse> {
     breadcrumbs: [],
     items: folders.map((folder) => ({
       type: 'folder' as const,
+      shared: false,
       ...folder,
       parentId: folderId,
       createdAt: AT,

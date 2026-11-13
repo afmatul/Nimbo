@@ -5,7 +5,6 @@ import type { NodeSummary } from '@nimbo/contracts';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-import { FileBadgeProvider } from './node-badge';
 import { NodeCards } from './node-cards';
 import { ThumbnailProvider } from './node-thumbnail';
 
@@ -110,14 +109,18 @@ describe('NodeCards', () => {
     ).toBe('modelo.pdf');
   });
 
-  it('con un renderizador de insignias, la tarjeta del archivo la muestra en su esquina', () => {
-    render(
-      <FileBadgeProvider value={(file) => <span data-testid="insignia">{file.name}</span>}>
-        <NodeCards nodes={[PDF]} placeName="Mis archivos" renderRowActions={undefined} />
-      </FileBadgeProvider>,
-    );
-    expect(
-      within(screen.getByTestId('file-card-preview')).getByTestId('insignia').textContent,
-    ).toBe('modelo.pdf');
+  it('muestra las mismas marcas que la lista: indexación de cada archivo y «Compartido/a»', () => {
+    const file = { ...PDF, shared: true, indexStatus: 'indexed' } as unknown as NodeSummary;
+    const folder = { ...FOLDER, shared: true } as unknown as NodeSummary;
+    renderCards([folder, file]);
+    expect(screen.getByText('Indexado')).toBeTruthy();
+    expect(screen.getByText('Compartido')).toBeTruthy();
+    expect(screen.getByText('Compartida')).toBeTruthy();
+  });
+
+  it('sin marcas en el listado (recién creado en la pestaña) no dibuja nada extra', () => {
+    renderCards([FOLDER, PDF]);
+    expect(screen.queryByText('Indexado')).toBeNull();
+    expect(screen.queryByText(/Compartid/)).toBeNull();
   });
 });

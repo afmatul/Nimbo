@@ -119,6 +119,21 @@ describe('checkEnvExample (CA-19)', () => {
     });
   });
 
+  it('CA-19: el grupo `seed` exige `SEED_ON_START` y `SEED_DEMO_PASSWORD` en `.env.example`', () => {
+    const real = collectSchemaKeys();
+    const exampleKeys = new Set(
+      [...parseEnvExample(readFileSync(join(ROOT, '.env.example'), 'utf8'))].filter(
+        (key) => key !== 'SEED_DEMO_PASSWORD',
+      ),
+    );
+
+    expect(real.schemas['seed']).toEqual(['SEED_ON_START', 'SEED_DEMO_PASSWORD']);
+    expect(checkEnvExample({ exampleKeys, ...real })).toEqual({
+      ok: false,
+      problems: ['`SEED_DEMO_PASSWORD` (seed) falta en .env.example'],
+    });
+  });
+
   it('CA-19: `NEXT_PUBLIC_SMTP_PASSWORD` expone el secreto SMTP del worker (001 plan §6.10)', () => {
     const real = collectSchemaKeys();
     const exampleKeys = new Set([

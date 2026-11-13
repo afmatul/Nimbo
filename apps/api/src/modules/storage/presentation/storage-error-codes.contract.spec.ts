@@ -27,6 +27,7 @@ import {
   UploadSizeMismatchError,
   VersionAlreadyCurrentError,
   AccountReadOnlyError,
+  BatchTooLargeError,
   VersionNotFoundError,
 } from '../domain/errors';
 
@@ -34,6 +35,7 @@ const format = (bytes: number): string => String(bytes);
 
 /** Una instancia de cada error de `storage`. El dominio no importa `contracts`: el contrato se prueba aquí. */
 const ALL_ERRORS: readonly DomainError[] = [
+  new BatchTooLargeError(100),
   new InvalidUploadRequestError([]),
   new InvalidQueryError([]),
   new EmptyFileError(),

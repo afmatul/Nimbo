@@ -3,11 +3,14 @@ import type { JSX } from 'react';
 
 import { cn } from '../../lib/utils';
 
-const STEPS = ['Cuenta', 'Verificación', 'Listo'] as const;
+const STEPS = ['Cuenta', 'Plan', 'Verificación', 'Listo'] as const;
 
-export type SignupStep = 1 | 2 | 3;
+export type SignupStep = 1 | 2 | 3 | 4;
 
-/** «Listo» es el último paso: al llegar a él, el registro terminó y los tres se ven completados. */
+/** Paso de cada pantalla del registro, por nombre (sin números sueltos en las vistas). */
+export const SIGNUP_STEP = { account: 1, plan: 2, verification: 3, done: 4 } as const;
+
+/** «Listo» es el último paso: al llegar a él, el registro terminó y todos se ven completados. */
 function isDone(step: number, current: SignupStep): boolean {
   return step < current || current === STEPS.length;
 }
@@ -36,7 +39,7 @@ function StepMarker({
   );
 }
 
-/** Indicador «1 Cuenta · 2 Verificación · 3 Listo» de las pantallas de registro (mockups de 001). */
+/** Indicador «1 Cuenta · 2 Plan · 3 Verificación · 4 Listo» de las pantallas de registro (mockups de 001). */
 export function SignupSteps({ current }: { readonly current: SignupStep }): JSX.Element {
   return (
     <ol aria-label="Pasos del registro" className="flex w-full items-center gap-2 text-sm">

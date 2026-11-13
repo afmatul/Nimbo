@@ -29,6 +29,8 @@ export { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
 export { invoiceObjectKey } from './domain/invoice-object-key';
 export type { IObjectStorage, PutObjectInput } from './application/ports/i-object-storage.port';
 export { StorageFacadesWorkerModule } from './storage-facades-worker.module';
+// La semilla de demostración (`src/seed`) sube los objetos de sus archivos con el mismo adaptador que los `worker`.
+export { WORKER_OBJECT_STORAGE_PROVIDER } from './worker-object-storage.provider';
 export { StorageWorkerModule } from './storage-worker.module';
 // 019 (RN-11, ADR-0019): el evento de versión vigente lo exporta su productor; `intelligence` lo escucha y lee por la
 // fachada `IndexableFileGateway`.
@@ -65,3 +67,14 @@ export type {
   ContentMatchRequest,
   IContentMatchReader,
 } from './search/application/ports/i-content-match-reader.port';
+// Explorador: los puertos de los distintivos «Compartido» (`sharing`) e indexación (`intelligence`); los enlaza la raíz.
+export {
+  I_INDEX_STATUS_READER,
+  I_SHARED_NODE_READER,
+} from './application/ports/i-node-badge-readers.port';
+export type {
+  IIndexStatusReader,
+  IndexedFileRef,
+  ISharedNodeReader,
+  NodeRef,
+} from './application/ports/i-node-badge-readers.port';

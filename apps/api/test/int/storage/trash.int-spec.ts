@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import {
   folderContentsResponseSchema,
-  folderSummarySchema,
+  explorerFolderSchema,
   listTrashResponseSchema,
   restoreResponseSchema,
   trashItemSchema,
@@ -87,7 +87,7 @@ describe('papelera por HTTP (006 CA-10 a CA-16, CA-24)', () => {
   const folder = async (name: string, parentId: string | null = null): Promise<FolderSummary> => {
     const response = await ana.createFolder({ name, parentId });
     expect(response.status).toBe(201);
-    return folderSummarySchema.parse(response.body);
+    return explorerFolderSchema.parse(response.body);
   };
 
   const file = async (

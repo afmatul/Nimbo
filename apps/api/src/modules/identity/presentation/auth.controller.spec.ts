@@ -101,6 +101,24 @@ describe('AuthController', () => {
     });
   });
 
+  it('registro con plan: `register` delega el `planSlug` elegido', async () => {
+    const response = await post('register', { ...REGISTRATION, planSlug: 'pro' });
+
+    expect(response.status).toBe(202);
+    expect(service.register).toHaveBeenCalledWith(expect.objectContaining({ planSlug: 'pro' }));
+  });
+
+  it('registro con plan: un `planSlug` inválido es `IDENTITY_INVALID_INPUT` sin llamar al servicio', async () => {
+    const response = await post('register', { ...REGISTRATION, planSlug: 'a'.repeat(51) });
+
+    expect(response.status).toBe(422);
+    expect(response.body).toMatchObject({
+      code: 'IDENTITY_INVALID_INPUT',
+      fields: [{ field: 'planSlug', reason: 'INVALID_PLAN' }],
+    });
+    expect(service.register).not.toHaveBeenCalled();
+  });
+
   it('CA-5: una contraseña débil responde `IDENTITY_WEAK_PASSWORD` sin llamar al servicio', async () => {
     const response = await post('register', { ...REGISTRATION, password: 'corta' });
 

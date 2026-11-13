@@ -9,8 +9,9 @@ import {
   I_RATE_LIMITER,
   I_TRANSACTION_RUNNER,
   RateLimitExceededError,
+  settleEach,
 } from '../../../shared';
-import type { Actor, IClock, IRateLimiter, ITransactionRunner } from '../../../shared';
+import type { Actor, IClock, IRateLimiter, ITransactionRunner, Settlement } from '../../../shared';
 import { Action, PermissionResolver } from '../../access';
 import { AuditAction, I_AUDIT_LOGGER } from '../../audit';
 import type { IAuditLogger } from '../../audit';
@@ -37,6 +38,13 @@ const SHARE_RATE_KEY_PREFIX = 'sharing:share:';
 export interface ShareCommand {
   readonly nodeType: ShareNodeType;
   readonly nodeId: string;
+  readonly email: string;
+  readonly level: string;
+}
+
+/** `POST /shares/batch`: varios nodos con la misma persona y el mismo nivel. */
+export interface BatchShareCommand {
+  readonly items: readonly SharedNodeRef[];
   readonly email: string;
   readonly level: string;
 }
@@ -105,6 +113,14 @@ export class SharingService {
    * CA-1 a CA-7 (plan §5): límite → nodo con `SHARE` → destinatario → solo lectura si crea o sube a `EDITOR` →
    * alta o cambio con su evento en la misma transacción. La bitácora sale tras el commit.
    */
+  /** Lote del explorador: cada nodo pasa por `share` (permiso, tasa, auditoría); un error solo marca ese nodo. */
+  shareMany(actor: Actor, command: BatchShareCommand): Promise<Settlement<SharedNodeRef>> {
+    const { email, level } = command;
+    return settleEach(command.items, (node) =>
+      this.share(actor, { nodeType: node.type, nodeId: node.id, email, level }),
+    );
+  }
+
   async share(actor: Actor, command: ShareCommand): Promise<ShareOutcome> {
     await this.assertWithinRate(actor);
     const outcome = await this.transactions.withActor(actor, () =>
