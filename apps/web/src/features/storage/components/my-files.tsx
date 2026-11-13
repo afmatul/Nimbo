@@ -122,6 +122,7 @@ function MyFilesExplorer({
       onNewFolder={() => state.creating.setOpen(true)}
       fileInputRef={uploads.fileInputRef}
       disclosure={state.view.disclosure}
+      defaultView="tarjetas"
       controls={contents.controls}
       renderRowActions={(node) => (
         <RowActions

@@ -6,6 +6,7 @@ import * as React from 'react';
 
 import { StateView } from '../../../components/nimbo/state-view';
 import { Button } from '../../../components/ui/button';
+import { cn } from '../../../lib/utils';
 import type { ListControls } from '../hooks/use-folder-contents';
 import { isOwner } from '../node-access';
 import { orderLabel } from '../node-order';
@@ -15,6 +16,7 @@ import { AskAgentButton } from './ask-agent-button';
 import { ExplorerErrorState } from './explorer-error-state';
 import { FolderBackLink, SHARED_ROOT_CRUMB } from './folder-breadcrumbs';
 import { LoadMore } from './load-more';
+import { NodeCards } from './node-cards';
 import { NodeTable, type FolderDisclosure, type NodeTableProps } from './node-table';
 import { ReadOnlyUploadFeedback, useReadOnlyUploads } from './read-only-notice';
 import { UploadDropzone } from './upload-dropzone';
@@ -48,7 +50,11 @@ export interface FileExplorerProps {
   readonly notice?: React.ReactNode;
   /** Orden y «Cargar más» del listado (007); sin ellos la lista no se ordena ni pagina. */
   readonly controls?: ListControls;
+  /** Vista con la que abre la lista; el usuario la cambia con «Tarjetas» / «Lista». Sin valor, la tabla. */
+  readonly defaultView?: NodesView;
 }
+
+export type NodesView = 'tarjetas' | 'lista';
 
 const UNKNOWN_FOLDER_TITLE = 'Carpeta';
 const UNKNOWN_FOLDER_PLACE = 'esta carpeta';
@@ -232,6 +238,7 @@ function ExplorerContent(
         renderRowActions={props.renderRowActions}
         disclosure={props.disclosure}
         controls={props.controls}
+        defaultView={props.defaultView}
         readOnly={props.readOnly}
         shared={!isOwner(props.accessLevel)}
       />
@@ -289,6 +296,7 @@ interface ExplorerBodyProps {
   readonly renderRowActions: FileExplorerProps['renderRowActions'] | undefined;
   readonly disclosure: FolderDisclosure | undefined;
   readonly controls: ListControls | undefined;
+  readonly defaultView: NodesView | undefined;
   /** Spec 010 CA-14: la cuenta está en solo lectura. */
   readonly readOnly: boolean;
   /** Carpeta compartida conmigo: el vacío no invita a subir (012b CA-6). */
@@ -308,7 +316,114 @@ function ExplorerBody(props: ExplorerBodyProps): React.JSX.Element {
   if (nodes.length === 0) return <EmptyExplorer {...props} />;
   const { placeName, renderRowActions, disclosure } = props;
   const table = { nodes, placeName, renderRowActions, disclosure };
-  return controls ? <ControlledList table={table} controls={controls} /> : <NodeTable {...table} />;
+  return <NodesPane table={table} controls={controls} defaultView={props.defaultView ?? 'lista'} />;
+}
+
+/** Última vista elegida, para recordarla entre visitas (solo comodidad del navegador). */
+export const VIEW_STORAGE_KEY = 'nimbo:explorador-vista';
+
+function storedViewOr(fallback: NodesView): NodesView {
+  try {
+    const stored = window.localStorage.getItem(VIEW_STORAGE_KEY);
+    return stored === 'tarjetas' || stored === 'lista' ? stored : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function storeView(view: NodesView): void {
+  try {
+    window.localStorage.setItem(VIEW_STORAGE_KEY, view);
+  } catch {
+    // Sin almacenamiento el explorador sigue funcionando; solo no recuerda la vista.
+  }
+}
+
+const VIEWS: readonly { readonly id: NodesView; readonly label: string }[] = [
+  { id: 'tarjetas', label: 'Tarjetas' },
+  { id: 'lista', label: 'Lista' },
+];
+
+/** «Tarjetas» / «Lista» (mockup `explorador--cuadricula`); `aria-pressed` marca la vista activa. */
+function ViewToggle({
+  view,
+  onChange,
+}: {
+  readonly view: NodesView;
+  readonly onChange: (view: NodesView) => void;
+}): React.JSX.Element {
+  return (
+    <div
+      role="group"
+      aria-label="Vista"
+      className="flex self-end rounded-md border border-border p-0.5"
+    >
+      {VIEWS.map(({ id, label }) => (
+        <button
+          key={id}
+          type="button"
+          aria-pressed={view === id}
+          onClick={() => onChange(id)}
+          className={cn(
+            'min-h-8 rounded px-3 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            view === id
+              ? 'bg-muted text-foreground'
+              : 'text-muted-foreground hover:text-foreground',
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** El selector de vista y la lista, en tarjetas o en tabla. */
+function NodesPane({
+  table,
+  controls,
+  defaultView,
+}: {
+  readonly table: Omit<NodeTableProps, 'sorting'>;
+  readonly controls: ListControls | undefined;
+  readonly defaultView: NodesView;
+}): React.JSX.Element {
+  const [view, changeView] = React.useState<NodesView>(() => storedViewOr(defaultView));
+  const setView = (next: NodesView): void => {
+    changeView(next);
+    storeView(next);
+  };
+  return (
+    <div className="flex flex-col gap-3">
+      <ViewToggle view={view} onChange={setView} />
+      {controls ? (
+        <ControlledList table={table} controls={controls} view={view} />
+      ) : (
+        <NodeListView table={table} view={view} />
+      )}
+    </div>
+  );
+}
+
+function NodeListView({
+  table,
+  view,
+  sorting,
+}: {
+  readonly table: Omit<NodeTableProps, 'sorting'>;
+  readonly view: NodesView;
+  readonly sorting?: NodeTableProps['sorting'];
+}): React.JSX.Element {
+  if (view === 'tarjetas') {
+    return (
+      <NodeCards
+        nodes={table.nodes}
+        placeName={table.placeName}
+        renderRowActions={table.renderRowActions}
+      />
+    );
+  }
+  return <NodeTable {...table} sorting={sorting} />;
 }
 
 /**
@@ -318,17 +433,19 @@ function ExplorerBody(props: ExplorerBodyProps): React.JSX.Element {
 interface ControlledListProps {
   readonly table: Omit<NodeTableProps, 'sorting'>;
   readonly controls: ListControls;
+  readonly view: NodesView;
 }
 
-function ControlledList({ table, controls }: ControlledListProps): React.JSX.Element {
+function ControlledList({ table, controls, view }: ControlledListProps): React.JSX.Element {
   return (
     <div className="flex flex-col gap-3">
       <p role="status" className="sr-only">
         {controls.sorting ? `Ordenando por ${orderLabel(controls.order).toLowerCase()}…` : ''}
       </p>
       <div aria-busy={controls.sorting || undefined}>
-        <NodeTable
-          {...table}
+        <NodeListView
+          table={table}
+          view={view}
           sorting={{ order: controls.shownOrder, onSort: controls.changeOrder }}
         />
       </div>
