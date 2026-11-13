@@ -4,6 +4,7 @@
 import type { NodeSummary } from '@nimbo/contracts';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type * as React from 'react';
 
 import { NodeCards } from './node-cards';
 import { ThumbnailProvider } from './node-thumbnail';
@@ -122,5 +123,32 @@ describe('NodeCards', () => {
     renderCards([FOLDER, PDF]);
     expect(screen.queryByText('Indexado')).toBeNull();
     expect(screen.queryByText(/Compartid/)).toBeNull();
+  });
+  it('con selección: casilla compacta por tarjeta que marca la tarjeta y avisa cuál se tocó', async () => {
+    const toggle = jest.fn();
+    const selection = {
+      isSelected: (id: string) => id === 'a1',
+      toggle,
+    } as unknown as NonNullable<React.ComponentProps<typeof NodeCards>['selection']>;
+    render(
+      <NodeCards
+        nodes={[FOLDER, PDF]}
+        placeName="Mis archivos"
+        renderRowActions={undefined}
+        selection={selection}
+      />,
+    );
+    const box = screen.getByRole<HTMLInputElement>('checkbox', { name: 'Seleccionar modelo.pdf' });
+    expect(box.checked).toBe(true);
+    expect(box.className).toContain('h-4 w-4');
+    expect(box.closest('label')?.className).toContain('h-11 w-11');
+    expect(document.getElementById('fila-a1')?.className).toContain('border-brand');
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Seleccionar Finanzas' }));
+    expect(toggle).toHaveBeenCalledWith(FOLDER);
+  });
+
+  it('sin selección no hay casillas', () => {
+    renderCards([FOLDER, PDF]);
+    expect(screen.queryByRole('checkbox')).toBeNull();
   });
 });
