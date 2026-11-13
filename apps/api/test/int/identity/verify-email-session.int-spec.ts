@@ -28,10 +28,11 @@ describe('POST /auth/verify-email abre sesión (CA-15)', () => {
   const server = (): ReturnType<TestApp['app']['getHttpServer']> =>
     (testApp as TestApp).app.getHttpServer();
 
-  /** Registra un correo nuevo y devuelve el token de su enlace. */
-  const registeredToken = async (): Promise<{ email: string; token: string }> => {
+  /** Registra un correo nuevo (con el plan elegido, si lo hay) y devuelve el token de su enlace. */
+  const registeredToken = async (planSlug?: string): Promise<{ email: string; token: string }> => {
     const email = `verifica-${randomUUID()}@nimbo.me`;
-    await request(server()).post(REGISTER).send(validRegistration(email)).expect(202);
+    const registration = { ...validRegistration(email), ...(planSlug === undefined ? {} : { planSlug }) };
+    await request(server()).post(REGISTER).send(registration).expect(202);
     return { email, token: await verificationTokenSentTo(email) };
   };
 
@@ -71,6 +72,22 @@ describe('POST /auth/verify-email abre sesión (CA-15)', () => {
 
     expect(second.body).toEqual({ status: 'already-verified' });
     expect(second.headers['set-cookie']).toBeUndefined();
+  });
+
+  it('registro con plan: la sesión de la verificación y la del inicio de sesión traen el plan pendiente', async () => {
+    testApp = await createIdentityTestApp();
+    const { email, token } = await registeredToken('pro');
+
+    const verified = verifyEmailResponseSchema.parse((await verify(token)).body);
+    const login = await request(server())
+      .post(LOGIN_PATH)
+      .send({ email, password: validRegistration(email).password })
+      .expect(200);
+
+    expect(verified.status === 'verified' ? verified.session?.user.pendingPlanSlug : undefined).toBe(
+      'pro',
+    );
+    expect(sessionResponseSchema.parse(login.body).user.pendingPlanSlug).toBe('pro');
   });
 
   it('CA-15: si abrir la sesión falla, responde `verified` sin sesión ni cookies y lo registra', async () => {

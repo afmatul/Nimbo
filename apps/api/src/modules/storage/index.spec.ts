@@ -136,6 +136,8 @@ const RUNTIME_EXPORTS = [
   'StorageWorkerModule',
   'WritableAccountPolicy',
   'SupportTrashService',
+  // Semilla de demostración (`src/seed`): sube los objetos de sus archivos con el adaptador de los `worker`.
+  'WORKER_OBJECT_STORAGE_PROVIDER',
   'invoiceObjectKey',
 ] as const;
 

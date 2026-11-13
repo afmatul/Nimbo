@@ -29,6 +29,7 @@ interface UserRow {
   version_terminos: string | null;
   version_privacidad: string | null;
   terminos_aceptados_en: Date | null;
+  plan_pendiente_slug: string | null;
 }
 
 const uniqueEmail = (): string => `ana-${randomUUID()}@nimbo.me`;
@@ -50,7 +51,8 @@ describe('TypeormUserRepository (CA-3, CA-19)', () => {
 
   const readRow = async (id: string): Promise<UserRow | undefined> => {
     const rows = (await dataSource.query(
-      `SELECT nombre, hash_clave, correo_verificado, version_terminos, version_privacidad, terminos_aceptados_en
+      `SELECT nombre, hash_clave, correo_verificado, version_terminos, version_privacidad, terminos_aceptados_en,
+              plan_pendiente_slug
          FROM usuario WHERE id = $1`,
       [id],
     )) as UserRow[];
@@ -198,7 +200,7 @@ describe('TypeormUserRepository (CA-3, CA-19)', () => {
     expect(rows).toEqual([{ id: winner.id }]);
   });
 
-  it('CA-3: `update` escribe nombre, hash, aceptación y `correo_verificado`', async () => {
+  it('CA-3: `update` escribe nombre, hash, aceptación, `correo_verificado` y el plan pendiente', async () => {
     const user = aClientUser().withId(randomUUID()).withEmail(uniqueEmail()).build();
     await runner.run(() => repository.insertIfAbsent(user));
     const acceptedAt = new Date('2026-10-01T09:30:00.000Z');
@@ -207,6 +209,7 @@ describe('TypeormUserRepository (CA-3, CA-19)', () => {
         fullName: 'Ana María López',
         passwordHash: PasswordHash.fromPhc('$argon2id$v=19$m=19456,t=2,p=1$c2FsdA$bnVldm8'),
         acceptance: LegalAcceptance.of({ termsVersion: '1.1', privacyVersion: '1.2', acceptedAt }),
+        pendingPlanSlug: 'pro',
       })
       .verifyEmail();
 
@@ -219,7 +222,24 @@ describe('TypeormUserRepository (CA-3, CA-19)', () => {
       version_terminos: '1.1',
       version_privacidad: '1.2',
       terminos_aceptados_en: acceptedAt,
+      plan_pendiente_slug: 'pro',
     });
+  });
+
+  it('registro con plan: `insertIfAbsent` guarda el plan pendiente y `clearPendingPlan` lo descarta', async () => {
+    const user = aClientUser()
+      .withId(randomUUID())
+      .withEmail(uniqueEmail())
+      .withPendingPlan('pro')
+      .build();
+    await runner.run(() => repository.insertIfAbsent(user));
+    const before = await readRow(user.id);
+
+    await runner.run(() => repository.clearPendingPlan(user.id));
+
+    expect(before?.plan_pendiente_slug).toBe('pro');
+    expect(await readRow(user.id)).toEqual({ ...before, plan_pendiente_slug: null });
+    expect(((await repository.findById(user.id)) as ClientUser).pendingPlanSlug).toBeNull();
   });
 
   it('CA-3: escribe con el `EntityManager` de la transacción en curso: si la transacción falla, no queda la fila', async () => {

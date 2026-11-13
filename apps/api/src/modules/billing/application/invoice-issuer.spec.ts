@@ -89,12 +89,48 @@ describe('InvoiceIssuer.issue (spec 009 CA-6, T-07 y T-08; revisión N-3)', () =
     );
   });
 
-  it('CA-6, T-08: con el PDF ya guardado solo falta el aviso (el reintento no regenera el PDF)', async () => {
+  it('CA-6: el comprobante lleva adjunto el mismo PDF que se sube (un solo `generate`)', async () => {
+    const { issuer, notifier, generator } = setup(pending());
+
+    await issuer.issue(ANA, INVOICE_ID);
+
+    expect(generator.generate).toHaveBeenCalledTimes(1);
+    expect(notifier.notify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attachment: expect.objectContaining({
+          contentType: 'application/pdf',
+          contentBase64: PDF.toString('base64'),
+        }),
+      }),
+    );
+  });
+
+  it('CA-6, T-08: con el PDF ya guardado solo falta el aviso: no lo sube otra vez y lo adjunta regenerado (mismos bytes)', async () => {
     const { issuer, journal } = setup(pending({ objectKey: KEY }));
 
     await issuer.issue(ANA, INVOICE_ID);
 
-    expect(journal).toEqual([`tx:${ANA.id}`, 'notify', `tx:${ANA.id}`, 'markNoticeQueued']);
+    expect(journal).toEqual([
+      `tx:${ANA.id}`,
+      'generate',
+      'notify',
+      `tx:${ANA.id}`,
+      'markNoticeQueued',
+    ]);
+  });
+
+  it('CA-6: con el aviso ya encolado y sin PDF, solo sube el PDF', async () => {
+    const { issuer, journal } = setup(pending({ noticeQueuedAt: new Date() }));
+
+    await issuer.issue(ANA, INVOICE_ID);
+
+    expect(journal).toEqual([
+      `tx:${ANA.id}`,
+      'generate',
+      'putObject',
+      `tx:${ANA.id}`,
+      'markStored',
+    ]);
   });
 
   it('CA-6: es idempotente: una factura con PDF y aviso no hace nada', async () => {

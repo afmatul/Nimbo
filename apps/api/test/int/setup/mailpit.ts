@@ -15,10 +15,18 @@ export interface MailpitSummary {
   readonly Subject: string;
 }
 
+/** Adjunto tal como lo describe `GET /api/v1/message/{ID}`. */
+export interface MailpitAttachment {
+  readonly FileName: string;
+  readonly ContentType: string;
+  readonly Size: number;
+}
+
 /** Mensaje completo de `GET /api/v1/message/{ID}`. */
 export interface MailpitMessage extends MailpitSummary {
   readonly Text: string;
   readonly HTML: string;
+  readonly Attachments: readonly MailpitAttachment[];
 }
 
 const WAIT_STEP_MS = 100;

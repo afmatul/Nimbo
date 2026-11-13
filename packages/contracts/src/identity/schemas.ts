@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { PLAN_SLUG_MAX_LENGTH } from '../billing/subscription';
 import { INTERNAL_ROLES, roleSchema, type InternalRoleName } from '../shared';
 
 import { IDENTITY_FIELD_MESSAGES, type FieldIssueReason } from './error-codes';
@@ -75,6 +76,19 @@ const internalRoleField = z.custom<InternalRoleName>().superRefine((value: unkno
   else if (!INTERNAL_ROLE_SET.has(value)) addIssue(ctx, 'INVALID_ROLE');
 });
 
+/**
+ * Plan elegido en el registro (opcional): solo la forma del `slug`. Si existe y es de pago lo decide `billing` al
+ * verificar el correo; un texto vacío, demasiado largo o de otro tipo es `INVALID_PLAN`.
+ */
+const planSlugField = z
+  .custom<string>()
+  .superRefine((value: unknown, ctx) => {
+    const valid =
+      typeof value === 'string' && value.trim() !== '' && value.length <= PLAN_SLUG_MAX_LENGTH;
+    if (!valid) addIssue(ctx, 'INVALID_PLAN');
+  })
+  .optional();
+
 const acceptTermsField = z.custom<true>().superRefine((value: unknown, ctx) => {
   if (value !== true) addIssue(ctx, 'TERMS_NOT_ACCEPTED');
 });
@@ -103,6 +117,7 @@ export const registerRequestSchema = z
     email: textField(emailReasons),
     password: textField(),
     acceptTerms: acceptTermsField,
+    planSlug: planSlugField,
   })
   .strict(UNKNOWN_FIELD_MESSAGE)
   .superRefine(refinePassword);
@@ -199,6 +214,8 @@ export const sessionResponseSchema = z
         fullName: z.string().min(1),
         email: z.string().email(),
         role: roleSchema,
+        /** Plan de pago elegido al registrarse y aún sin contratar; `null` si no hay (la web lleva al cobro). */
+        pendingPlanSlug: z.string().min(1).max(PLAN_SLUG_MAX_LENGTH).nullable(),
       })
       .strict(),
   })

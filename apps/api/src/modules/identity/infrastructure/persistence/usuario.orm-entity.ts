@@ -44,6 +44,10 @@ export class UsuarioOrmEntity {
   @Column('varchar', { name: 'codigo_empleado', length: 20, nullable: true })
   codigoEmpleado!: string | null;
 
+  /** Plan de pago elegido al registrarse y aún sin contratar; `NULL` en las internas y sin plan pendiente. */
+  @Column('varchar', { name: 'plan_pendiente_slug', length: 50, nullable: true })
+  planPendienteSlug!: string | null;
+
   /**
    * Espacio usado (005, DF-38). Solo lo escribe `storage` por SQL (`IQuotaRepository`, D-5, DF-59): para `identity`
    * es de solo lectura, así ningún `insert`/`update` de este módulo lo pisa con un valor viejo.

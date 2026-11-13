@@ -29,6 +29,8 @@ export { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
 export { invoiceObjectKey } from './domain/invoice-object-key';
 export type { IObjectStorage, PutObjectInput } from './application/ports/i-object-storage.port';
 export { StorageFacadesWorkerModule } from './storage-facades-worker.module';
+// La semilla de demostración (`src/seed`) sube los objetos de sus archivos con el mismo adaptador que los `worker`.
+export { WORKER_OBJECT_STORAGE_PROVIDER } from './worker-object-storage.provider';
 export { StorageWorkerModule } from './storage-worker.module';
 // 019 (RN-11, ADR-0019): el evento de versión vigente lo exporta su productor; `intelligence` lo escucha y lee por la
 // fachada `IndexableFileGateway`.

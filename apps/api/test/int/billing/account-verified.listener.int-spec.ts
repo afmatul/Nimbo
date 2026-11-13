@@ -33,9 +33,24 @@ describe('alta Personal al verificar la cuenta (spec 009 CA-1)', () => {
     await testApp?.close();
   });
 
-  const verify = async (userId: string): Promise<void> => {
-    const event: ClientAccountVerifiedEvent = { userId };
+  const verify = async (userId: string, pendingPlanSlug: string | null = null): Promise<void> => {
+    const event: ClientAccountVerifiedEvent = { userId, pendingPlanSlug };
     await emitter.emitAsync(CLIENT_ACCOUNT_VERIFIED, event);
+  };
+
+  /** Cuenta verificada que eligió `slug` al registrarse (`plan_pendiente_slug`). */
+  const insertWithPendingPlan = async (slug: string): Promise<string> => {
+    const id = await insertAccount(owner);
+    accounts.push(id);
+    await owner.query('UPDATE usuario SET plan_pendiente_slug = $2 WHERE id = $1', [id, slug]);
+    return id;
+  };
+
+  const pendingPlanOf = async (userId: string): Promise<string | null> => {
+    const rows = (await owner.query('SELECT plan_pendiente_slug FROM usuario WHERE id = $1', [
+      userId,
+    ])) as { plan_pendiente_slug: string | null }[];
+    return rows[0]?.plan_pendiente_slug ?? null;
   };
 
   const subscriptionsOf = (userId: string): Promise<SubscriptionRow[]> =>
@@ -68,4 +83,25 @@ describe('alta Personal al verificar la cuenta (spec 009 CA-1)', () => {
 
     expect(await subscriptionsOf(bruno)).toEqual([{ slug: 'pro', vence_en: null }]);
   });
+
+  it('registro con plan: conserva un plan de pago activo para el cobro', async () => {
+    const carla = await insertWithPendingPlan('pro');
+
+    await verify(carla, 'pro');
+
+    expect(await pendingPlanOf(carla)).toBe('pro');
+    expect(await subscriptionsOf(carla)).toEqual([{ slug: 'personal', vence_en: null }]);
+  });
+
+  it.each(['personal', 'no-existe'])(
+    'registro con plan: descarta el plan `%s` (gratuito o inexistente)',
+    async (slug) => {
+      const diego = await insertWithPendingPlan(slug);
+
+      await verify(diego, slug);
+
+      expect(await pendingPlanOf(diego)).toBeNull();
+      expect(await subscriptionsOf(diego)).toEqual([{ slug: 'personal', vence_en: null }]);
+    },
+  );
 });

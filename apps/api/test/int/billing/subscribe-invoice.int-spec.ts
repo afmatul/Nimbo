@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { GetObjectCommand } from '@aws-sdk/client-s3';
+import type { S3Client } from '@aws-sdk/client-s3';
 import { getQueueToken } from '@nestjs/bullmq';
 import { TEST_CARDS } from '@nimbo/contracts';
 import type { Queue } from 'bullmq';
@@ -8,6 +9,7 @@ import request from 'supertest';
 import type { DataSource } from 'typeorm';
 
 import { MAIL_QUEUE } from '../../../src/modules/notifications';
+import type { MailMessage } from '../../../src/modules/notifications';
 import { createActor, FixedClock, Role } from '../../../src/shared';
 import { connectAsOwner, requiredEnv } from '../../support/database-urls';
 import { PROBE_CLOCK_START } from '../../support/probe.module';
@@ -44,6 +46,21 @@ interface InvoiceRow {
   readonly clave_objeto: string | null;
   readonly aviso_encolado_en: Date | null;
 }
+
+/** Bytes y tipo de un objeto del bucket del arnés. */
+const getStoredObject = async (
+  s3: S3Client,
+  key: string,
+): Promise<{ readonly bytes: Buffer; readonly contentType: string | undefined }> => {
+  const object = await s3.send(
+    new GetObjectCommand({ Bucket: requiredEnv('MINIO_BUCKET'), Key: key }),
+  );
+  if (object.Body === undefined) throw new Error('MinIO no devolvió el PDF');
+  return {
+    bytes: Buffer.from(await object.Body.transformToByteArray()),
+    contentType: object.ContentType,
+  };
+};
 
 /** Factura del cobro de punta a punta (spec 009 CA-6, RN-2, RN-7; revisión I-5). */
 describe('factura dentro del cobro (spec 009 CA-6)', () => {
@@ -129,21 +146,33 @@ describe('factura dentro del cobro (spec 009 CA-6)', () => {
     });
   });
 
+  it('CA-6: el comprobante lleva adjunto, como `application/pdf`, el mismo PDF que queda en MinIO', async () => {
+    const ana = await subscribe(TEST_CARDS.approved);
+    const paymentId = await paymentOf(ana);
+    const [invoice] = await invoicesOf(ana);
+    const mail = testApp.app.get<Queue>(getQueueToken(MAIL_QUEUE));
+
+    const job = await mail.getJob(`billing.receipt.${paymentId}`);
+    const attachment = (job?.data as MailMessage | undefined)?.attachment;
+
+    expect(attachment).toMatchObject({
+      filename: `factura-${invoice?.numero ?? ''}.pdf`,
+      contentType: 'application/pdf',
+    });
+    const s3 = harnessS3();
+    const stored = await getStoredObject(s3, invoice?.clave_objeto ?? '');
+    s3.destroy();
+    expect(Buffer.from(attachment?.contentBase64 ?? '', 'base64').equals(stored.bytes)).toBe(true);
+  });
+
   it('CA-6, T-07: el PDF queda en MinIO, después del commit, como `application/pdf`', async () => {
     const ana = await subscribe(TEST_CARDS.approved);
     const [invoice] = await invoicesOf(ana);
     const s3 = harnessS3();
 
-    const object = await s3.send(
-      new GetObjectCommand({
-        Bucket: requiredEnv('MINIO_BUCKET'),
-        Key: invoice?.clave_objeto ?? '',
-      }),
-    );
-    if (object.Body === undefined) throw new Error('MinIO no devolvió el PDF');
-    const bytes = Buffer.from(await object.Body.transformToByteArray());
+    const { bytes, contentType } = await getStoredObject(s3, invoice?.clave_objeto ?? '');
 
-    expect(object.ContentType).toBe('application/pdf');
+    expect(contentType).toBe('application/pdf');
     expect(bytes.subarray(0, 5).toString('latin1')).toBe('%PDF-');
     s3.destroy();
   });

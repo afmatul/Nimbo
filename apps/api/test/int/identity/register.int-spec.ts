@@ -51,6 +51,7 @@ interface UserRow {
   version_terminos: string | null;
   version_privacidad: string | null;
   terminos_aceptados_en: Date | null;
+  plan_pendiente_slug: string | null;
 }
 
 interface TokenRow {
@@ -150,7 +151,7 @@ describe('POST /auth/register (CA-1 a CA-4)', () => {
   const usersWithEmail = async (email: string): Promise<UserRow[]> =>
     (await dataSource.query(
       `SELECT id, nombre, correo, hash_clave, rol, estado, correo_verificado, version_terminos,
-              version_privacidad, terminos_aceptados_en
+              version_privacidad, terminos_aceptados_en, plan_pendiente_slug
          FROM usuario WHERE correo = $1`,
       [email],
     )) as UserRow[];
@@ -225,9 +226,20 @@ describe('POST /auth/register (CA-1 a CA-4)', () => {
         version_terminos: LEGAL_DOCUMENTS.terms.version,
         version_privacidad: LEGAL_DOCUMENTS.privacy.version,
         terminos_aceptados_en: clock.now(),
+        plan_pendiente_slug: null,
       });
       expect(user.hash_clave.startsWith('$argon2id$')).toBe(true);
       expect(await verify(user.hash_clave, password)).toBe(true);
+    });
+
+    it('registro con plan: guarda el plan elegido como pendiente y responde la misma `202` neutra', async () => {
+      const email = uniqueEmail();
+
+      const response = await register({ ...validRegistration(email), planSlug: 'pro' });
+
+      expect(response.status).toBe(202);
+      expect(response.body).toEqual({ status: 'accepted' });
+      expect((await userWithEmail(email)).plan_pendiente_slug).toBe('pro');
     });
 
     it('CA-1: emite un token vigente que vence 24 h después y envía un solo correo con el enlace de `web` y sin la contraseña', async () => {
@@ -325,11 +337,16 @@ describe('POST /auth/register (CA-1 a CA-4)', () => {
   });
 
   describe('CA-4: correo registrado sin verificar', () => {
-    it('CA-4: pasados 60 s reemplaza nombre, contraseña y aceptación, invalida el enlace anterior y envía uno nuevo de 24 h', async () => {
+    it('CA-4: pasados 60 s reemplaza nombre, contraseña, aceptación y plan elegido, invalida el enlace anterior y envía uno nuevo de 24 h', async () => {
       const email = uniqueEmail();
       const firstPassword = 'Primera-Clave-2026';
       const secondPassword = 'Segunda-Clave-2026';
-      await register({ ...validRegistration(email), fullName: 'Ana Uno', password: firstPassword });
+      await register({
+        ...validRegistration(email),
+        fullName: 'Ana Uno',
+        password: firstPassword,
+        planSlug: 'pro',
+      });
       const [firstMessage] = await waitForMessagesTo(email, 1);
       const oldToken = tokenIn(firstMessage as MailpitMessage);
       clock.advance(AFTER_COOLDOWN_MS);
@@ -347,6 +364,7 @@ describe('POST /auth/register (CA-1 a CA-4)', () => {
         nombre: 'Ana Dos',
         correo_verificado: false,
         terminos_aceptados_en: clock.now(),
+        plan_pendiente_slug: null,
       });
       expect(await verify(user.hash_clave, secondPassword)).toBe(true);
       expect(await verify(user.hash_clave, firstPassword)).toBe(false);

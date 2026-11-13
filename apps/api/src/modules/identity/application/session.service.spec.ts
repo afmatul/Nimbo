@@ -27,6 +27,7 @@ import type { ClientContext } from './client-context';
 import type { IssueAccessTokenInput } from './ports/i-token-service.port';
 import { SessionService } from './session.service';
 import { aClientUser } from './testing/client-user.builder';
+import { anInternalUser } from './testing/internal-user.builder';
 import { InMemoryDeviceRepository } from './testing/in-memory-device.repository';
 import { InMemorySessionRepository } from './testing/in-memory-session.repository';
 import { InMemoryUserRepository } from './testing/in-memory-user.repository';
@@ -111,7 +112,27 @@ describe('SessionService.open (plan 002 §6.3)', () => {
       fullName: user.fullName,
       email: user.email.value,
       role: Role.CLIENT,
+      pendingPlanSlug: null,
     });
+  });
+
+  it('registro con plan: el usuario de la respuesta trae el plan pendiente; una interna, `null`', async () => {
+    const { service, users } = setup();
+    const ana = aClientUser()
+      .withId(randomUUID())
+      .withEmail('ana.plan@ejemplo.com')
+      .withPendingPlan('pro')
+      .verified()
+      .build();
+    const support = anInternalUser().build();
+    users.seed(ana);
+    users.seed(support);
+
+    const clientSession = await service.open(ana, client(), 'login');
+    const internal = await service.open(support, client(), 'login');
+
+    expect(clientSession.user.pendingPlanSlug).toBe('pro');
+    expect(internal.user.pendingPlanSlug).toBeNull();
   });
 
   it('CA-1: el token de acceso se emite fuera de la transacción, después del commit', async () => {
@@ -395,6 +416,7 @@ describe('SessionService.refresh: rotación, reúso y cuenta suspendida (plan 00
     expect(after.ultimoUso).toEqual(ctx.clock.now());
     expect(refreshed.refreshMaxAge).toBe(IDLE_MS);
     expect(refreshed.user.id).toBe(ctx.user.id);
+    expect(refreshed.user.pendingPlanSlug).toBeNull();
     expect(refreshed.access.token).toBe(`access.${opened.sessionId}`);
     expect(ctx.timeline).toEqual(['commit', 'access-token']);
     expect(loggedEvents(ctx.logger)).toContainEqual({
@@ -402,6 +424,19 @@ describe('SessionService.refresh: rotación, reúso y cuenta suspendida (plan 00
       userId: ctx.user.id,
       sessionId: opened.sessionId,
     });
+  });
+
+  it('registro con plan: la renovación relee la cuenta y ya no trae el plan descartado', async () => {
+    const ctx = setup();
+    const ana = aClientUser().withPendingPlan('pro').verified().build();
+    ctx.users.seed(ana);
+    const opened = await ctx.service.open(ana, client(), 'verification');
+
+    await ctx.users.clearPendingPlan(ana.id);
+    const refreshed = await ctx.service.refresh(opened.refreshToken, client());
+
+    expect(opened.user.pendingPlanSlug).toBe('pro');
+    expect(refreshed.user.pendingPlanSlug).toBeNull();
   });
 
   it('CA-8: la cookie nueva no dura más de lo que le queda a la sesión', async () => {

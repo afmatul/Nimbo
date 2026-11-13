@@ -1,10 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { createTransport } from 'nodemailer';
 import type { Transporter } from 'nodemailer';
+import type { Attachment } from 'nodemailer/lib/mailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 
 import { ENV } from '../../../shared';
-import type { MailMessage } from '../application/ports/i-mailer.port';
+import type { MailAttachment, MailMessage } from '../application/ports/i-mailer.port';
 
 /** Variables `SMTP_*` y `MAIL_FROM` del esquema del `worker` (001 plan §6.10); el `api` no las tiene. */
 export interface SmtpEnv {
@@ -46,6 +47,18 @@ const buildOptions = (env: SmtpEnv): SMTPTransport.Options => ({
   socketTimeout: SOCKET_TIMEOUT_MS,
 });
 
+const toNodemailerAttachments = (attachment: MailAttachment | undefined): Attachment[] =>
+  attachment === undefined
+    ? []
+    : [
+        {
+          filename: attachment.filename,
+          contentType: attachment.contentType,
+          content: attachment.contentBase64,
+          encoding: 'base64',
+        },
+      ];
+
 /**
  * Envoltorio de nodemailer (ADR-0018) que usa el `worker`. Lee `SMTP_*` y `MAIL_FROM` del entorno validado del
  * proceso. Los errores de nodemailer se propagan tal cual (conservan `code` y `responseCode`); quien los registra
@@ -68,6 +81,7 @@ export class SmtpTransport {
       subject: message.subject,
       text: message.text,
       html: message.html,
+      attachments: toNodemailerAttachments(message.attachment),
       messageId: `<${jobId}@${MESSAGE_ID_DOMAIN}>`,
     });
   }

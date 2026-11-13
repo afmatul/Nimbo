@@ -21,8 +21,8 @@ import { UsuarioOrmEntity } from './usuario.orm-entity';
  * `ON CONFLICT (correo)` solo cubre el correo; un choque de `id` sí sube como error no controlado.
  */
 const INSERT_COLUMNS = `INSERT INTO usuario (id, nombre, correo, hash_clave, rol, estado, correo_verificado,
-    version_terminos, version_privacidad, terminos_aceptados_en, codigo_empleado)
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`;
+    version_terminos, version_privacidad, terminos_aceptados_en, codigo_empleado, plan_pendiente_slug)
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`;
 const INSERT_IF_ABSENT_SQL = `${INSERT_COLUMNS} ON CONFLICT (correo) DO NOTHING RETURNING id`;
 /** Sin destino: cubre `uq_usuario_correo` y `uq_usuario_codigo_empleado` (011 CA-6). */
 const INSERT_INTERNAL_IF_ABSENT_SQL = `${INSERT_COLUMNS} ON CONFLICT DO NOTHING RETURNING id`;
@@ -41,6 +41,7 @@ const insertParameters = (row: UsuarioRow): unknown[] => [
   row.versionPrivacidad,
   row.terminosAceptadosEn,
   row.codigoEmpleado,
+  row.planPendienteSlug,
 ];
 
 /**
@@ -119,6 +120,7 @@ export class TypeormUserRepository implements IUserRepository, IAdminRosterRepos
       versionTerminos,
       versionPrivacidad,
       terminosAceptadosEn,
+      planPendienteSlug,
     } = toUsuarioRow(user);
     await this.rows().update(
       { id: user.id },
@@ -129,8 +131,13 @@ export class TypeormUserRepository implements IUserRepository, IAdminRosterRepos
         versionTerminos,
         versionPrivacidad,
         terminosAceptadosEn,
+        planPendienteSlug,
       },
     );
+  }
+
+  async clearPendingPlan(id: string): Promise<void> {
+    await this.rows().update({ id }, { planPendienteSlug: null });
   }
 
   async updatePasswordHash(id: string, passwordHash: PasswordHash): Promise<void> {

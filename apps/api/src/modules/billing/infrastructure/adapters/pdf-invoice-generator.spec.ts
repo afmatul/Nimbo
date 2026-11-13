@@ -1,5 +1,7 @@
 import { inflateSync } from 'node:zlib';
 
+import { SUPPORT_CONTACT_EMAIL } from '@nimbo/contracts';
+
 import type { InvoiceDocument } from '../../application/ports/i-invoice-generator.port';
 
 import { PdfInvoiceGenerator } from './pdf-invoice-generator';
@@ -46,6 +48,31 @@ describe('PdfInvoiceGenerator (spec 009 CA-6; ADR-0028)', () => {
 
     expect(pdf.subarray(0, 5).toString('latin1')).toBe('%PDF-');
     expect(pdf.toString('latin1').trimEnd().endsWith('%%EOF')).toBe(true);
+  });
+
+  it('CA-6: lleva la marca NIMBO, el concepto, la insignia de pagada y el contacto de soporte en el pie', async () => {
+    const text = textOf(await generator.generate(DOCUMENT));
+
+    for (const expected of [
+      'NIMBO',
+      'FACTURA',
+      'PAGADA',
+      'Suscripción al plan Equipo',
+      SUPPORT_CONTACT_EMAIL,
+      'sin valor fiscal',
+    ]) {
+      expect(text).toContain(expected);
+    }
+  });
+
+  it('CA-6: cabe en una sola página aunque el plan y el correo sean largos', async () => {
+    const pdf = await generator.generate({
+      ...DOCUMENT,
+      planName: 'Plan con un nombre muy largo '.repeat(4),
+      receiptEmail: `${'a'.repeat(64)}@${'dominio-largo.'.repeat(10)}gt`,
+    });
+
+    expect(pdf.toString('latin1').match(/\/Type \/Page\b/g)).toHaveLength(1);
   });
 
   it('CA-6, RN-2: trae el número, el plan, la referencia, los tres montos, el NIT y el correo con tildes y «ñ»', async () => {

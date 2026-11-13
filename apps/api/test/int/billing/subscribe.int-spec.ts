@@ -81,6 +81,17 @@ describe('POST /api/v1/billing/subscribe (spec 009 CA-3 a CA-5)', () => {
     };
   };
 
+  /** Registro con plan: la cuenta eligió `slug` al registrarse (`usuario.plan_pendiente_slug`). */
+  const choosePendingPlan = (userId: string, slug: string): Promise<unknown> =>
+    owner.query('UPDATE usuario SET plan_pendiente_slug = $2 WHERE id = $1', [userId, slug]);
+
+  const pendingPlanOf = async (userId: string): Promise<string | null> => {
+    const [row] = (await owner.query('SELECT plan_pendiente_slug FROM usuario WHERE id = $1', [
+      userId,
+    ])) as { plan_pendiente_slug: string | null }[];
+    return row?.plan_pendiente_slug ?? null;
+  };
+
   /** 010 RN-2: la referencia del instrumento de cada transacción, leída como dueño de las tablas. */
   const instrumentRefsOf = async (userId: string): Promise<(string | null)[]> =>
     (
@@ -119,6 +130,19 @@ describe('POST /api/v1/billing/subscribe (spec 009 CA-3 a CA-5)', () => {
       payments: ['rechazada'],
     });
     await expect(instrumentRefsOf(bruno.id)).resolves.toEqual([null]);
+  });
+
+  it('registro con plan: el pago aprobado descarta el plan pendiente; uno rechazado lo conserva', async () => {
+    const carla = await newAccount();
+    const diego = await newAccount();
+    await choosePendingPlan(carla.id, 'equipo');
+    await choosePendingPlan(diego.id, 'equipo');
+
+    expect((await carla.subscribe(body('equipo'))).status).toBe(201);
+    expect((await diego.subscribe(body('equipo', TEST_CARDS.rejected))).status).toBe(402);
+
+    await expect(pendingPlanOf(carla.id)).resolves.toBeNull();
+    await expect(pendingPlanOf(diego.id)).resolves.toBe('equipo');
   });
 
   it('010 RN-2, B-2: 4000…0341 aprueba con el cliente presente y la transacción guarda la referencia, sin el número', async () => {

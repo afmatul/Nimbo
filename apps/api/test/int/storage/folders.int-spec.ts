@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { folderContentsResponseSchema, folderSummarySchema } from '@nimbo/contracts';
+import { folderContentsResponseSchema, explorerFolderSchema } from '@nimbo/contracts';
 import type { FolderSummary } from '@nimbo/contracts';
 import type { Response } from 'supertest';
 
@@ -43,7 +43,7 @@ describe('carpetas por HTTP (006 CA-1, CA-2, CA-3, CA-5, CA-8, CA-9)', () => {
   ): Promise<FolderSummary> => {
     const response = await client.createFolder({ name, parentId });
     expect(response.status).toBe(201);
-    return folderSummarySchema.parse(response.body);
+    return explorerFolderSchema.parse(response.body);
   };
 
   const contentsOf = async (client: StorageClient, folderId?: string) => {
@@ -67,6 +67,15 @@ describe('carpetas por HTTP (006 CA-1, CA-2, CA-3, CA-5, CA-8, CA-9)', () => {
       expect(parent.parentId).toBeNull();
       expect(child.parentId).toBe(parent.id);
       await expect(contentsOf(ana, child.id)).resolves.toMatchObject({ items: [] });
+    });
+
+    it('Explorador: responde la carpeta con la misma forma que su elemento en `GET /folders/contents`', async () => {
+      const parent = await created(ana, 'Forma');
+
+      const child = await created(ana, 'Hija', parent.id);
+
+      expect(child).toMatchObject({ type: 'folder', shared: false });
+      expect((await contentsOf(ana, parent.id)).items).toEqual([child]);
     });
 
     it('CA-2: un nombre con separador es 400 `STORAGE_INVALID_NODE_REQUEST` con el campo', async () => {
@@ -169,7 +178,7 @@ describe('carpetas por HTTP (006 CA-1, CA-2, CA-3, CA-5, CA-8, CA-9)', () => {
       const response = await ana.renameFolder(folder.id, { name: 'Final' });
 
       expect(response.status).toBe(200);
-      const renamed = folderSummarySchema.parse(response.body);
+      const renamed = explorerFolderSchema.parse(response.body);
       expect(renamed).toEqual({ ...folder, name: 'Final', updatedAt: renamed.updatedAt });
       expect(Date.parse(renamed.updatedAt)).toBeGreaterThanOrEqual(Date.parse(folder.updatedAt));
     });
@@ -214,7 +223,7 @@ describe('carpetas por HTTP (006 CA-1, CA-2, CA-3, CA-5, CA-8, CA-9)', () => {
       const response = await ana.moveFolder(source.id, { parentId: destination.id });
 
       expect(response.status).toBe(200);
-      expect(folderSummarySchema.parse(response.body).parentId).toBe(destination.id);
+      expect(explorerFolderSchema.parse(response.body).parentId).toBe(destination.id);
       expect((await contentsOf(ana, destination.id)).items.map((item) => item.id)).toEqual([
         source.id,
       ]);
@@ -232,7 +241,7 @@ describe('carpetas por HTTP (006 CA-1, CA-2, CA-3, CA-5, CA-8, CA-9)', () => {
       const response = await ana.moveFolder(source.id, { parentId: null });
 
       expect(response.status).toBe(200);
-      expect(folderSummarySchema.parse(response.body).parentId).toBeNull();
+      expect(explorerFolderSchema.parse(response.body).parentId).toBeNull();
     });
 
     it('CA-8: dentro de una descendiente es 422 `STORAGE_INVALID_MOVE` con el mensaje de la spec', async () => {

@@ -25,8 +25,10 @@ modules/notifications/
 ## Puerto `IMailer`
 
 `send(message: MailMessage): Promise<void>` con `MailMessage = { to, subject, text, html, idempotencyKey, tag,
-recipientId? }`. `notifications` no conoce las reglas de quien envía: recibe qué enviar y a quién. `tag` (p. ej.
-`identity.verification`) y `recipientId` (id de la cuenta) sirven solo para las bitácoras.
+recipientId?, attachment? }`. `notifications` no conoce las reglas de quien envía: recibe qué enviar y a quién. `tag` (p. ej.
+`identity.verification`) y `recipientId` (id de la cuenta) sirven solo para las bitácoras. `attachment = { filename,
+contentType, contentBase64 }` es un adjunto opcional (hoy, la factura PDF del comprobante de `billing`); va en base64
+porque el mensaje viaja como JSON en la cola `mail`, y nunca se registra.
 
 **Formato de `idempotencyKey`**: `<tag>.<id>`, p. ej. `identity.verification.<id del token>` o
 `identity.attempt-notice.<uuid>`. Solo letras ASCII, dígitos, `.`, `-` y `_`; **nunca `:`**, porque la clave es el

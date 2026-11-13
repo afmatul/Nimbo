@@ -13,12 +13,15 @@ export interface RegisterClientInput {
   readonly email: EmailAddress;
   readonly passwordHash: PasswordHash;
   readonly acceptance: LegalAcceptance;
+  /** Plan de pago elegido al registrarse y aún sin contratar; `billing` decide si existe y lo limpia. */
+  readonly pendingPlanSlug: string | null;
 }
 
 export interface ReplacePendingRegistrationInput {
   readonly fullName: string;
   readonly passwordHash: PasswordHash;
   readonly acceptance: LegalAcceptance;
+  readonly pendingPlanSlug: string | null;
 }
 
 export interface ClientUserSnapshot extends RegisterClientInput {
@@ -40,10 +43,12 @@ export class VerifiedAccountReplacementError extends Error {
 /** Cuenta de cliente, inmutable: cada transición devuelve una instancia nueva (Art. VII.7). */
 export class ClientUser extends User {
   readonly acceptance: LegalAcceptance;
+  readonly pendingPlanSlug: string | null;
 
   private constructor(snapshot: ClientUserSnapshot) {
     super({ ...snapshot, role: Role.CLIENT });
     this.acceptance = snapshot.acceptance;
+    this.pendingPlanSlug = snapshot.pendingPlanSlug;
   }
 
   static register(input: RegisterClientInput): ClientUser {
@@ -53,6 +58,7 @@ export class ClientUser extends User {
       email: input.email,
       passwordHash: input.passwordHash,
       acceptance: input.acceptance,
+      pendingPlanSlug: input.pendingPlanSlug,
       status: AccountStatus.ACTIVE,
       emailVerified: false,
     });
@@ -73,6 +79,7 @@ export class ClientUser extends User {
       fullName: input.fullName,
       passwordHash: input.passwordHash,
       acceptance: input.acceptance,
+      pendingPlanSlug: input.pendingPlanSlug,
     });
   }
 
@@ -100,6 +107,7 @@ export class ClientUser extends User {
       email: this.email,
       passwordHash: this.passwordHash,
       acceptance: this.acceptance,
+      pendingPlanSlug: this.pendingPlanSlug,
       status: this.status,
       emailVerified: this.emailVerified,
     };

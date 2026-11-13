@@ -46,6 +46,8 @@ export interface RegisterCommand {
   readonly fullName: string;
   readonly email: string;
   readonly password: string;
+  /** Plan elegido en el paso «Plan»; si existe y es de pago lo decide `billing` al verificar el correo. */
+  readonly planSlug?: string;
 }
 
 /** Reenvío ya validado por `resendVerificationRequestSchema`. */
@@ -57,6 +59,7 @@ interface Registration {
   readonly fullName: string;
   readonly email: EmailAddress;
   readonly passwordHash: PasswordHash;
+  readonly pendingPlanSlug: string | null;
 }
 
 /**
@@ -108,6 +111,7 @@ export class RegistrationService {
       fullName: command.fullName.trim(),
       email,
       passwordHash: await this.hasher.hash(command.password),
+      pendingPlanSlug: command.planSlug?.trim() ?? null,
     };
     const outcome = await this.runRegistration(registration);
     await this.complete(outcome);
@@ -179,7 +183,10 @@ export class RegistrationService {
     const { userId } = decision;
     if (decision.kind === 'verified') {
       this.logger.info({ event: 'identity.verification.succeeded', userId });
-      this.events.clientAccountVerified({ userId });
+      this.events.clientAccountVerified({
+        userId,
+        pendingPlanSlug: decision.user.pendingPlanSlug,
+      });
       return { outcome: 'VERIFIED', userId, user: decision.user };
     }
     if (decision.kind === 'already_verified') {
@@ -231,6 +238,7 @@ export class RegistrationService {
       email: registration.email,
       passwordHash: registration.passwordHash,
       acceptance: this.currentAcceptance(),
+      pendingPlanSlug: registration.pendingPlanSlug,
     });
     if (await this.users.insertIfAbsent(user)) {
       return this.accepted(user, 'new');
@@ -255,6 +263,7 @@ export class RegistrationService {
       fullName: registration.fullName,
       passwordHash: registration.passwordHash,
       acceptance: this.currentAcceptance(),
+      pendingPlanSlug: registration.pendingPlanSlug,
     });
     await this.users.update(replaced);
     return this.accepted(replaced, 'pending_replaced');

@@ -5,6 +5,8 @@ import { toFieldIssues } from '../validation';
 import { STORAGE_NODE_FIELD_MESSAGES } from './error-codes';
 import {
   createFolderSchema,
+  explorerFileSchema,
+  explorerFolderSchema,
   FILE_INDEX_STATUSES,
   fileDetailResponseSchema,
   folderContentsQuerySchema,
@@ -216,6 +218,19 @@ describe('contenido de una carpeta', () => {
         page([{ type: 'folder', ...folder, shared: false, indexStatus: 'indexed' }]),
       ).success,
     ).toBe(false);
+  });
+
+  it('Explorador: crear, renombrar y mover responden la carpeta o el archivo con sus distintivos', () => {
+    const explorerFolder = { type: 'folder', ...folder, shared: false };
+    const explorerFile = { type: 'file', ...file, shared: true, indexStatus: 'pending' };
+
+    expect(explorerFolderSchema.parse(explorerFolder)).toEqual(explorerFolder);
+    expect(explorerFileSchema.parse(explorerFile)).toEqual(explorerFile);
+    expect(explorerFolderSchema.safeParse(folder).success).toBe(false);
+    expect(explorerFileSchema.safeParse({ ...explorerFile, indexStatus: undefined }).success).toBe(
+      false,
+    );
+    expect(explorerFolderSchema.safeParse({ ...explorerFolder, extra: 1 }).success).toBe(false);
   });
 
   it('CA-5: en la raíz `folder` es `null` y no hay migas', () => {

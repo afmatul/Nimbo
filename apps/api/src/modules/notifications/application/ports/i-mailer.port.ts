@@ -6,8 +6,9 @@
  *   `identity.verification.<uuid>`, `identity.attempt-notice.<uuid>`). Solo letras ASCII, dígitos, `.`, `-` y `_`;
  *   **nunca `:`**, porque se usa como `jobId` de BullMQ y este lo rechaza. Dos `send` con la misma clave entregan un
  *   solo correo.
- * - `tag` y `recipientId` (id de la cuenta) sirven solo para las bitácoras; `to`, `subject`, `text` y `html` nunca se
- *   registran.
+ * - `tag` y `recipientId` (id de la cuenta) sirven solo para las bitácoras; `to`, `subject`, `text`, `html` y
+ *   `attachment` nunca se registran.
+ * - `attachment`: un archivo adjunto opcional (la factura PDF del comprobante de `billing`).
  */
 export interface MailMessage {
   readonly to: string;
@@ -17,6 +18,17 @@ export interface MailMessage {
   readonly idempotencyKey: string;
   readonly tag: string;
   readonly recipientId?: string;
+  readonly attachment?: MailAttachment;
+}
+
+/**
+ * Adjunto del correo. El contenido va en base64 y no como `Buffer` porque el mensaje viaja como JSON en la cola `mail`
+ * (un `Buffer` llegaría al `worker` como `{ type, data }`).
+ */
+export interface MailAttachment {
+  readonly filename: string;
+  readonly contentType: string;
+  readonly contentBase64: string;
 }
 
 /** Puerto de correo (ADR-0010): lo declara e implementa `notifications`; lo usa `identity`. */

@@ -132,7 +132,7 @@ describe('POST /auth/verify-email (CA-8 a CA-11)', () => {
     events.length = 0;
   });
 
-  it('CA-8: el enlace más reciente verifica la cuenta, lo marca usado, cierra los demás y publica un solo evento `{ userId }`', async () => {
+  it('CA-8: el enlace más reciente verifica la cuenta, lo marca usado, cierra los demás y publica un solo evento `{ userId, pendingPlanSlug }`', async () => {
     const email = `ana-${randomUUID()}@ejemplo.com`;
     await registerAndReadLink(email);
     const latest = await resendAndReadLink(email);
@@ -152,7 +152,7 @@ describe('POST /auth/verify-email (CA-8 a CA-11)', () => {
     expect(tokens.every((token) => token.usado_en !== null || token.invalidado_en !== null)).toBe(
       true,
     );
-    expect(events).toEqual([{ userId: user.id }]);
+    expect(events).toEqual([{ userId: user.id, pendingPlanSlug: null }]);
     expect(testApp.logs.lines()).toContainEqual(
       expect.objectContaining({ event: 'identity.account_verified.published', userId: user.id }),
     );
@@ -195,7 +195,7 @@ describe('POST /auth/verify-email (CA-8 a CA-11)', () => {
 
     expect(await userByEmail(email)).toEqual(user);
     expect(await tokensOf(user.id)).toEqual(tokensAfterVerification);
-    expect(events).toEqual([{ userId: user.id }]);
+    expect(events).toEqual([{ userId: user.id, pendingPlanSlug: null }]);
   });
 
   it('CA-10: el enlace anterior de una cuenta que ya se verificó con otro responde `already-verified`, sin evento nuevo', async () => {
@@ -211,7 +211,7 @@ describe('POST /auth/verify-email (CA-8 a CA-11)', () => {
     expect(response.status).toBe(200);
     expect(verifyEmailResponseSchema.parse(response.body)).toEqual({ status: 'already-verified' });
     expect(await tokensOf(user.id)).toEqual(tokensAfterVerification);
-    expect(events).toEqual([{ userId: user.id }]);
+    expect(events).toEqual([{ userId: user.id, pendingPlanSlug: null }]);
   });
 
   it('CA-11 (a): el enlace reemplazado de una cuenta no verificada responde `LINK_INVALID` sin datos de la cuenta y el vigente sigue sirviendo', async () => {

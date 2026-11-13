@@ -24,7 +24,11 @@ export function toUserDomain(row: UsuarioRow): User {
   if (row.rol !== Role.CLIENT) {
     return InternalUser.rehydrate({ ...common, role: row.rol, employeeCode: toEmployeeCode(row) });
   }
-  return ClientUser.rehydrate({ ...common, acceptance: toAcceptance(row) });
+  return ClientUser.rehydrate({
+    ...common,
+    acceptance: toAcceptance(row),
+    pendingPlanSlug: row.planPendienteSlug,
+  });
 }
 
 /** Fila completa de un cliente: sin código de empleado, que solo tienen las internas (011 RN-5). */
@@ -41,6 +45,7 @@ export function toUsuarioRow(user: ClientUser): UsuarioRow {
     versionPrivacidad: user.acceptance.privacyVersion,
     terminosAceptadosEn: user.acceptance.acceptedAt,
     codigoEmpleado: null,
+    planPendienteSlug: user.pendingPlanSlug,
   };
 }
 
@@ -58,6 +63,7 @@ export function toInternalUsuarioRow(user: InternalUser): UsuarioRow {
     versionPrivacidad: null,
     terminosAceptadosEn: null,
     codigoEmpleado: user.employeeCode.value,
+    planPendienteSlug: null,
   };
 }
 

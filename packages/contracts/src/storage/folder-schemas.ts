@@ -70,17 +70,30 @@ export const nodeSummarySchema = z.discriminatedUnion('type', [
 ]);
 
 /**
- * Elemento de `GET /folders/contents`: el resumen más `shared` (el nodo tiene comparticiones o, si es archivo, un
- * enlace público vigente; solo para su propietario: en lo compartido con el actor siempre es `false`) y, en archivos,
- * `indexStatus`.
+ * Carpeta del explorador: su resumen más `shared` (tiene comparticiones; solo para su propietario: en lo compartido con
+ * el actor siempre es `false`). Es la respuesta de `POST /folders`, `PATCH /folders/:folderId` y
+ * `POST /folders/:folderId/move`, igual que el elemento de `GET /folders/contents`.
  */
-export const explorerNodeSchema = z.discriminatedUnion('type', [
-  folderSummarySchema.extend({ type: z.literal('folder'), shared: z.boolean() }),
-  fileSummarySchema.extend({
+export const explorerFolderSchema = folderSummarySchema
+  .extend({ type: z.literal('folder'), shared: z.boolean() })
+  .strict();
+
+/**
+ * Archivo del explorador: su resumen más `shared` (comparticiones o un enlace público vigente, con la misma regla que
+ * la carpeta) e `indexStatus`. Es la respuesta de `PATCH /files/:fileId` y `POST /files/:fileId/move`.
+ */
+export const explorerFileSchema = fileSummarySchema
+  .extend({
     type: z.literal('file'),
     shared: z.boolean(),
     indexStatus: z.enum(FILE_INDEX_STATUSES),
-  }),
+  })
+  .strict();
+
+/** Elemento de `GET /folders/contents`: carpeta o archivo del explorador, discriminado por `type`. */
+export const explorerNodeSchema = z.discriminatedUnion('type', [
+  explorerFolderSchema,
+  explorerFileSchema,
 ]);
 
 /** `POST /folders`: `parentId: null` crea en la raíz. */
@@ -140,6 +153,8 @@ export const fileDetailResponseSchema = z
 export type FolderRef = z.infer<typeof folderRefSchema>;
 export type FolderSummary = z.infer<typeof folderSummarySchema>;
 export type NodeSummary = z.infer<typeof nodeSummarySchema>;
+export type ExplorerFolder = z.infer<typeof explorerFolderSchema>;
+export type ExplorerFile = z.infer<typeof explorerFileSchema>;
 export type ExplorerNode = z.infer<typeof explorerNodeSchema>;
 export type CreateFolderRequest = z.input<typeof createFolderSchema>;
 export type CreateFolderInput = z.output<typeof createFolderSchema>;

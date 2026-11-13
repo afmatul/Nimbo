@@ -21,6 +21,7 @@ const anInternalRow = (): UsuarioRow => ({
   versionPrivacidad: null,
   terminosAceptadosEn: null,
   codigoEmpleado: 'SOP-001',
+  planPendienteSlug: null,
 });
 
 describe('user.mapper', () => {
@@ -48,7 +49,17 @@ describe('user.mapper', () => {
       versionPrivacidad: '1.0',
       terminosAceptadosEn: user.acceptance.acceptedAt,
       codigoEmpleado: null,
+      planPendienteSlug: null,
     });
+  });
+
+  it('registro con plan: el plan pendiente va y vuelve de `plan_pendiente_slug`', () => {
+    const user = aClientUser().withPendingPlan('pro').build();
+
+    const row = toUsuarioRow(user);
+
+    expect(row.planPendienteSlug).toBe('pro');
+    expect(toUserDomain(row)).toEqual(user);
   });
 
   it('CA-3: una fila de rol interno se lee como `InternalUser`', () => {
