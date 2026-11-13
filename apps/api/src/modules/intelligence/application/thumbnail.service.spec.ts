@@ -3,6 +3,7 @@ import { Readable } from 'node:stream';
 import type { Actor } from '../../../shared';
 import { NodeNotFoundError } from '../../storage';
 import type { IndexableFile } from '../../storage';
+import { NotIndexableError } from '../domain/errors';
 
 import type { ExtractorRegistry } from './extractor-registry';
 import type { IThumbnailRepository } from './ports/i-thumbnail-repository.port';
@@ -25,7 +26,7 @@ function setup(file: IndexableFile | null = FILE) {
   const extract = jest.fn().mockResolvedValue([{ text: 'Acta de reunión' }]);
   const extractors = { forKind: jest.fn().mockReturnValue({ extract }) };
   const thumbnails: jest.Mocked<IThumbnailRepository> = {
-    findText: jest.fn().mockResolvedValue(null),
+    find: jest.fn().mockResolvedValue(null),
     insertIfAbsent: jest.fn().mockResolvedValue(undefined),
   };
   const transactions = { withActor: jest.fn((_actor: Actor, work: () => unknown) => work()) };
@@ -45,7 +46,7 @@ describe('ThumbnailService', () => {
   it('un archivo que el actor no ve (ajeno, inexistente o en la papelera) es NodeNotFoundError', async () => {
     const { service, thumbnails } = setup(null);
     await expect(service.excerptOf(BRUNO, 'f1')).rejects.toBeInstanceOf(NodeNotFoundError);
-    expect(thumbnails.findText).not.toHaveBeenCalled();
+    expect(thumbnails.find).not.toHaveBeenCalled();
   });
 
   it('comprueba el acceso con el actor y lee y guarda como la propietaria', async () => {
@@ -63,7 +64,7 @@ describe('ThumbnailService', () => {
   it('genera el extracto la primera vez y lo reutiliza después sin leer el archivo', async () => {
     const { service, files, thumbnails } = setup();
     expect(await service.excerptOf(BRUNO, 'f1')).toBe('Acta de reunión');
-    thumbnails.findText.mockResolvedValue('Acta de reunión');
+    thumbnails.find.mockResolvedValue({ text: 'Acta de reunión' });
     expect(await service.excerptOf(BRUNO, 'f1')).toBe('Acta de reunión');
     expect(files.openCurrent).toHaveBeenCalledTimes(1);
   });
@@ -77,18 +78,38 @@ describe('ThumbnailService', () => {
     expect(files.openCurrent).not.toHaveBeenCalled();
   });
 
-  it('un documento dañado devuelve null, no guarda nada y registra solo la clase del error', async () => {
+  it('un documento dañado devuelve null, se guarda como «sin texto» y registra solo la clase del error', async () => {
     const { service, extract, thumbnails, logger } = setup();
+    extract.mockRejectedValue(new NotIndexableError('formato_no_soportado'));
+    expect(await service.excerptOf(BRUNO, 'f1')).toBeNull();
+    expect(thumbnails.insertIfAbsent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ text: null }),
+    );
+    expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('Acta');
+  });
+
+  it('un documento sin texto devuelve null y lo guarda para no leerlo otra vez', async () => {
+    const { service, extract, thumbnails, files } = setup();
+    extract.mockResolvedValue([{ text: '  ' }]);
+    expect(await service.excerptOf(BRUNO, 'f1')).toBeNull();
+    expect(thumbnails.insertIfAbsent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ text: null }),
+    );
+
+    thumbnails.find.mockResolvedValue({ text: null });
+    expect(await service.excerptOf(BRUNO, 'f1')).toBeNull();
+    expect(files.openCurrent).toHaveBeenCalledTimes(1);
+  });
+
+  it('un fallo transitorio (error de lectura u objeto ausente) devuelve null y no se guarda', async () => {
+    const { service, extract, files, thumbnails, logger } = setup();
     extract.mockRejectedValue(new RangeError('contenido secreto'));
+    expect(await service.excerptOf(BRUNO, 'f1')).toBeNull();
+    files.openCurrent.mockResolvedValue(null);
     expect(await service.excerptOf(BRUNO, 'f1')).toBeNull();
     expect(thumbnails.insertIfAbsent).not.toHaveBeenCalled();
     expect(JSON.stringify(logger.warn.mock.calls)).not.toContain('secreto');
-  });
-
-  it('un documento sin texto devuelve null y no guarda un extracto vacío', async () => {
-    const { service, extract, thumbnails } = setup();
-    extract.mockResolvedValue([{ text: '  ' }]);
-    expect(await service.excerptOf(BRUNO, 'f1')).toBeNull();
-    expect(thumbnails.insertIfAbsent).not.toHaveBeenCalled();
   });
 });

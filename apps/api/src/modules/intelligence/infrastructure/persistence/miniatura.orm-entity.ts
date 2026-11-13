@@ -12,8 +12,9 @@ export class MiniaturaOrmEntity {
   @Column('uuid', { name: 'version_archivo_id' })
   versionArchivoId!: string;
 
-  @Column('text')
-  texto!: string;
+  /** `null`: el documento no tiene texto o no se pudo leer (ya se intentó y no se vuelve a leer). */
+  @Column('text', { nullable: true })
+  texto!: string | null;
 
   @Column('timestamptz', { name: 'creado_en' })
   creadoEn!: Date;

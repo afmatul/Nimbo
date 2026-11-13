@@ -5,7 +5,8 @@ export interface NewThumbnail {
   readonly id: string;
   readonly fileId: string;
   readonly versionId: string;
-  readonly text: string;
+  /** `null`: sin texto o ilegible; se guarda igual para no leer el archivo otra vez. */
+  readonly text: string | null;
   readonly createdAt: Date;
 }
 
@@ -15,8 +16,8 @@ export interface NewThumbnail {
  * llama actúa como la propietaria. Los que escriben exigen la transacción `withActor` del llamador.
  */
 export interface IThumbnailRepository {
-  /** Texto de la versión `versionId`; `null` si todavía no se generó. */
-  findText(actor: Actor, versionId: string): Promise<string | null>;
+  /** El resultado guardado de la versión `versionId`; `null` si todavía no se generó (`{ text: null }`: ya se intentó). */
+  find(actor: Actor, versionId: string): Promise<{ readonly text: string | null } | null>;
   /** Guarda el extracto; si la versión ya tiene uno (dos peticiones a la vez) no hace nada ni aborta la transacción. */
   insertIfAbsent(actor: Actor, thumbnail: NewThumbnail): Promise<void>;
 }

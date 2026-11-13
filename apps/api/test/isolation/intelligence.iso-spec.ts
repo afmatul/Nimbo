@@ -289,7 +289,7 @@ describe('aislamiento de la indexación (019 CA-17, CA-18, CA-20)', () => {
       expect((await statusOf(a, fileA.fileId)).body).toMatchObject({ state: 'indexado' });
     });
 
-    it('ISO-7b (DF-97): B no puede pedir la miniatura del archivo de A: mismo 404 que un id inexistente o inválido, sin escribir', async () => {
+    it('ISO-7b (DF-98): B no puede pedir la miniatura del archivo de A: mismo 404 que un id inexistente o inválido, sin escribir', async () => {
       const thumbnailOf = (account: WorldAccount, fileId: string) =>
         http().get(`${API_PREFIX}/files/${fileId}/thumbnail`).set(bearer(account));
       const rowsBefore = await world.storage.owner.query(

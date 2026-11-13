@@ -66,6 +66,24 @@ describe('esquema de `miniatura`', () => {
     ).rejects.toThrow(/ck_miniatura_texto/);
   });
 
+  it('guarda «sin texto» como NULL, pero no un texto vacío', async () => {
+    await inRolledBackTransaction(owner, async (runner) => {
+      const version = await insertFileWithVersion(runner, await insertAccount(runner));
+      await runner.query(
+        `INSERT INTO miniatura (id, archivo_id, version_archivo_id, texto, creado_en)
+         VALUES (gen_random_uuid(), $1, $2, NULL, now())`,
+        [version.fileId, version.versionId],
+      );
+      expect(await countThumbnails(runner.manager)).toBe(1);
+    });
+    await expect(
+      inRolledBackTransaction(owner, async (runner) => {
+        const version = await insertFileWithVersion(runner, await insertAccount(runner));
+        await insertThumbnail(runner, version, '');
+      }),
+    ).rejects.toThrow(/ck_miniatura_texto/);
+  });
+
   it('borrar el archivo borra su extracto', async () => {
     const left = await inRolledBackTransaction(owner, async (runner) => {
       const version = await insertFileWithVersion(runner, await insertAccount(runner));
@@ -129,15 +147,18 @@ describe('RLS de `miniatura` (aislamiento)', () => {
     await removeAccounts(owner, created);
   });
 
-  it('tiene RLS habilitada y forzada, con solo la política de la propietaria', async () => {
+  it('tiene RLS habilitada y forzada, con solo lectura e inserción de la propietaria', async () => {
     const [rls] = (await owner.query(
       "SELECT relrowsecurity AS enabled, relforcerowsecurity AS forced FROM pg_class WHERE oid = 'miniatura'::regclass",
     )) as { enabled: boolean; forced: boolean }[];
     const policies = (await owner.query(
-      "SELECT policyname, cmd FROM pg_policies WHERE tablename = 'miniatura'",
+      "SELECT policyname, cmd FROM pg_policies WHERE tablename = 'miniatura' ORDER BY policyname",
     )) as { policyname: string; cmd: string }[];
     expect(rls).toEqual({ enabled: true, forced: true });
-    expect(policies).toEqual([{ policyname: 'miniatura_cliente', cmd: 'ALL' }]);
+    expect(policies).toEqual([
+      { policyname: 'miniatura_alta', cmd: 'INSERT' },
+      { policyname: 'miniatura_lectura', cmd: 'SELECT' },
+    ]);
   });
 
   it('la propietaria ve el extracto de su archivo; otro cliente no ve nada', async () => {
@@ -157,6 +178,19 @@ describe('RLS de `miniatura` (aislamiento)', () => {
       await expect(app.asActor(internals[role], countThumbnails)).resolves.toBe(0);
     },
   );
+
+  it('ni la propietaria modifica o borra un extracto (menor privilegio): solo lo lee e inserta', async () => {
+    const touched = await app.asActor(ana, async (manager) => {
+      const updated = (await manager.query("UPDATE miniatura SET texto = 'otro'")) as [
+        unknown[],
+        number,
+      ];
+      const deleted = (await manager.query('DELETE FROM miniatura')) as [unknown[], number];
+      return [updated[1], deleted[1]];
+    });
+    expect(touched).toEqual([0, 0]);
+    await expect(app.asActor(ana, countThumbnails)).resolves.toBe(1);
+  });
 
   it('`nimbo_app` sin actor no ve filas', async () => {
     await expect(countThumbnails(app.dataSource)).resolves.toBe(0);

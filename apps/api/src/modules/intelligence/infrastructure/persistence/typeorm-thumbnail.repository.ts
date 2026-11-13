@@ -21,11 +21,11 @@ const INSERT_IF_ABSENT_SQL = `
 export class TypeOrmThumbnailRepository implements IThumbnailRepository {
   constructor(@Inject(TransactionContext) private readonly context: TransactionContext) {}
 
-  async findText(actor: Actor, versionId: string): Promise<string | null> {
+  async find(actor: Actor, versionId: string): Promise<{ readonly text: string | null } | null> {
     const row = await this.manager(actor).findOne(MiniaturaOrmEntity, {
       where: { versionArchivoId: versionId },
     });
-    return row?.texto ?? null;
+    return row === null ? null : { text: row.texto };
   }
 
   async insertIfAbsent(actor: Actor, thumbnail: NewThumbnail): Promise<void> {

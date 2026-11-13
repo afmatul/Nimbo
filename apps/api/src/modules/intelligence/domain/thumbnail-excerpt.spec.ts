@@ -19,7 +19,7 @@ describe('thumbnailExcerptOf', () => {
   it('corta en el límite de una palabra con «…» sin pasar del máximo', () => {
     const excerpt = thumbnailExcerptOf(segments('uno dos tres cuatro cinco'), 14);
     expect(excerpt).toBe('uno dos tres…');
-    expect(excerpt.length).toBeLessThanOrEqual(15);
+    expect(excerpt.length).toBeLessThanOrEqual(14);
   });
 
   it('un texto que cabe no se toca', () => {

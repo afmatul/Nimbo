@@ -5,7 +5,7 @@ export const THUMBNAIL_EXCERPT_MAX_CHARS = 400;
 
 /**
  * Primeras líneas de un documento para su miniatura: une los segmentos en orden de lectura, colapsa los espacios y
- * corta en el límite de una palabra con «…». Cadena vacía si el documento no tiene texto.
+ * corta en el límite de una palabra con «…» sin pasar de `maxChars` (la «…» cuenta). Cadena vacía si el documento no tiene texto.
  */
 export function thumbnailExcerptOf(
   segments: readonly Segment[],
@@ -16,7 +16,7 @@ export function thumbnailExcerptOf(
     .filter((line) => line.length > 0)
     .join('\n');
   if (text.length <= maxChars) return text;
-  const cut = text.slice(0, maxChars);
+  const cut = text.slice(0, maxChars - 1);
   const lastSpace = cut.search(/\s\S*$/);
   return `${(lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
 }
