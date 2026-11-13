@@ -109,10 +109,6 @@ export class SharingService {
     @Inject(PinoLogger) private readonly logger: SharingLogger,
   ) {}
 
-  /**
-   * CA-1 a CA-7 (plan §5): límite → nodo con `SHARE` → destinatario → solo lectura si crea o sube a `EDITOR` →
-   * alta o cambio con su evento en la misma transacción. La bitácora sale tras el commit.
-   */
   /** Lote del explorador: cada nodo pasa por `share` (permiso, tasa, auditoría); un error solo marca ese nodo. */
   shareMany(actor: Actor, command: BatchShareCommand): Promise<Settlement<SharedNodeRef>> {
     const { email, level } = command;
@@ -121,6 +117,10 @@ export class SharingService {
     );
   }
 
+  /**
+   * CA-1 a CA-7 (plan §5): límite → nodo con `SHARE` → destinatario → solo lectura si crea o sube a `EDITOR` →
+   * alta o cambio con su evento en la misma transacción. La bitácora sale tras el commit.
+   */
   async share(actor: Actor, command: ShareCommand): Promise<ShareOutcome> {
     await this.assertWithinRate(actor);
     const outcome = await this.transactions.withActor(actor, () =>

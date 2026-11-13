@@ -2,12 +2,14 @@
  * @jest-environment jsdom
  */
 import type { BatchResult, FolderContentsResponse, NodeSummary } from '@nimbo/contracts';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { messageForCode } from '../../../lib/error-catalog';
 import type { BatchApi } from '../batch-api';
+import { DOWNLOAD_FRAME_TTL_MS, DOWNLOAD_STAGGER_MS } from '../batch-downloads';
 import { useNodeSelection } from '../hooks/use-node-selection';
+import { StorageRequestError } from '../storage-request-error';
 
 import { ExplorerBatch } from './explorer-batch';
 
@@ -60,8 +62,14 @@ function fakeApi(): jest.Mocked<BatchApi> {
   };
 }
 
-function Harness({ api, onChanged }: { readonly api: BatchApi; readonly onChanged: () => void }) {
-  const selection = useNodeSelection([ACTA, INFORME], 'raiz');
+interface HarnessProps {
+  readonly api: BatchApi;
+  readonly onChanged: () => void;
+  readonly nodes?: readonly NodeSummary[];
+}
+
+function Harness({ api, onChanged, nodes = [ACTA, INFORME] }: HarnessProps) {
+  const selection = useNodeSelection(nodes, 'raiz');
   return (
     <>
       <button type="button" onClick={selection.toggleAll}>
@@ -77,13 +85,27 @@ function Harness({ api, onChanged }: { readonly api: BatchApi; readonly onChange
   );
 }
 
-async function renderWithAllSelected(api: BatchApi, onChanged = jest.fn()) {
-  const user = userEvent.setup();
-  render(<Harness api={api} onChanged={onChanged} />);
+async function renderWithAllSelected(
+  api: BatchApi,
+  onChanged = jest.fn(),
+  nodes: readonly NodeSummary[] = [ACTA, INFORME],
+) {
+  const user = userEvent.setup({ advanceTimers: (ms) => jest.advanceTimersByTime(ms) });
+  render(<Harness api={api} onChanged={onChanged} nodes={nodes} />);
   expect(screen.queryByRole('region', { name: 'Selección' })).toBeNull();
   await user.click(screen.getByRole('button', { name: 'marcar todo' }));
   return { user, bar: screen.getByRole('region', { name: 'Selección' }), onChanged };
 }
+
+const downloadFrames = (): readonly HTMLIFrameElement[] => [
+  ...document.body.querySelectorAll<HTMLIFrameElement>('iframe[hidden]'),
+];
+
+beforeEach(() => jest.useFakeTimers());
+afterEach(() => {
+  jest.runOnlyPendingTimers();
+  jest.useRealTimers();
+});
 
 describe('ExplorerBatch: acciones sobre la selección múltiple', () => {
   it('la barra dice cuántos hay y ofrece Compartir, Descargar, Mover y Eliminar', async () => {
@@ -166,10 +188,116 @@ describe('ExplorerBatch: acciones sobre la selección múltiple', () => {
 
     const outcome = await screen.findByRole('status', { name: 'Empezó la descarga de 1 archivo.' });
     const failure = within(outcome).getByRole('listitem');
+    // El motivo es el del elemento, no el «carpeta de destino» que el catálogo usa al subir o crear.
     expect(failure.textContent).toBe(
-      `Informe.pdf: ${messageForCode('STORAGE_NODE_NOT_FOUND', { fileName: 'Informe.pdf' })}`,
+      'Informe.pdf: Ya no existe o está en la papelera. Actualiza la lista y vuelve a intentarlo.',
     );
+    expect(failure.textContent).not.toContain(messageForCode('STORAGE_NODE_NOT_FOUND'));
     expect(within(outcome).getByRole('button', { name: 'Cerrar aviso' })).toBeTruthy();
+  });
+
+  it('Descargar abre cada URL en su iframe oculto, escalonadas, y los quita después', async () => {
+    const api = fakeApi();
+    api.download.mockResolvedValue({
+      downloads: [
+        { id: ACTA.id, name: 'Acta.pdf', url: 'https://minio.test/acta' },
+        { id: INFORME.id, name: 'Informe.pdf', url: 'https://minio.test/informe' },
+      ],
+      failed: [],
+    });
+    const { user, bar } = await renderWithAllSelected(api);
+
+    await user.click(within(bar).getByRole('button', { name: 'Descargar' }));
+    await screen.findByText('Empezó la descarga de 2 archivos.');
+    act(() => jest.advanceTimersByTime(0));
+    expect(downloadFrames().map((frame) => frame.src)).toEqual(['https://minio.test/acta']);
+
+    act(() => jest.advanceTimersByTime(DOWNLOAD_STAGGER_MS));
+    expect(downloadFrames().map((frame) => frame.src)).toEqual([
+      'https://minio.test/acta',
+      'https://minio.test/informe',
+    ]);
+
+    act(() => jest.advanceTimersByTime(DOWNLOAD_FRAME_TTL_MS + DOWNLOAD_STAGGER_MS));
+    expect(downloadFrames()).toEqual([]);
+  });
+
+  it('Descargar solo carpetas vacías avisa que no hay archivos, sin decir «0 archivos»', async () => {
+    const { user, bar } = await renderWithAllSelected(fakeApi());
+
+    await user.click(within(bar).getByRole('button', { name: 'Descargar' }));
+
+    expect(await screen.findByText(/No hay archivos para descargar/)).toBeTruthy();
+    expect(screen.queryByText(/0 archivos/)).toBeNull();
+  });
+
+  it('con un solo elemento, los títulos van en singular', async () => {
+    const { user, bar } = await renderWithAllSelected(fakeApi(), jest.fn(), [ACTA]);
+
+    await user.click(within(bar).getByRole('button', { name: 'Compartir' }));
+    expect(screen.getByRole('dialog', { name: 'Compartir 1 elemento' })).toBeTruthy();
+  });
+
+  it('Compartir con un correo sin cuenta deja el diálogo abierto con lo escrito y el motivo', async () => {
+    const api = fakeApi();
+    const code = 'SHARING_RECIPIENT_NOT_FOUND';
+    api.share.mockResolvedValue({
+      succeeded: [],
+      failed: [
+        { ...item(ACTA), code },
+        { ...item(INFORME), code },
+      ],
+    });
+    const { user, bar } = await renderWithAllSelected(api);
+
+    await user.click(within(bar).getByRole('button', { name: 'Compartir' }));
+    const dialog = screen.getByRole('dialog', { name: 'Compartir 2 elementos' });
+    await user.type(within(dialog).getByLabelText('Correo de la persona'), 'nadie@ejemplo.com');
+    await user.click(within(dialog).getByRole('button', { name: 'Compartir' }));
+
+    expect((await within(dialog).findByRole('alert')).textContent).toMatch(
+      /No encontramos una cuenta/,
+    );
+    expect(within(dialog).getByLabelText<HTMLInputElement>('Correo de la persona').value).toBe(
+      'nadie@ejemplo.com',
+    );
+    const barBehind = screen.getByRole('region', { name: 'Selección', hidden: true });
+    expect(barBehind.textContent).toContain('2 seleccionados');
+  });
+
+  it('Compartir rechazado entero (correo inválido) lo explica en el diálogo, sin cerrarlo', async () => {
+    const api = fakeApi();
+    api.share.mockRejectedValue(
+      new StorageRequestError(422, 'SHARING_INVALID_REQUEST', {}, [
+        { field: 'email', reason: 'INVALID_EMAIL', message: 'correo' },
+      ]),
+    );
+    const { user, bar } = await renderWithAllSelected(api);
+
+    await user.click(within(bar).getByRole('button', { name: 'Compartir' }));
+    const dialog = screen.getByRole('dialog', { name: 'Compartir 2 elementos' });
+    await user.type(within(dialog).getByLabelText('Correo de la persona'), 'luis@ejemplo');
+    await user.click(within(dialog).getByRole('button', { name: 'Compartir' }));
+
+    expect((await within(dialog).findByRole('alert')).textContent).toMatch(/correo válido/);
+  });
+
+  it('lo que está dentro de una carpeta también seleccionada no se manda aparte', async () => {
+    const api = fakeApi();
+    const carpeta: NodeSummary = {
+      type: 'folder',
+      ...DESTINO,
+      parentId: null,
+      createdAt: AT,
+      updatedAt: AT,
+    };
+    const dentro: NodeSummary = { ...ACTA, folderId: carpeta.id };
+    const { user, bar } = await renderWithAllSelected(api, jest.fn(), [carpeta, dentro]);
+
+    await user.click(within(bar).getByRole('button', { name: 'Eliminar' }));
+    await user.click(screen.getByRole('button', { name: 'Mover a la papelera' }));
+
+    expect(api.trash).toHaveBeenCalledWith([item(carpeta)]);
   });
 
   it('si la petición falla, lo dice con un error y conserva la selección', async () => {
@@ -183,9 +311,4 @@ describe('ExplorerBatch: acciones sobre la selección múltiple', () => {
     expect(await screen.findByRole('alert')).toBeTruthy();
     expect(screen.getByRole('region', { name: 'Selección' })).toBeTruthy();
   });
-});
-
-// Evita que jsdom intente navegar al hacer clic en los enlaces de descarga.
-beforeAll(() => {
-  jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
 });

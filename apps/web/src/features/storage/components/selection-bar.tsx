@@ -14,11 +14,14 @@ export interface SelectionBarProps {
   readonly onClear: () => void;
 }
 
-/** Acciones que abren un diálogo; en solo lectura (010 CA-14) no se puede compartir, mover ni eliminar. */
-const DIALOG_ACTIONS: readonly (readonly [BatchDialog, string, LucideIcon])[] = [
-  ['share', 'Compartir', Share2],
-  ['move', 'Mover', FolderInput],
-  ['trash', 'Eliminar', Trash2],
+/**
+ * Acciones que abren un diálogo y si la bloquea la solo lectura (010 CA-13, CA-14): compartir y mover sí; mandar a la
+ * papelera no, como «Mover a la papelera» de cada fila y `POST /nodes/batch/delete`.
+ */
+const DIALOG_ACTIONS: readonly (readonly [BatchDialog, string, LucideIcon, boolean])[] = [
+  ['share', 'Compartir', Share2, true],
+  ['move', 'Mover', FolderInput, true],
+  ['trash', 'Eliminar', Trash2, false],
 ];
 
 /**
@@ -47,13 +50,13 @@ export function SelectionBar({
         <Download className="h-4 w-4" aria-hidden="true" />
         Descargar
       </Button>
-      {DIALOG_ACTIONS.map(([dialog, label, Icon]) => (
+      {DIALOG_ACTIONS.map(([dialog, label, Icon, blockedWhenReadOnly]) => (
         <Button
           key={dialog}
           type="button"
           variant="outline"
           size="sm"
-          disabled={pending || readOnly}
+          disabled={pending || (readOnly && blockedWhenReadOnly)}
           onClick={() => onOpen(dialog)}
         >
           <Icon className="h-4 w-4" aria-hidden="true" />
