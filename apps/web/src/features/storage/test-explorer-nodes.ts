@@ -15,6 +15,9 @@ export function explorerFolder(
  * Archivo como lo devuelve el servidor al renombrar o mover (`ExplorerFile`): sin compartir e indexado salvo que la
  * prueba diga otra cosa.
  */
-export function explorerFile(file: FileSummary, overrides: Partial<ExplorerFile> = {}): ExplorerFile {
+export function explorerFile(
+  file: FileSummary,
+  overrides: Partial<ExplorerFile> = {},
+): ExplorerFile {
   return { ...file, type: 'file', shared: false, indexStatus: 'indexed', ...overrides };
 }

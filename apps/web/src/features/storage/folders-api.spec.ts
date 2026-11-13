@@ -153,7 +153,7 @@ describe('api de carpetas', () => {
   });
 
   it('CA-1: crea con POST /folders y valida la carpeta devuelta', async () => {
-    const created = { id: ALPHA.id, name: 'Actas', parentId: null, createdAt: AT, updatedAt: AT };
+    const created = { ...FOLDER, name: 'Actas' };
     fetchMock.mockResolvedValue(jsonResponse(created, 201));
 
     await expect(api.createFolder({ name: 'Actas', parentId: null })).resolves.toEqual(created);

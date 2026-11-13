@@ -1,11 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import {
-  STORAGE_ERROR_CODES,
-  type FileSummary,
-  type FolderSummary,
-} from '@nimbo/contracts';
+import { STORAGE_ERROR_CODES, type FileSummary, type FolderSummary } from '@nimbo/contracts';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';

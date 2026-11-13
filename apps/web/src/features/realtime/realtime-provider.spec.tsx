@@ -55,7 +55,13 @@ let renew: jest.Mock<Promise<string | null>, []>;
 function sessionWith(token: string, role: RoleName = 'CLIENT'): SessionContextValue {
   return {
     status: 'authenticated',
-    user: { id: 'u-1', fullName: 'Ana López', email: 'ana@ejemplo.com', role, pendingPlanSlug: null },
+    user: {
+      id: 'u-1',
+      fullName: 'Ana López',
+      email: 'ana@ejemplo.com',
+      role,
+      pendingPlanSlug: null,
+    },
     accessToken: token,
     renew,
     signOut: jest.fn(),

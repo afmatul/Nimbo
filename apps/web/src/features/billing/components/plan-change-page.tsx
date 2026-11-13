@@ -48,7 +48,7 @@ function useScheduling({ apiPublicUrl, authFetch }: Omit<PlanChangePageProps, 's
       setPending(true);
       schedulePlanChange(apiPublicUrl, authFetch, plan.slug)
         .then(
-          ({ result }) => setSuccess(planChangeMessage(result, Date.now())),
+          ({ result }) => setSuccess(planChangeMessage(result)),
           (caught: unknown) => setError(messageForCode(toApiClientError(caught).code)),
         )
         .finally(() => setPending(false));

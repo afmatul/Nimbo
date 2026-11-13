@@ -1,6 +1,10 @@
 'use client';
 
-import { FILE_NAME_MAX_LENGTH, type CreateFolderInput, type ExplorerFolder } from '@nimbo/contracts';
+import {
+  FILE_NAME_MAX_LENGTH,
+  type CreateFolderInput,
+  type ExplorerFolder,
+} from '@nimbo/contracts';
 import { AlertCircle } from 'lucide-react';
 import * as React from 'react';
 

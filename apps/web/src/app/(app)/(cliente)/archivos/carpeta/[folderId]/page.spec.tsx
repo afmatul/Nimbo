@@ -169,11 +169,7 @@ describe('página de una carpeta (/archivos/carpeta/[folderId])', () => {
     };
     await renderFolder(
       fakeApi({
-        folderContents: contentsBy(() =>
-          Promise.resolve(
-            fase3([explorerFile(plan)]),
-          ),
-        ),
+        folderContents: contentsBy(() => Promise.resolve(fase3([explorerFile(plan)]))),
       }),
     );
 

@@ -162,6 +162,78 @@ describe('MyFiles con carpetas desglosadas (006 CA-26)', () => {
   });
 });
 
+/** Mis archivos cuyo listado de `folderId` trae `items` en lugar de los de `LISTINGS`. */
+function folderContentsWith(
+  folderId: string | null,
+  items: FolderContentsResponse['items'],
+): StorageApi['folderContents'] {
+  return jest.fn((requested: string | null) => {
+    const listing = LISTINGS[requested ?? 'root'] as FolderContentsResponse;
+    return Promise.resolve(requested === folderId ? { ...listing, items } : listing);
+  });
+}
+
+function rowOf(name: string): HTMLElement {
+  const row = within(screen.getByRole('table')).getByText(name).closest('tr');
+  if (row === null) throw new Error(`Sin fila para ${name}`);
+  return row;
+}
+
+function expectSharedAndFailed(name: string): void {
+  expect(within(rowOf(name)).getByText('Compartido')).toBeTruthy();
+  expect(within(rowOf(name)).getByText('No se pudo indexar')).toBeTruthy();
+}
+
+const SHARED_RAIZ: ExplorerFile = {
+  ...file('f-root', 'raiz.pdf', null),
+  shared: true,
+  indexStatus: 'failed',
+};
+const SHARED_ACTA: ExplorerFile = {
+  ...SHARED_RAIZ,
+  id: 'f-a',
+  name: 'acta.pdf',
+  folderId: ALPHA.id,
+};
+
+describe('MyFiles conserva las marcas de lo renombrado o movido (006 CA-4, CA-7)', () => {
+  it('CA-4: el archivo renombrado sigue «Compartido» y con su indexación sin volver a pedir la carpeta', async () => {
+    const api = fakeApi({
+      folderContents: folderContentsWith(null, [folder(ALPHA, null), SHARED_RAIZ]),
+      renameFile: jest.fn(() => Promise.resolve({ ...SHARED_RAIZ, name: 'final.pdf' })),
+    });
+    renderMyFiles(api);
+    await screen.findByText('raiz.pdf');
+
+    await chooseRowAction('raiz.pdf', 'Renombrar');
+    await userEvent.clear(screen.getByRole('textbox'));
+    await userEvent.type(screen.getByRole('textbox'), 'final');
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar nombre' }));
+
+    await screen.findByText('final.pdf');
+    expectSharedAndFailed('final.pdf');
+    expect(api.folderContents).toHaveBeenCalledTimes(1);
+  });
+
+  it('CA-7: el archivo movido a la raíz llega «Compartido» y con su indexación', async () => {
+    const alphaItems = [folder(FASE3, ALPHA.id), SHARED_ACTA];
+    const api = fakeApi({
+      folderContents: folderContentsWith(ALPHA.id, alphaItems),
+      moveFile: jest.fn(() => Promise.resolve({ ...SHARED_ACTA, folderId: null })),
+    });
+    await renderMyFilesWithAlphaExpanded(api);
+
+    await chooseRowAction('acta.pdf', 'Mover a…');
+    await userEvent.click(await screen.findByRole('treeitem', { name: /^Mis archivos/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Mover aquí' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(api.moveFile).toHaveBeenCalledWith('f-a', { folderId: null, onConflict: 'ask' });
+    // El listado de la raíz no trae acta.pdf: sus marcas solo pueden venir de la respuesta del movimiento.
+    expectSharedAndFailed('acta.pdf');
+  });
+});
+
 function desktopSidebar(): HTMLElement {
   return screen.getByRole('complementary', { name: 'Barra lateral de escritorio' });
 }

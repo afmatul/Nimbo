@@ -5,6 +5,7 @@ import type { BatchResult, FolderContentsResponse, NodeSummary } from '@nimbo/co
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+import { messageForCode } from '../../../lib/error-catalog';
 import type { BatchApi } from '../batch-api';
 import { useNodeSelection } from '../hooks/use-node-selection';
 
@@ -151,6 +152,24 @@ describe('ExplorerBatch: acciones sobre la selección múltiple', () => {
 
     expect(api.download).toHaveBeenCalledWith([item(ACTA), item(INFORME)]);
     expect(await screen.findByText('Empezó la descarga de 1 archivo.')).toBeTruthy();
+  });
+
+  it('Descargar muestra lo que no se pudo (`failed`) en el mismo aviso parcial que mover o eliminar', async () => {
+    const api = fakeApi();
+    api.download.mockResolvedValue({
+      downloads: [{ id: ACTA.id, name: 'Acta.pdf', url: 'https://minio.test/acta' }],
+      failed: PARTIAL.failed,
+    });
+    const { user, bar } = await renderWithAllSelected(api);
+
+    await user.click(within(bar).getByRole('button', { name: 'Descargar' }));
+
+    const outcome = await screen.findByRole('status', { name: 'Empezó la descarga de 1 archivo.' });
+    const failure = within(outcome).getByRole('listitem');
+    expect(failure.textContent).toBe(
+      `Informe.pdf: ${messageForCode('STORAGE_NODE_NOT_FOUND', { fileName: 'Informe.pdf' })}`,
+    );
+    expect(within(outcome).getByRole('button', { name: 'Cerrar aviso' })).toBeTruthy();
   });
 
   it('si la petición falla, lo dice con un error y conserva la selección', async () => {

@@ -17,10 +17,7 @@ import type { StorageApi } from '../../../../features/storage/api';
 import { UploadsSpaceProvider } from '../../../../features/storage/components/space-provider';
 import { UploadsProvider } from '../../../../features/storage/components/uploads-provider';
 import { StorageRequestError } from '../../../../features/storage/storage-request-error';
-import {
-  explorerFile,
-  explorerFolder,
-} from '../../../../features/storage/test-explorer-nodes';
+import { explorerFile, explorerFolder } from '../../../../features/storage/test-explorer-nodes';
 import { GB, spaceSummaryWith } from '../../../../features/storage/test-space-summary';
 import type { UploadManagerOptions } from '../../../../features/storage/upload/upload-manager';
 

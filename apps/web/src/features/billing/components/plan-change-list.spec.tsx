@@ -199,6 +199,29 @@ describe('Cambiar de plan, /suscripcion/cambiar-plan (spec 010 CA-16 a CA-18, CA
     expect(within(dialog).getByRole('button', { name: 'Cambiar a Personal ahora' })).toBeTruthy();
   });
 
+  it('CA-27: con `APPLIED_IMMEDIATELY` confirma «Tu plan cambió a Personal.» aunque `effectiveAt` sea futuro', async () => {
+    await renderWith(historyWith({ ...VIEW, status: 'readOnly' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Cambiar a Personal' }));
+    const dialog = screen.getByRole('alertdialog', { name: '¿Cambiar a Personal ahora?' });
+
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        subscription: { ...VIEW, plan: PERSONAL, status: 'active' },
+        result: {
+          kind: 'APPLIED_IMMEDIATELY',
+          planSlug: 'personal',
+          planName: 'Personal',
+          effectiveAt: '2099-10-14T18:00:00.000Z',
+        },
+      }),
+    );
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cambiar a Personal ahora' }));
+
+    const done = await screen.findByRole('alertdialog', { name: 'Cambio de plan confirmado' });
+    expect(within(done).getByText('Tu plan cambió a Personal.')).toBeTruthy();
+    expect(within(done).queryByText(/cambiará/)).toBeNull();
+  });
+
   it('CA-17: si el plan ya no está, el diálogo dice qué pasó y solo ofrece «Cerrar»', async () => {
     await renderWith(historyWith(VIEW));
     await userEvent.click(screen.getByRole('button', { name: 'Cambiar a Pro' }));

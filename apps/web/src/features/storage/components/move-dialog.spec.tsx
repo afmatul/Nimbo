@@ -94,9 +94,7 @@ function renderDialog(overrides: Partial<MoveDialogProps> = {}): MoveDialogProps
     folderContents: jest.fn(contentsOf),
     createFolder: jest.fn(() => Promise.resolve(NEW_FOLDER)),
     moveFile: jest.fn((_id, body) => Promise.resolve({ ...FILE_NODE, folderId: body.folderId })),
-    moveFolder: jest.fn(() =>
-      Promise.resolve({ ...FASE3_NODE, parentId: null }),
-    ),
+    moveFolder: jest.fn(() => Promise.resolve({ ...FASE3_NODE, parentId: null })),
     onMoved: jest.fn(),
     onFolderCreated: jest.fn(),
     onClose: jest.fn(),

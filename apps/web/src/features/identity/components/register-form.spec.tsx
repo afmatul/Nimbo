@@ -1,6 +1,7 @@
 /**
  * @jest-environment jsdom
  */
+import { IDENTITY_ERROR_CODES, IDENTITY_FIELD_MESSAGES } from '@nimbo/contracts';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
@@ -89,6 +90,34 @@ describe('RegisterForm', () => {
 
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as Record<string, unknown>;
     expect(body).toMatchObject({ email: 'ana@ejemplo.com', planSlug: 'pro' });
+  });
+
+  it('Paso «Plan»: `INVALID_PLAN` se muestra en el paso «Plan», sin volver a la cuenta', async () => {
+    const user = userEvent.setup();
+    const message = IDENTITY_FIELD_MESSAGES.INVALID_PLAN;
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        {
+          code: IDENTITY_ERROR_CODES.INVALID_INPUT,
+          message: 'Revisa los datos.',
+          correlationId: 'corr-3',
+          fields: [{ field: 'planSlug', reason: 'INVALID_PLAN', message }],
+        },
+        422,
+      ),
+    );
+    render(
+      <RegisterForm apiPublicUrl="http://localhost/api/v1" plans={PLANS} onSuccess={jest.fn()} />,
+    );
+
+    await fillAccountAndContinue(user);
+    await user.click(screen.getByRole('radio', { name: /Pro/ }));
+    await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
+
+    const planStep = await screen.findByText(message);
+    expect(planStep.getAttribute('role')).toBe('alert');
+    expect(screen.getByRole('heading', { name: 'Elige tu plan' })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /Pro/ })).toBeTruthy();
   });
 
   it('Paso «Plan»: «Volver» regresa a la cuenta con los datos escritos', async () => {
