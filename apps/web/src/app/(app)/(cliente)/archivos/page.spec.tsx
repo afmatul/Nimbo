@@ -14,6 +14,7 @@ import { axe } from 'jest-axe';
 
 import { SessionProvider } from '../../../../features/identity/session/session-provider';
 import type { StorageApi } from '../../../../features/storage/api';
+import { VIEW_STORAGE_KEY } from '../../../../features/storage/components/file-explorer';
 import { UploadsSpaceProvider } from '../../../../features/storage/components/space-provider';
 import { UploadsProvider } from '../../../../features/storage/components/uploads-provider';
 import { StorageRequestError } from '../../../../features/storage/storage-request-error';
@@ -97,8 +98,11 @@ async function chooseFiles(files: readonly File[]): Promise<void> {
   });
 }
 
+afterEach(() => window.localStorage.removeItem(VIEW_STORAGE_KEY));
+
 describe('página Mis archivos (/archivos)', () => {
   beforeEach(() => {
+    window.localStorage.setItem(VIEW_STORAGE_KEY, 'lista');
     process.env['APP_ENV'] = 'test';
     process.env['API_INTERNAL_URL'] = 'http://localhost:3000';
     process.env['API_PUBLIC_URL'] = 'http://localhost/api/v1';

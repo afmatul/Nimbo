@@ -26,7 +26,13 @@ describe('composición pública T-06', () => {
 
     expect(useSessionSharingApi).toHaveBeenCalledWith('http://localhost/api/v1');
     expect(MyFiles).toHaveBeenCalledWith(
-      { folderId: null, returnFocusId: 'archivo-17', sharingApi, firstAction: PreviewMenuItem },
+      {
+        folderId: null,
+        returnFocusId: 'archivo-17',
+        sharingApi,
+        firstAction: PreviewMenuItem,
+        renderQuickLook: expect.any(Function),
+      },
       undefined,
     );
   });

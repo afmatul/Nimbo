@@ -11,6 +11,7 @@ import { Alert } from '../../../../components/ui/alert';
 import { Button, buttonVariants } from '../../../../components/ui/button';
 import { messageForCode } from '../../../../lib/error-catalog';
 import { DATE_LOCALE } from '../../../../lib/format-date';
+import { cn } from '../../../../lib/utils';
 import { useAuthFetch } from '../../../identity/session/use-auth-fetch';
 import { requestPreviewUrl, type PreviewUrlRequester } from '../api';
 import { usePreview, type PreviewState } from '../hooks/use-preview';
@@ -23,6 +24,8 @@ export type PreviewPageProps = {
   readonly fileId: string;
   readonly apiPublicUrl: string;
   readonly openDownloadUrl?: (url: string) => void;
+  /** Dentro de un diálogo (vista rápida): sin «Volver» ni título propio; el diálogo los aporta. */
+  readonly embedded?: boolean;
 };
 
 const openInBrowser = (url: string): void => window.location.assign(url);
@@ -145,6 +148,7 @@ type PreviewHeaderProps = {
   readonly onDownload: () => void;
   readonly pending: boolean;
   readonly showDownload: boolean;
+  readonly embedded: boolean;
 };
 
 /** `buttonVariants` atenúa solo `:disabled`, que un enlace no tiene: la espera se ve por `aria-disabled`. */
@@ -174,12 +178,14 @@ function PreviewHeader(props: PreviewHeaderProps): React.JSX.Element {
   const { file, back, onDownload, pending } = props;
   return (
     <header className="space-y-4">
-      <BackLink {...back} />
+      {props.embedded ? null : <BackLink {...back} />}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 space-y-2">
-          <h1 className="break-words text-2xl font-semibold text-foreground">
-            {file?.name ?? 'Vista previa'}
-          </h1>
+          {props.embedded ? null : (
+            <h1 className="break-words text-2xl font-semibold text-foreground">
+              {file?.name ?? 'Vista previa'}
+            </h1>
+          )}
           {file === undefined ? null : <PreviewMetadata file={file} />}
         </div>
         {file === undefined || !props.showDownload ? null : (
@@ -296,7 +302,13 @@ function ReaderSlot({ view }: { readonly view: PreviewView }): React.JSX.Element
   );
 }
 
-function PreviewBody({ view }: { readonly view: PreviewView }): React.JSX.Element {
+function PreviewBody({
+  view,
+  embedded,
+}: {
+  readonly view: PreviewView;
+  readonly embedded: boolean;
+}): React.JSX.Element {
   const { attachRegion, state, download, back, actions } = view;
   return (
     <section
@@ -304,7 +316,11 @@ function PreviewBody({ view }: { readonly view: PreviewView }): React.JSX.Elemen
       aria-label="Vista previa"
       tabIndex={-1}
       aria-busy={state.status === 'idle' || state.status === 'loading' || undefined}
-      className="min-h-64 rounded-lg border border-border bg-card p-4 shadow-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:p-6"
+      className={cn(
+        'min-h-64 rounded-lg border border-border bg-card p-4 shadow-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:p-6',
+        // En el diálogo el documento se desplaza dentro de su recuadro: la barra vertical queda junto a la horizontal.
+        embedded && 'min-h-0 flex-1 overflow-auto',
+      )}
     >
       <PreviewStates
         state={state}
@@ -322,15 +338,22 @@ function PreviewBody({ view }: { readonly view: PreviewView }): React.JSX.Elemen
 function PreviewShell(props: PreviewPageProps): React.JSX.Element {
   const view = usePreviewShell(props);
   return (
-    <div className="mx-auto w-full min-w-0 max-w-6xl space-y-6 px-4 py-6 sm:px-6">
+    <div
+      className={
+        props.embedded
+          ? 'flex min-h-0 w-full min-w-0 flex-1 flex-col gap-4'
+          : 'mx-auto w-full min-w-0 max-w-6xl space-y-6 px-4 py-6 sm:px-6'
+      }
+    >
       <PreviewHeader
+        embedded={props.embedded === true}
         file={view.file}
         back={view.back}
         onDownload={view.actions.onDownload}
         pending={view.download.pending}
         showDownload={view.state.status !== 'failure'}
       />
-      <PreviewBody view={view} />
+      <PreviewBody view={view} embedded={props.embedded === true} />
     </div>
   );
 }
