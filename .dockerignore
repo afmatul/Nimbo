@@ -7,6 +7,8 @@ specs
 e2e
 load
 infra
+# Excepción: la imagen de ONLYOFFICE para Deploya copia su entrypoint y su nginx.conf.
+!infra/deploya/onlyoffice
 **/node_modules
 **/dist
 **/dist-worker
