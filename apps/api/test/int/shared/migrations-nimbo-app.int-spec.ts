@@ -25,6 +25,7 @@ import { PoliticasRlsNodosCompartidos20261101100100 } from '../../../src/migrati
 import { PoliticasRlsEdicionYAgenteCompartidos20261101100200 } from '../../../src/migrations/20261101100200-politicas-rls-edicion-y-agente-compartidos';
 import { AuditoriaAlSalirDeComparticion20261101100300 } from '../../../src/migrations/20261101100300-auditoria-al-salir-de-comparticion';
 import { CrearEnlacePublico20261102100000 } from '../../../src/migrations/20261102100000-crear-enlace-publico';
+import { CrearMiniaturaDeDocumento20261112100000 } from '../../../src/migrations/20261112100000-crear-miniatura-de-documento';
 import { buildDataSourceOptions } from '../../../src/shared';
 
 const APP_ROLE = 'nimbo_app';
@@ -177,6 +178,7 @@ describe('migración crear-funciones-de-actor (CA-12)', () => {
     const migration = new CrearFuncionesDeActor20260928110100();
     /** Las políticas RLS de 013, 012, 020, 021, 011b, 019, 016, 009, 004, 006 y 005 usan las funciones: se revierten antes, como en un `migration:revert` en orden. */
     const dependents = [
+      new CrearMiniaturaDeDocumento20261112100000(),
       new CrearEnlacePublico20261102100000(),
       new AuditoriaAlSalirDeComparticion20261101100300(),
       new PoliticasRlsEdicionYAgenteCompartidos20261101100200(),

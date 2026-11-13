@@ -3,6 +3,7 @@ import type { QueryRunner } from 'typeorm';
 
 import { CrearDispositivo20260929100000 } from '../../../src/migrations/20260929100000-crear-dispositivo';
 import { CrearSesion20260929100100 } from '../../../src/migrations/20260929100100-crear-sesion';
+import { UnaSesionActivaPorDispositivo20261104100100 } from '../../../src/migrations/20261104100100-una-sesion-activa-por-dispositivo';
 import { buildDataSourceOptions } from '../../../src/shared';
 
 import { CREATED_AT, aClient, insertUser, violatedConstraint } from './identity-rows';
@@ -353,18 +354,22 @@ describe('migraciones de dispositivo y sesión (CA-16, CA-17, CA-24)', () => {
   });
 
   it('CA-24: run → revert (LIFO) → run deja `dispositivo` y `sesion` igual', async () => {
-    const [device, session] = [
+    const [device, session, singleActive] = [
       new CrearDispositivo20260929100000(),
       new CrearSesion20260929100100(),
+      // 04/11: agrega el índice único de la sesión activa por dispositivo; va después de `sesion`, así que se revierte antes.
+      new UnaSesionActivaPorDispositivo20261104100100(),
     ];
     const before = [await shapeOf(runner, 'dispositivo'), await shapeOf(runner, 'sesion')];
 
+    await singleActive.down(runner);
     await session.down(runner);
     expect(await tableExists(runner, 'sesion')).toBe(false);
     await device.down(runner);
     expect(await tableExists(runner, 'dispositivo')).toBe(false);
     await device.up(runner);
     await session.up(runner);
+    await singleActive.up(runner);
 
     expect([await shapeOf(runner, 'dispositivo'), await shapeOf(runner, 'sesion')]).toEqual(before);
   });
