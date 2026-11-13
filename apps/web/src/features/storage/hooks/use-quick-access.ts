@@ -70,6 +70,47 @@ function limitOf(error: unknown): number | null {
   return isLimit ? Number(error.details['maxPinned']) : null;
 }
 
+/**
+ * Aviso de la pestaña: se registró una apertura (Q-3) desde cualquier pantalla (vista previa, vista rápida, ficha o
+ * descarga) y la barra lateral montada vuelve a leer sus accesos rápidos.
+ */
+export const QUICK_ACCESS_RECORDED_EVENT = 'nimbo:quick-access-recorded';
+
+function announceRecorded(): void {
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(QUICK_ACCESS_RECORDED_EVENT));
+}
+
+/** Registra una apertura de mejor esfuerzo (un fallo no se muestra) y avisa a la barra para que relea (CA-27). */
+export function recordQuickAccessOpen(
+  api: Pick<QuickAccessApi, 'recordRecent'>,
+  node: QuickAccessNode,
+): Promise<void> {
+  return attempt(() => api.recordRecent(node.type, node.id))
+    .then(ignore, ignore)
+    .then(announceRecorded);
+}
+
+/**
+ * Registra como reciente el archivo que la pantalla abre (ficha o vista previa, CA-27) una vez por archivo; `null`
+ * mientras no hay archivo que registrar (p. ej. la entrega de la vista previa todavía no llegó).
+ */
+export function useRecordFileOpen(
+  api: Pick<QuickAccessApi, 'recordRecent'>,
+  fileId: string | null,
+): void {
+  React.useEffect(() => {
+    if (fileId !== null) void recordQuickAccessOpen(api, { type: 'file', id: fileId });
+  }, [api, fileId]);
+}
+
+/** La barra relee cuando otra parte de la pestaña registró una apertura. */
+function useReloadOnRecorded(reload: () => void): void {
+  React.useEffect(() => {
+    window.addEventListener(QUICK_ACCESS_RECORDED_EVENT, reload);
+    return () => window.removeEventListener(QUICK_ACCESS_RECORDED_EVENT, reload);
+  }, [reload]);
+}
+
 const sameNode = (a: QuickAccessNode, b: QuickAccessNode): boolean =>
   a.type === b.type && a.id === b.id;
 
@@ -161,13 +202,10 @@ export function useQuickAccess(
   const pinning = usePin(api, { ...list, onFailure });
   const unpin = useUnpin(api, { ...list, onFailure });
 
+  useReloadOnRecorded(reload);
   const recordOpen = React.useCallback(
-    (node: QuickAccessNode) => {
-      attempt(() => api.recordRecent(node.type, node.id))
-        .then(ignore, ignore)
-        .then(reload, ignore);
-    },
-    [api, reload],
+    (node: QuickAccessNode) => void recordQuickAccessOpen(api, node),
+    [api],
   );
 
   React.useEffect(() => {

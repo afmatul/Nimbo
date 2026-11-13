@@ -121,7 +121,7 @@ function useFocusAfterRemoval(
 
 function LoadError({ onRetry }: { readonly onRetry: () => void }): React.JSX.Element {
   return (
-    <div className="mt-4 px-3 text-xs text-secondary-foreground">
+    <div className="mt-1 px-3 text-xs text-secondary-foreground">
       <p>No pudimos cargar tus accesos rápidos.</p>
       <Button type="button" variant="link" size="sm" className="h-auto px-0" onClick={onRetry}>
         Reintentar<span className="sr-only"> accesos rápidos</span>
@@ -142,7 +142,7 @@ function QuickAccessGroups({
   const titleId = React.useId();
   if (list.pinned.length === 0 && list.recent.length === 0) return null;
   return (
-    <div className="mt-4 space-y-0.5">
+    <div className="mt-1 space-y-0.5">
       <p
         id={titleId}
         className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"

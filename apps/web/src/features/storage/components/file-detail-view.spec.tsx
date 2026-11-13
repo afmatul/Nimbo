@@ -163,6 +163,14 @@ describe('FileDetailView: ficha de archivo con historial (014 CA-6, CA-7, CA-15,
     expect(screen.getByText('7,5 MB de tu espacio')).toBeTruthy();
   });
 
+  it('006 CA-27: abrir la ficha registra el archivo como reciente y la barra vuelve a leer', async () => {
+    const api = fakeApi();
+    await renderView(api);
+
+    expect(api.recordRecent).toHaveBeenCalledWith('file', FILE_ID);
+    await waitFor(() => expect(api.quickAccess.mock.calls.length).toBeGreaterThanOrEqual(2));
+  });
+
   it('CA-20: el encabezado y los detalles dicen el nombre, el tipo y la ubicación del archivo', async () => {
     await renderView(fakeApi());
 

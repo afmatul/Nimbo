@@ -5,7 +5,7 @@ import { ArrowLeft, Download, Eye, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 
-import { CHIP_TYPE_BY_KIND, returnPathOf, useFileDownload } from '../..';
+import { CHIP_TYPE_BY_KIND, returnPathOf, useFileDownload, useRecordedFileOpen } from '../..';
 import { FileTypeChip } from '../../../../components/nimbo/file-type-chip';
 import { Alert } from '../../../../components/ui/alert';
 import { Button, buttonVariants } from '../../../../components/ui/button';
@@ -269,6 +269,8 @@ function usePreviewShell({
   const download = usePreviewDownload(fileId, openDownloadUrl);
   const { focusRegion, attachRegion } = useFocusRegion();
   const delivery = emission.status === 'success' ? emission.delivery : undefined;
+  // Previsualizar cuenta como abrir el archivo: aparece en «Recientes» de la barra (006 CA-27).
+  useRecordedFileOpen(delivery?.file.id ?? null);
   const back = usePreviewReturn(fileId, emission);
   const actions = previewActions({ focusRegion, download, content, retry });
   return {

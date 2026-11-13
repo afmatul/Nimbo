@@ -7,7 +7,7 @@ import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 
 import { AppLayout } from '../../../components/nimbo/app-layout';
-import { useQuickAccess } from '../hooks/use-quick-access';
+import { recordQuickAccessOpen, useQuickAccess } from '../hooks/use-quick-access';
 import type { QuickAccessApi, QuickAccessNodeType } from '../quick-access-api';
 
 import { QuickAccessSection } from './quick-access-section';
@@ -167,6 +167,25 @@ describe('Accesos rápidos de la barra lateral (006 CA-27, CA-28)', () => {
 
     expect(screen.queryByText('Accesos rápidos')).toBeNull();
     expect(screen.queryByRole('list')).toBeNull();
+  });
+
+  it('CA-27: un archivo abierto en otra parte de la pestaña (vista previa, ficha) aparece primero en «Recientes»', async () => {
+    const [first] = RECENT;
+    if (first === undefined) throw new Error('Sin recientes de ejemplo');
+    const api = await renderSection(list({ pinned: [], recent: [first] }));
+    const opened = fileItem(9, 'Acta_reunion.docx', 'docx');
+    const recordApi = {
+      recordRecent: jest.fn(() => {
+        api.quickAccess.mockResolvedValueOnce(list({ pinned: [], recent: [opened, first] }));
+        return Promise.resolve();
+      }),
+    };
+
+    await act(async () => recordQuickAccessOpen(recordApi, { type: 'file', id: opened.id }));
+
+    expect(recordApi.recordRecent).toHaveBeenCalledWith('file', opened.id);
+    const newest = within(group('Recientes')).getAllByRole('button')[0];
+    expect(newest?.getAttribute('aria-label')).toBe('Acta_reunion.docx, archivo, se descarga');
   });
 
   it('mientras carga no dibuja nada; si falla, un aviso discreto con «Reintentar» vuelve a pedirla', async () => {

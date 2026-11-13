@@ -36,18 +36,29 @@ function never<T>(): Promise<T> {
   return new Promise<T>(() => undefined);
 }
 
-/** Lo que la ruta usa de storage: el resumen de la tarjeta de cuota. */
-function fakeApi(): StorageApi {
+/** Lo que la ruta usa de storage: la cuota, la Papelera y los accesos rápidos de la barra (006 CA-27). */
+function fakeApi(): jest.Mocked<StorageApi> {
   return {
     spaceSummary: jest.fn(() => Promise.resolve(spaceSummaryWith(4.8 * GB))),
-  } as unknown as StorageApi;
+    trashSummary: jest.fn(() =>
+      Promise.resolve({ itemCount: 2, totalBytes: 0, retentionDays: 60 }),
+    ),
+    quickAccess: jest.fn(() =>
+      Promise.resolve({
+        pinned: [{ type: 'folder', id: FOLDER_ID, name: 'Proyecto Alpha' }],
+        recent: [],
+        hasMoreRecent: false,
+      }),
+    ),
+    recordRecent: jest.fn(() => Promise.resolve()),
+  } as unknown as jest.Mocked<StorageApi>;
 }
 
-async function renderPreview(): Promise<HTMLElement> {
+async function renderPreview(api: StorageApi = fakeApi()): Promise<HTMLElement> {
   const page = await VistaPreviaPage({ params: Promise.resolve({ fileId: FILE_ID }) });
   const { container } = render(
     <SessionProvider apiPublicUrl={API}>
-      <UploadsProvider api={fakeApi()}>
+      <UploadsProvider api={api}>
         <UploadsSpaceProvider>{page}</UploadsSpaceProvider>
       </UploadsProvider>
     </SessionProvider>,
@@ -79,6 +90,10 @@ describe('ruta de vista previa (/archivos/vista-previa/[fileId])', () => {
     expect(within(main).getByRole('region', { name: 'Vista previa' })).toBeTruthy();
     const sidebar = screen.getByRole('complementary', { name: 'Barra lateral de escritorio' });
     expect(within(sidebar).getByRole('region', { name: 'Almacenamiento' })).toBeTruthy();
+    // 006 CA-27: «Accesos rápidos» y el contador de la Papelera, como en el resto de pantallas del Cliente.
+    expect(within(sidebar).getByText('Accesos rápidos')).toBeTruthy();
+    expect(within(sidebar).getByRole('link', { name: 'Proyecto Alpha, carpeta' })).toBeTruthy();
+    expect(within(sidebar).getByRole('link', { name: /Papelera/ }).textContent).toContain('2');
   });
 
   it('017 CA-3: pide la URL de vista previa del archivo de la ruta a API_PUBLIC_URL', async () => {
@@ -97,12 +112,16 @@ describe('ruta de vista previa (/archivos/vista-previa/[fileId])', () => {
           ? Promise.resolve(jsonResponse(DELIVERY))
           : never<Response>(),
       );
-    await renderPreview();
+    const api = fakeApi();
+    await renderPreview(api);
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Notas.md' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Volver' }).getAttribute('href')).toBe(
       `/archivos/carpeta/${FOLDER_ID}?foco=${FILE_ID}`,
     );
+    // 006 CA-27: previsualizar cuenta como abrir: el archivo pasa a «Recientes» y la barra relee.
+    expect(api.recordRecent).toHaveBeenCalledWith('file', FILE_ID);
+    expect(api.quickAccess.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
   it('017 CA-9: no tiene violaciones de accesibilidad', async () => {
