@@ -31,7 +31,10 @@ describe('POST /auth/verify-email abre sesión (CA-15)', () => {
   /** Registra un correo nuevo (con el plan elegido, si lo hay) y devuelve el token de su enlace. */
   const registeredToken = async (planSlug?: string): Promise<{ email: string; token: string }> => {
     const email = `verifica-${randomUUID()}@nimbo.me`;
-    const registration = { ...validRegistration(email), ...(planSlug === undefined ? {} : { planSlug }) };
+    const registration = {
+      ...validRegistration(email),
+      ...(planSlug === undefined ? {} : { planSlug }),
+    };
     await request(server()).post(REGISTER).send(registration).expect(202);
     return { email, token: await verificationTokenSentTo(email) };
   };
@@ -84,9 +87,9 @@ describe('POST /auth/verify-email abre sesión (CA-15)', () => {
       .send({ email, password: validRegistration(email).password })
       .expect(200);
 
-    expect(verified.status === 'verified' ? verified.session?.user.pendingPlanSlug : undefined).toBe(
-      'pro',
-    );
+    expect(
+      verified.status === 'verified' ? verified.session?.user.pendingPlanSlug : undefined,
+    ).toBe('pro');
     expect(sessionResponseSchema.parse(login.body).user.pendingPlanSlug).toBe('pro');
   });
 

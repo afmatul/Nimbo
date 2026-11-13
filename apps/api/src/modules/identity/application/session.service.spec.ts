@@ -27,10 +27,10 @@ import type { ClientContext } from './client-context';
 import type { IssueAccessTokenInput } from './ports/i-token-service.port';
 import { SessionService } from './session.service';
 import { aClientUser } from './testing/client-user.builder';
-import { anInternalUser } from './testing/internal-user.builder';
 import { InMemoryDeviceRepository } from './testing/in-memory-device.repository';
 import { InMemorySessionRepository } from './testing/in-memory-session.repository';
 import { InMemoryUserRepository } from './testing/in-memory-user.repository';
+import { anInternalUser } from './testing/internal-user.builder';
 import { RecordingTransactionRunner } from './testing/recording-transaction-runner';
 
 const NOW = new Date('2026-09-30T15:00:00.000Z');
