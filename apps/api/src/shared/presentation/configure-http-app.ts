@@ -25,7 +25,7 @@ const API_PREFIX = 'api/v1';
 const TRUSTED_PROXY_HOPS = 1;
 /** Ninguna ruta pública recibe más que un formulario corto (DT-12). */
 const JSON_BODY_LIMIT = '16kb';
-const CORS_METHODS = ['GET', 'POST', 'DELETE'];
+const CORS_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
 const CORS_ALLOWED_HEADERS = ['content-type', CORRELATION_ID_HEADER, 'authorization'];
 const CORS_EXPOSED_HEADERS = [CORRELATION_ID_HEADER, 'retry-after'];
 /** Sin CORS: el paquete `cors` no escribe ninguna cabecera, ni siquiera `Access-Control-Allow-Credentials`. */

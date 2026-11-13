@@ -139,7 +139,7 @@ describe('configureHttpApp (001 CA-6, CA-15)', () => {
 
     expect(response.headers['access-control-allow-origin']).toBe(ALLOWED_ORIGIN);
     expect(response.headers['access-control-allow-credentials']).toBe('true');
-    expect(response.headers['access-control-allow-methods']).toBe('GET,POST,DELETE');
+    expect(response.headers['access-control-allow-methods']).toBe('GET,POST,PUT,PATCH,DELETE');
     expect(String(response.headers['access-control-allow-headers']).toLowerCase()).toBe(
       'content-type,x-correlation-id,authorization',
     );
