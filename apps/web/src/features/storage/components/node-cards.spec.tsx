@@ -3,6 +3,7 @@
  */
 import type { NodeSummary } from '@nimbo/contracts';
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 import { NodeCards } from './node-cards';
 
@@ -60,5 +61,20 @@ describe('NodeCards', () => {
   it('sin carpetas no muestra la sección «Carpetas»', () => {
     renderCards([PDF]);
     expect(screen.queryByRole('heading', { name: 'Carpetas' })).toBeNull();
+  });
+
+  it('la vista rápida solo se ofrece en archivos previsualizables y avisa cuál se pidió', async () => {
+    const onQuickLook = jest.fn();
+    render(
+      <NodeCards
+        nodes={[PDF, OTHER]}
+        placeName="Mis archivos"
+        renderRowActions={undefined}
+        onQuickLook={onQuickLook}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: 'Vista rápida de datos.bin' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Vista rápida de modelo.pdf' }));
+    expect(onQuickLook).toHaveBeenCalledWith(PDF);
   });
 });

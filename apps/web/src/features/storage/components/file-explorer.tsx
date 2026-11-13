@@ -1,6 +1,6 @@
 'use client';
 
-import type { FolderRef, NodeAccessLevel, NodeSummary } from '@nimbo/contracts';
+import type { FileSummary, FolderRef, NodeAccessLevel, NodeSummary } from '@nimbo/contracts';
 import { FolderPlus, Upload } from 'lucide-react';
 import * as React from 'react';
 
@@ -52,9 +52,16 @@ export interface FileExplorerProps {
   readonly controls?: ListControls;
   /** Vista con la que abre la lista; el usuario la cambia con «Tarjetas» / «Lista». Sin valor, la tabla. */
   readonly defaultView?: NodesView;
+  /** «Vista rápida» en las tarjetas de archivos previsualizables (017); sin él no hay botón. */
+  readonly onQuickLook?: ((file: FileSummary) => void) | undefined;
 }
 
 export type NodesView = 'tarjetas' | 'lista';
+
+/** Lo que ambas vistas reciben; `onQuickLook` solo lo usan las tarjetas. */
+type ListTable = Omit<NodeTableProps, 'sorting'> & {
+  readonly onQuickLook?: ((file: FileSummary) => void) | undefined;
+};
 
 const UNKNOWN_FOLDER_TITLE = 'Carpeta';
 const UNKNOWN_FOLDER_PLACE = 'esta carpeta';
@@ -239,6 +246,7 @@ function ExplorerContent(
         disclosure={props.disclosure}
         controls={props.controls}
         defaultView={props.defaultView}
+        onQuickLook={props.onQuickLook}
         readOnly={props.readOnly}
         shared={!isOwner(props.accessLevel)}
       />
@@ -297,6 +305,7 @@ interface ExplorerBodyProps {
   readonly disclosure: FolderDisclosure | undefined;
   readonly controls: ListControls | undefined;
   readonly defaultView: NodesView | undefined;
+  readonly onQuickLook: ((file: FileSummary) => void) | undefined;
   /** Spec 010 CA-14: la cuenta está en solo lectura. */
   readonly readOnly: boolean;
   /** Carpeta compartida conmigo: el vacío no invita a subir (012b CA-6). */
@@ -315,7 +324,7 @@ function ExplorerBody(props: ExplorerBodyProps): React.JSX.Element {
   }
   if (nodes.length === 0) return <EmptyExplorer {...props} />;
   const { placeName, renderRowActions, disclosure } = props;
-  const table = { nodes, placeName, renderRowActions, disclosure };
+  const table = { nodes, placeName, renderRowActions, disclosure, onQuickLook: props.onQuickLook };
   return <NodesPane table={table} controls={controls} defaultView={props.defaultView ?? 'lista'} />;
 }
 
@@ -384,7 +393,7 @@ function NodesPane({
   controls,
   defaultView,
 }: {
-  readonly table: Omit<NodeTableProps, 'sorting'>;
+  readonly table: ListTable;
   readonly controls: ListControls | undefined;
   readonly defaultView: NodesView;
 }): React.JSX.Element {
@@ -410,7 +419,7 @@ function NodeListView({
   view,
   sorting,
 }: {
-  readonly table: Omit<NodeTableProps, 'sorting'>;
+  readonly table: ListTable;
   readonly view: NodesView;
   readonly sorting?: NodeTableProps['sorting'];
 }): React.JSX.Element {
@@ -420,10 +429,12 @@ function NodeListView({
         nodes={table.nodes}
         placeName={table.placeName}
         renderRowActions={table.renderRowActions}
+        onQuickLook={table.onQuickLook}
       />
     );
   }
-  return <NodeTable {...table} sorting={sorting} />;
+  const { onQuickLook: _unused, ...tableProps } = table;
+  return <NodeTable {...tableProps} sorting={sorting} />;
 }
 
 /**
@@ -431,7 +442,7 @@ function NodeListView({
  * `aria-busy` y la tabla marca el orden de lo que muestra, no el pedido (CA-12).
  */
 interface ControlledListProps {
-  readonly table: Omit<NodeTableProps, 'sorting'>;
+  readonly table: ListTable;
   readonly controls: ListControls;
   readonly view: NodesView;
 }

@@ -23,6 +23,8 @@ export type PreviewPageProps = {
   readonly fileId: string;
   readonly apiPublicUrl: string;
   readonly openDownloadUrl?: (url: string) => void;
+  /** Dentro de un diálogo (vista rápida): sin «Volver» ni título propio; el diálogo los aporta. */
+  readonly embedded?: boolean;
 };
 
 const openInBrowser = (url: string): void => window.location.assign(url);
@@ -145,6 +147,7 @@ type PreviewHeaderProps = {
   readonly onDownload: () => void;
   readonly pending: boolean;
   readonly showDownload: boolean;
+  readonly embedded: boolean;
 };
 
 /** `buttonVariants` atenúa solo `:disabled`, que un enlace no tiene: la espera se ve por `aria-disabled`. */
@@ -174,12 +177,14 @@ function PreviewHeader(props: PreviewHeaderProps): React.JSX.Element {
   const { file, back, onDownload, pending } = props;
   return (
     <header className="space-y-4">
-      <BackLink {...back} />
+      {props.embedded ? null : <BackLink {...back} />}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 space-y-2">
-          <h1 className="break-words text-2xl font-semibold text-foreground">
-            {file?.name ?? 'Vista previa'}
-          </h1>
+          {props.embedded ? null : (
+            <h1 className="break-words text-2xl font-semibold text-foreground">
+              {file?.name ?? 'Vista previa'}
+            </h1>
+          )}
           {file === undefined ? null : <PreviewMetadata file={file} />}
         </div>
         {file === undefined || !props.showDownload ? null : (
@@ -322,8 +327,15 @@ function PreviewBody({ view }: { readonly view: PreviewView }): React.JSX.Elemen
 function PreviewShell(props: PreviewPageProps): React.JSX.Element {
   const view = usePreviewShell(props);
   return (
-    <div className="mx-auto w-full min-w-0 max-w-6xl space-y-6 px-4 py-6 sm:px-6">
+    <div
+      className={
+        props.embedded
+          ? 'w-full min-w-0 space-y-4'
+          : 'mx-auto w-full min-w-0 max-w-6xl space-y-6 px-4 py-6 sm:px-6'
+      }
+    >
       <PreviewHeader
+        embedded={props.embedded === true}
         file={view.file}
         back={view.back}
         onDownload={view.actions.onDownload}

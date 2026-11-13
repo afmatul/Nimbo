@@ -100,6 +100,7 @@ interface MyFilesExplorerProps {
   readonly status: FileExplorerStatus;
   readonly share: RowShare;
   readonly firstAction: FirstFileAction | undefined;
+  readonly onQuickLook: ((file: FileSummary) => void) | undefined;
 }
 
 function MyFilesExplorer({
@@ -107,6 +108,7 @@ function MyFilesExplorer({
   status,
   share,
   firstAction,
+  onQuickLook,
 }: MyFilesExplorerProps): React.JSX.Element {
   const { contents, notices, uploads, folderId } = state;
   return (
@@ -123,6 +125,7 @@ function MyFilesExplorer({
       fileInputRef={uploads.fileInputRef}
       disclosure={state.view.disclosure}
       defaultView="tarjetas"
+      onQuickLook={onQuickLook}
       controls={contents.controls}
       renderRowActions={(node) => (
         <RowActions
@@ -159,6 +162,8 @@ export interface MyFilesProps {
   readonly returnFocusId?: string | null;
   /** Primer ítem del menú de cada archivo; sin él, el menú queda como en 005/006. */
   readonly firstAction?: FirstFileAction;
+  /** «Vista rápida» de una tarjeta (017): quien compone da el diálogo; sin él las tarjetas no ofrecen el botón. */
+  readonly renderQuickLook?: (file: FileSummary | null, onClose: () => void) => React.ReactNode;
 }
 
 /**
@@ -171,12 +176,14 @@ export function MyFiles({
   sharingApi,
   returnFocusId = null,
   firstAction,
+  renderQuickLook,
 }: MyFilesProps): React.JSX.Element {
   const state = useMyFilesState(folderId);
   const { listing } = state.contents;
   useReturnFocus(listing.status, returnFocusId);
   const [sharing, setSharing] = React.useState<ShareTarget | null>(null);
   const share: RowShare = { level: accessLevelOf(listing), open: setSharing };
+  const [quickFile, setQuickFile] = React.useState<FileSummary | null>(null);
   return (
     <AppLayout
       topBar={topBarOf(state, share.level)}
@@ -194,10 +201,12 @@ export function MyFiles({
             status={listing.status}
             share={share}
             firstAction={firstAction}
+            onQuickLook={renderQuickLook ? setQuickFile : undefined}
           />
         )}
       </div>
       <MyFilesDialogs state={state} />
+      {renderQuickLook?.(quickFile, () => setQuickFile(null))}
       <ShareDialog api={sharingApi} target={sharing} onClose={() => setSharing(null)} />
     </AppLayout>
   );

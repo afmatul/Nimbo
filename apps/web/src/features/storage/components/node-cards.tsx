@@ -1,5 +1,10 @@
-import { formatBytes, isPreviewableKind, type NodeSummary } from '@nimbo/contracts';
-import { Folder } from 'lucide-react';
+import {
+  formatBytes,
+  isPreviewableKind,
+  type FileSummary,
+  type NodeSummary,
+} from '@nimbo/contracts';
+import { Eye, Folder } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 
@@ -19,6 +24,8 @@ export interface NodeCardsProps {
   /** Dónde está el usuario, para los títulos de las secciones. */
   readonly placeName: string;
   readonly renderRowActions: ((node: NodeSummary) => React.ReactNode) | undefined;
+  /** «Vista rápida» de un archivo previsualizable; sin él la tarjeta no ofrece el botón. */
+  readonly onQuickLook?: ((file: FileSummary) => void) | undefined;
 }
 
 const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, { dateStyle: 'medium' });
@@ -100,12 +107,34 @@ function FileName({ file }: { readonly file: FileNode }): React.JSX.Element {
   );
 }
 
+function QuickLookButton({
+  file,
+  onQuickLook,
+}: {
+  readonly file: FileNode;
+  readonly onQuickLook: ((file: FileSummary) => void) | undefined;
+}): React.JSX.Element | null {
+  if (onQuickLook === undefined || !isPreviewableKind(file.kind)) return null;
+  return (
+    <button
+      type="button"
+      aria-label={`Vista rápida de ${file.name}`}
+      onClick={() => onQuickLook(file)}
+      className="flex h-11 w-11 items-center justify-center rounded-md text-secondary-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-8 sm:w-8"
+    >
+      <Eye className="h-4 w-4" aria-hidden="true" />
+    </button>
+  );
+}
+
 function FileCard({
   file,
   actions,
+  onQuickLook,
 }: {
   readonly file: FileNode;
   readonly actions: React.ReactNode;
+  readonly onQuickLook: ((file: FileSummary) => void) | undefined;
 }): React.JSX.Element {
   return (
     <li id={rowIdOf(file.id)} className={`${CARD_CLASS} flex flex-col gap-3 p-3`}>
@@ -123,7 +152,10 @@ function FileCard({
             {formatBytes(file.sizeBytes)} · <UpdatedAt value={file.updatedAt} />
           </span>
         </span>
-        <div className={ACTIONS_CLASS}>{actions}</div>
+        <div className={`${ACTIONS_CLASS} flex items-center`}>
+          <QuickLookButton file={file} onQuickLook={onQuickLook} />
+          {actions}
+        </div>
       </div>
     </li>
   );
@@ -152,6 +184,7 @@ export function NodeCards({
   nodes,
   placeName,
   renderRowActions,
+  onQuickLook,
 }: NodeCardsProps): React.JSX.Element {
   const folders = nodes.filter((node): node is FolderNode => node.type === 'folder');
   const files = nodes.filter((node): node is FileNode => node.type === 'file');
@@ -167,7 +200,12 @@ export function NodeCards({
       {files.length === 0 ? null : (
         <Section title="Archivos">
           {files.map((file) => (
-            <FileCard key={file.id} file={file} actions={renderRowActions?.(file)} />
+            <FileCard
+              key={file.id}
+              file={file}
+              actions={renderRowActions?.(file)}
+              onQuickLook={onQuickLook}
+            />
           ))}
         </Section>
       )}
