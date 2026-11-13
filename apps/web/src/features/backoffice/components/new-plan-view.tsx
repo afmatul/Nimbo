@@ -7,6 +7,7 @@ import { useState } from 'react';
 import type * as React from 'react';
 
 import { Button, buttonVariants } from '../../../components/ui/button';
+import { Select } from '../../../components/ui/select';
 import { ForbiddenState } from '../../access/components/forbidden-state';
 import { INTERNAL_PATHS } from '../../access/home-path';
 import { ServerErrorAlert } from '../../identity/components/server-error-alert';
@@ -67,7 +68,7 @@ function PlanPicker({
   readonly onPick: (plan: PlanAdminView | null) => void;
 }): React.JSX.Element {
   return (
-    <select
+    <Select
       id="copiar"
       aria-describedby="copiar-ayuda"
       disabled={locked || active.length === 0}
@@ -75,7 +76,7 @@ function PlanPicker({
         const plan = active.find((item) => item.id === event.target.value);
         onPick(plan ?? null);
       }}
-      className="mt-1.5 h-11 w-full rounded-md border border-input bg-card px-3 text-sm text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:max-w-sm"
+      className="mt-1.5 w-full sm:max-w-sm"
     >
       <option value="">Empezar de cero</option>
       {active.map((plan) => (
@@ -83,7 +84,7 @@ function PlanPicker({
           {plan.name}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 

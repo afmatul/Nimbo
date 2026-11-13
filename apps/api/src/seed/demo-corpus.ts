@@ -1,5 +1,7 @@
 import { Role } from '../shared';
 
+import { contentOf } from './demo-content';
+
 /**
  * Corpus de la semilla de demostración: cuentas, suscripciones, árbol de archivos, comparticiones y enlaces con los
  * casos límite que se muestran en la demo. Es solo datos: `DemoSeeder` los siembra y `SeedStore` los persiste. Todo
@@ -19,6 +21,7 @@ export type AccountKey =
   | 'diego'
   | 'nora'
   | 'pablo'
+  | 'daniela'
   | 'admin'
   | 'soporte'
   | 'operador';
@@ -64,6 +67,8 @@ export interface DemoFile {
   readonly name: string;
   /** Tamaño exacto del contenido; sin él, el archivo lleva un texto corto. */
   readonly sizeBytes?: number;
+  /** Texto del documento: el archivo se siembra como un `.docx` real con un párrafo por línea. */
+  readonly docxText?: string;
 }
 
 export type DemoShareTarget =
@@ -86,7 +91,8 @@ export interface DemoLink {
 
 export interface DemoCorpus {
   readonly catalogPlanSlugs: readonly string[];
-  readonly quotaPlan: DemoPlan;
+  /** Planes propios de la demo (desactivados), con cuota diminuta; el catálogo real no se toca. */
+  readonly demoPlans: readonly DemoPlan[];
   readonly accounts: readonly DemoAccount[];
   readonly subscriptions: readonly DemoSubscription[];
   readonly folders: readonly { readonly owner: AccountKey; readonly path: FolderPathNames }[];
@@ -115,6 +121,22 @@ const QUOTA_PLAN: DemoPlan = {
   maxEditors: 1,
   agentQueriesPerMonth: 5,
   retainedVersions: 1,
+  trashRetentionDays: 7,
+};
+
+/**
+ * Plan gratuito de la demo: los mismos límites que Personal (archivo máx. 50 MB, sin edición en línea) pero con 100 MB
+ * de cuota. Llenar los 15 GB reales de Personal exigiría 15 GB en MinIO por cada siembra.
+ */
+const FREE_QUOTA_PLAN: DemoPlan = {
+  slug: 'demo-gratuito-cuota',
+  name: 'Demo gratuito',
+  description: 'Plan de demostración con los límites de Personal y 100 MB de cuota. Desactivado.',
+  quotaBytes: BigInt(100 * MB),
+  maxFileBytes: BigInt(50 * MB),
+  maxEditors: 0,
+  agentQueriesPerMonth: 10,
+  retainedVersions: 3,
   trashRetentionDays: 7,
 };
 
@@ -151,6 +173,7 @@ const ACCOUNTS: readonly DemoAccount[] = [
   client('diego', 'Diego Demo'),
   client('nora', 'Nora Demo', { verified: false }),
   client('pablo', 'Pablo Demo', { suspended: true }),
+  client('daniela', 'Daniela Demo'),
   internal('admin', 'Administración Demo', Role.ADMIN, 'DEMO-ADM-01'),
   internal('soporte', 'Soporte Demo', Role.SUPPORT, 'DEMO-SOP-01'),
   internal('operador', 'Operación Demo', Role.OPERATOR, 'DEMO-OPE-01'),
@@ -179,6 +202,7 @@ const SUBSCRIPTIONS: readonly DemoSubscription[] = [
   subscription('carla', QUOTA_PLAN.slug),
   subscription('diego', QUOTA_PLAN.slug),
   subscription('pablo', 'personal'),
+  subscription('daniela', FREE_QUOTA_PLAN.slug),
 ];
 
 const SHARED_FOLDER = ['Compartida con el equipo'] as const;
@@ -216,7 +240,7 @@ const file = (
 ): DemoFile =>
   sizeBytes === undefined ? { owner, folder, name } : { owner, folder, name, sizeBytes };
 
-const files = (settings: CorpusSettings): readonly DemoFile[] => [
+const baseFiles = (settings: CorpusSettings): readonly DemoFile[] => [
   file('ana', [], 'Bienvenida.md'),
   file('ana', SHARED_FOLDER, 'Plan de trabajo.md'),
   file('ana', [...SHARED_FOLDER, 'Diseño'], 'Paleta Cielo Sereno.txt'),
@@ -240,6 +264,113 @@ const files = (settings: CorpusSettings): readonly DemoFile[] => [
   file('diego', [], 'Respaldo 1.bin', 2 * MB),
   file('diego', [], 'Respaldo 2.bin', 2 * MB),
   file('diego', [], 'Respaldo 3.bin', MB),
+];
+
+const doc = (folder: FolderPathNames, name: string, docxText: string): DemoFile => ({
+  owner: 'daniela',
+  folder,
+  name,
+  docxText,
+});
+
+const UNI = ['Universidad'] as const;
+const THESIS = ['Universidad', 'Tesis'] as const;
+const WORK = ['Trabajo'] as const;
+const FAMILY = ['Familia'] as const;
+const BACKUPS = ['Respaldos'] as const;
+const PHOTOS = ['Fotos'] as const;
+
+/** Con el plan gratuito los `.docx` se guardan, se previsualizan y se descargan, pero no se editan en línea. */
+const DANIELA_DOCS: readonly DemoFile[] = [
+  doc(
+    THESIS,
+    'Tesis — capítulo 1.docx',
+    'Capítulo 1. Introducción\nEste trabajo estudia cómo las nubes de almacenamiento pueden facilitar la colaboración académica.\nSe plantean tres preguntas de investigación sobre versionado, permisos y búsqueda.',
+  ),
+  doc(
+    THESIS,
+    'Tesis — capítulo 2.docx',
+    'Capítulo 2. Marco teórico\nSe revisan los modelos de control de acceso y la edición colaborativa en documentos de oficina.',
+  ),
+  doc(
+    THESIS,
+    'Bibliografía comentada.docx',
+    'Bibliografía comentada\n1. Tanenbaum, A. Sistemas distribuidos.\n2. Kleppmann, M. Designing Data-Intensive Applications.',
+  ),
+  doc(
+    UNI,
+    'Plan de estudios.docx',
+    'Plan de estudios 2026\nPrimer ciclo: Bases de datos, Ingeniería de software I, Redes.\nSegundo ciclo: Seguridad, Sistemas operativos.',
+  ),
+  doc(
+    UNI,
+    'Ensayo de ética profesional.docx',
+    'Ensayo de ética profesional\nLa responsabilidad de quien custodia datos ajenos no termina con el contrato.',
+  ),
+  doc(
+    UNI,
+    'Propuesta de proyecto final.docx',
+    'Propuesta de proyecto final\nObjetivo: construir una plataforma de almacenamiento con edición colaborativa.\nEntrega: noviembre de 2026.',
+  ),
+  doc(
+    WORK,
+    'Informe de práctica profesional.docx',
+    'Informe de práctica profesional\nDurante ocho semanas apoyé al equipo de soporte documentando incidentes y mejorando guías internas.',
+  ),
+  doc(
+    WORK,
+    'Currículum Daniela.docx',
+    'Daniela Demo\nIngeniería en Sistemas · Guatemala\nExperiencia: práctica en soporte técnico. Idiomas: español e inglés.',
+  ),
+  doc(
+    WORK,
+    'Carta de recomendación.docx',
+    'Carta de recomendación\nRecomiendo a Daniela por su puntualidad, curiosidad y trabajo en equipo.',
+  ),
+  doc(
+    WORK,
+    'Acta de reunión 12-oct.docx',
+    'Acta de reunión del 12 de octubre\nAsistentes: Daniela, Luis, Ana.\nAcuerdos: revisar el presupuesto y enviar la versión final el viernes.',
+  ),
+  doc(
+    FAMILY,
+    'Presupuesto familiar 2026.docx',
+    'Presupuesto familiar 2026\nIngresos y gastos mensuales, con una reserva para imprevistos.',
+  ),
+  doc(
+    FAMILY,
+    'Receta de la abuela.docx',
+    'Receta de la abuela\nPepián de pollo: chile guaque, pepita, tomate y mucho cariño.',
+  ),
+];
+
+const DANIELA_NOTES: readonly DemoFile[] = [
+  file('daniela', [], 'Pendientes de la semana.md'),
+  file('daniela', UNI, 'Notas de clase — Bases de datos.md'),
+  file('daniela', THESIS, 'Ideas para la tesis.txt'),
+  file('daniela', FAMILY, 'Lista de compras.txt'),
+];
+
+/** Espacio usado de Daniela: quedan 50 MB libres de los 100 MB del plan (el aviso de «casi llena»). */
+const DANIELA_USED_BYTES = 50 * MB;
+
+/** Respaldos y fotos de relleno; el último absorbe lo que falta para que el uso sea exacto. */
+const danielaFiles = (): readonly DemoFile[] => {
+  const fixed: DemoFile[] = [
+    ...DANIELA_DOCS,
+    ...DANIELA_NOTES,
+    file('daniela', BACKUPS, 'Copia del laptop (parte 1).bin', 12 * MB),
+    file('daniela', BACKUPS, 'Copia del laptop (parte 2).bin', 12 * MB),
+    file('daniela', PHOTOS, 'Vacaciones 2025.bin', 9 * MB),
+    file('daniela', PHOTOS, 'Graduación.bin', 9 * MB),
+  ];
+  const used = fixed.reduce((sum, item) => sum + contentOf(item).length, 0);
+  return [...fixed, file('daniela', PHOTOS, 'Álbum familiar.bin', DANIELA_USED_BYTES - used)];
+};
+
+const files = (settings: CorpusSettings): readonly DemoFile[] => [
+  ...baseFiles(settings),
+  ...danielaFiles(),
 ];
 
 const SHARES: readonly DemoShare[] = [
@@ -287,7 +418,7 @@ const LINKS: readonly DemoLink[] = [
 /** El corpus completo para la configuración dada. */
 export const demoCorpus = (settings: CorpusSettings): DemoCorpus => ({
   catalogPlanSlugs: CATALOG_PLAN_SLUGS,
-  quotaPlan: QUOTA_PLAN,
+  demoPlans: [QUOTA_PLAN, FREE_QUOTA_PLAN],
   accounts: ACCOUNTS,
   subscriptions: SUBSCRIPTIONS,
   folders: folders(settings),

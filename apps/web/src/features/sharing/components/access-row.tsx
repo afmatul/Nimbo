@@ -6,6 +6,7 @@ import type * as React from 'react';
 
 import { ParticipantAvatar } from '../../../components/nimbo/participant-avatar';
 import { Button } from '../../../components/ui/button';
+import { Select } from '../../../components/ui/select';
 import { useReadOnlyAccount } from '../../storage/components/space-provider';
 import { LEVEL_LABELS } from '../share-levels';
 
@@ -19,8 +20,7 @@ export interface DirectAccessActions {
   readonly changingId: string | null;
 }
 
-const SELECT_CLASS =
-  'h-11 rounded-md border border-input bg-card px-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:opacity-45 sm:h-9';
+const SELECT_CLASS = 'sm:[&_select]:h-9';
 
 /** En solo lectura solo se ofrece bajar a Lector (spec 012b CA-4): subir a Editor queda deshabilitado. */
 function LevelSelect({
@@ -33,7 +33,7 @@ function LevelSelect({
   const { readOnly } = useReadOnlyAccount();
   const changing = actions.changingId === entry.shareId;
   return (
-    <select
+    <Select
       aria-label={`Nivel de ${entry.grantee.displayName}`}
       className={SELECT_CLASS}
       value={entry.level}
@@ -50,7 +50,7 @@ function LevelSelect({
           {LEVEL_LABELS[level]}
         </option>
       ))}
-    </select>
+    </Select>
   );
 }
 
@@ -86,12 +86,13 @@ export function DirectAccessRow({
         <LevelSelect entry={entry} actions={actions} />
         <Button
           type="button"
-          variant="ghost"
+          variant="outline"
           size="icon"
+          className="border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
           aria-label={`Quitar acceso de ${entry.grantee.displayName}`}
           onClick={() => actions.onRevoke(entry)}
         >
-          <UserMinus className="h-5 w-5 text-secondary-foreground" aria-hidden="true" />
+          <UserMinus className="h-5 w-5" aria-hidden="true" />
         </Button>
       </div>
     </li>

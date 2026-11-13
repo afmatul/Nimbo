@@ -1,5 +1,8 @@
+import { unzipSync } from 'fflate';
+
 import { Role } from '../shared';
 
+import { contentOf } from './demo-content';
 import { demoCorpus } from './demo-corpus';
 import type { DemoFile, FolderPathNames } from './demo-corpus';
 
@@ -12,14 +15,48 @@ const usedBytes = (owner: string): number =>
     .filter((file) => file.owner === owner)
     .reduce((sum, file: DemoFile) => sum + (file.sizeBytes ?? 0), 0);
 
+const planOf = (slug: string) => {
+  const plan = corpus.demoPlans.find((candidate) => candidate.slug === slug);
+  if (plan === undefined) throw new Error(`Falta el plan ${slug}`);
+  return plan;
+};
+const sizeOf = (file: DemoFile): number => contentOf(file).length;
+
 describe('demoCorpus (semilla de demostración)', () => {
+  it('daniela: plan gratuito de la demo con exactamente 50 MB libres, .docx reales y ningún archivo sobre el máximo', () => {
+    const plan = planOf('demo-gratuito-cuota');
+    const files = corpus.files.filter((file) => file.owner === 'daniela');
+    const used = files.reduce((sum, file) => sum + sizeOf(file), 0);
+
+    expect(plan.maxEditors).toBe(0);
+    expect(Number(plan.quotaBytes) - used).toBe(50_000_000);
+    expect(files.length).toBeGreaterThanOrEqual(20);
+    expect(files.filter((file) => file.name.endsWith('.docx')).length).toBeGreaterThanOrEqual(10);
+    expect(files.every((file) => sizeOf(file) <= Number(plan.maxFileBytes))).toBe(true);
+    expect(
+      corpus.subscriptions.find((subscription) => subscription.account === 'daniela')?.planSlug,
+    ).toBe(plan.slug);
+  });
+
+  it('los .docx de la semilla son paquetes zip (PK) con el texto en word/document.xml', () => {
+    const docx = corpus.files.find((file) => file.docxText !== undefined) as DemoFile;
+    const bytes = contentOf(docx);
+
+    expect(bytes.subarray(0, 2).toString()).toBe('PK');
+    expect(Buffer.from(unzipSync(bytes)['word/document.xml'] as Uint8Array).toString()).toContain(
+      (docx.docxText as string).split('\n')[0],
+    );
+  });
+
   it('cuota llena y casi llena: los archivos de relleno suman la cuota y el 90 % del plan de demostración', () => {
-    const quota = Number(corpus.quotaPlan.quotaBytes);
+    const quota = Number(planOf('demo-cuota').quotaBytes);
 
     expect(usedBytes('diego')).toBe(quota);
     expect(usedBytes('carla')).toBe(quota * 0.9);
     expect(
-      corpus.files.every((file) => (file.sizeBytes ?? 0) <= Number(corpus.quotaPlan.maxFileBytes)),
+      corpus.files
+        .filter((file) => file.owner === 'carla' || file.owner === 'diego')
+        .every((file) => (file.sizeBytes ?? 0) <= Number(planOf('demo-cuota').maxFileBytes)),
     ).toBe(true);
   });
 

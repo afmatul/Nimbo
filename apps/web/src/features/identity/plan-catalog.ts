@@ -12,13 +12,7 @@ export interface PlanCatalog {
   readonly unavailable: boolean;
 }
 
-const toCatalogPlan = (plan: Plan): CatalogPlan => ({
-  id: plan.id,
-  slug: plan.slug,
-  name: plan.name,
-  priceCents: plan.priceCents,
-  free: plan.priceCents === 0,
-});
+const toCatalogPlan = (plan: Plan): CatalogPlan => ({ ...plan, free: plan.priceCents === 0 });
 
 /** Catálogo público de la 008 adaptado al selector del registro (PD-48). Cualquier fallo deja el catálogo no disponible. */
 export async function loadPlanCatalog(apiInternalUrl: string): Promise<PlanCatalog> {

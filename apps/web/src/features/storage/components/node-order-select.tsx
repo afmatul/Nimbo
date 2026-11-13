@@ -1,6 +1,7 @@
 import { NODE_SORTS, SORT_DIRECTIONS } from '@nimbo/contracts';
 import * as React from 'react';
 
+import { Select } from '../../../components/ui/select';
 import { orderLabel, sameOrder, type NodeOrder } from '../node-order';
 
 const OPTIONS: readonly NodeOrder[] = NODE_SORTS.flatMap((sort) =>
@@ -22,22 +23,22 @@ export function NodeOrderSelect({
   return (
     <div className="flex items-center gap-2 text-xs text-muted-foreground">
       <label htmlFor={id}>Ordenar</label>
-      <select
+      <Select
         id={id}
         value={current}
         disabled={busy}
+        className="[&_select]:h-8 [&_select]:text-xs"
         onChange={(event) => {
           const next = OPTIONS[Number(event.target.value)];
           if (next !== undefined) onChange(next);
         }}
-        className="min-h-8 rounded-md border border-border bg-card px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {OPTIONS.map((option, index) => (
           <option key={`${option.sort}-${option.dir}`} value={index}>
             {orderLabel(option)}
           </option>
         ))}
-      </select>
+      </Select>
     </div>
   );
 }
