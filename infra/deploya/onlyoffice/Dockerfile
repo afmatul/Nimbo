@@ -45,10 +45,10 @@ RUN adduser --quiet --system --group --home ${DS} --no-create-home ds \
   && documentserver-flush-cache.sh -r false \
   && rm -f /etc/nginx/includes/ds-example.conf /etc/nginx/includes/ds-letsencrypt.conf /etc/nginx/sites-enabled/default \
   # Deploya publica todo por HTTPS, pero ONLYOFFICE armaba las URLs de /cache/files con http:// y el navegador las
-  # bloqueaba (contenido mixto, «Error de descarga»): el esquema hacia docservice queda fijo en https. Solo ds-*.conf:
-  # http-common.conf define el mapa $the_scheme.
-  && sed -i 's/\$the_scheme/https/g' /etc/nginx/includes/ds-*.conf \
-  && ! grep -q '\$the_scheme' /etc/nginx/includes/ds-*.conf \
+  # bloqueaba (contenido mixto, «Error de descarga»): solo el encabezado X-Forwarded-Proto hacia docservice queda fijo
+  # en https. Las redirecciones de nginx siguen con $the_scheme: la salud de Deploya (GET /) las sigue por HTTP interno.
+  && sed -i -E 's/(proxy_set_header[[:space:]]+X-Forwarded-Proto[[:space:]]+)\$the_scheme/\1https/' /etc/nginx/includes/ds-*.conf \
+  && grep -Eq 'X-Forwarded-Proto[[:space:]]+https;' /etc/nginx/includes/ds-*.conf \
   && echo '{}' > /etc/onlyoffice/documentserver/local.json \
   && chown -R ds:ds /etc/onlyoffice/documentserver /var/log/onlyoffice /var/lib/onlyoffice ${DS}/../Data \
     /var/lib/rabbitmq /var/log/rabbitmq /etc/rabbitmq
