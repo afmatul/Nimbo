@@ -133,15 +133,15 @@ describe('Cambiar de plan, /suscripcion/cambiar-plan (spec 010 CA-16 a CA-18, CA
           kind: 'SCHEDULED_FOR_NEXT_BILLING',
           planSlug: 'pro',
           planName: 'Pro',
-          effectiveAt: '2026-10-14T18:00:00.000Z',
+          effectiveAt: '2030-10-14T18:00:00.000Z',
         },
       }),
     );
     await userEvent.click(within(dialog).getByRole('button', { name: 'Programar cambio a Pro' }));
 
-    const done = await screen.findByRole('alertdialog', { name: 'Cambio programado' });
+    const done = await screen.findByRole('alertdialog', { name: 'Cambio de plan confirmado' });
     expect(
-      within(done).getByText('Tu plan cambiará a Pro el 14/10/2026, en tu próxima fecha de cobro.'),
+      within(done).getByText('Tu plan cambiará a Pro el 14/10/2030, en tu próxima fecha de cobro.'),
     ).toBeTruthy();
     expect(within(done).queryByRole('alert')).toBeNull();
     expect(onScheduled).not.toHaveBeenCalled();

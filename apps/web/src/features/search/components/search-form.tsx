@@ -75,9 +75,11 @@ function SearchField({
  */
 function useSearchText(initialText: string): [string, (text: string) => void] {
   const [text, setText] = React.useState(initialText);
-  React.useEffect(() => {
-    setText((current) => (current.trim() === initialText ? current : initialText));
-  }, [initialText]);
+  const [synced, setSynced] = React.useState(initialText);
+  if (synced !== initialText) {
+    setSynced(initialText);
+    if (text.trim() !== initialText) setText(initialText);
+  }
   return [text, setText];
 }
 

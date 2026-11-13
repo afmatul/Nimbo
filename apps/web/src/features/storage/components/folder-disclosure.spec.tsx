@@ -1,12 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import type {
-  FolderContentsResponse,
-  FolderRef,
-  ExplorerNode,
-  NodeSummary,
-} from '@nimbo/contracts';
+import type { FolderContentsResponse, FolderRef, ExplorerNode } from '@nimbo/contracts';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 

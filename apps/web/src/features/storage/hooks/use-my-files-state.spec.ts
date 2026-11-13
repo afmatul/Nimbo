@@ -1,12 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import type {
-  FileSummary,
-  FolderContentsResponse,
-  ExplorerNode,
-  NodeSummary,
-} from '@nimbo/contracts';
+import type { FileSummary, FolderContentsResponse, ExplorerNode } from '@nimbo/contracts';
 import { renderHook } from '@testing-library/react';
 
 import { DEFAULT_NODE_ORDER, type NodeOrder } from '../node-order';

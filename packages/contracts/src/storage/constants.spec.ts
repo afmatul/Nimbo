@@ -39,6 +39,7 @@ describe('STORAGE_ERROR_CODES', () => {
         'STORAGE_VERSION_NOT_FOUND',
         'STORAGE_VERSION_ALREADY_CURRENT',
         'STORAGE_ACCOUNT_READ_ONLY',
+        'STORAGE_BATCH_TOO_LARGE',
       ].sort(),
     );
   });

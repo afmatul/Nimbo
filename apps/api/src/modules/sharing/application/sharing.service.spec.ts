@@ -377,3 +377,35 @@ describe('SharingService.revoke (plan 012 §2)', () => {
     expect(logger.info).not.toHaveBeenCalled();
   });
 });
+
+describe('SharingService.shareMany (lote del explorador)', () => {
+  it('comparte cada nodo con la regla de `share` y marca solo los que fallan, con su código', async () => {
+    const { service } = setup();
+    const missing = { type: 'file', id: '99999999-9999-4999-8999-999999999999' } as const;
+    const share = jest
+      .spyOn(service, 'share')
+      .mockImplementation((_actor, command) =>
+        command.nodeId === missing.id
+          ? Promise.reject(new NodeNotFoundError())
+          : Promise.resolve({} as never),
+      );
+    const folder = { type: 'folder', id: FOLDER.id } as const;
+
+    const result = await service.shareMany(ANA, {
+      items: [folder, missing],
+      email: 'bruno@ejemplo.com',
+      level: 'VIEWER',
+    });
+
+    expect(share).toHaveBeenCalledWith(ANA, {
+      nodeType: 'folder',
+      nodeId: FOLDER.id,
+      email: 'bruno@ejemplo.com',
+      level: 'VIEWER',
+    });
+    expect(result).toEqual({
+      succeeded: [folder],
+      failed: [{ item: missing, code: 'STORAGE_NODE_NOT_FOUND' }],
+    });
+  });
+});

@@ -13,8 +13,8 @@ import { useSpace, type SpaceSummaryState } from '../../storage/components/space
 import { fetchBillingHistory } from '../billing-history-api';
 import { useBillingHistory } from '../hooks/use-billing-history';
 import { fetchPlanCatalogWithSession } from '../plan-catalog-api';
-import { PLAN_AND_BILLING_PATH } from '../routes';
 import { planChangeMessage } from '../plan-change-result';
+import { PLAN_AND_BILLING_PATH } from '../routes';
 import { schedulePlanChange } from '../subscription-api';
 
 import { BillingPageLayout } from './billing-page-layout';
@@ -48,7 +48,7 @@ function useScheduling({ apiPublicUrl, authFetch }: Omit<PlanChangePageProps, 's
       setPending(true);
       schedulePlanChange(apiPublicUrl, authFetch, plan.slug)
         .then(
-          ({ result }) => setSuccess(planChangeMessage(result)),
+          ({ result }) => setSuccess(planChangeMessage(result, Date.now())),
           (caught: unknown) => setError(messageForCode(toApiClientError(caught).code)),
         )
         .finally(() => setPending(false));

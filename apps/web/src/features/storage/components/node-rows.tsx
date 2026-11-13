@@ -34,6 +34,46 @@ function NodeDate({ value }: { readonly value: string }): React.JSX.Element {
   return <time dateTime={value}>{dateFormatter.format(new Date(value))}</time>;
 }
 
+/** Casilla de una fila en la selección múltiple (mockup p. 12). */
+export interface RowSelect {
+  readonly checked: boolean;
+  readonly onToggle: () => void;
+}
+
+/** Casilla de 24 px dentro de una celda de 44 px (objetivo táctil), como la de la papelera. */
+export const SELECT_CHECKBOX_CLASS =
+  'h-6 w-6 shrink-0 cursor-pointer accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+
+function SelectCell({
+  name,
+  select,
+}: {
+  readonly name: string;
+  readonly select: RowSelect | undefined;
+}): React.JSX.Element | null {
+  if (select === undefined) return null;
+  return (
+    <td
+      className={cn(
+        'w-12 border-l-3 py-2 pl-3 align-middle',
+        select.checked ? 'border-l-brand' : 'border-l-transparent',
+      )}
+    >
+      <input
+        type="checkbox"
+        className={SELECT_CHECKBOX_CLASS}
+        aria-label={`Seleccionar ${name}`}
+        checked={select.checked}
+        onChange={select.onToggle}
+      />
+    </td>
+  );
+}
+
+/** Fila marcada: fondo `accent` (ui-guidelines §5). */
+const rowClass = (select: RowSelect | undefined): string =>
+  cn('h-14', select?.checked === true && 'bg-accent');
+
 /** Control de desglose de una carpeta (CA-26). */
 export interface FolderToggle {
   readonly expanded: boolean;
@@ -47,6 +87,8 @@ interface RowProps<T> {
   readonly node: T;
   readonly depth: number;
   readonly actions: React.ReactNode;
+  /** Casilla de la selección múltiple; `undefined` en una lista sin selección. */
+  readonly select?: RowSelect | undefined;
   /** Carpeta desglosada que muestra la fila, para lectores de pantalla («, dentro de …»). */
   readonly parentName: string | undefined;
 }
@@ -134,10 +176,12 @@ export function FolderRow({
   actions,
   parentName,
   toggle,
+  select,
 }: FolderRowProps): React.JSX.Element {
   const lead = toggle ? <DisclosureButton name={folder.name} toggle={toggle} /> : null;
   return (
-    <tr id={rowIdOf(folder.id)} className="h-14" style={treeLevelStyle(depth)}>
+    <tr id={rowIdOf(folder.id)} className={rowClass(select)} style={treeLevelStyle(depth)}>
+      <SelectCell name={folder.name} select={select} />
       <NameCell lead={lead}>
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand/10 text-primary">
           <Folder className="h-4 w-4" aria-hidden="true" />
@@ -175,9 +219,11 @@ export function FileRow({
   actions,
   parentName,
   besideToggles,
+  select,
 }: FileRowProps): React.JSX.Element {
   return (
-    <tr id={rowIdOf(file.id)} className="h-14" style={treeLevelStyle(depth)}>
+    <tr id={rowIdOf(file.id)} className={rowClass(select)} style={treeLevelStyle(depth)}>
+      <SelectCell name={file.name} select={select} />
       <NameCell lead={besideToggles ? <DisclosureSpacer /> : null}>
         <FileTypeChip fileType={CHIP_TYPE_BY_KIND[file.kind]} className="shrink-0" />
         <span className="flex min-w-0 flex-col">

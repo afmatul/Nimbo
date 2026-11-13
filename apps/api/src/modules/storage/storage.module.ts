@@ -8,6 +8,7 @@ import { AccessModule } from '../access';
 import { AuditModule } from '../audit';
 
 import { AccessibleFileUrlIssuer } from './application/accessible-file-url-issuer';
+import { BatchDownloadService } from './application/batch-download.service';
 import { EditableFileGateway } from './application/editable-file.gateway';
 import { EditedVersionRegistrar } from './application/edited-version.registrar';
 import { ExplorerBadgeService } from './application/explorer-badge.service';
@@ -19,6 +20,7 @@ import type { FolderConfig } from './application/folder-config';
 import { FolderService } from './application/folder.service';
 import { IndexableFileGateway } from './application/indexable-file.gateway';
 import { LinkedFileGateway } from './application/linked-file.gateway';
+import { NodeBatchService } from './application/node-batch.service';
 import { OptimizableFileGateway } from './application/optimizable-file.gateway';
 import { I_NODE_METADATA_READER } from './application/ports/i-node-metadata-reader.port';
 import { I_OBJECT_STORAGE } from './application/ports/i-object-storage.port';
@@ -49,6 +51,7 @@ import { TRASH_PURGE_QUEUE } from './infrastructure/trash-purge.scheduler';
 import { FileVersionsController } from './presentation/file-versions.controller';
 import { FilesController } from './presentation/files.controller';
 import { FoldersController } from './presentation/folders.controller';
+import { NodesBatchController } from './presentation/nodes-batch.controller';
 import { QuickAccessController } from './presentation/quick-access.controller';
 import { SpaceController } from './presentation/space.controller';
 import { TrashController } from './presentation/trash.controller';
@@ -121,6 +124,7 @@ export class StorageModule {
         FilesController,
         FileVersionsController,
         FoldersController,
+        NodesBatchController,
         TrashController,
         QuickAccessController,
         SpaceController,
@@ -152,6 +156,8 @@ export class StorageModule {
         VersionRestoreService,
         FolderService,
         ExplorerBadgeService,
+        NodeBatchService,
+        BatchDownloadService,
         QuickAccessService,
         StoragePreviewFacade,
         SearchService,

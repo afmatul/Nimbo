@@ -1,7 +1,9 @@
 import {
   paymentReceiptSchema,
+  planChangeResponseSchema,
   renewRequestSchema,
   subscriptionViewSchema,
+  type PlanChangeResponse,
   type RenewRequest,
   type RenewResponse,
   type SubscriptionView,
@@ -10,7 +12,6 @@ import {
 import type { AuthFetch } from '../identity/session/auth-fetch';
 
 import { billingEndpoint } from './billing-endpoint';
-import { planChangeResponseSchema, type PlanChangeResponse } from './plan-change-result';
 
 const AUTO_RENEW_PATH = '/billing/subscription/auto-renew';
 const PLAN_CHANGE_PATH = '/billing/subscription/plan-change';

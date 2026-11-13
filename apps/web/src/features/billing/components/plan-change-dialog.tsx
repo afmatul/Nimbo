@@ -118,7 +118,7 @@ function ScheduledDialog({
     <AlertDialog open onOpenChange={(open) => !open && onDone()}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Cambio programado</AlertDialogTitle>
+          <AlertDialogTitle>Cambio de plan confirmado</AlertDialogTitle>
           <AlertDialogDescription>
             Lo verás en Plan y facturación hasta que se aplique.
           </AlertDialogDescription>

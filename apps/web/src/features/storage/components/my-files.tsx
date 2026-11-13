@@ -5,6 +5,7 @@ import * as React from 'react';
 
 import { AppLayout } from '../../../components/nimbo/app-layout';
 import { ShareDialog, type ShareTarget, type SharingApi } from '../../sharing';
+import type { BatchApi } from '../batch-api';
 import type { FolderListing } from '../hooks/use-folder-contents';
 import {
   maxFileLabelOf,
@@ -12,9 +13,11 @@ import {
   type MyFilesState,
   type RowActionHandlers,
 } from '../hooks/use-my-files-state';
+import { useNodeSelection, type NodeSelection } from '../hooks/use-node-selection';
 import { useReturnFocus } from '../hooks/use-return-focus';
 import { isOwner } from '../node-access';
 
+import { ExplorerBatch } from './explorer-batch';
 import { FileExplorer, type FileExplorerStatus } from './file-explorer';
 import { DownloadNoticeBanner, FileRowMenu, type DownloadNotice } from './file-row-menu';
 import { FolderBreadcrumbs, SHARED_ROOT_CRUMB } from './folder-breadcrumbs';
@@ -94,12 +97,44 @@ function explorerNotices(
   );
 }
 
+/** Selección múltiple con su cliente de lotes: solo en lo propio (los lotes piden ser propietario). */
+interface BatchSelection {
+  readonly api: BatchApi;
+  readonly selection: NodeSelection;
+}
+
+/** Tras un lote: relee la lista (y lo desglosado) y la barra lateral (papelera, espacio y fijados). */
+function batchNotice(state: MyFilesState, batch: BatchSelection | null): React.ReactNode {
+  if (batch === null) return null;
+  const onChanged = (): void => {
+    state.notices.refresh();
+    state.sidebar.onMovedToTrash();
+  };
+  return <ExplorerBatch {...batch} folderContents={state.load} onChanged={onChanged} />;
+}
+
+/** Avisos sobre la lista (fijados, descarga) y la barra de selección; `undefined` si no hay ninguno. */
+function noticesOf(state: MyFilesState, batch: BatchSelection | null): React.ReactNode {
+  const { notices } = state;
+  const top = explorerNotices(state.sidebar.quickAccess, notices.notice, () =>
+    notices.setNotice(null),
+  );
+  if (top === undefined && batch === null) return undefined;
+  return (
+    <div className="space-y-3">
+      {top}
+      {batchNotice(state, batch)}
+    </div>
+  );
+}
+
 /** El explorador de la ubicación abierta con sus avisos, cargas, desglose, orden y «Cargar más». */
 interface MyFilesExplorerProps {
   readonly state: MyFilesState;
   readonly status: FileExplorerStatus;
   readonly share: RowShare;
   readonly firstAction: FirstFileAction | undefined;
+  readonly batch: BatchSelection | null;
 }
 
 function MyFilesExplorer({
@@ -107,8 +142,9 @@ function MyFilesExplorer({
   status,
   share,
   firstAction,
+  batch,
 }: MyFilesExplorerProps): React.JSX.Element {
-  const { contents, notices, uploads, folderId } = state;
+  const { contents, uploads, folderId } = state;
   return (
     <FileExplorer
       status={status}
@@ -122,6 +158,7 @@ function MyFilesExplorer({
       onNewFolder={() => state.creating.setOpen(true)}
       fileInputRef={uploads.fileInputRef}
       disclosure={state.view.disclosure}
+      selection={batch?.selection}
       controls={contents.controls}
       renderRowActions={(node) => (
         <RowActions
@@ -131,9 +168,7 @@ function MyFilesExplorer({
           FirstAction={firstAction}
         />
       )}
-      notice={explorerNotices(state.sidebar.quickAccess, notices.notice, () =>
-        notices.setNotice(null),
-      )}
+      notice={noticesOf(state, batch)}
     />
   );
 }
@@ -158,6 +193,20 @@ export interface MyFilesProps {
   readonly returnFocusId?: string | null;
   /** Primer ítem del menú de cada archivo; sin él, el menú queda como en 005/006. */
   readonly firstAction?: FirstFileAction;
+  /** Cliente de los lotes (selección múltiple); sin él la lista no tiene casillas. */
+  readonly batchApi?: BatchApi;
+}
+
+const ROOT_SCOPE = 'raiz';
+
+/** La selección de la ubicación abierta, solo si hay cliente de lotes y el actor es el propietario. */
+function useBatchSelection(
+  state: MyFilesState,
+  level: NodeAccessLevel,
+  api: BatchApi | undefined,
+): BatchSelection | null {
+  const selection = useNodeSelection(state.view.nodes, state.folderId ?? ROOT_SCOPE);
+  return api === undefined || !isOwner(level) ? null : { api, selection };
 }
 
 /**
@@ -170,12 +219,14 @@ export function MyFiles({
   sharingApi,
   returnFocusId = null,
   firstAction,
+  batchApi,
 }: MyFilesProps): React.JSX.Element {
   const state = useMyFilesState(folderId);
   const { listing } = state.contents;
   useReturnFocus(listing.status, returnFocusId);
   const [sharing, setSharing] = React.useState<ShareTarget | null>(null);
   const share: RowShare = { level: accessLevelOf(listing), open: setSharing };
+  const batch = useBatchSelection(state, share.level, batchApi);
   return (
     <AppLayout
       topBar={topBarOf(state, share.level)}
@@ -193,6 +244,7 @@ export function MyFiles({
             status={listing.status}
             share={share}
             firstAction={firstAction}
+            batch={batch}
           />
         )}
       </div>

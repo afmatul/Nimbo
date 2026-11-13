@@ -9,7 +9,14 @@ import { StorageRequestError } from './storage-request-error';
 const API = 'http://localhost/api/v1';
 const AT = '2026-09-30T10:00:00.000Z';
 const ALPHA = { id: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d', name: 'Proyecto Alpha' };
-const FOLDER = { type: 'folder', ...ALPHA, parentId: null, createdAt: AT, updatedAt: AT };
+const FOLDER = {
+  type: 'folder',
+  ...ALPHA,
+  parentId: null,
+  createdAt: AT,
+  updatedAt: AT,
+  shared: false,
+};
 const FILE = {
   type: 'file',
   id: '7a8b9c0d-1e2f-4c5d-8e6f-2f0c1d2e3a4b',
@@ -19,6 +26,8 @@ const FILE = {
   folderId: ALPHA.id,
   createdAt: AT,
   updatedAt: AT,
+  shared: true,
+  indexStatus: 'indexed',
 };
 
 describe('api de carpetas', () => {

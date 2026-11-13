@@ -3,8 +3,8 @@
 import { useState, type JSX } from 'react';
 
 import { SIGNUP_STEP, SignupSteps } from '../../../components/nimbo/signup-steps';
-import type { RegisterPhase } from '../hooks/use-register-form';
 import { saveChosenPlan } from '../chosen-plan-storage';
+import type { RegisterPhase } from '../hooks/use-register-form';
 
 import { CheckEmailPanel } from './check-email-panel';
 import type { CatalogPlan } from './plan-picker';

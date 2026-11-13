@@ -7,7 +7,6 @@ import {
   type FolderRef,
   type FolderSummary,
   type ExplorerNode,
-  NodeSummary,
   type QuickAccessList,
   quickAccessLimitMessage,
 } from '@nimbo/contracts';
@@ -695,5 +694,40 @@ describe('MyFiles y la compartición (spec 012b CA-1, CA-6, CA-9)', () => {
       within(crumbs).getByRole('link', { name: 'Compartidos conmigo' }).getAttribute('href'),
     ).toBe('/compartidos');
     expect(seriousViolationsOf(await axe(document.body))).toEqual([]);
+  });
+});
+
+describe('MyFiles con selección múltiple (mockup p. 12)', () => {
+  const batchApi = () => ({
+    move: jest.fn(),
+    trash: jest.fn(() => Promise.resolve({ succeeded: [], failed: [] })),
+    download: jest.fn(),
+    share: jest.fn(),
+  });
+
+  it('con el cliente de lotes, cada fila tiene su casilla y «Seleccionar todo» abre la barra de acciones', async () => {
+    render(
+      <UploadsProvider api={fakeApi()}>
+        <UploadsSpaceProvider>
+          <MyFiles folderId={null} sharingApi={fakeSharingApi()} batchApi={batchApi()} />
+        </UploadsSpaceProvider>
+      </UploadsProvider>,
+    );
+    await screen.findByText('raiz.pdf');
+
+    expect(screen.getByRole('checkbox', { name: 'Seleccionar raiz.pdf' })).toBeTruthy();
+    await userEvent.click(
+      screen.getByRole('checkbox', { name: 'Seleccionar todo en Mis archivos' }),
+    );
+
+    const bar = screen.getByRole('region', { name: 'Selección' });
+    expect(bar.textContent).toContain('2 seleccionados');
+    expect(within(bar).getByRole('button', { name: 'Mover' })).toBeTruthy();
+  });
+
+  it('sin el cliente de lotes no hay casillas', async () => {
+    await renderRoot(fakeApi());
+
+    expect(screen.queryByRole('checkbox', { name: /Seleccionar/ })).toBeNull();
   });
 });

@@ -1,3 +1,4 @@
+export { BatchTooLargeError } from './batch-too-large.error';
 export { AccountReadOnlyError } from './account-read-only.error';
 export type { BytesFormatter } from './bytes-formatter';
 export { NameConflictError, NodeNotFoundError } from './file-errors';

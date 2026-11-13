@@ -140,7 +140,7 @@ describe('carpetas por HTTP (006 CA-1, CA-2, CA-3, CA-5, CA-8, CA-9)', () => {
       expect(contents).toEqual({
         folder: null,
         breadcrumbs: [],
-        items: [{ type: 'folder', ...only }],
+        items: [{ type: 'folder', ...only, shared: false }],
         nextCursor: null,
         accessLevel: 'OWNER',
       });

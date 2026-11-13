@@ -25,7 +25,7 @@ import {
 } from '../../../components/ui/dialog';
 import { folderMoveConflictMessage, storageMessage } from '../../../lib/error-catalog';
 import type { LoadFolderContents } from '../hooks/use-folder-contents';
-import { TREE_ROOT, useFolderTree, type FolderTree } from '../hooks/use-folder-tree';
+import { folderIdOf, TREE_ROOT, useFolderTree, type FolderTree } from '../hooks/use-folder-tree';
 import { useTreeFocus } from '../hooks/use-tree-focus';
 import { StorageRequestError } from '../storage-request-error';
 
@@ -55,8 +55,6 @@ export interface MoveDialogProps {
   readonly onFolderCreated: (folder: FolderSummary) => void;
   readonly onClose: () => void;
 }
-
-const folderIdOf = (key: string): string | null => (key === TREE_ROOT ? null : key);
 
 /** Abre lo necesario para ver la ubicación actual; al mover una carpeta, también su carpeta (mockups `mover*`). */
 function openPathOf(node: NodeSummary, breadcrumbs: readonly FolderRef[]): readonly FolderRef[] {

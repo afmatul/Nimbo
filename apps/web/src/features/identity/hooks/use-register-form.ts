@@ -2,7 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { registerRequestSchema, type RegisterRequest } from '@nimbo/contracts';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type BaseSyntheticEvent } from 'react';
 import { useForm, type UseFormReturn } from 'react-hook-form';
 
 import { toApiClientError, type ApiClientError } from '../../../lib/api-error';
@@ -84,11 +84,23 @@ function useServerError(
   return { summaryRef, serverError, fail, clear: () => setServerError(null) };
 }
 
+export interface RegisterFormState {
+  readonly form: UseFormReturn<RegisterRequest>;
+  readonly phase: RegisterPhase;
+  readonly planId: string | undefined;
+  readonly setPlanId: (planId: string) => void;
+  readonly submitting: boolean;
+  readonly errors: ReturnType<typeof useServerError>;
+  /** «Continuar» o «Crear cuenta», según el paso. */
+  readonly next: (event?: BaseSyntheticEvent) => Promise<void>;
+  readonly back: () => void;
+}
+
 /**
  * Estado del registro en dos pasos (pedido de Adrián, 2026-11-13): «Continuar» valida la cuenta y lleva a «Plan»;
  * «Crear cuenta» envía el `POST` con el `planSlug` del plan de pago elegido.
  */
-export function useRegisterForm(options: RegisterFormOptions) {
+export function useRegisterForm(options: RegisterFormOptions): RegisterFormState {
   const form = useRegisterFields(options.defaults);
   const [phase, setPhase] = useState<RegisterPhase>('account');
   const [planId, setPlanId] = useState(options.defaultPlanId);

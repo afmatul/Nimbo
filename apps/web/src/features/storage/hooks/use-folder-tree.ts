@@ -40,7 +40,8 @@ export interface FolderTree {
   readonly addFolder: (parentKey: string, folder: FolderSummary) => void;
 }
 
-const folderIdOf = (key: string): string | null => (key === TREE_ROOT ? null : key);
+/** Id de la carpeta de una clave del árbol; `null` para «Mis archivos». */
+export const folderIdOf = (key: string): string | null => (key === TREE_ROOT ? null : key);
 
 function initialState(openPath: readonly FolderRef[]): TreeState {
   const keys = [TREE_ROOT, ...openPath.map((folder) => folder.id)];

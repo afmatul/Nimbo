@@ -2,7 +2,7 @@
  * @jest-environment jsdom
  */
 import type { Plan } from '@nimbo/contracts';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 
@@ -174,6 +174,12 @@ describe('PaymentForm (spec 009 §6: formulario, procesando, rechazado, aprobado
         'Tu plan Equipo ya está activo. Te enviamos el comprobante a lucia@ejemplo.com.',
       ),
     ).toBeTruthy();
+    const receipt = screen.getByRole('region', { name: 'Comprobante de pago Nimbo' });
+    expect(within(receipt).getByRole('img', { name: 'Nimbo' })).toBeTruthy();
+    expect(within(receipt).getByText('Q98.21')).toBeTruthy();
+    expect(within(receipt).getByText('Q11.79')).toBeTruthy();
+    expect(within(receipt).getByText('Q110.00')).toBeTruthy();
+    expect(within(receipt).getByText('Total pagado')).toBeTruthy();
     const [request] = fetchMock.mock.calls;
     expect(String(request?.[0])).toBe(`${API}/billing/subscribe`);
     expect(JSON.parse(String(request?.[1]?.body))).toEqual({

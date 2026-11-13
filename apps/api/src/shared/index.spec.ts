@@ -95,6 +95,9 @@ const RUNTIME_EXPORTS_BY_TASK = {
   '009 T-05': ['RateLimitExceededError'],
   'PD-63': [
     'attemptEach',
+    'settleEach',
+    'toBatchFailures',
+    'toBatchResult',
     'errorName',
     'IncompleteBatchError',
     'REPEATABLE_JOB_OPTIONS',
