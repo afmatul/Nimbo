@@ -34,7 +34,7 @@ export function hasThumbnail(file: FileSummary): boolean {
 }
 
 /** Verdadero cuando el elemento entra (o está por entrar) en pantalla; una sola vez. Sin `IntersectionObserver`, nunca. */
-function useNearViewport(element: HTMLElement | null): boolean {
+export function useNearViewport(element: HTMLElement | null): boolean {
   const [near, setNear] = React.useState(false);
   React.useEffect(() => {
     if (element === null || typeof IntersectionObserver === 'undefined') return;

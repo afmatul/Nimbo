@@ -6,6 +6,7 @@ import * as React from 'react';
 import { MyFiles, ThumbnailProvider, useSessionBatchApi, type MyFilesProps } from '../..';
 import { useSessionSharingApi } from '../../../sharing';
 
+import { DocxThumbnail } from './DocxThumbnail';
 import { FileThumbnail } from './FileThumbnail';
 import { PreviewMenuItem } from './PreviewMenuItem';
 import { QuickLookDialog } from './QuickLookDialog';
@@ -22,7 +23,12 @@ export function PreviewFiles({ apiPublicUrl, ...props }: PreviewFilesProps): Rea
   const sharingApi = useSessionSharingApi(apiPublicUrl);
   const batchApi = useSessionBatchApi(apiPublicUrl);
   const renderThumbnail = React.useCallback(
-    (file: FileSummary) => <FileThumbnail file={file} apiPublicUrl={apiPublicUrl} />,
+    (file: FileSummary) =>
+      file.kind === 'docx' ? (
+        <DocxThumbnail file={file} apiPublicUrl={apiPublicUrl} />
+      ) : (
+        <FileThumbnail file={file} apiPublicUrl={apiPublicUrl} />
+      ),
     [apiPublicUrl],
   );
   return (
