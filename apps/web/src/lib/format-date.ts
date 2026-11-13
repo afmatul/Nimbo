@@ -64,6 +64,18 @@ export function longDayLabel(isoDate: string): string {
   return longDayFormatter.format(new Date(isoDate));
 }
 
+const numericDayFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
+  timeZone: DISPLAY_TIME_ZONE,
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+});
+
+/** «14/10/2026», con el día de Guatemala (aviso de cambio de plan programado). */
+export function numericDayLabel(isoDate: string): string {
+  return numericDayFormatter.format(new Date(isoDate));
+}
+
 const dayMonthFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
   timeZone: DISPLAY_TIME_ZONE,
   day: 'numeric',

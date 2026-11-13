@@ -1,7 +1,7 @@
 'use client';
 
 import type { Plan, SubscriptionView } from '@nimbo/contracts';
-import { AlertCircle, AlertTriangle } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import type * as React from 'react';
 
 import { Alert } from '../../../components/ui/alert';
@@ -28,8 +28,12 @@ export interface PlanChangeDialogProps {
   readonly pending: boolean;
   /** Mensaje del catálogo si programar falló (CA-17): el diálogo solo ofrece «Cerrar». */
   readonly error: string | null;
+  /** Mensaje de éxito (incluye programarlo para la próxima fecha de cobro): el diálogo solo ofrece seguir. */
+  readonly success: string | null;
   readonly onConfirm: (plan: Plan) => void;
   readonly onClose: () => void;
+  /** Tras el éxito: vuelve a «Plan y facturación». */
+  readonly onDone: () => void;
 }
 
 function Summary({ rows }: { readonly rows: ReturnType<typeof changeCopy>['rows'] }) {
@@ -102,12 +106,40 @@ function Actions({
   );
 }
 
+/** El cambio quedó hecho o programado: un éxito, nunca un error (pedido de Adrián, 2026-11-13). */
+function ScheduledDialog({
+  message,
+  onDone,
+}: {
+  readonly message: string;
+  readonly onDone: () => void;
+}): React.JSX.Element {
+  return (
+    <AlertDialog open onOpenChange={(open) => !open && onDone()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Cambio programado</AlertDialogTitle>
+          <AlertDialogDescription className="sr-only">{message}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <Alert variant="success" className="flex gap-3">
+          <CheckCircle2 aria-hidden="true" className="size-5 shrink-0 text-success-foreground" />
+          <p className="min-w-0">{message}</p>
+        </Alert>
+        <AlertDialogFooter>
+          <Button onClick={onDone}>Ir a Plan y facturación</Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
 /**
  * Confirmación del cambio de plan (spec 010 CA-16, CA-17, CA-21, CA-27; mockups `planes--confirmar-*` y
  * `planes--cambio-error`): resumen, aviso de lo que baja y el botón de programar; si falla, el error y «Cerrar».
  */
 export function PlanChangeDialog(props: PlanChangeDialogProps): React.JSX.Element | null {
   const { subscription, target, card, usedBytes, pending, error, onConfirm, onClose } = props;
+  if (props.success !== null) return <ScheduledDialog message={props.success} onDone={props.onDone} />;
   if (target === null) return null;
   const copy = changeCopy(subscription, target, card);
   const warning = downgradeWarning(subscription.plan, target, usedBytes);

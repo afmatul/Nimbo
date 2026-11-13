@@ -126,9 +126,28 @@ describe('Cambiar de plan, /suscripcion/cambiar-plan (spec 010 CA-16 a CA-18, CA
     expect(within(dialog).getByText('Pro guarda menos versiones que tu plan actual.')).toBeTruthy();
     expect(seriousViolations(await axe(container))).toEqual([]);
 
-    fetchMock.mockResolvedValueOnce(jsonResponse({ ...VIEW, pendingPlan: PRO }));
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        subscription: { ...VIEW, pendingPlan: PRO },
+        result: {
+          kind: 'SCHEDULED_FOR_NEXT_BILLING',
+          planSlug: 'pro',
+          planName: 'Pro',
+          effectiveAt: '2026-10-14T18:00:00.000Z',
+        },
+      }),
+    );
     await userEvent.click(within(dialog).getByRole('button', { name: 'Programar cambio a Pro' }));
 
+    const done = await screen.findByRole('alertdialog', { name: 'Cambio programado' });
+    expect(
+      within(done).getByText(
+        'Tu plan cambiará a Pro el 14/10/2026, en tu próxima fecha de cobro.',
+      ),
+    ).toBeTruthy();
+    expect(within(done).queryByRole('alert')).toBeNull();
+    expect(onScheduled).not.toHaveBeenCalled();
+    await userEvent.click(within(done).getByRole('button', { name: 'Ir a Plan y facturación' }));
     expect(onScheduled).toHaveBeenCalledTimes(1);
     const put = fetchMock.mock.calls.find(([, init]) => init?.method === 'PUT');
     expect(put?.[0]).toBe(`${API}/billing/subscription/plan-change`);

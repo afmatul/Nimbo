@@ -14,7 +14,7 @@ import { fileDetailPath, folderPath } from '../../storage/routes';
 import { sidebarApiFake } from '../../storage/test-sidebar-api';
 import { GB, spaceSummaryWith } from '../../storage/test-space-summary';
 import { fileHit, folderHit, LOGISTICA, searchPage } from '../test-search-hit';
-import type { LoadSearch, SearchRequest } from '../use-search';
+import type { LoadSearch, SearchLocation, SearchRequest } from '../use-search';
 
 import { SearchView } from './search-view';
 
@@ -41,13 +41,14 @@ function Harness({
 }: {
   readonly initial: string;
   readonly load: LoadSearch;
-  readonly navigate: (search: string) => void;
+  readonly navigate: SearchLocation['navigate'];
 }): React.JSX.Element {
   const [search, setSearch] = React.useState(initial);
-  const location = {
+  const location: SearchLocation = {
     search,
-    navigate: (next: string) => {
-      navigate(next);
+    navigate: (next, options) => {
+      if (options === undefined) navigate(next);
+      else navigate(next, options);
       setSearch(next);
     },
   };
@@ -128,6 +129,56 @@ describe('SearchView: pantalla /buscar (018 CA-2, CA-6, CA-9 a CA-12)', () => {
     expect(
       await screen.findByRole('heading', { name: 'Resultados para «informe camion»' }),
     ).toBeTruthy();
+  });
+
+  it('Búsqueda al escribir: espera 300 ms sin teclear, reemplaza la dirección y busca solo el último texto', async () => {
+    jest.useFakeTimers();
+    try {
+      const load = loadOf(searchPage([fileHit(2)]));
+      const navigate = await renderView('', load);
+
+      fireEvent.change(searchField(), { target: { value: 'inf' } });
+      act(() => jest.advanceTimersByTime(200));
+      fireEvent.change(searchField(), { target: { value: 'informe' } });
+      act(() => jest.advanceTimersByTime(299));
+      expect(navigate).not.toHaveBeenCalled();
+
+      act(() => jest.advanceTimersByTime(1));
+      await act(async () => undefined);
+
+      expect(navigate).toHaveBeenCalledTimes(1);
+      expect(navigate).toHaveBeenCalledWith('q=informe', { replace: true });
+      expect(load).toHaveBeenCalledTimes(1);
+      expect(load).toHaveBeenCalledWith({ q: 'informe' });
+      expect(searchField().value).toBe('informe');
+      expect(document.activeElement).toBe(searchField());
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('Búsqueda al escribir: la respuesta de una consulta anterior no pisa la del texto actual', async () => {
+    jest.useFakeTimers();
+    try {
+      let resolveOld: (page: SearchResponse) => void = () => undefined;
+      const load: LoadMock = jest.fn((_request: SearchRequest) => never());
+      load
+        .mockImplementationOnce(() => new Promise((resolve) => (resolveOld = resolve)))
+        .mockImplementationOnce(() => Promise.resolve(searchPage([fileHit(2, 'Nuevo.docx')])));
+      await renderView('', load);
+
+      fireEvent.change(searchField(), { target: { value: 'vie' } });
+      act(() => jest.advanceTimersByTime(300));
+      fireEvent.change(searchField(), { target: { value: 'nuevo' } });
+      act(() => jest.advanceTimersByTime(300));
+      await act(async () => undefined);
+      await act(async () => resolveOld(searchPage([fileHit(3, 'Viejo.docx')])));
+
+      expect(screen.getByRole('link', { name: 'Nuevo.docx' })).toBeTruthy();
+      expect(screen.queryByRole('link', { name: 'Viejo.docx' })).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('CA-6: «Borrar el texto» vacía el campo y deja el foco en él', async () => {

@@ -23,8 +23,11 @@ export interface PlanChangeListProps {
   readonly usedBytes: number | null;
   readonly pending: boolean;
   readonly error: string | null;
+  /** Mensaje de éxito al programar; el diálogo lo muestra con «Ir a Plan y facturación». */
+  readonly success: string | null;
   readonly onSchedule: (plan: Plan) => void;
   readonly onDismissError: () => void;
+  readonly onDone: () => void;
 }
 
 /** Un plan de pago tiene vencimiento; Personal (o sin suscripción) no. */

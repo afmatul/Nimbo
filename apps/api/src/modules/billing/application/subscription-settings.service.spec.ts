@@ -120,6 +120,14 @@ describe('SubscriptionSettingsService (spec 010 CA-6, CA-16 a CA-19, CA-22, CA-2
     ]);
   });
 
+  it('CA-16: informa el plan programado y que aplica en la próxima fecha de cobro', async () => {
+    const { service } = setup();
+
+    const outcome = await service.scheduleChange(ANA, 'pro');
+
+    expect(outcome.change).toEqual({ plan: PRO, effectiveAt: EXPIRES });
+  });
+
   it.each(['no-existe', 'viejo', 'equipo'])(
     'CA-17: «%s» es BILLING_PLAN_CHANGE_INVALID y nada se guarda',
     async (slug) => {
@@ -135,8 +143,9 @@ describe('SubscriptionSettingsService (spec 010 CA-6, CA-16 a CA-19, CA-22, CA-2
   it('CA-27: en solo lectura la bajada a Personal se aplica ya y termina la solo lectura', async () => {
     const { service, saved, audits } = setup(team({ status: 'solo_lectura' }));
 
-    await service.scheduleChange(ANA, 'personal');
+    const outcome = await service.scheduleChange(ANA, 'personal');
 
+    expect(outcome.change).toEqual({ plan: PERSONAL_PLAN, effectiveAt: NOW });
     expect(saved).toMatchObject([
       { planId: PERSONAL_PLAN.id, status: 'vigente', expiresAt: null, pendingPlanId: null },
     ]);
