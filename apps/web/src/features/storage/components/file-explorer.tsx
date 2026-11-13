@@ -17,6 +17,7 @@ import { ExplorerErrorState } from './explorer-error-state';
 import { FolderBackLink, SHARED_ROOT_CRUMB } from './folder-breadcrumbs';
 import { LoadMore } from './load-more';
 import { NodeCards } from './node-cards';
+import { NodeOrderSelect } from './node-order-select';
 import { NodeTable, type FolderDisclosure, type NodeTableProps } from './node-table';
 import { ReadOnlyUploadFeedback, useReadOnlyUploads } from './read-only-notice';
 import { UploadDropzone } from './upload-dropzone';
@@ -362,11 +363,7 @@ function ViewToggle({
   readonly onChange: (view: NodesView) => void;
 }): React.JSX.Element {
   return (
-    <div
-      role="group"
-      aria-label="Vista"
-      className="flex self-end rounded-md border border-border p-0.5"
-    >
+    <div role="group" aria-label="Vista" className="flex rounded-md border border-border p-0.5">
       {VIEWS.map(({ id, label }) => (
         <button
           key={id}
@@ -404,7 +401,18 @@ function NodesPane({
   };
   return (
     <div className="flex flex-col gap-3">
-      <ViewToggle view={view} onChange={setView} />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        {controls && view === 'tarjetas' ? (
+          <NodeOrderSelect
+            order={controls.order}
+            busy={controls.sorting}
+            onChange={controls.changeOrder}
+          />
+        ) : (
+          <span />
+        )}
+        <ViewToggle view={view} onChange={setView} />
+      </div>
       {controls ? (
         <ControlledList table={table} controls={controls} view={view} />
       ) : (
