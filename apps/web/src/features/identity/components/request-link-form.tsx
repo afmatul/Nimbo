@@ -12,6 +12,7 @@ import { useEffect, useState, type JSX } from 'react';
 import { useForm } from 'react-hook-form';
 
 import { IdentityCard } from '../../../components/nimbo/identity-card';
+import { SIGNUP_STEP } from '../../../components/nimbo/signup-steps';
 import { TextLink } from '../../../components/nimbo/text-link';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
@@ -115,7 +116,7 @@ export function RequestLinkForm({ apiPublicUrl }: { readonly apiPublicUrl: strin
       title="Pedir un enlace nuevo"
       icon={Mail}
       tone="info"
-      step={2}
+      step={SIGNUP_STEP.verification}
       description={
         <p className="text-sm text-secondary-foreground">
           Escribe el correo con el que creaste tu cuenta y te enviaremos otro enlace de

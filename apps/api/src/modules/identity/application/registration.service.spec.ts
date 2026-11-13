@@ -134,7 +134,7 @@ const setup = () => {
 };
 
 const registerCommand = (
-  overrides: Partial<{ fullName: string; email: string; password: string }> = {},
+  overrides: Partial<{ fullName: string; email: string; password: string; planSlug: string }> = {},
 ) => ({
   fullName: 'Ana López',
   email: EMAIL,
@@ -195,6 +195,35 @@ describe('RegistrationService.register', () => {
       userId: user?.id,
       kind: 'new',
     });
+  });
+
+  it('registro con plan: guarda el plan elegido como pendiente; sin plan, queda `null`', async () => {
+    const { service, users } = setup();
+
+    await service.register(registerCommand({ planSlug: 'pro' }));
+    await service.register(registerCommand({ email: 'bruno@ejemplo.com' }));
+
+    const [ana, bruno] = users.all() as ClientUser[];
+    expect(ana?.pendingPlanSlug).toBe('pro');
+    expect(bruno?.pendingPlanSlug).toBeNull();
+  });
+
+  it('registro con plan: un segundo registro pendiente reemplaza el plan elegido', async () => {
+    const { service, users } = setup();
+    users.seed(aClientUser().withEmail(EMAIL).withPendingPlan('pro').build());
+
+    await service.register(registerCommand({ planSlug: 'equipo' }));
+
+    expect((users.all()[0] as ClientUser).pendingPlanSlug).toBe('equipo');
+  });
+
+  it('registro con plan: sin plan en el segundo registro, ya no queda pendiente', async () => {
+    const { service, users } = setup();
+    users.seed(aClientUser().withEmail(EMAIL).withPendingPlan('pro').build());
+
+    await service.register(registerCommand());
+
+    expect((users.all()[0] as ClientUser).pendingPlanSlug).toBeNull();
   });
 
   it('CA-1: quita los espacios alrededor del nombre antes de guardarlo', async () => {
@@ -595,8 +624,24 @@ describe('RegistrationService.verifyEmail', () => {
 
     expect(second).toEqual({ outcome: 'ALREADY_VERIFIED' });
     expect(events.clientAccountVerified).toHaveBeenCalledTimes(1);
-    expect(events.clientAccountVerified).toHaveBeenCalledWith({ userId: pending.id });
+    expect(events.clientAccountVerified).toHaveBeenCalledWith({
+      userId: pending.id,
+      pendingPlanSlug: null,
+    });
     expect(timeline).toEqual(['commit', 'event', 'commit']);
+  });
+
+  it('registro con plan: el evento lleva el plan elegido para que `billing` lo revise', async () => {
+    const { service, users, tokens, events } = setup();
+    const pending = aClientUser().withPendingPlan('pro').build();
+    users.seed(pending);
+
+    await service.verifyEmail(await seedToken(tokens, pending.id));
+
+    expect(events.clientAccountVerified).toHaveBeenCalledWith({
+      userId: pending.id,
+      pendingPlanSlug: 'pro',
+    });
   });
 
   it('CA-8: no publica el evento si la transacción falla al confirmar', async () => {

@@ -20,6 +20,8 @@ export interface IUserRepository {
    * (002 CA-19, CA-22).
    */
   updatePasswordHash(id: string, passwordHash: PasswordHash): Promise<void>;
+  /** Solo `plan_pendiente_slug = NULL`: lo pide `billing` al contratar o descartar el plan elegido al registrarse. */
+  clearPendingPlan(id: string): Promise<void>;
 }
 
 export const I_USER_REPOSITORY = Symbol('IUserRepository');

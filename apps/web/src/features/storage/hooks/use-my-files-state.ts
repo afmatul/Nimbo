@@ -5,7 +5,7 @@ import {
   type DownloadUrlResponse,
   type FileSummary,
   type FolderRef,
-  type FolderSummary,
+  type ExplorerFolder,
   type NodeSummary,
 } from '@nimbo/contracts';
 import * as React from 'react';
@@ -171,7 +171,7 @@ function useNotice(reload: () => void): {
 
 interface OrganizingOptions {
   readonly folderId: string | null;
-  readonly addFolder: (folder: FolderSummary) => void;
+  readonly addFolder: (folder: ExplorerFolder) => void;
   readonly reviseUploaded: (file: FileSummary) => void;
   /** La barra vuelve a leer el nombre de lo renombrado o movido (CA-27). */
   readonly reloadQuickAccess: () => void;
@@ -195,9 +195,9 @@ function useOrganizing({
     [reviseUploaded, reloadQuickAccess],
   );
   const folderCreatedFromMove = React.useCallback(
-    (folder: FolderSummary) => {
+    (folder: ExplorerFolder) => {
       if (folder.parentId === folderId) addFolder(folder);
-      remember({ type: 'folder', ...folder });
+      remember(folder);
     },
     [addFolder, folderId, remember],
   );

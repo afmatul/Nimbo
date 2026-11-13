@@ -79,6 +79,7 @@ describe('api de identity', () => {
           fullName: 'Ana López',
           email: 'ana@ejemplo.com',
           role: 'CLIENT',
+          pendingPlanSlug: null,
         },
       },
     };
@@ -105,6 +106,7 @@ describe('api de identity', () => {
         fullName: 'Ana López',
         email: 'ana@ejemplo.com',
         role: 'CLIENT',
+        pendingPlanSlug: null,
       },
     };
 

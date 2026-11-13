@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import type { FolderContentsResponse, FolderRef, NodeSummary } from '@nimbo/contracts';
+import type { FolderContentsResponse, FolderRef, ExplorerNode } from '@nimbo/contracts';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -17,15 +17,18 @@ const ALPHA: FolderRef = { id: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d', name: 'Pr
 const FASE3: FolderRef = { id: '2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e', name: 'Fase 3' };
 const BETA: FolderRef = { id: '4d5e6f7a-8b9c-4d0e-9f1a-2b3c4d5e6f7a', name: 'Beta' };
 
-const folder = (ref: FolderRef, parentId: string | null): NodeSummary => ({
+const folder = (ref: FolderRef, parentId: string | null): ExplorerNode => ({
   type: 'folder',
+  shared: false,
   ...ref,
   parentId,
   createdAt: AT,
   updatedAt: AT,
 });
-const file = (id: string, name: string, folderId: string | null): NodeSummary => ({
+const file = (id: string, name: string, folderId: string | null): ExplorerNode => ({
   type: 'file',
+  shared: false,
+  indexStatus: 'indexed',
   id,
   name,
   sizeBytes: 1_500,
@@ -39,7 +42,7 @@ const ROOT_NODES = [folder(ALPHA, null), folder(BETA, null), file('f-root', 'rai
 const IN_ALPHA = [folder(FASE3, ALPHA.id), file('f-a', 'acta.pdf', ALPHA.id)];
 const IN_FASE3 = [file('f-3', 'prompts.pdf', FASE3.id)];
 
-function contents(items: readonly NodeSummary[]): FolderContentsResponse {
+function contents(items: readonly ExplorerNode[]): FolderContentsResponse {
   return {
     folder: null,
     breadcrumbs: [],
@@ -74,7 +77,7 @@ function Harness({
   );
 }
 
-const byFolder: Readonly<Record<string, readonly NodeSummary[]>> = {
+const byFolder: Readonly<Record<string, readonly ExplorerNode[]>> = {
   [ALPHA.id]: IN_ALPHA,
   [FASE3.id]: IN_FASE3,
   [BETA.id]: [],

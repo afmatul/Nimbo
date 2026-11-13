@@ -3,9 +3,9 @@
 import {
   STORAGE_ERROR_CODES,
   type CreateFolderInput,
-  type FileSummary,
+  type ExplorerFile,
   type FolderRef,
-  type FolderSummary,
+  type ExplorerFolder,
   type MoveFileRequest,
   type MoveFolderInput,
   type NodeSummary,
@@ -25,7 +25,7 @@ import {
 } from '../../../components/ui/dialog';
 import { folderMoveConflictMessage, storageMessage } from '../../../lib/error-catalog';
 import type { LoadFolderContents } from '../hooks/use-folder-contents';
-import { TREE_ROOT, useFolderTree, type FolderTree } from '../hooks/use-folder-tree';
+import { folderIdOf, TREE_ROOT, useFolderTree, type FolderTree } from '../hooks/use-folder-tree';
 import { useTreeFocus } from '../hooks/use-tree-focus';
 import { StorageRequestError } from '../storage-request-error';
 
@@ -47,16 +47,14 @@ export interface MoveDialogProps {
   /** Migas de la ubicación del elemento (las del listado abierto); vacías en la raíz. */
   readonly breadcrumbs: readonly FolderRef[];
   readonly folderContents: LoadFolderContents;
-  readonly createFolder: (body: CreateFolderInput) => Promise<FolderSummary>;
-  readonly moveFile: (fileId: string, body: MoveFileRequest) => Promise<FileSummary>;
-  readonly moveFolder: (folderId: string, body: MoveFolderInput) => Promise<FolderSummary>;
+  readonly createFolder: (body: CreateFolderInput) => Promise<ExplorerFolder>;
+  readonly moveFile: (fileId: string, body: MoveFileRequest) => Promise<ExplorerFile>;
+  readonly moveFolder: (folderId: string, body: MoveFolderInput) => Promise<ExplorerFolder>;
   readonly onMoved: (node: NodeSummary) => void;
   /** La carpeta creada desde el árbol existe aunque luego no se mueva nada. */
-  readonly onFolderCreated: (folder: FolderSummary) => void;
+  readonly onFolderCreated: (folder: ExplorerFolder) => void;
   readonly onClose: () => void;
 }
-
-const folderIdOf = (key: string): string | null => (key === TREE_ROOT ? null : key);
 
 /** Abre lo necesario para ver la ubicación actual; al mover una carpeta, también su carpeta (mockups `mover*`). */
 function openPathOf(node: NodeSummary, breadcrumbs: readonly FolderRef[]): readonly FolderRef[] {
@@ -170,14 +168,11 @@ export function MoveDialog(props: MoveDialogProps): React.JSX.Element {
       const target = folderIdOf(destination);
       const moved: NodeSummary =
         node.type === 'file'
-          ? {
-              type: 'file',
-              ...(await props.moveFile(node.id, {
-                folderId: target,
-                onConflict: keepBoth ? 'keep_both' : 'ask',
-              })),
-            }
-          : { type: 'folder', ...(await props.moveFolder(node.id, { parentId: target })) };
+          ? await props.moveFile(node.id, {
+              folderId: target,
+              onConflict: keepBoth ? 'keep_both' : 'ask',
+            })
+          : await props.moveFolder(node.id, { parentId: target });
       props.onMoved(moved);
       onClose();
     } catch (error) {

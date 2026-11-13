@@ -5,8 +5,8 @@ import {
   STORAGE_ERROR_CODES,
   type FolderContentsResponse,
   type FolderRef,
-  type FolderSummary,
-  type NodeSummary,
+  type ExplorerFile,
+  type ExplorerFolder,
   type QuickAccessList,
   quickAccessLimitMessage,
 } from '@nimbo/contracts';
@@ -18,6 +18,7 @@ import { DropdownMenuItem } from '../../../components/ui/dropdown-menu';
 import { fakeSharingApi } from '../../sharing/test-sharing';
 import type { StorageApi } from '../api';
 import { StorageRequestError } from '../storage-request-error';
+import { explorerFile, explorerFolder } from '../test-explorer-nodes';
 import { GB, spaceSummaryWith } from '../test-space-summary';
 
 import { VIEW_STORAGE_KEY } from './file-explorer';
@@ -34,26 +35,10 @@ const ALPHA: FolderRef = { id: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d', name: 'Pr
 const FASE3: FolderRef = { id: '2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e', name: 'Fase 3' };
 const NOTAS: FolderRef = { id: '4d5e6f7a-8b9c-4d0e-9f1a-2b3c4d5e6f7a', name: 'Notas' };
 
-const folderSummary = (ref: FolderRef, parentId: string | null): FolderSummary => ({
-  ...ref,
-  parentId,
-  createdAt: AT,
-  updatedAt: AT,
-});
-const folder = (ref: FolderRef, parentId: string | null): NodeSummary => ({
-  type: 'folder',
-  ...folderSummary(ref, parentId),
-});
-const file = (id: string, name: string, folderId: string | null): NodeSummary => ({
-  type: 'file',
-  id,
-  name,
-  sizeBytes: 1_500,
-  kind: 'pdf',
-  folderId,
-  createdAt: AT,
-  updatedAt: AT,
-});
+const folder = (ref: FolderRef, parentId: string | null): ExplorerFolder =>
+  explorerFolder({ ...ref, parentId, createdAt: AT, updatedAt: AT });
+const file = (id: string, name: string, folderId: string | null): ExplorerFile =>
+  explorerFile({ id, name, sizeBytes: 1_500, kind: 'pdf', folderId, createdAt: AT, updatedAt: AT });
 
 const LISTINGS: Readonly<Record<string, FolderContentsResponse>> = {
   root: {
@@ -146,7 +131,7 @@ describe('MyFiles con carpetas desglosadas (006 CA-26)', () => {
   it('CA-26: renombrar una subcarpeta actualiza su nivel', async () => {
     const api = fakeApi({
       renameFolder: jest.fn(() =>
-        Promise.resolve(folderSummary({ id: FASE3.id, name: 'Fase 4' }, ALPHA.id)),
+        Promise.resolve(folder({ id: FASE3.id, name: 'Fase 4' }, ALPHA.id)),
       ),
     });
     await renderMyFilesWithAlphaExpanded(api);
@@ -179,6 +164,78 @@ describe('MyFiles con carpetas desglosadas (006 CA-26)', () => {
     expect(
       await screen.findByText('Ya existe una carpeta llamada «Notas» aquí. Elige otro nombre.'),
     ).toBeTruthy();
+  });
+});
+
+/** Mis archivos cuyo listado de `folderId` trae `items` en lugar de los de `LISTINGS`. */
+function folderContentsWith(
+  folderId: string | null,
+  items: FolderContentsResponse['items'],
+): StorageApi['folderContents'] {
+  return jest.fn((requested: string | null) => {
+    const listing = LISTINGS[requested ?? 'root'] as FolderContentsResponse;
+    return Promise.resolve(requested === folderId ? { ...listing, items } : listing);
+  });
+}
+
+function rowOf(name: string): HTMLElement {
+  const row = within(screen.getByRole('table')).getByText(name).closest('tr');
+  if (row === null) throw new Error(`Sin fila para ${name}`);
+  return row;
+}
+
+function expectSharedAndFailed(name: string): void {
+  expect(within(rowOf(name)).getByText('Compartido')).toBeTruthy();
+  expect(within(rowOf(name)).getByText('No se pudo indexar')).toBeTruthy();
+}
+
+const SHARED_RAIZ: ExplorerFile = {
+  ...file('f-root', 'raiz.pdf', null),
+  shared: true,
+  indexStatus: 'failed',
+};
+const SHARED_ACTA: ExplorerFile = {
+  ...SHARED_RAIZ,
+  id: 'f-a',
+  name: 'acta.pdf',
+  folderId: ALPHA.id,
+};
+
+describe('MyFiles conserva las marcas de lo renombrado o movido (006 CA-4, CA-7)', () => {
+  it('CA-4: el archivo renombrado sigue «Compartido» y con su indexación sin volver a pedir la carpeta', async () => {
+    const api = fakeApi({
+      folderContents: folderContentsWith(null, [folder(ALPHA, null), SHARED_RAIZ]),
+      renameFile: jest.fn(() => Promise.resolve({ ...SHARED_RAIZ, name: 'final.pdf' })),
+    });
+    renderMyFiles(api);
+    await screen.findByText('raiz.pdf');
+
+    await chooseRowAction('raiz.pdf', 'Renombrar');
+    await userEvent.clear(screen.getByRole('textbox'));
+    await userEvent.type(screen.getByRole('textbox'), 'final');
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar nombre' }));
+
+    await screen.findByText('final.pdf');
+    expectSharedAndFailed('final.pdf');
+    expect(api.folderContents).toHaveBeenCalledTimes(1);
+  });
+
+  it('CA-7: el archivo movido a la raíz llega «Compartido» y con su indexación', async () => {
+    const alphaItems = [folder(FASE3, ALPHA.id), SHARED_ACTA];
+    const api = fakeApi({
+      folderContents: folderContentsWith(ALPHA.id, alphaItems),
+      moveFile: jest.fn(() => Promise.resolve({ ...SHARED_ACTA, folderId: null })),
+    });
+    await renderMyFilesWithAlphaExpanded(api);
+
+    await chooseRowAction('acta.pdf', 'Mover a…');
+    await userEvent.click(await screen.findByRole('treeitem', { name: /^Mis archivos/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Mover aquí' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(api.moveFile).toHaveBeenCalledWith('f-a', { folderId: null, onConflict: 'ask' });
+    // El listado de la raíz no trae acta.pdf: sus marcas solo pueden venir de la respuesta del movimiento.
+    expectSharedAndFailed('acta.pdf');
   });
 });
 
@@ -366,7 +423,7 @@ describe('MyFiles mantiene al día los accesos rápidos (006 CA-27)', () => {
     const api = fakeApi({
       quickAccess,
       renameFolder: jest.fn(() =>
-        Promise.resolve(folderSummary({ id: ALPHA.id, name: 'Proyecto Beta' }, null)),
+        Promise.resolve(folder({ id: ALPHA.id, name: 'Proyecto Beta' }, null)),
       ),
     });
     await renderRoot(api);
@@ -696,5 +753,40 @@ describe('MyFiles y la compartición (spec 012b CA-1, CA-6, CA-9)', () => {
       within(crumbs).getByRole('link', { name: 'Compartidos conmigo' }).getAttribute('href'),
     ).toBe('/compartidos');
     expect(seriousViolationsOf(await axe(document.body))).toEqual([]);
+  });
+});
+
+describe('MyFiles con selección múltiple (mockup p. 12)', () => {
+  const batchApi = () => ({
+    move: jest.fn(),
+    trash: jest.fn(() => Promise.resolve({ succeeded: [], failed: [] })),
+    download: jest.fn(),
+    share: jest.fn(),
+  });
+
+  it('con el cliente de lotes, cada fila tiene su casilla y «Seleccionar todo» abre la barra de acciones', async () => {
+    render(
+      <UploadsProvider api={fakeApi()}>
+        <UploadsSpaceProvider>
+          <MyFiles folderId={null} sharingApi={fakeSharingApi()} batchApi={batchApi()} />
+        </UploadsSpaceProvider>
+      </UploadsProvider>,
+    );
+    await screen.findByText('raiz.pdf');
+
+    expect(screen.getByRole('checkbox', { name: 'Seleccionar raiz.pdf' })).toBeTruthy();
+    await userEvent.click(
+      screen.getByRole('checkbox', { name: 'Seleccionar todo en Mis archivos' }),
+    );
+
+    const bar = screen.getByRole('region', { name: 'Selección' });
+    expect(bar.textContent).toContain('2 seleccionados');
+    expect(within(bar).getByRole('button', { name: 'Mover' })).toBeTruthy();
+  });
+
+  it('sin el cliente de lotes no hay casillas', async () => {
+    await renderRoot(fakeApi());
+
+    expect(screen.queryByRole('checkbox', { name: /Seleccionar/ })).toBeNull();
   });
 });

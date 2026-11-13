@@ -14,6 +14,7 @@ export interface PlanCatalog {
 
 const toCatalogPlan = (plan: Plan): CatalogPlan => ({
   id: plan.id,
+  slug: plan.slug,
   name: plan.name,
   priceCents: plan.priceCents,
   free: plan.priceCents === 0,

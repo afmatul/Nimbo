@@ -144,7 +144,7 @@ describe('POST /auth/verify-email: un solo uso y concurrencia (CA-29; 002 CA-15)
     expect(sessions).toBe(1);
     expect(user.correo_verificado).toBe(true);
     expect(tokens).toEqual([{ usado_en: clock.now(), invalidado_en: null }]);
-    expect(events).toEqual([{ userId: user.id }]);
+    expect(events).toEqual([{ userId: user.id, pendingPlanSlug: null }]);
     expect(
       testApp.logs.lines().filter((line) => line.event === 'identity.verification.succeeded'),
     ).toHaveLength(1);
@@ -163,7 +163,7 @@ describe('POST /auth/verify-email: un solo uso y concurrencia (CA-29; 002 CA-15)
     expect(outcomes).toEqual(['200 already-verified', '200 already-verified']);
     expect(afterFirstUse.sessions).toBe(1);
     expect(await stateOf(email)).toEqual(afterFirstUse);
-    expect(events).toEqual([{ userId: afterFirstUse.user.id }]);
+    expect(events).toEqual([{ userId: afterFirstUse.user.id, pendingPlanSlug: null }]);
     expect(testApp.logs.lines().filter((line) => line.event === 'mail.enqueued')).toEqual([]);
   });
 

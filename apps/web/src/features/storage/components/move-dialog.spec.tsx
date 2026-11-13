@@ -6,14 +6,13 @@ import {
   type FileSummary,
   type FolderContentsResponse,
   type FolderRef,
-  type FolderSummary,
-  type NodeSummary,
 } from '@nimbo/contracts';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { axe } from 'jest-axe';
 
 import { StorageRequestError } from '../storage-request-error';
+import { explorerFile, explorerFolder } from '../test-explorer-nodes';
 
 import { MoveDialog, type MoveDialogProps } from './move-dialog';
 
@@ -30,13 +29,13 @@ const ACTAS: FolderRef = { id: '2a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d', name: 'Ac
 const DOCS: FolderRef = { id: '2b2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d', name: 'Documentación' };
 const FASE3: FolderRef = { id: '2c2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d', name: 'Fase 3 · RAG' };
 const PROMPTS: FolderRef = { id: '3a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d', name: 'Prompts' };
-const NEW_FOLDER: FolderSummary = {
+const NEW_FOLDER = explorerFolder({
   id: '4a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d',
   name: 'Entregables',
   parentId: DOCS.id,
   createdAt: AT,
   updatedAt: AT,
-};
+});
 
 const FILE: FileSummary = {
   id: '7a8b9c0d-1e2f-4c5d-8e6f-2f0c1d2e3a4b',
@@ -47,14 +46,8 @@ const FILE: FileSummary = {
   createdAt: AT,
   updatedAt: AT,
 };
-const FILE_NODE: NodeSummary = { type: 'file', ...FILE };
-const FASE3_NODE: NodeSummary = {
-  type: 'folder',
-  ...FASE3,
-  parentId: ALPHA.id,
-  createdAt: AT,
-  updatedAt: AT,
-};
+const FILE_NODE = explorerFile(FILE);
+const FASE3_NODE = explorerFolder({ ...FASE3, parentId: ALPHA.id, createdAt: AT, updatedAt: AT });
 
 const TREE: Readonly<Record<string, readonly FolderRef[]>> = {
   root: [ALPHA, LEGALES],
@@ -74,6 +67,7 @@ function contentsOf(folderId: string | null): Promise<FolderContentsResponse> {
     items: [
       ...folders.map((folder) => ({
         type: 'folder' as const,
+        shared: false,
         ...folder,
         parentId: folderId,
         createdAt: AT,
@@ -81,6 +75,8 @@ function contentsOf(folderId: string | null): Promise<FolderContentsResponse> {
       })),
       {
         type: 'file' as const,
+        shared: false,
+        indexStatus: 'indexed' as const,
         ...FILE,
         id: 'ffffffff-1e2f-4c5d-8e6f-2f0c1d2e3a4b',
         name: 'otro.pdf',
@@ -97,10 +93,8 @@ function renderDialog(overrides: Partial<MoveDialogProps> = {}): MoveDialogProps
     breadcrumbs: [ALPHA, FASE3],
     folderContents: jest.fn(contentsOf),
     createFolder: jest.fn(() => Promise.resolve(NEW_FOLDER)),
-    moveFile: jest.fn((_id, body) => Promise.resolve({ ...FILE, folderId: body.folderId })),
-    moveFolder: jest.fn(() =>
-      Promise.resolve({ ...FASE3, parentId: null, createdAt: AT, updatedAt: AT }),
-    ),
+    moveFile: jest.fn((_id, body) => Promise.resolve({ ...FILE_NODE, folderId: body.folderId })),
+    moveFolder: jest.fn(() => Promise.resolve({ ...FASE3_NODE, parentId: null })),
     onMoved: jest.fn(),
     onFolderCreated: jest.fn(),
     onClose: jest.fn(),
@@ -195,7 +189,7 @@ describe('MoveDialog de un archivo (CA-7)', () => {
           suggestedName: 'Informe_avance_RAG (1).docx',
         }),
       )
-      .mockResolvedValueOnce({ ...FILE, folderId: null, name: 'Informe_avance_RAG (1).docx' });
+      .mockResolvedValueOnce({ ...FILE_NODE, folderId: null, name: 'Informe_avance_RAG (1).docx' });
     const props = renderDialog({ moveFile });
     await treeLoaded();
 

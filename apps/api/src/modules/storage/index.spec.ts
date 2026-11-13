@@ -119,6 +119,8 @@ const RUNTIME_EXPORTS = [
   'EditableFileGateway',
   'FILE_VERSION_CREATED',
   'I_CONTENT_MATCH_READER',
+  'I_INDEX_STATUS_READER',
+  'I_SHARED_NODE_READER',
   'IndexableFileGateway',
   'InvalidQueryError',
   'LinkedFileGateway',
@@ -134,6 +136,8 @@ const RUNTIME_EXPORTS = [
   'StorageWorkerModule',
   'WritableAccountPolicy',
   'SupportTrashService',
+  // Semilla de demostración (`src/seed`): sube los objetos de sus archivos con el adaptador de los `worker`.
+  'WORKER_OBJECT_STORAGE_PROVIDER',
   'invoiceObjectKey',
 ] as const;
 
@@ -144,6 +148,8 @@ describe('modules/storage/index.ts', () => {
     expect(typeof storage.I_PLAN_LIMITS_PROVIDER).toBe('symbol');
     expect(typeof storage.I_NODE_METADATA_READER).toBe('symbol');
     expect(typeof storage.I_CONTENT_MATCH_READER).toBe('symbol');
+    expect(typeof storage.I_SHARED_NODE_READER).toBe('symbol');
+    expect(typeof storage.I_INDEX_STATUS_READER).toBe('symbol');
   });
 
   it('017 plan §2.3: el emisor interno de URLs (sin tasa ni auditoría) no sale del módulo', () => {

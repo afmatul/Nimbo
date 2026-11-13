@@ -15,6 +15,7 @@ import type { Actor, DomainError, IClock, ITransactionRunner, Role } from '../..
 import { I_MAILER } from '../../notifications';
 import type { IMailer, MailMessage } from '../../notifications';
 import { AccountStatus } from '../domain/account-status.enum';
+import { ClientUser } from '../domain/client-user.entity';
 import { Device } from '../domain/device.entity';
 import {
   RefreshInvalidError,
@@ -60,6 +61,8 @@ export interface SessionUser {
   readonly fullName: string;
   readonly email: string;
   readonly role: Role;
+  /** Plan de pago elegido al registrarse y aún sin contratar; `null` en las internas. */
+  readonly pendingPlanSlug: string | null;
 }
 
 /** Credenciales de una sesión vigente; el controlador escribe las cookies. */
@@ -155,6 +158,7 @@ const sessionUser = (user: User): SessionUser => ({
   fullName: user.fullName,
   email: user.email.value,
   role: user.role,
+  pendingPlanSlug: user instanceof ClientUser ? user.pendingPlanSlug : null,
 });
 
 /**

@@ -72,6 +72,7 @@ function postWithCookie(url: string): Promise<unknown> {
   return requestJson(url, { method: 'POST', credentials: 'include' });
 }
 
+/** Registro con el plan elegido en el paso «Plan» (`planSlug`, solo si es de pago). */
 export function register(apiPublicUrl: string, input: RegisterRequest): Promise<AcceptedResponse> {
   return postJson(
     endpoint(apiPublicUrl, '/auth/register'),

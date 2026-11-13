@@ -21,6 +21,7 @@ const register = (): ClientUser =>
     email: EmailAddress.of('ana@ejemplo.com'),
     passwordHash: PasswordHash.fromPhc('$argon2id$stored'),
     acceptance: acceptance(),
+    pendingPlanSlug: 'pro',
   });
 
 describe('ClientUser', () => {
@@ -32,6 +33,13 @@ describe('ClientUser', () => {
     expect(user.status).toBe(AccountStatus.ACTIVE);
     expect(user.acceptance.termsVersion).toBe('1.0');
     expect(user.acceptance.privacyVersion).toBe('1.0');
+  });
+
+  it('registro con plan: guarda el plan elegido y lo conserva al verificar el correo', () => {
+    const user = register();
+
+    expect(user.pendingPlanSlug).toBe('pro');
+    expect(user.verifyEmail().pendingPlanSlug).toBe('pro');
   });
 
   it('CA-4: reemplaza el registro pendiente en una instancia nueva y deja la original intacta', () => {
@@ -47,16 +55,19 @@ describe('ClientUser', () => {
       fullName: 'Ana María López',
       passwordHash: nextHash,
       acceptance: nextAcceptance,
+      pendingPlanSlug: null,
     });
 
     expect(replaced).not.toBe(original);
     expect(replaced.fullName).toBe('Ana María López');
     expect(replaced.passwordHash).toBe(nextHash);
     expect(replaced.acceptance).toBe(nextAcceptance);
+    expect(replaced.pendingPlanSlug).toBeNull();
     expect(replaced.emailVerified).toBe(false);
     expect(original.fullName).toBe('Ana López');
     expect(original.passwordHash.reveal()).toBe('$argon2id$stored');
     expect(original.acceptance.termsVersion).toBe('1.0');
+    expect(original.pendingPlanSlug).toBe('pro');
   });
 
   it('CA-4: no reemplaza una cuenta ya verificada', () => {
@@ -66,6 +77,7 @@ describe('ClientUser', () => {
         fullName: 'Otra',
         passwordHash: PasswordHash.fromPhc('$argon2id$otro'),
         acceptance: acceptance(),
+        pendingPlanSlug: null,
       }),
     ).toThrow(VerifiedAccountReplacementError);
   });

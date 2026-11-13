@@ -42,6 +42,18 @@ describe('página de inicio de sesión', () => {
     ).toBe('/recuperar-contrasena');
   });
 
+  it('Mockup p. 07: el panel oscuro lleva el logotipo NIMBO y la píldora del agente; arriba, «¿No tienes cuenta?»', async () => {
+    await renderPage();
+
+    const panel = screen.getByRole('complementary', { name: 'Nimbo' });
+    expect(panel.textContent).toContain('NIMBO');
+    expect(panel.textContent).toContain('Agente Nimbo incluido en todos los planes');
+    const topBar = screen.getByRole('navigation', { name: 'Cuenta' });
+    expect(topBar.textContent).toContain('¿No tienes cuenta?');
+    expect(topBar.querySelector('a[href="/registro"]')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Mostrar contraseña' })).toBeTruthy();
+  });
+
   it('CA-8: con ?sesion=terminada muestra el aviso', async () => {
     await renderPage({ sesion: 'terminada' });
 

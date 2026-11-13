@@ -9,18 +9,20 @@ import { I_OBJECT_STORAGE, invoiceObjectKey } from '../../storage';
 import type { IObjectStorage } from '../../storage';
 
 import type { BillingLogger } from './billing-logger';
-import { I_INVOICE_GENERATOR } from './ports/i-invoice-generator.port';
+import { I_INVOICE_GENERATOR, INVOICE_CONTENT_TYPE } from './ports/i-invoice-generator.port';
 import type { IInvoiceGenerator } from './ports/i-invoice-generator.port';
 import { I_INVOICE_REPOSITORY } from './ports/i-invoice-repository.port';
 import type { IInvoiceRepository, IssuableInvoice } from './ports/i-invoice-repository.port';
 import { receiptMessage } from './receipt-message';
 
-const PDF_CONTENT_TYPE = 'application/pdf';
+const isIssued = (invoice: IssuableInvoice): boolean =>
+  invoice.objectKey !== null && invoice.noticeQueuedAt !== null;
 
 /**
  * Emisión del comprobante (spec 009 CA-6, T-07 y T-08): después del commit del cobro y desde el reintento. Lee la factura
- * como su dueño, sube el PDF si falta y, si falta el aviso, lo entrega a `INotifier` y lo marca. Cada paso se salta si
- * ya se hizo, así el reintento no regenera el PDF ni duplica el correo (revisión N-3: método aparte de `retryPending`).
+ * como su dueño, sube el PDF si falta y, si falta el aviso, lo entrega a `INotifier` con el PDF adjunto y lo marca. Cada
+ * paso se salta si ya se hizo, así el reintento no vuelve a subir el PDF ni duplica el correo (revisión N-3: método
+ * aparte de `retryPending`).
  */
 @Injectable()
 export class InvoiceIssuer {
@@ -54,22 +56,23 @@ export class InvoiceIssuer {
     const invoice = await this.transactions.withActor(actor, () =>
       this.invoices.findForIssue(actor, invoiceId),
     );
-    if (invoice === null) return;
-    if (invoice.objectKey === null) await this.storePdf(actor, invoice);
-    if (invoice.noticeQueuedAt === null) await this.sendReceipt(actor, invoice);
+    if (invoice === null || isIssued(invoice)) return;
+    // Un solo `generate` para lo que falte: es determinista, así el adjunto es igual al PDF guardado (ADR-0028).
+    const pdf = await this.generator.generate(invoice.document);
+    if (invoice.objectKey === null) await this.storePdf(actor, invoice, pdf);
+    if (invoice.noticeQueuedAt === null) await this.sendReceipt(actor, invoice, pdf);
   }
 
-  private async storePdf(actor: Actor, invoice: IssuableInvoice): Promise<void> {
+  private async storePdf(actor: Actor, invoice: IssuableInvoice, body: Buffer): Promise<void> {
     const key = invoiceObjectKey(actor.id, invoice.id);
-    const body = await this.generator.generate(invoice.document);
-    await this.storage.putObject({ key, body, contentType: PDF_CONTENT_TYPE });
+    await this.storage.putObject({ key, body, contentType: INVOICE_CONTENT_TYPE });
     await this.transactions.withActor(actor, () =>
       this.invoices.markStored(actor, invoice.id, key),
     );
   }
 
-  private async sendReceipt(actor: Actor, invoice: IssuableInvoice): Promise<void> {
-    await this.notifier.notify(receiptMessage(invoice, actor.id));
+  private async sendReceipt(actor: Actor, invoice: IssuableInvoice, pdf: Buffer): Promise<void> {
+    await this.notifier.notify(receiptMessage(invoice, actor.id, pdf));
     await this.transactions.withActor(actor, () =>
       this.invoices.markNoticeQueued(actor, invoice.id),
     );

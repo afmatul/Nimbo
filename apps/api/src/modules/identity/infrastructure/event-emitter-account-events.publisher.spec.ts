@@ -16,16 +16,16 @@ const setup = () => {
 
 /** ADR-0019, plan §6.4: publicación en proceso después del commit, que nunca lanza. */
 describe('EventEmitterAccountEventsPublisher', () => {
-  it('CA-8: emite `CLIENT_ACCOUNT_VERIFIED` solo con el `userId` y registra `published`', () => {
+  it('CA-8: emite `CLIENT_ACCOUNT_VERIFIED` con el `userId` y el plan pendiente, y registra `published` solo con `userId`', () => {
     const { emitter, logger, publisher } = setup();
     const received: ClientAccountVerifiedEvent[] = [];
     emitter.on(CLIENT_ACCOUNT_VERIFIED, (event: ClientAccountVerifiedEvent) => {
       received.push(event);
     });
 
-    publisher.clientAccountVerified({ userId: USER_ID });
+    publisher.clientAccountVerified({ userId: USER_ID, pendingPlanSlug: 'pro' });
 
-    expect(received).toEqual([{ userId: USER_ID }]);
+    expect(received).toEqual([{ userId: USER_ID, pendingPlanSlug: 'pro' }]);
     expect(logger.info).toHaveBeenCalledWith({
       event: 'identity.account_verified.published',
       userId: USER_ID,
@@ -40,7 +40,7 @@ describe('EventEmitterAccountEventsPublisher', () => {
     });
 
     expect(() => {
-      publisher.clientAccountVerified({ userId: USER_ID });
+      publisher.clientAccountVerified({ userId: USER_ID, pendingPlanSlug: null });
     }).not.toThrow();
 
     expect(logger.warn).toHaveBeenCalledTimes(1);

@@ -5,6 +5,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ThrottlerModule } from '@nestjs/throttler';
 
 import { ContentMatchBindingModule } from './content-match-binding.module';
+import { ExplorerBadgesBindingModule } from './explorer-badges-binding.module';
 import { AccessModule } from './modules/access';
 import { AuditHttpModule } from './modules/audit';
 import { BackofficeModule } from './modules/backoffice';
@@ -79,6 +80,7 @@ export class AppModule {
         AccessModule,
         PlanLimitsBindingModule,
         ContentMatchBindingModule,
+        ExplorerBadgesBindingModule,
         UserDirectoryBindingModule.forRoot(identity),
         ShareeDirectoryBindingModule.forRoot(identity),
         storage,

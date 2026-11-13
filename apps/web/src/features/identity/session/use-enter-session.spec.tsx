@@ -1,6 +1,7 @@
 /**
  * @jest-environment jsdom
  */
+import type { SessionUser } from '@nimbo/contracts';
 import { renderHook } from '@testing-library/react';
 
 import { forgetSession, recallSession } from './session-memory';
@@ -30,5 +31,25 @@ describe('useEnterSession', () => {
 
     expect(recallSession(Date.now())?.accessToken).toBe(`token-${role}`);
     expect(replace).toHaveBeenCalledWith(home);
+  });
+
+  it('Registro con plan de pago: si la cuenta tiene un plan pendiente, lleva a contratarlo', () => {
+    const session = sessionFixture();
+    const { result } = renderHook(() => useEnterSession());
+
+    const user: SessionUser = { ...session.user, pendingPlanSlug: 'pro' };
+    result.current({ ...session, user });
+
+    expect(replace).toHaveBeenCalledWith('/planes/contratar?slug=pro');
+  });
+
+  it('Registro sin plan de pago: `pendingPlanSlug: null` lleva al inicio del rol', () => {
+    const session = sessionFixture();
+    const { result } = renderHook(() => useEnterSession());
+
+    const user: SessionUser = { ...session.user, pendingPlanSlug: null };
+    result.current({ ...session, user });
+
+    expect(replace).toHaveBeenCalledWith('/archivos');
   });
 });

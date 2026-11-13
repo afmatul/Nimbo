@@ -7,20 +7,18 @@ import {
   type PaymentReceipt,
   type Plan,
 } from '@nimbo/contracts';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
-import Link from 'next/link';
+import { AlertCircle } from 'lucide-react';
 import * as React from 'react';
 import type { JSX } from 'react';
 
 import { Alert } from '../../../components/ui/alert';
 import { Badge } from '../../../components/ui/badge';
-import { Button, buttonVariants } from '../../../components/ui/button';
+import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { messageForCode } from '../../../lib/error-catalog';
 import { lastDayLabel } from '../../../lib/format-date';
-import { cn } from '../../../lib/utils';
 import { ServerErrorAlert } from '../../identity/components/server-error-alert';
 import type { AuthFetch } from '../../identity/session/auth-fetch';
 import { useAuthFetch } from '../../identity/session/use-auth-fetch';
@@ -34,6 +32,7 @@ import {
 } from '../payment-form-values';
 import { subscribe } from '../subscribe-api';
 
+import { ApprovedCard } from './approved-card';
 import { PaymentSummary, type PeriodNote } from './payment-summary';
 
 export interface PaymentFormProps {
@@ -89,10 +88,13 @@ export function PaymentForm({ plan, apiPublicUrl, authFetch }: PaymentFormProps)
       approved={(payment) => (
         <ApprovedCard
           message={`Tu plan ${payment.plan.name} ya está activo. Te enviamos el comprobante a ${payment.receiptEmail}.`}
-          facts={[
-            { label: 'Referencia', value: payment.reference },
-            { label: 'Vence el', value: lastDayLabel(payment.expiresAt) },
-          ]}
+          receipt={{
+            payment,
+            facts: [
+              { label: 'Referencia', value: payment.reference },
+              { label: 'Vence el', value: lastDayLabel(payment.expiresAt) },
+            ],
+          }}
           link={{ href: MY_FILES_PATH, label: 'Ir a Mis archivos' }}
         />
       )}
@@ -303,44 +305,5 @@ function OutcomeAlert({ state }: { readonly state: PaymentFormState }): JSX.Elem
       <AlertCircle aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
       <p>{messageForCode(BILLING_ERROR_CODES.BILLING_PAYMENT_REJECTED)}</p>
     </Alert>
-  );
-}
-
-/** Una fila del aprobado: referencia, vencimiento o periodo nuevo. */
-export interface ApprovedFact {
-  readonly label: string;
-  readonly value: string;
-}
-
-/**
- * Aprobado (009 CA-3, CA-6; 010 CA-8): el mensaje con a dónde se envió el comprobante, sus datos y a dónde seguir. Lo
- * arma cada flujo con su texto.
- */
-export function ApprovedCard({
-  message,
-  facts,
-  link,
-}: {
-  readonly message: string;
-  readonly facts: readonly ApprovedFact[];
-  readonly link: { readonly href: string; readonly label: string };
-}): JSX.Element {
-  return (
-    <Card className="flex flex-col items-start gap-4 p-6" data-state="aprobado">
-      <CheckCircle2 aria-hidden="true" className="h-8 w-8 text-success-foreground" />
-      <h1 className="text-xl font-bold text-foreground">Pago aprobado</h1>
-      <p className="text-sm text-foreground">{message}</p>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-        {facts.map((fact) => (
-          <React.Fragment key={fact.label}>
-            <dt className="text-muted-foreground">{fact.label}</dt>
-            <dd className="font-medium tabular-nums text-foreground">{fact.value}</dd>
-          </React.Fragment>
-        ))}
-      </dl>
-      <Link href={link.href} className={cn(buttonVariants())}>
-        {link.label}
-      </Link>
-    </Card>
   );
 }

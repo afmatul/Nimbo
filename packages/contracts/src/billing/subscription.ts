@@ -21,7 +21,8 @@ const FIRST_MONTH = 1;
 const LAST_MONTH = 12;
 const MIN_EXP_YEAR = 2000;
 const MAX_EXP_YEAR = 2100;
-const SLUG_MAX_LENGTH = 50;
+/** Largo máximo de `plan.slug` (columna `varchar(50)`); también lo usa el plan elegido al registrarse. */
+export const PLAN_SLUG_MAX_LENGTH = 50;
 
 const isTestCard = (number: string): boolean => TEST_CARD_NUMBERS.has(number);
 
@@ -55,7 +56,7 @@ const nitSchema = z.string().regex(NIT, 'Escribe CF o un NIT de 5 a 12 dígitos,
 /** `POST /billing/subscribe` (spec 009 CA-3 a CA-5, RN-9). Cualquier otra forma es `422` con `fields`. */
 export const subscribeRequestSchema = z
   .object({
-    planSlug: z.string().min(1).max(SLUG_MAX_LENGTH),
+    planSlug: z.string().min(1).max(PLAN_SLUG_MAX_LENGTH),
     card: cardSchema,
     nit: nitSchema,
   })
@@ -78,7 +79,7 @@ export const autoRenewRequestSchema = z.object({ enabled: z.boolean() }).strict(
 
 /** `PUT /billing/subscription/plan-change` (spec 010 CA-16 a CA-18): el plan del siguiente ciclo, por `slug`. */
 export const planChangeRequestSchema = z
-  .object({ planSlug: z.string().min(1).max(SLUG_MAX_LENGTH) })
+  .object({ planSlug: z.string().min(1).max(PLAN_SLUG_MAX_LENGTH) })
   .strict();
 
 const cents = z.number().int().nonnegative();

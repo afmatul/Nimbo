@@ -15,6 +15,7 @@ import type { Response } from 'supertest';
 import type { DataSource } from 'typeorm';
 
 import { ContentMatchBindingModule } from '../../../src/content-match-binding.module';
+import { ExplorerBadgesBindingModule } from '../../../src/explorer-badges-binding.module';
 import { I_PLAN_LIMITS_PROVIDER, StorageModule } from '../../../src/modules/storage';
 import type { PlanLimits } from '../../../src/modules/storage';
 import { PreviewModule } from '../../../src/modules/storage/preview';
@@ -298,6 +299,7 @@ export const createStorageHttpApp = async (
       ...(options.modules ?? []),
       PlanLimitsBindingModule,
       ContentMatchBindingModule,
+      ExplorerBadgesBindingModule,
       entryModule,
       ...(options.withStorage?.(storageModule, env) ?? []),
     ],

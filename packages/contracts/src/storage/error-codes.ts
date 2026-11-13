@@ -27,6 +27,8 @@ export const STORAGE_ERROR_CODES = {
   STORAGE_VERSION_ALREADY_CURRENT: 'STORAGE_VERSION_ALREADY_CURRENT',
   /** 010 CA-13: la cuenta está en solo lectura por vencimiento (ADR-0032). */
   STORAGE_ACCOUNT_READ_ONLY: 'STORAGE_ACCOUNT_READ_ONLY',
+  /** Lotes: una carpeta tiene más archivos de los que caben en una descarga por lote. */
+  STORAGE_BATCH_TOO_LARGE: 'STORAGE_BATCH_TOO_LARGE',
 } as const;
 export type StorageErrorCode = (typeof STORAGE_ERROR_CODES)[keyof typeof STORAGE_ERROR_CODES];
 

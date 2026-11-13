@@ -2,6 +2,7 @@ import { HttpStatus } from '@nestjs/common';
 import { HTTP_CODE_METADATA } from '@nestjs/common/constants';
 
 import { createActor, Role } from '../../../shared';
+import type { ExplorerBadgeService } from '../application/explorer-badge.service';
 import type { FileService } from '../application/file.service';
 import { File } from '../domain/file';
 import { FileName } from '../domain/file-name.vo';
@@ -20,6 +21,7 @@ const SUMMARY = {
   createdAt: CREATED.toISOString(),
   updatedAt: CREATED.toISOString(),
 };
+const EXPLORER_FILE = { type: 'file', ...SUMMARY, shared: true, indexStatus: 'indexed' };
 
 function file(): File {
   const parsed = FileName.parse('informe.pdf');
@@ -46,8 +48,17 @@ function setup() {
       expiresAt: new Date('2026-09-30T10:05:00.000Z'),
     }),
   };
-  const controller = new FilesController(files as unknown as FileService);
-  return { files, controller };
+  const badges = {
+    badgesOf: jest.fn().mockResolvedValue({
+      shared: new Set([FILE_ID]),
+      indexStatus: new Map([[FILE_ID, 'indexed']]),
+    }),
+  };
+  const controller = new FilesController(
+    files as unknown as FileService,
+    badges as unknown as ExplorerBadgeService,
+  );
+  return { files, badges, controller };
 }
 
 describe('FilesController', () => {
@@ -60,8 +71,8 @@ describe('FilesController', () => {
     expect(response).toEqual({ file: SUMMARY, accessLevel: 'VIEWER' });
   });
 
-  it('CA-4: `PATCH /files/:id` delega con el actor y responde el `FileSummary`', async () => {
-    const { files, controller } = setup();
+  it('CA-4: `PATCH /files/:id` delega con el actor y responde el archivo con sus distintivos, como el listado', async () => {
+    const { files, badges, controller } = setup();
 
     const response = await controller.rename(ACTOR, FILE_ID, {
       name: 'informe.pdf',
@@ -72,16 +83,17 @@ describe('FilesController', () => {
       name: 'informe.pdf',
       onConflict: 'keep_both',
     });
-    expect(response).toEqual(SUMMARY);
+    expect(badges.badgesOf).toHaveBeenCalledWith(ACTOR, [expect.objectContaining({ id: FILE_ID })]);
+    expect(response).toEqual(EXPLORER_FILE);
   });
 
-  it('CA-7: `POST /files/:id/move` delega con el actor y responde 200 con el `FileSummary`', async () => {
+  it('CA-7: `POST /files/:id/move` delega con el actor y responde 200 con el archivo y sus distintivos', async () => {
     const { files, controller } = setup();
 
     const response = await controller.move(ACTOR, FILE_ID, { folderId: null, onConflict: 'ask' });
 
     expect(files.move).toHaveBeenCalledWith(ACTOR, FILE_ID, { folderId: null, onConflict: 'ask' });
-    expect(response).toEqual(SUMMARY);
+    expect(response).toEqual(EXPLORER_FILE);
     const handler = Object.getOwnPropertyDescriptor(FilesController.prototype, 'move');
     expect(Reflect.getMetadata(HTTP_CODE_METADATA, handler?.value as object)).toBe(HttpStatus.OK);
   });

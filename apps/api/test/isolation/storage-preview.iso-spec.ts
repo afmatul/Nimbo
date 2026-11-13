@@ -6,6 +6,7 @@ import type { Response } from 'supertest';
 import { DataSource } from 'typeorm';
 
 import { ContentMatchBindingModule } from '../../src/content-match-binding.module';
+import { ExplorerBadgesBindingModule } from '../../src/explorer-badges-binding.module';
 import { StorageModule, StoragePreviewFacade } from '../../src/modules/storage';
 import { I_NODE_REPOSITORY } from '../../src/modules/storage/application/ports/i-node.repository.port';
 import type { INodeRepository } from '../../src/modules/storage/application/ports/i-node.repository.port';
@@ -58,6 +59,7 @@ describe('017 T-04: aislamiento real de preview (CA-3, CA-4, CA-5)', () => {
       modules: [
         PlanLimitsBindingModule,
         ContentMatchBindingModule,
+        ExplorerBadgesBindingModule,
         PreviewModule.register({
           storageModule: StorageModule.forRoot(env),
           config: { previewUrlPerMinute: env.RATE_LIMIT_PREVIEW_URL_PER_MINUTE },

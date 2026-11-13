@@ -3,7 +3,7 @@
 import {
   STORAGE_ERROR_CODES,
   type FolderContentsResponse,
-  type FolderSummary,
+  type ExplorerFolder,
 } from '@nimbo/contracts';
 import * as React from 'react';
 
@@ -80,12 +80,15 @@ function isNotFound(error: unknown): boolean {
   );
 }
 
-function withNewFolder(listing: FolderListing, folder: FolderSummary): FolderListing {
+function withNewFolder(listing: FolderListing, folder: ExplorerFolder): FolderListing {
   if (listing.status !== 'ready') return listing;
   const { contents } = listing;
   return {
     ...listing,
-    contents: { ...contents, items: [{ type: 'folder', ...folder }, ...contents.items] },
+    contents: {
+      ...contents,
+      items: [folder, ...contents.items],
+    },
   };
 }
 
@@ -241,7 +244,7 @@ export function useFolderContents(
   readonly listing: FolderListing;
   readonly reload: () => void;
   readonly refresh: () => void;
-  readonly addFolder: (folder: FolderSummary) => void;
+  readonly addFolder: (folder: ExplorerFolder) => void;
   readonly controls: ListControls;
 } {
   const counters = useCounters();
@@ -308,7 +311,7 @@ function useListActions(
 ): {
   readonly reload: () => void;
   readonly refresh: () => void;
-  readonly addFolder: (folder: FolderSummary) => void;
+  readonly addFolder: (folder: ExplorerFolder) => void;
   readonly controls: Pick<ListControls, 'changeOrder' | 'dismissMoreError'>;
 } {
   const { setAttempt, setRefreshes } = counters;
@@ -316,7 +319,7 @@ function useListActions(
     () => ({
       reload: () => setAttempt((previous) => previous + 1),
       refresh: () => setRefreshes((previous) => previous + 1),
-      addFolder: (folder: FolderSummary) =>
+      addFolder: (folder: ExplorerFolder) =>
         setState((previous) => ({ ...previous, listing: withNewFolder(previous.listing, folder) })),
       controls: {
         changeOrder: (next: NodeOrder) =>

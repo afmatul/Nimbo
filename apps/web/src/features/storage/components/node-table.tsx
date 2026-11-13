@@ -5,6 +5,7 @@ import * as React from 'react';
 
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../lib/utils';
+import type { NodeSelection } from '../hooks/use-node-selection';
 import { folderPath } from '../routes';
 
 import {
@@ -12,6 +13,7 @@ import {
   FileRow,
   FolderRow,
   rowIdOf,
+  SELECT_CHECKBOX_CLASS,
   TREE_CELL_CLASS,
   treeLevelStyle,
   type FolderToggle,
@@ -49,13 +51,25 @@ export interface NodeTableProps {
   readonly disclosure?: FolderDisclosure | undefined;
   /** Sin él los encabezados son texto (sin botones ni `aria-sort`, 007). */
   readonly sorting?: TableSorting | undefined;
+  /** Selección múltiple (mockup p. 12); sin ella no hay casillas. */
+  readonly selection?: NodeSelection | undefined;
 }
 
 /** Lo que cada fila necesita de la tabla, en cualquier nivel. */
 interface RowsContext {
   readonly renderRowActions: NodeTableProps['renderRowActions'];
   readonly disclosure: FolderDisclosure | undefined;
+  readonly selection: NodeSelection | undefined;
 }
+
+/** Columnas de la tabla: las filas de aviso de un desglose las abarcan todas. */
+const BASE_COLUMNS = 4;
+const ColumnCount = React.createContext(BASE_COLUMNS);
+
+const selectOf = (node: NodeSummary, selection: NodeSelection | undefined) =>
+  selection === undefined
+    ? undefined
+    : { checked: selection.isSelected(node.id), onToggle: () => selection.toggle(node) };
 
 /** Carpetas y archivos de una ubicación, en el orden de la API (carpetas primero, CA-5), con sus desgloses. */
 export function NodeTable({
@@ -64,28 +78,69 @@ export function NodeTable({
   renderRowActions,
   disclosure,
   sorting,
+  selection,
 }: NodeTableProps): React.JSX.Element {
+  const columns = BASE_COLUMNS + (selection === undefined ? 0 : 1);
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
       <table className="w-full table-fixed text-sm">
         <caption className="sr-only">{`Carpetas y archivos en ${placeName}`}</caption>
-        <NodeTableHead sorting={sorting} />
-        <tbody className="divide-y divide-border">
-          <NodeRows nodes={nodes} depth={0} context={{ renderRowActions, disclosure }} />
-        </tbody>
+        <NodeTableHead sorting={sorting} selection={selection} placeName={placeName} />
+        <ColumnCount.Provider value={columns}>
+          <tbody className="divide-y divide-border">
+            <NodeRows
+              nodes={nodes}
+              depth={0}
+              context={{ renderRowActions, disclosure, selection }}
+            />
+          </tbody>
+        </ColumnCount.Provider>
       </table>
     </div>
   );
 }
 
+/** «Seleccionar todo» de la ubicación abierta; indeterminado si hay algunos marcados. */
+function SelectAllHeader({
+  selection,
+  placeName,
+}: {
+  readonly selection: NodeSelection;
+  readonly placeName: string;
+}): React.JSX.Element {
+  const ref = React.useRef<HTMLInputElement>(null);
+  React.useEffect(() => {
+    if (ref.current) ref.current.indeterminate = selection.allState === 'some';
+  }, [selection.allState]);
+  return (
+    <th scope="col" className="w-12 border-l-3 border-l-transparent py-2 pl-3">
+      <input
+        ref={ref}
+        type="checkbox"
+        className={SELECT_CHECKBOX_CLASS}
+        aria-label={`Seleccionar todo en ${placeName}`}
+        checked={selection.allState === 'all'}
+        onChange={selection.toggleAll}
+      />
+    </th>
+  );
+}
+
 function NodeTableHead({
   sorting,
+  selection,
+  placeName,
 }: {
   readonly sorting: TableSorting | undefined;
+  readonly selection: NodeSelection | undefined;
+  readonly placeName: string;
 }): React.JSX.Element {
   return (
     <thead className="border-b border-border text-left text-xs font-medium text-muted-foreground">
       <tr>
+        {selection === undefined ? null : (
+          <SelectAllHeader selection={selection} placeName={placeName} />
+        )}
         <SortableHeader column="name" className="px-4 py-2" sorting={sorting} />
         <SortableHeader
           column="size"
@@ -130,6 +185,7 @@ function NodeRows({
             key={node.id}
             node={node}
             depth={depth}
+            select={selectOf(node, context.selection)}
             actions={context.renderRowActions?.(node)}
             parentName={parent?.name}
             besideToggles={context.disclosure !== undefined}
@@ -184,6 +240,7 @@ function FolderBranch({
       <FolderRow
         node={folder}
         depth={depth}
+        select={selectOf(folder, context.selection)}
         actions={context.renderRowActions?.(folder)}
         parentName={parentName}
         toggle={toggleOf(folder.id, context.disclosure)}
@@ -266,9 +323,10 @@ function LevelNoteRow({
   readonly depth: number;
   readonly children: React.ReactNode;
 }): React.JSX.Element {
+  const columns = React.useContext(ColumnCount);
   return (
     <tr id={id} className="h-12" style={treeLevelStyle(depth)}>
-      <td colSpan={4} className={TREE_CELL_CLASS}>
+      <td colSpan={columns} className={TREE_CELL_CLASS}>
         <div className="tree-indent">
           <div className="flex min-h-11 min-w-0 flex-wrap items-center gap-x-3 gap-y-2 pl-9 text-sm text-secondary-foreground sm:min-h-8 sm:pl-11">
             {children}
@@ -291,6 +349,7 @@ function LevelLoading({
   readonly name: string;
   readonly depth: number;
 }): React.JSX.Element {
+  const columns = React.useContext(ColumnCount);
   return (
     <>
       <LevelNoteRow id={id} depth={depth}>
@@ -301,7 +360,7 @@ function LevelLoading({
       </LevelNoteRow>
       {SKELETON_WIDTHS.map((width) => (
         <tr key={width} aria-hidden="true" className="h-12" style={treeLevelStyle(depth)}>
-          <td colSpan={4} className={TREE_CELL_CLASS}>
+          <td colSpan={columns} className={TREE_CELL_CLASS}>
             <span className="tree-indent flex items-center gap-3">
               <DisclosureSpacer />
               <span className="h-8 w-8 shrink-0 animate-pulse rounded-md bg-muted" />

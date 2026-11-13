@@ -13,8 +13,8 @@ jest.mock('../../../components/ui/radio-group', () => {
 });
 
 const PLANS: readonly CatalogPlan[] = [
-  { id: 'personal', name: 'Personal', priceCents: 0, free: true },
-  { id: 'equipo', name: 'Equipo', priceCents: 45000, free: false },
+  { id: 'personal', slug: 'personal', name: 'Personal', priceCents: 0, free: true },
+  { id: 'equipo', slug: 'equipo', name: 'Equipo', priceCents: 45000, free: false },
 ];
 
 describe('PlanPicker', () => {
@@ -31,7 +31,9 @@ describe('PlanPicker', () => {
   it('I-4: formatea el precio igual que el catálogo de /planes, con separador de miles', () => {
     const markup = renderToStaticMarkup(
       <PlanPicker
-        plans={[{ id: 'empresa', name: 'Empresa', priceCents: 1_250_000, free: false }]}
+        plans={[
+          { id: 'empresa', slug: 'empresa', name: 'Empresa', priceCents: 1_250_000, free: false },
+        ]}
       />,
     );
 

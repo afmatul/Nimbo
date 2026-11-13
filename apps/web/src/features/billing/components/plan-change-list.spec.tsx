@@ -126,9 +126,26 @@ describe('Cambiar de plan, /suscripcion/cambiar-plan (spec 010 CA-16 a CA-18, CA
     expect(within(dialog).getByText('Pro guarda menos versiones que tu plan actual.')).toBeTruthy();
     expect(seriousViolations(await axe(container))).toEqual([]);
 
-    fetchMock.mockResolvedValueOnce(jsonResponse({ ...VIEW, pendingPlan: PRO }));
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        subscription: { ...VIEW, pendingPlan: PRO },
+        result: {
+          kind: 'SCHEDULED_FOR_NEXT_BILLING',
+          planSlug: 'pro',
+          planName: 'Pro',
+          effectiveAt: '2030-10-14T18:00:00.000Z',
+        },
+      }),
+    );
     await userEvent.click(within(dialog).getByRole('button', { name: 'Programar cambio a Pro' }));
 
+    const done = await screen.findByRole('alertdialog', { name: 'Cambio de plan confirmado' });
+    expect(
+      within(done).getByText('Tu plan cambiará a Pro el 14/10/2030, en tu próxima fecha de cobro.'),
+    ).toBeTruthy();
+    expect(within(done).queryByRole('alert')).toBeNull();
+    expect(onScheduled).not.toHaveBeenCalled();
+    await userEvent.click(within(done).getByRole('button', { name: 'Ir a Plan y facturación' }));
     expect(onScheduled).toHaveBeenCalledTimes(1);
     const put = fetchMock.mock.calls.find(([, init]) => init?.method === 'PUT');
     expect(put?.[0]).toBe(`${API}/billing/subscription/plan-change`);
@@ -180,6 +197,29 @@ describe('Cambiar de plan, /suscripcion/cambiar-plan (spec 010 CA-16 a CA-18, CA
     const dialog = screen.getByRole('alertdialog', { name: '¿Cambiar a Personal ahora?' });
     expect(within(dialog).getByText('Personal · desde hoy')).toBeTruthy();
     expect(within(dialog).getByRole('button', { name: 'Cambiar a Personal ahora' })).toBeTruthy();
+  });
+
+  it('CA-27: con `APPLIED_IMMEDIATELY` confirma «Tu plan cambió a Personal.» aunque `effectiveAt` sea futuro', async () => {
+    await renderWith(historyWith({ ...VIEW, status: 'readOnly' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Cambiar a Personal' }));
+    const dialog = screen.getByRole('alertdialog', { name: '¿Cambiar a Personal ahora?' });
+
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        subscription: { ...VIEW, plan: PERSONAL, status: 'active' },
+        result: {
+          kind: 'APPLIED_IMMEDIATELY',
+          planSlug: 'personal',
+          planName: 'Personal',
+          effectiveAt: '2099-10-14T18:00:00.000Z',
+        },
+      }),
+    );
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cambiar a Personal ahora' }));
+
+    const done = await screen.findByRole('alertdialog', { name: 'Cambio de plan confirmado' });
+    expect(within(done).getByText('Tu plan cambió a Personal.')).toBeTruthy();
+    expect(within(done).queryByText(/cambiará/)).toBeNull();
   });
 
   it('CA-17: si el plan ya no está, el diálogo dice qué pasó y solo ofrece «Cerrar»', async () => {

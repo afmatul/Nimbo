@@ -33,7 +33,7 @@ export type AgentPanelScreen =
 
 /**
  * Mensaje de un fallo ya resuelto por el catálogo (`agentMessage`, `messageForCode`): qué pasó y qué hacer. Con la
- * cuota agotada trae además su salida: «Ver planes» (`PLANS_PATH`) o, en solo lectura sin fecha, «Renovar plan»
+ * cuota agotada trae además su salida: «Ver planes» (`CHANGE_PLAN_PATH`) o, en solo lectura sin fecha, «Renovar plan»
  * (`RENEW_PATH`), según elija quien monta el panel (CA-8, RN-5).
  */
 export interface AgentPanelNotice {

@@ -114,6 +114,35 @@ describe('SmtpTransport', () => {
     expect(raw).toContain('<p>HTML del correo</p>');
   });
 
+  it('009 CA-6: entrega el adjunto con su nombre y `Content-Type: application/pdf`, en base64', async () => {
+    const pdf = Buffer.from('%PDF-1.3 factura de prueba');
+
+    await new SmtpTransport(envFor(smtp.port)).deliver(
+      {
+        ...message,
+        attachment: {
+          filename: 'factura-NB-2026-0042.pdf',
+          contentType: 'application/pdf',
+          contentBase64: pdf.toString('base64'),
+        },
+      },
+      JOB_ID,
+    );
+
+    const raw = smtp.data.join('\n').replace(/\r\n[ \t]+/g, ' ');
+    expect(raw).toMatch(/^Content-Type: application\/pdf; name="?factura-NB-2026-0042\.pdf"?/m);
+    expect(raw).toMatch(
+      /^Content-Disposition: attachment; filename="?factura-NB-2026-0042\.pdf"?/m,
+    );
+    expect(raw).toContain(pdf.toString('base64'));
+  });
+
+  it('CA-21: sin adjunto el correo no es `multipart/mixed`', async () => {
+    await new SmtpTransport(envFor(smtp.port)).deliver(message, JOB_ID);
+
+    expect(smtp.data.join('\n')).not.toContain('multipart/mixed');
+  });
+
   it('CA-21: con `SMTP_TLS=none` no intenta STARTTLS aunque el servidor lo anuncie', async () => {
     await new SmtpTransport(envFor(smtp.port, 'none')).deliver(message, JOB_ID);
 

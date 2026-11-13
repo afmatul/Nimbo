@@ -3,6 +3,7 @@ export { IdentityModule } from './identity.module';
 export { IdentityReadersModule } from './identity-readers.module';
 export { VerifiedClientLister } from './application/verified-client-lister';
 export { AccountContactReader } from './application/account-contact-reader';
+export { PendingPlanRegistry } from './application/pending-plan-registry';
 export { UserDirectoryAdapter } from './infrastructure/adapters/user-directory.adapter';
 export { ShareeDirectoryAdapter } from './infrastructure/adapters/sharee-directory.adapter';
 export { IDENTITY_THROTTLERS } from './presentation/identity-ip-throttler.guard';

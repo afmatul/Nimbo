@@ -1,6 +1,7 @@
 import {
   billingHistoryResponseSchema,
   invoiceDownloadResponseSchema,
+  planChangeResponseSchema,
   subscriptionViewSchema,
 } from './history';
 
@@ -128,5 +129,34 @@ describe('subscriptionViewSchema (spec 010 §6, CA-25)', () => {
     const withRef = { ...VIEW, nextCharge: { ...VIEW.nextCharge, instrumentRef: 'SIM-TOK-ok-1' } };
 
     expect(subscriptionViewSchema.safeParse(withRef).success).toBe(false);
+  });
+});
+
+describe('planChangeResponseSchema (spec 010 CA-16, CA-27)', () => {
+  const result = {
+    kind: 'SCHEDULED_FOR_NEXT_BILLING',
+    planSlug: 'equipo',
+    planName: 'Equipo',
+    effectiveAt: '2026-12-13T12:00:00.000Z',
+  };
+
+  it('CA-16: acepta la vista nueva y el resultado programado para la próxima fecha de cobro', () => {
+    expect(planChangeResponseSchema.safeParse({ subscription: VIEW, result }).success).toBe(true);
+  });
+
+  it('CA-27: acepta el cambio aplicado al instante', () => {
+    const applied = { ...result, kind: 'APPLIED_IMMEDIATELY' };
+
+    expect(
+      planChangeResponseSchema.safeParse({ subscription: VIEW, result: applied }).success,
+    ).toBe(true);
+  });
+
+  it('CA-16: rechaza un tipo de resultado desconocido o una fecha que no es ISO', () => {
+    const unknownKind = { subscription: VIEW, result: { ...result, kind: 'FAILED' } };
+    const badDate = { subscription: VIEW, result: { ...result, effectiveAt: 'mañana' } };
+
+    expect(planChangeResponseSchema.safeParse(unknownKind).success).toBe(false);
+    expect(planChangeResponseSchema.safeParse(badDate).success).toBe(false);
   });
 });

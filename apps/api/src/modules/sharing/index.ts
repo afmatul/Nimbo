@@ -4,3 +4,5 @@ export { I_SHAREE_DIRECTORY } from './application/ports/i-sharee-directory.port'
 export type { IShareeDirectory, Sharee } from './application/ports/i-sharee-directory.port';
 export { SharingModule } from './sharing.module';
 export type { SharingEnv } from './sharing.module';
+// El distintivo «Compartido» del explorador: implementa `ISharedNodeReader` de `storage`; lo enlaza la raíz.
+export { SqlSharedNodeReader } from './infrastructure/persistence/sql-shared-node.reader';

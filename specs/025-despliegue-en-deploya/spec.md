@@ -102,3 +102,4 @@ a staging**: no hay Prometheus, Grafana ni respaldos.
 | 2026-11-12 | `nimbo-docs` con ONLYOFFICE 9.3.1 (#113) | Edición en la demo | Adrián |
 | 2026-11-12 | `X-Forwarded-Proto` fijo en https; luego acotado y verificado (#115, #116, #117) | «Error de descarga» por contenido mixto; la salud de Deploya fallaba | Adrián |
 | 2026-11-13 | Spec redactada con lo hecho; estado `Hecha` | Documentar | Adrián |
+| 2026-11-13 | Semilla de demostración al arrancar el contenedor (`SEED_ON_START`) | Rama `fix/pendientes-explorador-planes-facturas` | Pendiente Adrián |

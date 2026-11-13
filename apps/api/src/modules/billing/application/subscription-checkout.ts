@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 
 import { I_CLOCK } from '../../../shared';
 import type { Actor, IClock } from '../../../shared';
+import { PendingPlanRegistry } from '../../identity';
 import type { Invoice } from '../domain/entities/invoice.entity';
 import type { Plan } from '../domain/entities/plan.entity';
 import type { Subscription } from '../domain/entities/subscription.entity';
@@ -35,8 +36,8 @@ export interface SubscribeOutcome {
 /**
  * Los pasos de negocio del cobro (spec 009 CA-3 a CA-6, plan §2), dentro de la transacción que abre
  * `SubscriptionService`: garantiza la fila Personal (sin ella `FOR UPDATE` no bloquea nada), la bloquea, valida el
- * plan, cobra y, solo si se aprueba, mueve la suscripción y registra la factura. Un rechazo se devuelve sin lanzar
- * (B-3).
+ * plan, cobra y, solo si se aprueba, mueve la suscripción, registra la factura y descarta el plan elegido al
+ * registrarse (ya contratado o reemplazado por este). Un rechazo se devuelve sin lanzar (B-3).
  */
 @Injectable()
 export class SubscriptionCheckout {
@@ -46,6 +47,7 @@ export class SubscriptionCheckout {
     @Inject(PaymentService) private readonly payments: PaymentService,
     @Inject(InvoiceService) private readonly invoices: InvoiceService,
     @Inject(I_CLOCK) private readonly clock: IClock,
+    @Inject(PendingPlanRegistry) private readonly pendingPlans: PendingPlanRegistry,
   ) {}
 
   async checkout(actor: Actor, command: SubscribeCommand): Promise<SubscribeOutcome> {
@@ -64,6 +66,7 @@ export class SubscriptionCheckout {
     }
     await this.subscriptions.save(actor, next);
     const invoice = await this.invoices.register(actor, payment, command.nit);
+    await this.pendingPlans.clear(actor);
     return { payment, plan, subscription: next, invoice };
   }
 }

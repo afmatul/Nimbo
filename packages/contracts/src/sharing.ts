@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { batchItemsSchema } from './batch';
 import { isValidEmail } from './identity';
 import { byteCount } from './storage/schema-fields';
 
@@ -81,6 +82,18 @@ export const shareRequestSchema = z
   .object({
     nodeType: reasonField('INVALID_NODE', isNodeType),
     nodeId: reasonField('INVALID_NODE', isNodeId),
+    email: reasonField('INVALID_EMAIL', isEmail, normalizeEmail),
+    level: reasonField('INVALID_LEVEL', isShareLevel),
+  })
+  .strict();
+
+/**
+ * `POST /shares/batch`: comparte varios nodos con la misma persona y el mismo nivel; cada elemento pasa por la regla de
+ * `POST /shares` y responde `BatchResult`.
+ */
+export const batchShareRequestSchema = z
+  .object({
+    items: batchItemsSchema,
     email: reasonField('INVALID_EMAIL', isEmail, normalizeEmail),
     level: reasonField('INVALID_LEVEL', isShareLevel),
   })
@@ -230,6 +243,7 @@ export const publicLinkDetailsSchema = z
   .strict();
 
 export type ShareRequest = z.infer<typeof shareRequestSchema>;
+export type BatchShareRequest = z.infer<typeof batchShareRequestSchema>;
 export type AccessListQuery = z.infer<typeof accessListQuerySchema>;
 export type AccessEntry = z.infer<typeof accessEntrySchema>;
 export type AccessList = z.infer<typeof accessListSchema>;

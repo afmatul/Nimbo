@@ -168,3 +168,31 @@ Adrián acepta `pdfkit` para generar la factura de `billing`, que no estaba cont
 fundaciones: es el único uso autorizado, detrás de `IInvoiceGenerator` y solo en `pdf-invoice-generator.ts`. Acepta
 también una sola función `formatGtq(cents)` en `packages/contracts`, junto a `breakdown`, para los montos del PDF y de
 `web`; la spec 009 corrige RN-1 en consecuencia antes del código de la T-07.
+
+## Nota de aplicación (2026-11-13): identidad de Nimbo en la factura
+
+Rama `fix/pendientes-explorador-planes-facturas`. La factura deja de ser texto plano y lleva la identidad de Nimbo:
+encabezado con el ícono y la marca «NIMBO», tarjetas con los datos y los conceptos, insignia «PAGADA», totales y un pie
+con el contacto de soporte. No cambia la decisión; aclara cómo se lee «sin logotipos ni imágenes» del Contexto y «Sin
+imágenes» de la Decisión.
+
+- **El logotipo no es una imagen.** `nimbo-logo.ts` (`drawNimboLogo`) dibuja el ícono con primitivas vectoriales de
+  `pdfkit` (`circle`, `rect`, `path`, `fill`), copiando las coordenadas de `apps/web/src/app/icon.svg` y escalándolas.
+  No se usa `pdf.image`, no se lee ningún archivo del disco y no hay PNG, SVG ni fuente incrustada: lo prohibido por la
+  decisión (imágenes externas o embebidas, activos versionados en el `api`, fuentes propias) sigue sin existir.
+- **El tema vive aparte.** `invoice-pdf-theme.ts` declara `CIELO_SERENO` (los tokens de `ui-guidelines.md` §2 con sus
+  valores AA de `globals.css`) e `INVOICE_FONTS` (`Helvetica` y `Helvetica-Bold` estándar, WinAnsi). Es el único lugar
+  del `api` con esos colores; si cambia un token de la guía, cambia ahí. Inter no se incrusta, como fija este ADR.
+- **Sin dependencias nuevas.** `apps/api/package.json` sigue con `pdfkit` 0.20.2 y `@types/pdfkit` 0.17.6; la rama no
+  agrega paquetes ni toca `onlyBuiltDependencies`.
+- **Aislamiento.** `pdf-invoice-generator.ts` sigue siendo el único archivo que importa `pdfkit` y crea documentos. El
+  tema son constantes sin librería y `nimbo-logo.ts` solo recibe el documento ya creado y usa el tipo ambiental
+  `PDFKit.PDFDocument`; los tres están en `billing/infrastructure/adapters`, detrás de `IInvoiceGenerator`.
+- **Determinismo y pruebas.** `CreationDate` sigue siendo la fecha del pago. `pdf-invoice-generator.spec.ts` agrega
+  que el texto contiene «NIMBO», «FACTURA», «PAGADA», el concepto, el correo de soporte y «sin valor fiscal», y que el
+  documento cabe en una sola página con plan y correo largos.
+
+Vigilancia: el señalamiento «el adaptador crece a varios archivos por la maquetación manual» de *Cómo sabremos si fue
+un error* queda cerca. Hoy son tres archivos (≈ 300 líneas, funciones ≤ 30 líneas) y la separación es por
+responsabilidad (maquetación, tema, ícono), no por desborde. Si la factura pide más diseño (varias páginas, tablas
+complejas), se evalúa `pdfmake` como prevé este ADR.

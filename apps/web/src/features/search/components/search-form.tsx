@@ -6,15 +6,18 @@ import * as React from 'react';
 
 import { Button } from '../../../components/ui/button';
 import { Label } from '../../../components/ui/label';
+import { SEARCH_TYPING_DELAY_MS, useDebouncedCall } from '../use-debounced-call';
 
 const FIELD_LABEL = 'Nombre o palabras del documento';
 const HELP = 'Se buscan todas las palabras que escribas, en cualquier orden.';
 
 export interface SearchFormProps {
-  /** Texto de la dirección; el campo arranca con él (la vista monta un formulario nuevo al cambiarlo). */
+  /** Texto de la dirección; el campo arranca con él y lo adopta si cambia por otra vía (atrás o adelante). */
   readonly initialText: string;
   /** `false` si el texto queda vacío y no se buscó (CA-6). */
   readonly onSubmit: (text: string) => boolean;
+  /** Se llama con el texto cuando pasan 300 ms sin teclear. */
+  readonly onType: (text: string) => void;
 }
 
 function ClearButton({ onClear }: { readonly onClear: () => void }): React.JSX.Element {
@@ -67,15 +70,36 @@ function SearchField({
 }
 
 /**
- * Formulario de búsqueda (mockup `entrada`, decisión 2): busca al enviar, no mientras se escribe. Con el foco al entrar
- * (CA-12); enviar vacío o solo espacios no busca y devuelve el foco al campo (CA-6).
+ * Si la dirección cambia por otra vía (atrás o adelante), el campo adopta su texto; si solo difiere en espacios de los
+ * extremos (lo que se acaba de buscar al escribir), conserva lo tecleado.
  */
-export function SearchForm({ initialText, onSubmit }: SearchFormProps): React.JSX.Element {
+function useSearchText(initialText: string): [string, (text: string) => void] {
   const [text, setText] = React.useState(initialText);
+  const [synced, setSynced] = React.useState(initialText);
+  if (synced !== initialText) {
+    setSynced(initialText);
+    if (text.trim() !== initialText) setText(initialText);
+  }
+  return [text, setText];
+}
+
+/**
+ * Formulario de búsqueda: busca mientras se escribe, 300 ms después de la última tecla (pedido de Adrián, 2026-11-13),
+ * y también al enviar. Con el foco al entrar (CA-12); enviar vacío o solo espacios no busca y devuelve el foco al campo
+ * (CA-6).
+ */
+export function SearchForm({ initialText, onSubmit, onType }: SearchFormProps): React.JSX.Element {
+  const [text, setText] = useSearchText(initialText);
+  const typing = useDebouncedCall(onType, SEARCH_TYPING_DELAY_MS);
   const inputRef = React.useRef<HTMLInputElement>(null);
   React.useEffect(() => inputRef.current?.focus(), []);
+  const changeText = (next: string): void => {
+    setText(next);
+    typing.schedule(next);
+  };
   const submit = (event: React.FormEvent): void => {
     event.preventDefault();
+    typing.cancel();
     if (!onSubmit(text)) inputRef.current?.focus();
   };
   return (
@@ -87,7 +111,7 @@ export function SearchForm({ initialText, onSubmit }: SearchFormProps): React.JS
     >
       <Label htmlFor="buscar-texto">{FIELD_LABEL}</Label>
       <div className="flex gap-2">
-        <SearchField text={text} onText={setText} inputRef={inputRef} />
+        <SearchField text={text} onText={changeText} inputRef={inputRef} />
         <Button type="submit">Buscar</Button>
       </div>
       <p id="buscar-ayuda" className="text-sm text-secondary-foreground">

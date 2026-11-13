@@ -9,6 +9,7 @@ import type {
   AutoRenewRequest,
   BillingHistoryResponse,
   PlanChangeRequest,
+  PlanChangeResponse,
   SubscriptionView,
   InvoiceDownloadResponse,
   RenewRequest,
@@ -22,16 +23,14 @@ import type { Actor } from '../../../shared';
 import { BillingHistoryService } from '../application/billing-history.service';
 import { ManualRenewalService } from '../application/manual-renewal.service';
 import { SubscriptionSettingsService } from '../application/subscription-settings.service';
-import type { SubscriptionSummary } from '../application/subscription-summary';
 import { SubscriptionService } from '../application/subscription.service';
-import { BillingInvariantError } from '../domain/errors/billing-invariant.error';
 import { PaymentRejectedError } from '../domain/errors/payment-rejected.error';
 import type { PaymentCard } from '../domain/payment-card';
 
 import { toBillingHistoryResponse } from './billing-history.response';
 import { billingValidationError, invoiceIdPipe } from './billing-validation';
 import { toPaymentReceipt } from './payment-receipt.response';
-import { toSubscriptionView } from './subscription-view.response';
+import { toAdjustedView, toPlanChangeResponse } from './subscription-view.response';
 
 /** El CVC no pasa de aquí (009 RN-9): el dominio recibe solo número y vencimiento. */
 const toPaymentCard = ({ number, expMonth, expYear }: SubscribeRequest['card']): PaymentCard => ({
@@ -39,13 +38,6 @@ const toPaymentCard = ({ number, expMonth, expYear }: SubscribeRequest['card']):
   expMonth,
   expYear,
 });
-
-/** Después de un ajuste la fila siempre existe (el servicio la garantiza antes de bloquear). */
-const viewOf = (summary: SubscriptionSummary | null): SubscriptionView => {
-  if (summary === null)
-    throw new BillingInvariantError('Un ajuste de la suscripción siempre deja su fila.');
-  return toSubscriptionView(summary);
-};
 
 /**
  * Suscripción del cliente: contratar, historial y descarga de facturas (spec 009 CA-3 a CA-5, CA-7 y CA-8) y, con la
@@ -102,23 +94,23 @@ export class SubscriptionController {
     @Body(new ZodValidationPipe(autoRenewRequestSchema, billingValidationError))
     body: AutoRenewRequest,
   ): Promise<SubscriptionView> {
-    return viewOf(await this.settings.setAutoRenew(actor, body.enabled));
+    return toAdjustedView(await this.settings.setAutoRenew(actor, body.enabled));
   }
 
-  /** 010 CA-16 a CA-18, CA-27: programa el plan del siguiente ciclo. */
+  /** 010 CA-16 a CA-18, CA-27: programa el plan del siguiente ciclo y responde desde cuándo rige. */
   @Put('subscription/plan-change')
   async scheduleChange(
     @CurrentActor() actor: Actor,
     @Body(new ZodValidationPipe(planChangeRequestSchema, billingValidationError))
     body: PlanChangeRequest,
-  ): Promise<SubscriptionView> {
-    return viewOf(await this.settings.scheduleChange(actor, body.planSlug));
+  ): Promise<PlanChangeResponse> {
+    return toPlanChangeResponse(await this.settings.scheduleChange(actor, body.planSlug));
   }
 
   /** 010 CA-19: cancela el cambio programado. */
   @Delete('subscription/plan-change')
   async cancelChange(@CurrentActor() actor: Actor): Promise<SubscriptionView> {
-    return viewOf(await this.settings.cancelChange(actor));
+    return toAdjustedView(await this.settings.cancelChange(actor));
   }
 
   @Get('history')

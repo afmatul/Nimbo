@@ -2,28 +2,35 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Param, Patch, Post } from 
 import { moveFileSchema, renameFileSchema } from '@nimbo/contracts';
 import type {
   DownloadUrlResponse,
+  ExplorerFile,
   FileDetailResponse,
-  FileSummary,
   MoveFileInput,
   RenameFileInput,
 } from '@nimbo/contracts';
 
 import { CurrentActor, Role, Roles, ZodValidationPipe } from '../../../shared';
 import type { Actor } from '../../../shared';
+import { ExplorerBadgeService } from '../application/explorer-badge.service';
 import { toFileSummary } from '../application/file-summary';
 import { FileService } from '../application/file.service';
+import { toExplorerFile } from '../application/node-summary';
+import type { File } from '../domain/file';
 
 import { nodeIdPipe, storageNodeValidationError } from './storage-validation';
 
 /**
  * Archivos del actor: la ficha con su `accessLevel` (012 CA-12), renombrar y mover (006 plan §4) y la URL de descarga
- * de 300 s (005 plan §5). El listado está en `GET /folders/contents`. Solo `CLIENT` (CA-17). Mapea `File` a `FileSummary` (sin clave de objeto ni ids de versión)
- * y las fechas a ISO 8601.
+ * de 300 s (005 plan §5). El listado está en `GET /folders/contents`. Solo `CLIENT` (CA-17). Mapea `File` a
+ * `FileSummary` (sin clave de objeto ni ids de versión) y las fechas a ISO 8601; renombrar y mover responden
+ * `ExplorerFile`, con los mismos distintivos que el listado.
  */
 @Roles(Role.CLIENT)
 @Controller('files')
 export class FilesController {
-  constructor(private readonly files: FileService) {}
+  constructor(
+    private readonly files: FileService,
+    private readonly badges: ExplorerBadgeService,
+  ) {}
 
   @Get(':fileId')
   async detail(
@@ -40,8 +47,8 @@ export class FilesController {
     @Param('fileId', nodeIdPipe()) fileId: string,
     @Body(new ZodValidationPipe(renameFileSchema, storageNodeValidationError))
     body: RenameFileInput,
-  ): Promise<FileSummary> {
-    return toFileSummary(await this.files.rename(actor, fileId, body));
+  ): Promise<ExplorerFile> {
+    return this.present(actor, await this.files.rename(actor, fileId, body));
   }
 
   @Post(':fileId/move')
@@ -51,8 +58,8 @@ export class FilesController {
     @Param('fileId', nodeIdPipe()) fileId: string,
     @Body(new ZodValidationPipe(moveFileSchema, storageNodeValidationError))
     body: MoveFileInput,
-  ): Promise<FileSummary> {
-    return toFileSummary(await this.files.move(actor, fileId, body));
+  ): Promise<ExplorerFile> {
+    return this.present(actor, await this.files.move(actor, fileId, body));
   }
 
   @Post(':fileId/download-url')
@@ -63,5 +70,9 @@ export class FilesController {
   ): Promise<DownloadUrlResponse> {
     const { url, expiresAt } = await this.files.getDownloadUrl(actor, fileId);
     return { url, expiresAt: expiresAt.toISOString() };
+  }
+
+  private async present(actor: Actor, file: File): Promise<ExplorerFile> {
+    return toExplorerFile(file, await this.badges.badgesOf(actor, [file]));
   }
 }

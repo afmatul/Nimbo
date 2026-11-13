@@ -9,6 +9,7 @@ export { MyFiles, type FirstFileAction, type MyFilesProps } from './components/m
 export { ThumbnailProvider, type ThumbnailRenderer } from './components/node-thumbnail';
 export { StorageAppLayout } from './components/storage-app-layout';
 export { useFileDownload } from './hooks/use-file-download';
+export { useSessionBatchApi } from './hooks/use-session-batch-api';
 export type { LoadFolderContents } from './hooks/use-folder-contents';
 export { TREE_ROOT, useFolderTree, type FolderTree } from './hooks/use-folder-tree';
 export { useTreeFocus } from './hooks/use-tree-focus';

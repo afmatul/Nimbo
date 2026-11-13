@@ -88,7 +88,7 @@ describe('AgentPanelConnector (020b D-4)', () => {
 
     expect(within(panel()).getByText(/Usaste tus 20 consultas de este mes/)).toBeTruthy();
     expect(within(panel()).getByRole('link', { name: 'Ver planes' }).getAttribute('href')).toBe(
-      '/planes',
+      '/suscripcion/cambiar-plan',
     );
   });
 

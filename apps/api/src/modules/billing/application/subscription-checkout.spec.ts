@@ -1,5 +1,6 @@
 import { createActor, FixedClock, Role } from '../../../shared';
 import type { Actor } from '../../../shared';
+import type { PendingPlanRegistry } from '../../identity';
 import type { Payment } from '../domain/entities/payment.entity';
 import { PlanNotAvailableError } from '../domain/errors/plan-not-available.error';
 
@@ -57,23 +58,35 @@ const setup = (options: { status?: Payment['status']; plan?: typeof TEAM | null 
   const invoices = {
     register: jest.fn(step('invoice', { id: 'factura-1' })),
   } as unknown as InvoiceService;
+  const pendingPlans = {
+    clear: jest.fn(step('pending-cleared', undefined)),
+  } as unknown as PendingPlanRegistry;
   const checkout = new SubscriptionCheckout(
     subscriptions,
     plans,
     payments,
     invoices,
     new FixedClock(NOW),
+    pendingPlans,
   );
-  return { checkout, journal, payments, invoices };
+  return { checkout, journal, payments, invoices, pendingPlans };
 };
 
 describe('SubscriptionCheckout (spec 009 CA-3 a CA-6, RN-8; plan §2)', () => {
-  it('RN-8: fila Personal, candado, cobro, suscripción de 30 días y factura, en ese orden', async () => {
-    const { checkout, journal, payments } = setup();
+  it('RN-8: fila Personal, candado, cobro, suscripción de 30 días, factura y plan pendiente, en ese orden', async () => {
+    const { checkout, journal, payments, pendingPlans } = setup();
 
     const outcome = await checkout.checkout(ANA, COMMAND);
 
-    expect(journal).toEqual(['personal', 'lock', 'charge:aprobada', 'save', 'invoice']);
+    expect(journal).toEqual([
+      'personal',
+      'lock',
+      'charge:aprobada',
+      'save',
+      'invoice',
+      'pending-cleared',
+    ]);
+    expect(pendingPlans.clear).toHaveBeenCalledWith(ANA);
     expect(payments.charge).toHaveBeenCalledWith(
       ANA,
       expect.objectContaining({ instrument: COMMAND.card }),
@@ -97,7 +110,7 @@ describe('SubscriptionCheckout (spec 009 CA-3 a CA-6, RN-8; plan §2)', () => {
     );
   });
 
-  it('CA-4, CA-6: un rechazo no mueve la suscripción ni factura', async () => {
+  it('CA-4, CA-6: un rechazo no mueve la suscripción, no factura ni descarta el plan pendiente', async () => {
     const { checkout, journal } = setup({ status: 'rechazada' });
 
     const outcome = await checkout.checkout(ANA, COMMAND);

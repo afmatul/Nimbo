@@ -648,3 +648,16 @@ export const migrationEnvSchema = z.object({
 });
 
 export type MigrationEnv = z.infer<typeof migrationEnvSchema>;
+
+/**
+ * Entorno de la semilla de demostración (`dist/scripts/seed.js`, corre en la imagen del `api`). `SEED_ON_START` lo lee
+ * el entrypoint (`deploya-entrypoint.sh`) para decidir si siembra al arrancar; `SEED_DEMO_PASSWORD` es la contraseña de
+ * todas las cuentas de demostración y nunca se imprime. Como `migrationEnvSchema`, no se une al esquema del `api`: el
+ * servidor no las lee.
+ */
+export const seedEnvSchema = z.object({
+  SEED_ON_START: z.enum(['true', 'false']).default('false'),
+  SEED_DEMO_PASSWORD: z.string().min(1, EMPTY_MESSAGE),
+});
+
+export type SeedEnv = z.infer<typeof seedEnvSchema>;

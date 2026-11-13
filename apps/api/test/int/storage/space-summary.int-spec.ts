@@ -1,4 +1,4 @@
-import { folderSummarySchema, spaceSummaryResponseSchema } from '@nimbo/contracts';
+import { explorerFolderSchema, spaceSummaryResponseSchema } from '@nimbo/contracts';
 import type { SpaceSummaryResponse } from '@nimbo/contracts';
 
 import { Role } from '../../../src/shared';
@@ -40,7 +40,7 @@ describe('GET /storage/summary (007 CA-1 a CA-4, CA-6, CA-17)', () => {
   const folder = async (name: string, parentId: string | null = null): Promise<string> => {
     const response = await ana.createFolder({ name, parentId });
     expect(response.status).toBe(201);
-    return folderSummarySchema.parse(response.body).id;
+    return explorerFolderSchema.parse(response.body).id;
   };
 
   beforeAll(async () => {

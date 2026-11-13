@@ -6,6 +6,7 @@ import { Test } from '@nestjs/testing';
 
 import { describeRoute, listRouteDeclarations } from '../../../../test/support/route-declarations';
 import { Role, ZodValidationPipe } from '../../../shared';
+import { ExplorerBadgeService } from '../application/explorer-badge.service';
 import { FolderService } from '../application/folder.service';
 
 import { FoldersController } from './folders.controller';
@@ -27,7 +28,10 @@ describe('rutas de carpetas (006 CA-23, plan §4)', () => {
   beforeAll(async () => {
     moduleRef = await Test.createTestingModule({
       controllers: [FoldersController],
-      providers: [{ provide: FolderService, useValue: {} }],
+      providers: [
+        { provide: FolderService, useValue: {} },
+        { provide: ExplorerBadgeService, useValue: {} },
+      ],
     }).compile();
   });
 

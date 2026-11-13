@@ -75,6 +75,28 @@ export const subscriptionViewSchema = z
   })
   .strict();
 
+/** Programado para la próxima fecha de cobro o aplicado al instante (en solo lectura, bajar a Personal, CA-27). */
+export const PLAN_CHANGE_KINDS = ['SCHEDULED_FOR_NEXT_BILLING', 'APPLIED_IMMEDIATELY'] as const;
+
+/**
+ * `PUT /billing/subscription/plan-change` (spec 010 CA-16 a CA-18, CA-27): la vista nueva y el resultado que confirma
+ * la web. Siempre `200`: el plan elegido rige desde `effectiveAt`, la próxima fecha de cobro (o, si en solo lectura se
+ * bajó a Personal y se aplicó ya, el inicio del periodo nuevo).
+ */
+export const planChangeResponseSchema = z
+  .object({
+    subscription: subscriptionViewSchema,
+    result: z
+      .object({
+        kind: z.enum(PLAN_CHANGE_KINDS),
+        planSlug: z.string(),
+        planName: z.string(),
+        effectiveAt: z.string().datetime(),
+      })
+      .strict(),
+  })
+  .strict();
+
 /** Datos de la última factura (CA-7): el NIT (`CF` o dígitos, RN-9) y el correo donde llegan las facturas. */
 const billingDetailsSchema = z
   .object({ nit: z.string().min(1), receiptEmail: z.string().email() })
@@ -104,5 +126,6 @@ export const invoiceDownloadResponseSchema = z
 
 export type BillingHistoryResponse = z.infer<typeof billingHistoryResponseSchema>;
 export type SubscriptionView = z.infer<typeof subscriptionViewSchema>;
+export type PlanChangeResponse = z.infer<typeof planChangeResponseSchema>;
 export type BillingHistoryPayment = BillingHistoryResponse['payments'][number];
 export type InvoiceDownloadResponse = z.infer<typeof invoiceDownloadResponseSchema>;

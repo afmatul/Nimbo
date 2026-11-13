@@ -194,7 +194,7 @@ describe('Plan y facturación, /suscripcion (spec 009 CA-7, CA-8, §6; mockup `b
     expect(within(plan()).getByText('Sin vencimiento')).toBeTruthy();
     expect(within(plan()).getAllByText('Gratis')).toHaveLength(2);
     expect(within(plan()).getByRole('link', { name: 'Ver planes' }).getAttribute('href')).toBe(
-      '/planes',
+      '/suscripcion/cambiar-plan',
     );
     expect(screen.queryByRole('region', { name: 'Próximo cobro' })).toBeNull();
     expect(screen.getByText('Aún no has pagado con tarjeta.')).toBeTruthy();

@@ -60,7 +60,7 @@ describe('POST /uploads simple → PUT a MinIO → complete (CA-1)', () => {
 
     expect(listed.status).toBe(200);
     const page = folderContentsResponseSchema.parse(listed.body);
-    expect(page.items).toEqual([{ type: 'file', ...file }]);
+    expect(page.items).toEqual([{ type: 'file', ...file, shared: false, indexStatus: 'pending' }]);
     expect(page.nextCursor).toBeNull();
   });
 

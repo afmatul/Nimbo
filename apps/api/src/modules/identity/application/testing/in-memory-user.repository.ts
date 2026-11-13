@@ -9,10 +9,11 @@ import type { User } from '../../domain/user.entity';
 import type { IAdminRosterRepository } from '../ports/i-admin-roster.repository.port';
 import type { IUserRepository } from '../ports/i-user-repository.port';
 
-/** Columnas que el repositorio actualiza sueltas: `hash_clave` y `estado`. */
+/** Columnas que el repositorio actualiza sueltas: `hash_clave`, `estado` y `plan_pendiente_slug`. */
 interface RowPatch {
   readonly passwordHash?: PasswordHash;
   readonly status?: AccountStatus;
+  readonly clearPendingPlan?: true;
 }
 
 /** La misma cuenta, cliente o interna, con las columnas de `patch` cambiadas (como un `UPDATE`). */
@@ -25,9 +26,12 @@ const withPatch = (user: User, patch: RowPatch): User => {
     status: patch.status ?? user.status,
     emailVerified: user.emailVerified,
   };
-  return user instanceof InternalUser
-    ? InternalUser.rehydrate({ ...common, role: user.role, employeeCode: user.employeeCode })
-    : ClientUser.rehydrate({ ...common, acceptance: (user as ClientUser).acceptance });
+  if (user instanceof InternalUser) {
+    return InternalUser.rehydrate({ ...common, role: user.role, employeeCode: user.employeeCode });
+  }
+  const client = user as ClientUser;
+  const pendingPlanSlug = patch.clearPendingPlan === true ? null : client.pendingPlanSlug;
+  return ClientUser.rehydrate({ ...common, acceptance: client.acceptance, pendingPlanSlug });
 };
 
 /**
@@ -96,6 +100,10 @@ export class InMemoryUserRepository implements IUserRepository, IAdminRosterRepo
   /** Como el `UPDATE` de `hash_clave`: la misma cuenta con el hash nuevo, cliente o interna. */
   updatePasswordHash(id: string, passwordHash: PasswordHash): Promise<void> {
     return this.patch(id, { passwordHash });
+  }
+
+  clearPendingPlan(id: string): Promise<void> {
+    return this.patch(id, { clearPendingPlan: true });
   }
 
   updateStatus(id: string, status: AccountStatus): Promise<void> {

@@ -186,7 +186,7 @@ export function SearchView({
             contienen. Sin distinguir mayúsculas ni acentos.
           </p>
         </header>
-        <SearchForm key={search.q} initialText={search.q} onSubmit={search.submit} />
+        <SearchForm initialText={search.q} onSubmit={search.submit} onType={search.type} />
         {search.q === '' ? (
           <SearchEntry />
         ) : (
@@ -206,14 +206,20 @@ export function SearchView({
   );
 }
 
-/** La dirección de `/buscar`: cada búsqueda o filtro es una entrada del historial, sin saltar al inicio (CA-12). */
+/**
+ * La dirección de `/buscar`: cada búsqueda enviada o filtro es una entrada del historial, sin saltar al inicio (CA-12);
+ * lo buscado mientras se escribe reemplaza la entrada actual.
+ */
 function useSearchLocation(): SearchLocation {
   const params = useSearchParams();
   const router = useRouter();
   return {
     search: params.toString(),
-    navigate: (search) =>
-      router.push(search === '' ? SEARCH_PATH : `${SEARCH_PATH}?${search}`, { scroll: false }),
+    navigate: (search, options) => {
+      const href = search === '' ? SEARCH_PATH : `${SEARCH_PATH}?${search}`;
+      if (options?.replace === true) router.replace(href, { scroll: false });
+      else router.push(href, { scroll: false });
+    },
   };
 }
 

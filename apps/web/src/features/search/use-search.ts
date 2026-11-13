@@ -37,10 +37,18 @@ export type { SearchListing, SearchRequest };
 /** `GET /search` (plan §4); debe ser estable entre renders (cada referencia nueva vuelve a pedir). */
 export type LoadSearch = (request: SearchRequest) => Promise<SearchResponse>;
 
-/** La dirección de la página: `search` sin `?` y `navigate`, que la cambia con una entrada nueva del historial. */
+/** `replace`: cambia la dirección sin una entrada nueva del historial (búsqueda mientras se escribe). */
+export interface NavigateOptions {
+  readonly replace: boolean;
+}
+
+/**
+ * La dirección de la página: `search` sin `?` y `navigate`, que la cambia con una entrada nueva del historial (o la
+ * reemplaza con `{ replace: true }`).
+ */
 export interface SearchLocation {
   readonly search: string;
-  readonly navigate: (search: string) => void;
+  readonly navigate: (search: string, options?: NavigateOptions) => void;
 }
 
 export interface Search {
@@ -58,6 +66,8 @@ export interface Search {
   readonly hasMore: boolean;
   /** Busca el texto recortado; `false` si queda vacío y no se buscó (CA-6). */
   readonly submit: (text: string) => boolean;
+  /** Busca mientras se escribe (ya con la espera): reemplaza la dirección si el texto recortado cambió. */
+  readonly type: (text: string) => void;
   readonly changeFilters: (patch: Partial<SearchFilters>) => void;
   readonly clearFilters: () => void;
   readonly retry: () => void;
@@ -123,9 +133,13 @@ function navigationOf(
   state: SearchState,
   location: SearchLocation,
   retry: () => void,
-): Pick<Search, 'submit' | 'changeFilters' | 'clearFilters'> {
+): Pick<Search, 'submit' | 'type' | 'changeFilters' | 'clearFilters'> {
   const go = (next: SearchState): void => location.navigate(writeSearchState(next));
   return {
+    type: (text) => {
+      const q = text.trim();
+      if (q !== state.q) location.navigate(writeSearchState({ ...state, q }), { replace: true });
+    },
     submit: (text) => {
       const next = { ...state, q: text.trim() };
       if (next.q === '') return false;

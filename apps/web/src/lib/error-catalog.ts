@@ -143,6 +143,10 @@ const STORAGE_MESSAGES: Readonly<Record<string, StorageMessageBuilder>> = {
     'No encontramos la carpeta de destino.',
     'Puede que la hayas movido a la papelera. Elige otra carpeta y vuelve a intentarlo.',
   ),
+  [STORAGE_ERROR_CODES.STORAGE_BATCH_TOO_LARGE]: fixed(
+    'Esta carpeta tiene demasiados archivos para descargarlos juntos.',
+    'Abre la carpeta y descarga sus archivos por partes.',
+  ),
   [STORAGE_ERROR_CODES.STORAGE_INVALID_UPLOAD_REQUEST]: fixed(
     'El nombre o el tamaño del archivo no son válidos.',
     'Revisa el nombre y el tamaño del archivo y vuelve a intentarlo.',

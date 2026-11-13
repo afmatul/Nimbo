@@ -5,18 +5,19 @@ import { createAuthFetch } from '../identity/session/auth-fetch';
 
 import { createStorageApi } from './api';
 import { StorageRequestError } from './storage-request-error';
+import { explorerFile, explorerFolder } from './test-explorer-nodes';
 
 const API = 'http://localhost/api/v1';
 const AT = '2026-09-30T10:00:00.000Z';
 const ALPHA_ID = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d';
-const FOLDER = {
+const FOLDER = explorerFolder({
   id: '2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e',
   name: 'Actas',
   parentId: ALPHA_ID,
   createdAt: AT,
   updatedAt: AT,
-};
-const FILE = {
+});
+const FILE = explorerFile({
   id: '7a8b9c0d-1e2f-4c5d-8e6f-2f0c1d2e3a4b',
   name: 'informe.docx',
   sizeBytes: 1024,
@@ -24,7 +25,7 @@ const FILE = {
   folderId: ALPHA_ID,
   createdAt: AT,
   updatedAt: AT,
-};
+});
 
 describe('api para renombrar y mover (006 §4)', () => {
   const fetchMock = jest.fn<ReturnType<typeof fetch>, Parameters<typeof fetch>>();

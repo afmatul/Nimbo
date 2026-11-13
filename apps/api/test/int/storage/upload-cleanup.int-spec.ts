@@ -15,6 +15,7 @@ import request from 'supertest';
 import type { DataSource } from 'typeorm';
 
 import { ContentMatchBindingModule } from '../../../src/content-match-binding.module';
+import { ExplorerBadgesBindingModule } from '../../../src/explorer-badges-binding.module';
 import {
   I_PLAN_LIMITS_PROVIDER,
   StorageModule,
@@ -134,7 +135,12 @@ describe('upload-cleanup de punta a punta (CA-9)', () => {
     const apiEnv = buildTestEnv();
     api = await createTestApp({
       validatedEnv: apiEnv,
-      modules: [PlanLimitsBindingModule, ContentMatchBindingModule, StorageModule.forRoot(apiEnv)],
+      modules: [
+        PlanLimitsBindingModule,
+        ContentMatchBindingModule,
+        ExplorerBadgesBindingModule,
+        StorageModule.forRoot(apiEnv),
+      ],
       overrides: [
         { provide: I_PLAN_LIMITS_PROVIDER, useValue: new FakePlanLimitsProvider(TEST_LIMITS) },
         { provide: I_CLOCK, useValue: apiClock },

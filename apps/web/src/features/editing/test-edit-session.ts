@@ -15,6 +15,7 @@ export const ME: SessionUser = {
   fullName: 'Lucía Barrios',
   email: 'lucia@ejemplo.com',
   role: 'CLIENT',
+  pendingPlanSlug: null,
 };
 
 export const LUCIA: Participant = { userId: ME.id, displayName: ME.fullName };

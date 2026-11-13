@@ -33,6 +33,7 @@ const LATER_MIGRATIONS = [
   'CorregirLimitesDePlanesAUnidadesDecimales20261104100000',
   'UnaSesionActivaPorDispositivo20261104100100',
   'CrearMiniaturaDeDocumento20261112100000',
+  'AgregarPlanPendienteAUsuario20261113100000',
 ] as const;
 
 /** Lo que crea la migración de 013: tabla, índices, restricciones, políticas (con sus roles), RLS y función. */

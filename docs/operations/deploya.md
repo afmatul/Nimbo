@@ -34,7 +34,13 @@ Dentro de Deploya:
    espacios llega intacta al `eval` (`deploya-env.spec.ts`). En stderr deja solo los **nombres** definidos.
 2. Solo en el api (`--migrate`): `ensure-app-role.js` crea o actualiza `nimbo_app` sin privilegios (lo mismo que
    `infra/postgres/init/10-nimbo-app.sh`) y `migrate.js run` aplica las migraciones como el dueño. Si algo falla, el
-   contenedor sale y Deploya marca el despliegue fallido.
+   contenedor sale y Deploya marca el despliegue fallido. Después, con `SEED_ON_START=true`, `seed.js` siembra los datos
+   de demostración (cuentas `*@demo.nimbo.me` con la contraseña `SEED_DEMO_PASSWORD`: cuota casi llena y llena con un
+   plan desactivado de 5 MB, suscripción vencida en solo lectura, cambio de plan programado, cuenta sin verificar y
+   suspendida, Administrador, Soporte y Operador, nombres unicode y de 255 caracteres, carpetas al máximo de
+   profundidad, comparticiones con dos niveles y enlaces públicos activo y vencido). Es idempotente (busca por correo,
+   `slug` y ruta de nombres; lo que existe no se toca) y, si falla, el contenedor arranca igual y el siguiente arranque
+   lo reintenta. En local: `pnpm seed`. Los archivos sembrados no se indexan solos: `pnpm --filter api index:reconcile`.
 3. `exec` del `CMD` (o del `comandoInicio`).
 
 ## 3. Pasos

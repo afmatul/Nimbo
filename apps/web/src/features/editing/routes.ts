@@ -3,5 +3,5 @@ export function editorPath(fileId: string): string {
   return `/editor/${encodeURIComponent(fileId)}`;
 }
 
-/** Comparador de planes público (008): adonde lleva «Ver planes» cuando el plan no incluye edición (CA-5). */
-export const PLANS_PATH = '/planes';
+/** «Cambiar de plan» (010): adonde lleva «Ver planes» cuando el plan no incluye edición (CA-5). */
+export { CHANGE_PLAN_PATH } from '../billing';
