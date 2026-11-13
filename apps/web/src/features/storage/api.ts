@@ -1,13 +1,13 @@
 import {
   completeUploadResponseSchema,
   downloadUrlSchema,
-  fileSummarySchema,
+  explorerFileSchema,
   initUploadResponseSchema,
   resumeUploadResponseSchema,
   fileDetailResponseSchema,
   type DownloadUrlResponse,
   type FileDetailResponse,
-  type FileSummary,
+  type ExplorerFile,
   type MoveFileRequest,
   type RenameFileRequest,
 } from '@nimbo/contracts';
@@ -32,9 +32,9 @@ export interface StorageApi
   /** `GET /files/:fileId`: la ficha y el nivel del actor; también de lo compartido conmigo (012 CA-12). */
   fileDetail(fileId: string): Promise<FileDetailResponse>;
   /** Nombre repetido: `409` con `details.suggestedName` salvo con `onConflict: 'keep_both'` (005 CA-6). */
-  renameFile(fileId: string, body: RenameFileRequest): Promise<FileSummary>;
+  renameFile(fileId: string, body: RenameFileRequest): Promise<ExplorerFile>;
   /** `folderId: null` mueve a la raíz; nombre repetido como en `renameFile`. */
-  moveFile(fileId: string, body: MoveFileRequest): Promise<FileSummary>;
+  moveFile(fileId: string, body: MoveFileRequest): Promise<ExplorerFile>;
 }
 
 /**
@@ -72,8 +72,8 @@ export function createStorageApi(apiPublicUrl: string, authFetch: AuthFetch): St
     fileDetail: async (fileId) =>
       parseResponse(await http.get(filePath(fileId)), fileDetailResponseSchema),
     renameFile: async (fileId, body) =>
-      parseResponse(await http.patch(filePath(fileId), body), fileSummarySchema),
+      parseResponse(await http.patch(filePath(fileId), body), explorerFileSchema),
     moveFile: async (fileId, body) =>
-      parseResponse(await http.post(`${filePath(fileId)}/move`, body), fileSummarySchema),
+      parseResponse(await http.post(`${filePath(fileId)}/move`, body), explorerFileSchema),
   };
 }

@@ -12,10 +12,13 @@ export function RegisterPlanStep({
   plans,
   planId,
   onChange,
+  error = null,
 }: {
   readonly plans: readonly CatalogPlan[];
   readonly planId: string | undefined;
   readonly onChange: (planId: string) => void;
+  /** `INVALID_PLAN`: el plan elegido no se pudo usar; se elige otro. */
+  readonly error?: string | null;
 }): JSX.Element {
   const headingRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => headingRef.current?.focus(), []);
@@ -35,6 +38,11 @@ export function RegisterPlanStep({
         </p>
       </div>
       <PlanPicker plans={plans} value={planId} onChange={onChange} />
+      {error === null ? null : (
+        <p role="alert" data-state="plan-invalido" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

@@ -19,6 +19,7 @@ export function sessionFixture(
       fullName: 'Ana López',
       email: 'ana@ejemplo.com',
       role: options.role ?? 'CLIENT',
+      pendingPlanSlug: null,
     },
   };
 }

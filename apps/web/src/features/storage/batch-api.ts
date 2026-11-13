@@ -4,9 +4,10 @@ import {
   type BatchDownloadResponse,
   type BatchItem,
   type BatchResult,
+  type BatchShareRequest,
 } from '@nimbo/contracts';
 
-import { shareNodesBatch, type BatchShareInput } from '../sharing';
+import { shareNodesBatch } from '../sharing';
 
 import { parseResponse, type StorageHttp } from './storage-http';
 
@@ -17,7 +18,7 @@ export interface BatchApi {
   /** Manda a la papelera. */
   trash(items: readonly BatchItem[]): Promise<BatchResult>;
   download(items: readonly BatchItem[]): Promise<BatchDownloadResponse>;
-  share(input: BatchShareInput): Promise<BatchResult>;
+  share(input: BatchShareRequest): Promise<BatchResult>;
 }
 
 export function createBatchApi(http: StorageHttp): BatchApi {

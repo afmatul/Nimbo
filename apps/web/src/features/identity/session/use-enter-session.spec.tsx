@@ -1,9 +1,8 @@
 /**
  * @jest-environment jsdom
  */
+import type { SessionUser } from '@nimbo/contracts';
 import { renderHook } from '@testing-library/react';
-
-import type { PendingPlanUser } from '../pending-plan';
 
 import { forgetSession, recallSession } from './session-memory';
 import { sessionFixture } from './test-session';
@@ -38,7 +37,7 @@ describe('useEnterSession', () => {
     const session = sessionFixture();
     const { result } = renderHook(() => useEnterSession());
 
-    const user: PendingPlanUser = { ...session.user, pendingPlanSlug: 'pro' };
+    const user: SessionUser = { ...session.user, pendingPlanSlug: 'pro' };
     result.current({ ...session, user });
 
     expect(replace).toHaveBeenCalledWith('/planes/contratar?slug=pro');
@@ -48,7 +47,7 @@ describe('useEnterSession', () => {
     const session = sessionFixture();
     const { result } = renderHook(() => useEnterSession());
 
-    const user: PendingPlanUser = { ...session.user, pendingPlanSlug: null };
+    const user: SessionUser = { ...session.user, pendingPlanSlug: null };
     result.current({ ...session, user });
 
     expect(replace).toHaveBeenCalledWith('/archivos');

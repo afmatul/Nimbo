@@ -16,6 +16,7 @@ const SESSION: SessionResponse = {
     fullName: 'Ana López',
     email: 'ana@ejemplo.com',
     role: 'CLIENT',
+    pendingPlanSlug: null,
   },
 };
 

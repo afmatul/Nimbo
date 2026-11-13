@@ -1,6 +1,6 @@
 'use client';
 
-import { FILE_NAME_MAX_LENGTH, type CreateFolderInput, type FolderSummary } from '@nimbo/contracts';
+import { FILE_NAME_MAX_LENGTH, type CreateFolderInput, type ExplorerFolder } from '@nimbo/contracts';
 import { AlertCircle } from 'lucide-react';
 import * as React from 'react';
 
@@ -36,8 +36,8 @@ export interface NewFolderDialogProps {
   readonly destinationName: string;
   /** Carpetas hermanas ya listadas: el `409` las usa para decir el nombre como está guardado (CA-3). */
   readonly siblingFolderNames: readonly string[];
-  readonly createFolder: (body: CreateFolderInput) => Promise<FolderSummary>;
-  readonly onCreated: (folder: FolderSummary) => void;
+  readonly createFolder: (body: CreateFolderInput) => Promise<ExplorerFolder>;
+  readonly onCreated: (folder: ExplorerFolder) => void;
 }
 
 /** «Nueva carpeta» en la carpeta abierta (mockups `nueva-carpeta`, `nombre-invalido`, `nombre-repetido-carpeta`, `limite-niveles`). */

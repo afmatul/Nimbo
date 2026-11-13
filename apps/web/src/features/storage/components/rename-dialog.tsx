@@ -5,8 +5,8 @@ import {
   STORAGE_ERROR_CODES,
   STORAGE_NODE_FIELD_MESSAGES,
   renameFileSchema,
-  type FileSummary,
-  type FolderSummary,
+  type ExplorerFile,
+  type ExplorerFolder,
   type NodeSummary,
   type RenameFileRequest,
   type RenameFolderInput,
@@ -48,8 +48,8 @@ export interface RenameDialogProps {
   readonly node: NodeSummary;
   /** Carpetas hermanas ya listadas: el `409` de una carpeta dice el nombre como está guardado (CA-3). */
   readonly siblingFolderNames: readonly string[];
-  readonly renameFile: (fileId: string, body: RenameFileRequest) => Promise<FileSummary>;
-  readonly renameFolder: (folderId: string, body: RenameFolderInput) => Promise<FolderSummary>;
+  readonly renameFile: (fileId: string, body: RenameFileRequest) => Promise<ExplorerFile>;
+  readonly renameFolder: (folderId: string, body: RenameFolderInput) => Promise<ExplorerFolder>;
   readonly onRenamed: (node: NodeSummary) => void;
   readonly onClose: () => void;
 }
@@ -132,9 +132,9 @@ export function RenameDialog({
     try {
       if (node.type === 'file') {
         const onConflict = keepBoth ? 'keep_both' : 'ask';
-        finish({ type: 'file', ...(await renameFile(node.id, { name: fullName, onConflict })) });
+        finish(await renameFile(node.id, { name: fullName, onConflict }));
       } else {
-        finish({ type: 'folder', ...(await renameFolder(node.id, { name: base })) });
+        finish(await renameFolder(node.id, { name: base }));
       }
     } catch (error) {
       setPending(false);

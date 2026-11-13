@@ -84,7 +84,12 @@ export function RegisterForm(props: RegisterFormProps): JSX.Element {
         <RegisterAccountFields form={state.form} />
       </div>
       {state.phase === 'plan' ? (
-        <RegisterPlanStep plans={plans} planId={state.planId} onChange={state.setPlanId} />
+        <RegisterPlanStep
+          plans={plans}
+          planId={state.planId}
+          onChange={state.setPlanId}
+          error={state.errors.planError}
+        />
       ) : null}
       <StepActions
         phase={state.phase}

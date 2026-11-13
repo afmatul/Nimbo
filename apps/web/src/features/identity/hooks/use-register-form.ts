@@ -43,10 +43,23 @@ export function formFieldOf(error: ApiClientError): { name: FormField; message: 
   return { name: issue.field, message: issue.message };
 }
 
-/** `planSlug` solo para un plan de pago: Personal es el de toda cuenta nueva. */
-function paidPlanSlugOf(plans: readonly CatalogPlan[], planId: string | undefined) {
+/** Mensaje de `INVALID_PLAN` (campo `planSlug`), que se muestra en el paso «Plan». */
+export function planErrorOf(error: ApiClientError): string | null {
+  return error.fields.find((issue) => issue.field === 'planSlug')?.message ?? null;
+}
+
+/**
+ * Cuerpo del `POST /auth/register`: la clave `planSlug` solo va con un plan de pago (Personal es el de toda cuenta
+ * nueva); nunca viaja como `undefined` (`exactOptionalPropertyTypes`).
+ */
+function registerBodyOf(
+  { fullName, email, password, acceptTerms }: RegisterRequest,
+  plans: readonly CatalogPlan[],
+  planId: string | undefined,
+): RegisterRequest {
+  const account = { fullName, email, password, acceptTerms };
   const plan = plans.find((candidate) => candidate.id === planId);
-  return plan === undefined || plan.free ? {} : { planSlug: plan.slug };
+  return plan === undefined || plan.free ? account : { ...account, planSlug: plan.slug };
 }
 
 function useRegisterFields(
@@ -58,7 +71,10 @@ function useRegisterFields(
   });
 }
 
-/** Un error de la API: el de un campo vuelve al paso «Cuenta» con el foco en él; el general va al resumen. */
+/**
+ * Un error de la API: el de un campo de la cuenta vuelve al paso «Cuenta» con el foco en él; `INVALID_PLAN` se queda
+ * en «Plan» con su mensaje; el general va al resumen.
+ */
 function useServerError(
   form: UseFormReturn<RegisterRequest>,
   goTo: (phase: RegisterPhase) => void,
@@ -66,6 +82,7 @@ function useServerError(
   const summaryRef = useRef<HTMLDivElement>(null);
   const [serverError, setServerError] = useState<ApiClientError | null>(null);
   const [focusField, setFocusField] = useState<FormField | null>(null);
+  const [planError, setPlanError] = useState<string | null>(null);
   const { setFocus, setError } = form;
   useEffect(() => {
     if (focusField !== null) setFocus(focusField);
@@ -75,13 +92,18 @@ function useServerError(
     const error = toApiClientError(caught);
     const field = formFieldOf(error);
     setServerError(error);
+    setPlanError(planErrorOf(error));
     if (field !== null) {
       goTo('account');
       setError(field.name, { message: field.message });
     }
     setFocusField(field?.name ?? null);
   };
-  return { summaryRef, serverError, fail, clear: () => setServerError(null) };
+  const clear = (): void => {
+    setServerError(null);
+    setPlanError(null);
+  };
+  return { summaryRef, serverError, planError, fail, clear };
 }
 
 export interface RegisterFormState {
@@ -115,10 +137,7 @@ export function useRegisterForm(options: RegisterFormOptions): RegisterFormState
     setSubmitting(true);
     errors.clear();
     try {
-      await registerAccount(options.apiPublicUrl, {
-        ...values,
-        ...paidPlanSlugOf(options.plans, planId),
-      });
+      await registerAccount(options.apiPublicUrl, registerBodyOf(values, options.plans, planId));
       options.onSuccess({ fullName: values.fullName, email: values.email, planId });
     } catch (caught) {
       errors.fail(caught);
