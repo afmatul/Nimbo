@@ -6,7 +6,8 @@ import {
   type FolderContentsResponse,
   type FolderRef,
   type FolderSummary,
-  type NodeSummary,
+  type ExplorerNode,
+  NodeSummary,
   type QuickAccessList,
   quickAccessLimitMessage,
 } from '@nimbo/contracts';
@@ -35,12 +36,15 @@ const folderSummary = (ref: FolderRef, parentId: string | null): FolderSummary =
   createdAt: AT,
   updatedAt: AT,
 });
-const folder = (ref: FolderRef, parentId: string | null): NodeSummary => ({
+const folder = (ref: FolderRef, parentId: string | null): ExplorerNode => ({
   type: 'folder',
+  shared: false,
   ...folderSummary(ref, parentId),
 });
-const file = (id: string, name: string, folderId: string | null): NodeSummary => ({
+const file = (id: string, name: string, folderId: string | null): ExplorerNode => ({
   type: 'file',
+  shared: false,
+  indexStatus: 'indexed',
   id,
   name,
   sizeBytes: 1_500,

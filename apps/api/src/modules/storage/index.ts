@@ -65,3 +65,14 @@ export type {
   ContentMatchRequest,
   IContentMatchReader,
 } from './search/application/ports/i-content-match-reader.port';
+// Explorador: los puertos de los distintivos «Compartido» (`sharing`) e indexación (`intelligence`); los enlaza la raíz.
+export {
+  I_INDEX_STATUS_READER,
+  I_SHARED_NODE_READER,
+} from './application/ports/i-node-badge-readers.port';
+export type {
+  IIndexStatusReader,
+  IndexedFileRef,
+  ISharedNodeReader,
+  NodeRef,
+} from './application/ports/i-node-badge-readers.port';

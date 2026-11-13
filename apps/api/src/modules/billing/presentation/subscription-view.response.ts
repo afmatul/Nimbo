@@ -1,9 +1,8 @@
 import type { PlanChangeResponse, SubscriptionView } from '@nimbo/contracts';
 
-import { BillingInvariantError } from '../domain/errors/billing-invariant.error';
 import type { PlanChangeOutcome } from '../application/subscription-settings.service';
-
 import type { SubscriptionSummary } from '../application/subscription-summary';
+import { BillingInvariantError } from '../domain/errors/billing-invariant.error';
 
 import { toPlanResponse } from './plan.response';
 
@@ -58,7 +57,10 @@ export const toAdjustedView = (summary: SubscriptionSummary | null): Subscriptio
 };
 
 /** CA-16 a CA-18, CA-27: programar un cambio es un éxito; la web confirma el plan y desde cuándo rige. */
-export const toPlanChangeResponse = ({ summary, change }: PlanChangeOutcome): PlanChangeResponse => ({
+export const toPlanChangeResponse = ({
+  summary,
+  change,
+}: PlanChangeOutcome): PlanChangeResponse => ({
   subscription: toAdjustedView(summary),
   result: {
     kind: 'SCHEDULED_FOR_NEXT_BILLING',

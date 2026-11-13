@@ -141,9 +141,7 @@ describe('Cambiar de plan, /suscripcion/cambiar-plan (spec 010 CA-16 a CA-18, CA
 
     const done = await screen.findByRole('alertdialog', { name: 'Cambio programado' });
     expect(
-      within(done).getByText(
-        'Tu plan cambiará a Pro el 14/10/2026, en tu próxima fecha de cobro.',
-      ),
+      within(done).getByText('Tu plan cambiará a Pro el 14/10/2026, en tu próxima fecha de cobro.'),
     ).toBeTruthy();
     expect(within(done).queryByRole('alert')).toBeNull();
     expect(onScheduled).not.toHaveBeenCalled();

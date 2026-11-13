@@ -48,8 +48,8 @@ const ROOT: FolderContentsResponse = {
   folder: null,
   breadcrumbs: [],
   items: [
-    { type: 'folder', ...ALPHA, parentId: null, createdAt: AT, updatedAt: AT },
-    { type: 'folder', ...FINANZAS, parentId: null, createdAt: AT, updatedAt: AT },
+    { type: 'folder', ...ALPHA, parentId: null, createdAt: AT, updatedAt: AT, shared: false },
+    { type: 'folder', ...FINANZAS, parentId: null, createdAt: AT, updatedAt: AT, shared: false },
   ],
   nextCursor: null,
   accessLevel: 'OWNER',
@@ -66,8 +66,8 @@ function fase3(items: FolderContentsResponse['items']): FolderContentsResponse {
 }
 
 const FASE3_CONTENTS = fase3([
-  { type: 'folder', ...PROMPTS },
-  { type: 'file', ...INFORME },
+  { type: 'folder', ...PROMPTS, shared: false },
+  { type: 'file', ...INFORME, shared: false, indexStatus: 'indexed' },
 ]);
 
 function never<T>(): Promise<T> {
@@ -168,7 +168,11 @@ describe('página de una carpeta (/archivos/carpeta/[folderId])', () => {
     };
     await renderFolder(
       fakeApi({
-        folderContents: contentsBy(() => Promise.resolve(fase3([{ type: 'file', ...plan }]))),
+        folderContents: contentsBy(() =>
+          Promise.resolve(
+            fase3([{ type: 'file', ...plan, shared: false, indexStatus: 'indexed' }]),
+          ),
+        ),
       }),
     );
 

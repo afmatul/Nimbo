@@ -5,6 +5,7 @@ import { RadioGroup } from '../../../components/ui/radio-group';
 
 export interface CatalogPlan {
   readonly id: string;
+  readonly slug: string;
   readonly name: string;
   readonly priceCents: number;
   readonly free: boolean;

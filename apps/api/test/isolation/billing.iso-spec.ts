@@ -7,6 +7,7 @@ import type { Response } from 'supertest';
 import { DataSource } from 'typeorm';
 
 import { ContentMatchBindingModule } from '../../src/content-match-binding.module';
+import { ExplorerBadgesBindingModule } from '../../src/explorer-badges-binding.module';
 import { BillingHttpModule } from '../../src/modules/billing';
 import { StorageModule } from '../../src/modules/storage';
 import { PlanLimitsBindingModule } from '../../src/plan-limits-binding.module';
@@ -81,6 +82,7 @@ describe('aislamiento de pagos y facturas (spec 009 CA-7, CA-8)', () => {
         ...composition.modules,
         PlanLimitsBindingModule,
         ContentMatchBindingModule,
+        ExplorerBadgesBindingModule,
         storage,
         BillingHttpModule.forRoot(env, storage),
       ],

@@ -402,6 +402,8 @@ describe('Plan y facturación en la 010 (spec 010 §6, CA-6, CA-16, CA-19, CA-25
     );
 
     expect(screen.queryByRole('region', { name: 'Próximo cobro' })).toBeNull();
-    expect(screen.getByRole('link', { name: 'Ver planes' }).getAttribute('href')).toBe('/planes');
+    expect(screen.getByRole('link', { name: 'Ver planes' }).getAttribute('href')).toBe(
+      '/suscripcion/cambiar-plan',
+    );
   });
 });

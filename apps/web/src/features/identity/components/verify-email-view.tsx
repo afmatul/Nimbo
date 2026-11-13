@@ -5,6 +5,7 @@ import { Check, Info, Loader2 } from 'lucide-react';
 import { useEffect, useRef, type JSX } from 'react';
 
 import { IdentityCard } from '../../../components/nimbo/identity-card';
+import { SIGNUP_STEP } from '../../../components/nimbo/signup-steps';
 import { buttonVariants } from '../../../components/ui/button';
 import { messageForCode } from '../../../lib/error-catalog';
 import { cn } from '../../../lib/utils';
@@ -78,7 +79,7 @@ export function VerifyEmailView({ apiPublicUrl }: { readonly apiPublicUrl: strin
         icon={Loader2}
         iconClassName="motion-safe:animate-spin"
         tone="info"
-        step={2}
+        step={SIGNUP_STEP.verification}
         description={
           <p role="status" className="text-sm text-secondary-foreground">
             Verificando…
@@ -96,7 +97,7 @@ export function VerifyEmailView({ apiPublicUrl }: { readonly apiPublicUrl: strin
         title="¡Listo! Tu correo está verificado."
         icon={Check}
         tone="success"
-        step={3}
+        step={SIGNUP_STEP.done}
         description={<AutoEnter session={state.session} />}
       />
     );
@@ -110,7 +111,7 @@ export function VerifyEmailView({ apiPublicUrl }: { readonly apiPublicUrl: strin
         title="¡Listo! Tu correo está verificado."
         icon={Check}
         tone="success"
-        step={3}
+        step={SIGNUP_STEP.done}
       >
         <PlanCard planName={state.planName} />
         <a href={LOGIN_HREF} className={ACTION_CLASS}>
@@ -152,7 +153,7 @@ export function VerifyEmailView({ apiPublicUrl }: { readonly apiPublicUrl: strin
       titleId={TITLE_ID}
       message={message}
       requestHref={REQUEST_HREF}
-      step={2}
+      step={SIGNUP_STEP.verification}
     />
   );
 }

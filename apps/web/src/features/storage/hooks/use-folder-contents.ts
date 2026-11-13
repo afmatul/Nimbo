@@ -85,7 +85,10 @@ function withNewFolder(listing: FolderListing, folder: FolderSummary): FolderLis
   const { contents } = listing;
   return {
     ...listing,
-    contents: { ...contents, items: [{ type: 'folder', ...folder }, ...contents.items] },
+    contents: {
+      ...contents,
+      items: [{ type: 'folder', ...folder, shared: false }, ...contents.items],
+    },
   };
 }
 

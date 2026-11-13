@@ -49,10 +49,38 @@ export const folderSummarySchema = z
   })
   .strict();
 
-/** Elemento del explorador: carpeta o archivo, discriminado por `type`. */
+/**
+ * Estado de indexación de la versión vigente de un archivo, como lo muestra el explorador (spec 019): `pending` sin
+ * fila o en cola, `processing` indexando, `indexed`, `failed` (se puede reintentar) y `unsupported` (el tipo no se
+ * indexa o la versión es `no_indexable`).
+ */
+export const FILE_INDEX_STATUSES = [
+  'pending',
+  'processing',
+  'indexed',
+  'failed',
+  'unsupported',
+] as const;
+export type FileIndexStatus = (typeof FILE_INDEX_STATUSES)[number];
+
+/** Elemento de un listado: carpeta o archivo, discriminado por `type` (papelera, búsqueda). */
 export const nodeSummarySchema = z.discriminatedUnion('type', [
   folderSummarySchema.extend({ type: z.literal('folder') }),
   fileSummarySchema.extend({ type: z.literal('file') }),
+]);
+
+/**
+ * Elemento de `GET /folders/contents`: el resumen más `shared` (el nodo tiene comparticiones o, si es archivo, un
+ * enlace público vigente; solo para su propietario: en lo compartido con el actor siempre es `false`) y, en archivos,
+ * `indexStatus`.
+ */
+export const explorerNodeSchema = z.discriminatedUnion('type', [
+  folderSummarySchema.extend({ type: z.literal('folder'), shared: z.boolean() }),
+  fileSummarySchema.extend({
+    type: z.literal('file'),
+    shared: z.boolean(),
+    indexStatus: z.enum(FILE_INDEX_STATUSES),
+  }),
 ]);
 
 /** `POST /folders`: `parentId: null` crea en la raíz. */
@@ -95,7 +123,7 @@ export const folderContentsResponseSchema = z
   .object({
     folder: folderRefSchema.nullable(),
     breadcrumbs: z.array(folderRefSchema),
-    items: z.array(nodeSummarySchema),
+    items: z.array(explorerNodeSchema),
     nextCursor: z.string().min(1).nullable(),
     accessLevel: accessLevelField,
   })
@@ -112,6 +140,7 @@ export const fileDetailResponseSchema = z
 export type FolderRef = z.infer<typeof folderRefSchema>;
 export type FolderSummary = z.infer<typeof folderSummarySchema>;
 export type NodeSummary = z.infer<typeof nodeSummarySchema>;
+export type ExplorerNode = z.infer<typeof explorerNodeSchema>;
 export type CreateFolderRequest = z.input<typeof createFolderSchema>;
 export type CreateFolderInput = z.output<typeof createFolderSchema>;
 export type RenameFolderInput = z.output<typeof renameFolderSchema>;

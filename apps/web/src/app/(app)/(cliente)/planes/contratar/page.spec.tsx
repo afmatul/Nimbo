@@ -51,7 +51,8 @@ describe('página de pago /planes/contratar (spec 009 CA-9, §6)', () => {
     const html = await renderWith('equipo');
 
     expect(html).toContain('Formulario de pago de equipo');
-    expect(html).toContain('Volver a planes');
+    expect(html).toContain('Volver a Cambiar de plan');
+    expect(html).toContain('href="/suscripcion/cambiar-plan"');
     expect(String(jest.mocked(global.fetch).mock.calls[0]?.[0])).toBe(
       'http://api.internal:3000/api/v1/billing/plans',
     );

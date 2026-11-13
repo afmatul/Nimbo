@@ -72,10 +72,19 @@ function postWithCookie(url: string): Promise<unknown> {
   return requestJson(url, { method: 'POST', credentials: 'include' });
 }
 
-export function register(apiPublicUrl: string, input: RegisterRequest): Promise<AcceptedResponse> {
+/**
+ * Registro con el plan elegido en el paso «Plan» (`planSlug`, solo si es de pago).
+ * TODO(contracts): usar `RegisterRequest` sola cuando `@nimbo/contracts` publique `planSlug` (acordado, 2026-11-13).
+ */
+export type RegisterWithPlanRequest = RegisterRequest & { readonly planSlug?: string };
+
+export function register(
+  apiPublicUrl: string,
+  { planSlug, ...account }: RegisterWithPlanRequest,
+): Promise<AcceptedResponse> {
   return postJson(
     endpoint(apiPublicUrl, '/auth/register'),
-    registerRequestSchema.parse(input),
+    { ...registerRequestSchema.parse(account), ...(planSlug === undefined ? {} : { planSlug }) },
     acceptedResponseSchema,
   );
 }

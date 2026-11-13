@@ -55,15 +55,16 @@ describe('página /registro', () => {
       return Promise.resolve(jsonResponse({ status: 'accepted' }, 202));
     });
 
-    render(await RegistroPage());
+    render(await RegistroPage({ searchParams: Promise.resolve({}) }));
 
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe('http://internal.test/api/v1/billing/plans');
-    expect(screen.getByText(/Personal/)).toBeTruthy();
 
     await user.type(screen.getByLabelText('Nombre completo'), 'Ana López');
     await user.type(screen.getByLabelText('Correo'), 'ana@ejemplo.com');
     await user.type(screen.getByLabelText('Contraseña'), 'UnaClaveSegura!1');
     await user.click(screen.getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: 'Continuar' }));
+    expect(screen.getByRole('radio', { name: /Personal/ })).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
 
     expect(await screen.findByRole('heading', { name: 'Revisa tu correo' })).toBeTruthy();
@@ -78,7 +79,7 @@ describe('página /registro', () => {
     ['error', () => Promise.reject(new Error('red'))],
   ])('un %s deja el catálogo no disponible y el formulario sigue', async (_label, respond) => {
     fetchMock.mockImplementation(respond);
-    render(await RegistroPage());
+    render(await RegistroPage({ searchParams: Promise.resolve({}) }));
 
     expect(
       screen.getByText('No pudimos cargar los planes; tu cuenta empezará en Personal.'),
@@ -98,7 +99,7 @@ describe('página /registro', () => {
         }),
     );
 
-    const pending = RegistroPage();
+    const pending = RegistroPage({ searchParams: Promise.resolve({}) });
     await jest.advanceTimersByTimeAsync(2_000);
     render(await pending);
 
@@ -107,5 +108,26 @@ describe('página /registro', () => {
     ).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Crear cuenta' })).toBeTruthy();
     jest.useRealTimers();
+  });
+
+  it('`?plan=pro` (desde el catálogo público) llega preseleccionado al paso «Plan»', async () => {
+    const user = userEvent.setup();
+    const pro: Plan = {
+      ...PERSONAL,
+      id: '10000000-0000-4000-8000-000000000002',
+      slug: 'pro',
+      name: 'Pro',
+      priceCents: 4500,
+    };
+    fetchMock.mockResolvedValue(jsonResponse({ plans: [PERSONAL, pro] }, 200));
+
+    render(await RegistroPage({ searchParams: Promise.resolve({ plan: 'pro' }) }));
+    await user.type(screen.getByLabelText('Nombre completo'), 'Ana López');
+    await user.type(screen.getByLabelText('Correo'), 'ana@ejemplo.com');
+    await user.type(screen.getByLabelText('Contraseña'), 'UnaClaveSegura!1');
+    await user.click(screen.getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: 'Continuar' }));
+
+    expect((screen.getByRole('radio', { name: /Pro/ }) as HTMLInputElement).checked).toBe(true);
   });
 });

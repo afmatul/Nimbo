@@ -1,7 +1,12 @@
 /**
  * @jest-environment jsdom
  */
-import type { FileSummary, FolderContentsResponse, NodeSummary } from '@nimbo/contracts';
+import type {
+  FileSummary,
+  FolderContentsResponse,
+  ExplorerNode,
+  NodeSummary,
+} from '@nimbo/contracts';
 import { renderHook } from '@testing-library/react';
 
 import { DEFAULT_NODE_ORDER, type NodeOrder } from '../node-order';
@@ -27,7 +32,12 @@ function file(n: number, folderId: string | null = null): FileSummary {
 }
 
 function listingOf(order: NodeOrder, files: readonly FileSummary[]): FolderListing {
-  const items: NodeSummary[] = files.map((summary) => ({ type: 'file', ...summary }));
+  const items: ExplorerNode[] = files.map((summary) => ({
+    type: 'file',
+    ...summary,
+    shared: false,
+    indexStatus: 'indexed',
+  }));
   const contents: FolderContentsResponse = {
     folder: null,
     breadcrumbs: [],

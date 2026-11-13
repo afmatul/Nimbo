@@ -74,6 +74,7 @@ function contentsOf(folderId: string | null): Promise<FolderContentsResponse> {
     items: [
       ...folders.map((folder) => ({
         type: 'folder' as const,
+        shared: false,
         ...folder,
         parentId: folderId,
         createdAt: AT,
@@ -81,6 +82,8 @@ function contentsOf(folderId: string | null): Promise<FolderContentsResponse> {
       })),
       {
         type: 'file' as const,
+        shared: false,
+        indexStatus: 'indexed' as const,
         ...FILE,
         id: 'ffffffff-1e2f-4c5d-8e6f-2f0c1d2e3a4b',
         name: 'otro.pdf',

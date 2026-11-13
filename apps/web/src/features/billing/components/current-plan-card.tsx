@@ -7,7 +7,7 @@ import { Badge } from '../../../components/ui/badge';
 import { buttonVariants } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
 import { formatCount, formatPlanBytes } from '../../../lib/format-plan';
-import { CHANGE_PLAN_PATH, PLANS_PATH } from '../routes';
+import { CHANGE_PLAN_PATH } from '../routes';
 
 import { expiryInstantLabel, expiryLabel, priceLabel } from './subscription-copy';
 
@@ -96,7 +96,7 @@ export function CurrentPlanCard({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <PlanHeading plan={plan} readOnly={readOnly} />
         <Link
-          href={paid ? CHANGE_PLAN_PATH : PLANS_PATH}
+          href={CHANGE_PLAN_PATH}
           className={buttonVariants({ variant: 'outline', className: 'w-full sm:w-auto' })}
         >
           {paid ? 'Cambiar de plan' : 'Ver planes'}

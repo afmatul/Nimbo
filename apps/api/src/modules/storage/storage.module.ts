@@ -10,6 +10,7 @@ import { AuditModule } from '../audit';
 import { AccessibleFileUrlIssuer } from './application/accessible-file-url-issuer';
 import { EditableFileGateway } from './application/editable-file.gateway';
 import { EditedVersionRegistrar } from './application/edited-version.registrar';
+import { ExplorerBadgeService } from './application/explorer-badge.service';
 import { FILE_SERVICE_CONFIG } from './application/file-service-config';
 import type { FileServiceConfig } from './application/file-service-config';
 import { FileService } from './application/file.service';
@@ -150,6 +151,7 @@ export class StorageModule {
         VersionHistoryService,
         VersionRestoreService,
         FolderService,
+        ExplorerBadgeService,
         QuickAccessService,
         StoragePreviewFacade,
         SearchService,

@@ -1,7 +1,7 @@
 import { INTELLIGENCE_ERROR_CODES, SHARED_ERROR_CODES } from '@nimbo/contracts';
 
 import { dayMonthLabel } from '../../lib/format-date';
-import { PLANS_PATH, RENEW_PATH } from '../billing';
+import { CHANGE_PLAN_PATH, RENEW_PATH } from '../billing';
 
 import {
   conversationReducer,
@@ -49,7 +49,7 @@ describe('noticeFor', () => {
     expect(noticeOf(state)).toEqual({
       cause: `Usaste tus 20 consultas de este mes. Se renuevan el ${dayMonthLabel(RESETS_AT)}.`,
       fix: 'Mientras tanto, subir, descargar y buscar archivos funciona igual.',
-      link: { label: 'Ver planes', href: PLANS_PATH },
+      link: { label: 'Ver planes', href: CHANGE_PLAN_PATH },
     });
   });
 
@@ -70,7 +70,7 @@ describe('noticeFor', () => {
     expect(noticeOf(withDate)?.cause).toBe(
       `Usaste tus 20 consultas de este mes. Se renuevan el ${dayMonthLabel(RESETS_AT)}.`,
     );
-    expect(noticeOf(withDate)?.link).toEqual({ label: 'Ver planes', href: PLANS_PATH });
+    expect(noticeOf(withDate)?.link).toEqual({ label: 'Ver planes', href: CHANGE_PLAN_PATH });
     expect(noticeOf(readOnly)?.cause).toBe('Usaste tus 20 consultas de este mes.');
     expect(noticeOf(readOnly)?.link).toEqual({ label: 'Renovar plan', href: RENEW_PATH });
   });

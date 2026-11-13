@@ -9,6 +9,8 @@ import { cn } from '../../../lib/utils';
 import { CHIP_TYPE_BY_KIND } from '../file-type';
 import { folderPath } from '../routes';
 
+import { NodeMarks } from './node-marks';
+
 type FolderNode = Extract<NodeSummary, { type: 'folder' }>;
 type FileNode = Extract<NodeSummary, { type: 'file' }>;
 
@@ -152,6 +154,7 @@ export function FolderRow({
           <span className="text-xs text-muted-foreground sm:hidden tabular-nums">
             Carpeta · <NodeDate value={folder.updatedAt} />
           </span>
+          <NodeMarks node={folder} />
         </span>
       </NameCell>
       <td className="hidden px-2 py-2 text-right text-muted-foreground sm:table-cell">
@@ -188,6 +191,7 @@ export function FileRow({
           >
             {formatBytes(file.sizeBytes)} · <NodeDate value={file.updatedAt} />
           </span>
+          <NodeMarks node={file} />
         </span>
       </NameCell>
       <td className="hidden px-2 py-2 text-right tabular-nums text-muted-foreground sm:table-cell">

@@ -8,7 +8,7 @@ import { Alert } from '../../../components/ui/alert';
 import { Button, buttonVariants } from '../../../components/ui/button';
 import { RENEW_PATH } from '../../billing/routes';
 import type { ReadOnlyCopy } from '../read-only-copy';
-import { PLANS_PATH } from '../routes';
+import { CHANGE_PLAN_PATH } from '../routes';
 
 export interface ReadOnlyNoticeProps {
   readonly copy: ReadOnlyCopy;
@@ -46,7 +46,10 @@ export function ReadOnlyNotice({ copy, onRetry }: ReadOnlyNoticeProps): React.JS
 function NoticeAction({ copy, onRetry }: ReadOnlyNoticeProps): React.JSX.Element | null {
   if (copy.action === 'plans') {
     return (
-      <Link href={PLANS_PATH} className={buttonVariants({ size: 'sm', className: ACTION_CLASS })}>
+      <Link
+        href={CHANGE_PLAN_PATH}
+        className={buttonVariants({ size: 'sm', className: ACTION_CLASS })}
+      >
         Ver planes
       </Link>
     );

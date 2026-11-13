@@ -26,8 +26,9 @@ import type {
 
 import { CurrentActor, Role, Roles, ZodValidationPipe } from '../../../shared';
 import type { Actor } from '../../../shared';
+import { ExplorerBadgeService } from '../application/explorer-badge.service';
 import { FolderService } from '../application/folder.service';
-import { toFolderRef, toFolderSummary, toNodeSummary } from '../application/node-summary';
+import { toExplorerNode, toFolderRef, toFolderSummary } from '../application/node-summary';
 import { NodeOrder } from '../domain/node-order';
 
 import {
@@ -44,9 +45,15 @@ import {
 @Roles(Role.CLIENT)
 @Controller('folders')
 export class FoldersController {
-  constructor(private readonly folders: FolderService) {}
+  constructor(
+    private readonly folders: FolderService,
+    private readonly badges: ExplorerBadgeService,
+  ) {}
 
-  /** Sin `folderId`, la raíz; sin `sort` ni `dir`, el orden de 006 (007 D-6). Reemplaza a `GET /files`. */
+  /**
+   * Sin `folderId`, la raíz; sin `sort` ni `dir`, el orden de 006 (007 D-6). Reemplaza a `GET /files`. Cada elemento
+   * lleva sus distintivos (compartido, indexación) de `ExplorerBadgeService`.
+   */
   @Get('contents')
   async contents(
     @CurrentActor() actor: Actor,
@@ -60,10 +67,11 @@ export class FoldersController {
       limit,
       ...(cursor === undefined ? {} : { cursor }),
     });
+    const badges = await this.badges.badgesOf(actor, result.page.items);
     return {
       folder: result.folder === null ? null : toFolderRef(result.folder),
       breadcrumbs: result.breadcrumbs.map(toFolderRef),
-      items: result.page.items.map(toNodeSummary),
+      items: result.page.items.map((node) => toExplorerNode(node, badges)),
       nextCursor: result.page.nextCursor,
       accessLevel: result.accessLevel,
     };

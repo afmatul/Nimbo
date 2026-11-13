@@ -119,7 +119,9 @@ function ScheduledDialog({
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Cambio programado</AlertDialogTitle>
-          <AlertDialogDescription className="sr-only">{message}</AlertDialogDescription>
+          <AlertDialogDescription>
+            Lo verás en Plan y facturación hasta que se aplique.
+          </AlertDialogDescription>
         </AlertDialogHeader>
         <Alert variant="success" className="flex gap-3">
           <CheckCircle2 aria-hidden="true" className="size-5 shrink-0 text-success-foreground" />
@@ -139,7 +141,8 @@ function ScheduledDialog({
  */
 export function PlanChangeDialog(props: PlanChangeDialogProps): React.JSX.Element | null {
   const { subscription, target, card, usedBytes, pending, error, onConfirm, onClose } = props;
-  if (props.success !== null) return <ScheduledDialog message={props.success} onDone={props.onDone} />;
+  if (props.success !== null)
+    return <ScheduledDialog message={props.success} onDone={props.onDone} />;
   if (target === null) return null;
   const copy = changeCopy(subscription, target, card);
   const warning = downgradeWarning(subscription.plan, target, usedBytes);

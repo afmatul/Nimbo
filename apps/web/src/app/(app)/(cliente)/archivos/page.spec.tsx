@@ -43,7 +43,7 @@ function page(items: readonly FileSummary[]): FolderContentsResponse {
   return {
     folder: null,
     breadcrumbs: [],
-    items: items.map((file) => ({ type: 'file', ...file })),
+    items: items.map((file) => ({ type: 'file', ...file, shared: false, indexStatus: 'indexed' })),
     nextCursor: null,
     accessLevel: 'OWNER',
   };

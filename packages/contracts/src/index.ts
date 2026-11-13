@@ -25,3 +25,4 @@ export * from './editing';
 export * from './intelligence';
 export * from './sharing';
 export * from './optimizer';
+export * from './batch';

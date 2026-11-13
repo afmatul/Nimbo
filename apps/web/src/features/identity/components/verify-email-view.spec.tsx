@@ -98,7 +98,7 @@ describe('VerifyEmailView', () => {
     expect(screen.queryByText(/Tu cuenta empieza en el plan Personal/)).toBeNull();
   });
 
-  it('el éxito va en una tarjeta con ícono, los tres pasos completos y el plan Personal', async () => {
+  it('el éxito va en una tarjeta con ícono, los cuatro pasos completos y el plan Personal', async () => {
     fetchMock.mockResolvedValue(jsonResponse({ status: 'verified' }));
     window.history.replaceState(null, '', '/verificar-correo#token=tarjeta');
     render(<VerifyEmailView apiPublicUrl="http://localhost/api/v1" />);
@@ -111,7 +111,7 @@ describe('VerifyEmailView', () => {
     expect(card?.querySelector('svg[aria-hidden="true"]')).toBeTruthy();
     expect(card?.textContent).toContain('Plan Personal');
     const steps = screen.getByRole('list', { name: 'Pasos del registro' });
-    expect(steps.querySelectorAll('.sr-only')).toHaveLength(3);
+    expect(steps.querySelectorAll('.sr-only')).toHaveLength(4);
     expect(steps.querySelector('[aria-current="step"]')?.textContent).toContain('Listo');
   });
 

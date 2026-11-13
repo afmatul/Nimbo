@@ -6,7 +6,8 @@ import { PlanCard } from '../../../components/nimbo/plan-card';
 import { StateView } from '../../../components/nimbo/state-view';
 import { buttonVariants } from '../../../components/ui/button';
 import { getEnv } from '../../../env';
-import { fetchPlanCatalog, PlanComparisonTable, subscribeHref } from '../../../features/billing';
+import { fetchPlanCatalog, PlanComparisonTable } from '../../../features/billing';
+import { registerWithPlanHref } from '../../../features/identity/routes';
 import { cn } from '../../../lib/utils';
 
 /** Se lee de la API en cada visita: sin esto Next intenta prerenderizarla al compilar y falla si la API no responde. */
@@ -57,10 +58,13 @@ function PlanCatalog({ plans }: { readonly plans: readonly Plan[] }): ReactNode 
   );
 }
 
-/** 009 CA-9: solo los planes de pago se contratan; Personal ya lo tiene toda cuenta verificada. */
+/**
+ * Solo los planes de pago se contratan; Personal ya lo tiene toda cuenta verificada. El visitante crea su cuenta con el
+ * plan elegido y lo paga al iniciar sesión (con sesión, el cambio de plan vive en `/suscripcion/cambiar-plan`).
+ */
 function SubscribeLink({ slug }: { readonly slug: string }): ReactNode {
   return (
-    <Link href={subscribeHref(slug)} className={cn(buttonVariants(), 'w-full')}>
+    <Link href={registerWithPlanHref(slug)} className={cn(buttonVariants(), 'w-full')}>
       Contratar
     </Link>
   );

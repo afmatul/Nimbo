@@ -154,7 +154,12 @@ describe('ajustes de la suscripción y su vista (spec 010 CA-6, CA-16 a CA-19, C
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
-      subscription: { plan: { slug: 'personal' }, expiresAt: null, status: 'active', renewal: null },
+      subscription: {
+        plan: { slug: 'personal' },
+        expiresAt: null,
+        status: 'active',
+        renewal: null,
+      },
       result: { kind: 'SCHEDULED_FOR_NEXT_BILLING', planSlug: 'personal' },
     });
     await expect(subscriptionOf(owner, elena.id)).resolves.toMatchObject({
