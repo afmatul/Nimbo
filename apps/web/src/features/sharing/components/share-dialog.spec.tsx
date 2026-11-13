@@ -167,6 +167,7 @@ const withoutLink = (overrides: Partial<SharingApi> = {}): SharingApi =>
 
 /** Espera la lectura del enlace: si llega después de la prueba, React avisa que no estaba en `act` (m-10). */
 async function sectionRead(): Promise<void> {
+  await userEvent.click(within(dialog()).getByRole('button', { name: 'Por enlace' }));
   await within(dialog()).findByRole('button', { name: 'Crear enlace público' });
 }
 
@@ -194,10 +195,7 @@ describe('ShareDialog: sección «Enlace público» (spec 013c CA-2, CA-11)', ()
     await sectionRead();
 
     const headings = within(dialog()).getAllByRole('heading', { level: 3 });
-    expect(headings.map((heading) => heading.textContent)).toEqual([
-      'Personas con acceso',
-      'Enlace público',
-    ]);
+    expect(headings.map((heading) => heading.textContent)).toEqual(['Enlace público']);
   });
 
   it('CA-2: una carpeta no muestra la sección ni pide nada a la API de enlaces', async () => {
@@ -225,6 +223,7 @@ describe('ShareDialog: sección «Enlace público» (spec 013c CA-2, CA-11)', ()
     const onClose = jest.fn();
     const currentPublicLink = jest.fn(() => Promise.resolve({ link: publicLink() }));
     renderDialog(fakeSharingApi({ currentPublicLink }), onClose);
+    await userEvent.click(within(dialog()).getByRole('button', { name: 'Por enlace' }));
     await userEvent.click(await within(dialog()).findByRole('button', { name: 'Revocar enlace' }));
 
     await userEvent.keyboard('{Escape}');
@@ -251,7 +250,7 @@ describe('ShareDialog: sección «Enlace público» (spec 013c CA-2, CA-11)', ()
   it('CA-11: sin nada en curso, el clic fuera cierra como la X', async () => {
     const onClose = jest.fn();
     renderDialog(withoutLink(), onClose);
-    await within(dialog()).findByRole('button', { name: 'Crear enlace público' });
+    await sectionRead();
 
     fireEvent.pointerDown(overlay());
 
