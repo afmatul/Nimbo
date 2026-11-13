@@ -22,6 +22,8 @@ import { I_INDEX_QUEUE } from './application/ports/i-index-queue.port';
 import { I_INDEX_STATUS_NOTIFIER } from './application/ports/i-index-status-notifier.port';
 import { I_INDEXING_REPOSITORY } from './application/ports/i-indexing-repository.port';
 import { I_LANGUAGE_MODEL } from './application/ports/i-language-model.port';
+import { I_THUMBNAIL_REPOSITORY } from './application/ports/i-thumbnail-repository.port';
+import { ThumbnailService } from './application/thumbnail.service';
 import {
   BullmqIndexQueue,
   INDEX_QUEUE_CONFIG,
@@ -43,11 +45,13 @@ import { GEMINI_API_BASE_URL } from './infrastructure/gemini-http';
 import { IndexStatusRelay } from './infrastructure/index-status.relay';
 import { TypeOrmChunkSearch } from './infrastructure/persistence/typeorm-chunk-search';
 import { TypeOrmIndexingRepository } from './infrastructure/persistence/typeorm-indexing.repository';
+import { TypeOrmThumbnailRepository } from './infrastructure/persistence/typeorm-thumbnail.repository';
 import { INDEX_STATUS_QUEUE } from './infrastructure/queued-index-status.notifier';
 import { RealtimeIndexStatusNotifier } from './infrastructure/realtime-index-status.notifier';
 import { AgentController } from './presentation/agent.controller';
 import { FileVersionCreatedListener } from './presentation/file-version-created.listener';
 import { IndexingController } from './presentation/indexing.controller';
+import { ThumbnailController } from './presentation/thumbnail.controller';
 
 /** Variables del `api` que `intelligence` usa (plan 019 §5 y plan 020 D-8). */
 export type IntelligenceEnv = Pick<
@@ -133,12 +137,14 @@ export class IntelligenceModule {
         BillingModule,
         BullModule.registerQueue({ name: INDEXING_QUEUE }, { name: INDEX_STATUS_QUEUE }),
       ],
-      controllers: [IndexingController, AgentController],
+      controllers: [IndexingController, AgentController, ThumbnailController],
       providers: [
         { provide: INDEX_QUEUE_CONFIG, useValue: queueConfig },
         { provide: INDEX_STATUS_CONFIG, useValue: statusConfig },
         { provide: I_INDEX_QUEUE, useClass: BullmqIndexQueue },
         { provide: I_INDEXING_REPOSITORY, useClass: TypeOrmIndexingRepository },
+        { provide: I_THUMBNAIL_REPOSITORY, useClass: TypeOrmThumbnailRepository },
+        ThumbnailService,
         { provide: I_INDEX_STATUS_NOTIFIER, useClass: RealtimeIndexStatusNotifier },
         ...EXTRACTOR_PROVIDERS,
         // El `api` solo pregunta qué es indexable; Ghostscript lo usa el `worker` (plan 019 §5).

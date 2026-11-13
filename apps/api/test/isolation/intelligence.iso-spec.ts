@@ -289,6 +289,26 @@ describe('aislamiento de la indexación (019 CA-17, CA-18, CA-20)', () => {
       expect((await statusOf(a, fileA.fileId)).body).toMatchObject({ state: 'indexado' });
     });
 
+    it('ISO-7b (DF-97): B no puede pedir la miniatura del archivo de A: mismo 404 que un id inexistente o inválido, sin escribir', async () => {
+      const thumbnailOf = (account: WorldAccount, fileId: string) =>
+        http().get(`${API_PREFIX}/files/${fileId}/thumbnail`).set(bearer(account));
+      const rowsBefore = await world.storage.owner.query(
+        'SELECT count(*)::int AS n FROM miniatura',
+      );
+
+      const foreign = await thumbnailOf(b, fileA.fileId);
+      const missing = await thumbnailOf(b, randomUUID());
+      const invalid = await thumbnailOf(b, 'no-es-un-uuid');
+
+      expect(errorOf(foreign)).toEqual(NOT_FOUND);
+      expect(comparable(foreign)).toEqual(comparable(missing));
+      expect(comparable(foreign)).toEqual(comparable(invalid));
+      expect(await world.storage.owner.query('SELECT count(*)::int AS n FROM miniatura')).toEqual(
+        rowsBefore,
+      );
+      expect((await thumbnailOf(a, fileA.fileId)).body).toEqual({ text: null });
+    });
+
     it('ISO-8 (CA-18): B no puede reintentar la indexación `fallido` de A: mismo 404 que un id inexistente, sin efectos', async () => {
       const [before, jobsBefore] = [await snapshotOf(failedA.versionId), enqueued.length];
 
