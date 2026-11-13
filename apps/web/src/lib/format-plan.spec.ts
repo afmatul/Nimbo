@@ -3,11 +3,12 @@ import { formatCount, formatDocxEditing, formatMaxEditors, formatPlanBytes } fro
 describe('format-plan (008 RN-1, CA-2)', () => {
   it.each([
     ['512', '512 B'],
-    ['52428800', '50 MB'],
-    ['1610612736', '1.5 GB'],
-    ['16106127360', '15 GB'],
-    ['2199023255552', '2 TB'],
-  ])('RN-1: %s bytes se muestran como «%s» (potencias de 1024)', (bytes, expected) => {
+    ['50000000', '50 MB'],
+    ['1500000000', '1,5 GB'],
+    ['15000000000', '15 GB'],
+    ['100000000000', '100 GB'],
+    ['2000000000000', '2 TB'],
+  ])('PD-91: %s bytes se muestran como «%s» (base 1000, como `formatBytes`)', (bytes, expected) => {
     expect(formatPlanBytes(bytes)).toBe(expected);
   });
 

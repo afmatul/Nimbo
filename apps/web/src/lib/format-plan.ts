@@ -2,25 +2,20 @@
  * Presentación del catálogo de planes (008 RN-1): el contrato trae centavos enteros y bytes como texto decimal. El
  * dinero se formatea con `formatGtq` de `contracts` (009 RN-1, ADR-0028).
  */
-
-const BYTES_PER_UNIT = 1024;
-const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB'] as const;
+import { formatBytes } from '@nimbo/contracts';
 
 /** Enteros con espacio de no separación como separador de miles: 2 000, 10 000 (como el mockup). */
 export function formatCount(value: number): string {
   return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 }
 
-/** Bytes del plan en potencias de 1024, como el catálogo de la 006a (RN-1): «15 GB», «1.5 GB».
- * Difiere del `formatBytes` de `contracts` (base 1000): una sola base para toda la UI queda en PD-91. */
+/**
+ * Bytes del plan (texto decimal, ADR-0016) con el mismo formateador que el resto de la UI: `formatBytes` de
+ * `contracts`, base 1000 y coma decimal (PD-91). El catálogo guarda sus límites en unidades decimales
+ * (migración 20261104100000), así que el Pro se lee «100 GB» exacto en todas las pantallas.
+ */
 export function formatPlanBytes(bytes: string): string {
-  let size = Number(bytes);
-  let unitIndex = 0;
-  while (size >= BYTES_PER_UNIT && unitIndex < BYTE_UNITS.length - 1) {
-    size /= BYTES_PER_UNIT;
-    unitIndex += 1;
-  }
-  return `${String(Number(size.toFixed(1)))} ${BYTE_UNITS[unitIndex]}`;
+  return formatBytes(Number(bytes));
 }
 
 /** Edición `.docx` (CA-2, RN-6): «Solo lectura» con `maxEditors` 0 y «Sí» en cualquier otro caso. */

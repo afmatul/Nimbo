@@ -15,3 +15,55 @@ export type AuditOrigin = (typeof AUDIT_ORIGINS)[number];
  */
 export const AUDIT_TRIGGERS = ['manual', 'scheduled', 'public_link'] as const;
 export type AuditTrigger = (typeof AUDIT_TRIGGERS)[number];
+
+/**
+ * Acciones que la API audita: espejo del `AuditAction` de `api` (una prueba de `api` exige que sean iguales). La web
+ * da a cada una su texto en «Mi actividad»; una acción nueva sin texto no compila ni pasa las pruebas de `web`.
+ */
+export const AUDIT_ACTIONS = [
+  'file.upload_completed',
+  'file.upload_rejected',
+  'file.download_url_issued',
+  'node.trashed',
+  'node.restored',
+  'node.purged',
+  'trash.emptied',
+  'file.version_restored',
+  'file.version_pruned',
+  'account.suspended',
+  'account.reactivated',
+  'account.internal_created',
+  'account.bootstrap_admin',
+  'account.quota_adjusted',
+  'account.validity_adjusted',
+  'client.files_viewed',
+  'plan.created',
+  'plan.deactivated',
+  'subscription.auto_renew_changed',
+  'subscription.renewed',
+  'subscription.renewal_rejected',
+  'subscription.read_only_entered',
+  'subscription.read_only_exited',
+  'subscription.plan_change_scheduled',
+  'subscription.plan_change_cancelled',
+  'subscription.plan_change_applied',
+  'subscription.plan_change_discarded',
+  'file.version_created',
+  'edit.session_opened',
+  'edit.save_failed',
+  'file.indexed',
+  'file.index_unindexable',
+  'file.index_failed',
+  'file.index_retried',
+  'share.granted',
+  'share.level_changed',
+  'share.revoked',
+  'public_link.created',
+  'public_link.revoked',
+  'public_link.downloaded',
+  'public_link.locked',
+  'file.optimized',
+  'file.optimization_discarded',
+  'file.optimization_failed',
+] as const;
+export type AuditActionName = (typeof AUDIT_ACTIONS)[number];

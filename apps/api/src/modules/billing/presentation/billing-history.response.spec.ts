@@ -51,7 +51,7 @@ describe('toBillingHistoryResponse (spec 009 CA-7)', () => {
       plan: expect.objectContaining({
         slug: 'equipo',
         priceCents: 11_000,
-        quotaBytes: '16106127360',
+        quotaBytes: '15000000000',
       }) as unknown,
       expiresAt: '2026-11-13T18:00:00.000Z',
     });

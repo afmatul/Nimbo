@@ -537,3 +537,61 @@ describe('AppLayout con la entrada del agente (020b)', () => {
     expect(markup).not.toContain('mr-(--agent-panel-width)');
   });
 });
+
+describe('AppLayout: barra lateral compacta', () => {
+  it('«Contraer» deja solo los íconos, sin sección ni cuota, y «Expandir» la restaura', async () => {
+    const { root, container, dom } = mountDom();
+    await act(async () => {
+      root.render(
+        <AppLayout sidebarSection={<p>Accesos rápidos</p>} quotaCard={<p>Cuota</p>}>
+          <div>Contenido</div>
+        </AppLayout>,
+      );
+    });
+    const aside = (): Element =>
+      container.querySelector('[aria-label="Barra lateral de escritorio"]') as Element;
+    const toggle = (): HTMLButtonElement =>
+      aside().querySelector('button[aria-expanded]') as HTMLButtonElement;
+    expect(toggle().getAttribute('aria-label')).toBe('Contraer barra lateral');
+    expect(aside().textContent).toContain('Accesos rápidos');
+
+    await act(async () => toggle().click());
+
+    expect(toggle().getAttribute('aria-label')).toBe('Expandir barra lateral');
+    expect(toggle().getAttribute('aria-expanded')).toBe('false');
+    expect(aside().hasAttribute('data-collapsed')).toBe(true);
+    expect(aside().textContent).not.toContain('Accesos rápidos');
+    expect(aside().textContent).not.toContain('Cuota');
+    expect(aside().querySelector('a[title="Mis archivos"]')).not.toBeNull();
+    expect(dom.window.localStorage.getItem('nimbo.sidebar.collapsed')).toBe('1');
+
+    await act(async () => toggle().click());
+
+    expect(aside().hasAttribute('data-collapsed')).toBe(false);
+    expect(aside().textContent).toContain('Accesos rápidos');
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it('recuerda la preferencia al volver a montar', async () => {
+    const first = mountDom();
+    first.dom.window.localStorage.setItem('nimbo.sidebar.collapsed', '1');
+    await act(async () => {
+      first.root.render(
+        <AppLayout>
+          <div>Contenido</div>
+        </AppLayout>,
+      );
+    });
+
+    expect(
+      first.container
+        .querySelector('[aria-label="Barra lateral de escritorio"]')
+        ?.hasAttribute('data-collapsed'),
+    ).toBe(true);
+    await act(async () => {
+      first.root.unmount();
+    });
+  });
+});

@@ -13,8 +13,8 @@ const PERSONAL: Plan = {
   name: 'Personal',
   description: 'Para uso individual',
   priceCents: 0,
-  quotaBytes: '16106127360',
-  maxFileBytes: '52428800',
+  quotaBytes: '15000000000',
+  maxFileBytes: '50000000',
   maxEditors: 0,
   agentQueriesPerMonth: 20,
   retainedVersions: 5,
@@ -28,8 +28,8 @@ const PRO: Plan = {
   name: 'Pro',
   description: null,
   priceCents: 4500,
-  quotaBytes: '107374182400',
-  maxFileBytes: '524288000',
+  quotaBytes: '100000000000',
+  maxFileBytes: '500000000',
   maxEditors: 5,
 };
 
@@ -67,7 +67,7 @@ describe('PlanCard (008 CA-2)', () => {
           slug: 'empresarial',
           name: 'Empresarial',
           priceCents: 12345,
-          quotaBytes: '2199023255552',
+          quotaBytes: '2000000000000',
         }}
       />,
     );

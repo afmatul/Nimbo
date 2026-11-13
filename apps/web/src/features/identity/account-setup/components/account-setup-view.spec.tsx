@@ -150,7 +150,7 @@ describe('AccountSetupView', () => {
       expect(document.querySelector('[data-state="default"]')).toBeTruthy();
       expect(screen.queryByText(/sesiones/)).toBeNull();
       await user.type(screen.getByLabelText('Contraseña'), STRONG_PASSWORD);
-      expect(screen.queryAllByText('Falta')).toEqual([]);
+      expect(screen.queryAllByText(': falta')).toEqual([]);
       await expectNoBlockingViolations();
     });
 

@@ -33,8 +33,8 @@ describe('PlanLimitsBindingModule', () => {
     expect(provider).toBeInstanceOf(PlanLimitsAdapter);
     await expect(provider.limitsFor(ACTOR)).resolves.toEqual({
       planName: 'Personal',
-      maxFileBytes: 52428800n,
-      storageQuotaBytes: 16106127360n,
+      maxFileBytes: 50000000n,
+      storageQuotaBytes: 15000000000n,
       trashRetentionDays: 7,
       retainedVersions: 3,
       readOnly: false,

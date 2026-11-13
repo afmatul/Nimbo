@@ -58,11 +58,16 @@ describe('POST /auth/login (CA-1 a CA-4)', () => {
 
   const sessionRows = async (userId: string) =>
     (await dataSource.query(
-      `SELECT s.id, s.dispositivo_id, d.usuario_id AS dueno_dispositivo
+      `SELECT s.id, s.dispositivo_id, s.revocada_en, d.usuario_id AS dueno_dispositivo
          FROM sesion s JOIN dispositivo d ON d.id = s.dispositivo_id
         WHERE s.usuario_id = $1`,
       [userId],
-    )) as { id: string; dispositivo_id: string; dueno_dispositivo: string }[];
+    )) as {
+      id: string;
+      dispositivo_id: string;
+      revocada_en: Date | null;
+      dueno_dispositivo: string;
+    }[];
 
   beforeAll(async () => {
     testApp = await createIdentityTestApp();
@@ -135,6 +140,10 @@ describe('POST /auth/login (CA-1 a CA-4)', () => {
     const rows = await sessionRows(account.id);
     expect(rows).toHaveLength(2);
     expect(new Set(rows.map((row) => row.dispositivo_id)).size).toBe(1);
+    // Un navegador, una sesión: la segunda reemplaza a la primera en vez de sumarse a «Seguridad».
+    expect(rows.filter((row) => row.revocada_en === null).map((row) => row.id)).toEqual([
+      (setCookie(second.headers, 'nimbo_rt')?.value ?? '').split('.')[0],
+    ]);
   });
 
   it('CA-2: correo inexistente y contraseña incorrecta responden igual, sin cookies', async () => {

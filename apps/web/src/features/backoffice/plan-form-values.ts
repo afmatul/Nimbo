@@ -60,11 +60,11 @@ export const PLAN_FORM_DEFAULTS: PlanFormValues = {
   trashRetentionDays: '',
 };
 
-/** Los bytes de una unidad (base 1024, la del catálogo de la 006a: «15 GB» para el Personal). */
+/** Los bytes de una unidad en base 1000, la de `formatBytes` y la del catálogo (PD-91: «15 GB» son 15 000 000 000 bytes). */
 const BYTES_PER_UNIT: Readonly<Record<QuotaUnit | MaxFileUnit, number>> = {
-  MB: 1024 ** 2,
-  GB: 1024 ** 3,
-  TB: 1024 ** 4,
+  MB: 1000 ** 2,
+  GB: 1000 ** 3,
+  TB: 1000 ** 4,
 };
 
 /** El número escrito, o `null` si no es un entero (el campo lo avisa). */
@@ -74,7 +74,7 @@ export function integerOf(value: string): number | null {
   return Number(trimmed);
 }
 
-/** «500» + GB → «536870912000»: los bytes van como texto decimal (ADR-0016). */
+/** «500» + GB → «500000000000»: los bytes van como texto decimal (ADR-0016). */
 export function bytesOf(value: string, unit: QuotaUnit | MaxFileUnit): string | null {
   const amount = integerOf(value);
   if (amount === null) return null;

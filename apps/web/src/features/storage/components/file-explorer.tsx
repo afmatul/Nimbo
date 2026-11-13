@@ -8,13 +8,13 @@ import { StateView } from '../../../components/nimbo/state-view';
 import { Button } from '../../../components/ui/button';
 import type { ListControls } from '../hooks/use-folder-contents';
 import { isOwner } from '../node-access';
+import { orderLabel } from '../node-order';
 import { MY_FILES_LABEL } from '../routes';
 
 import { AskAgentButton } from './ask-agent-button';
 import { ExplorerErrorState } from './explorer-error-state';
 import { FolderBackLink, SHARED_ROOT_CRUMB } from './folder-breadcrumbs';
 import { LoadMore } from './load-more';
-import { NodeSortMenu } from './node-sort-menu';
 import { NodeTable, type FolderDisclosure, type NodeTableProps } from './node-table';
 import { ReadOnlyUploadFeedback, useReadOnlyUploads } from './read-only-notice';
 import { UploadDropzone } from './upload-dropzone';
@@ -312,7 +312,7 @@ function ExplorerBody(props: ExplorerBodyProps): React.JSX.Element {
 }
 
 /**
- * «Ordenar» encima y «Cargar más» debajo (007). Mientras llega otro orden la lista visible se conserva con
+ * «Cargar más» debajo; el orden se pide desde los encabezados de la tabla (007). Mientras llega otro orden la lista visible se conserva con
  * `aria-busy` y la tabla marca el orden de lo que muestra, no el pedido (CA-12).
  */
 interface ControlledListProps {
@@ -323,11 +323,9 @@ interface ControlledListProps {
 function ControlledList({ table, controls }: ControlledListProps): React.JSX.Element {
   return (
     <div className="flex flex-col gap-3">
-      <NodeSortMenu
-        order={controls.order}
-        sorting={controls.sorting}
-        onChange={controls.changeOrder}
-      />
+      <p role="status" className="sr-only">
+        {controls.sorting ? `Ordenando por ${orderLabel(controls.order).toLowerCase()}…` : ''}
+      </p>
       <div aria-busy={controls.sorting || undefined}>
         <NodeTable
           {...table}

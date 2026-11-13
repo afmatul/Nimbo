@@ -17,7 +17,7 @@ describe('COMMON_PASSWORDS', () => {
     expect(size).toBeLessThan(MAX_FILE_BYTES);
   });
 
-  it('CA-5: toda entrada está en minúsculas, mide 12 a 128 puntos de código y tiene número y símbolo', () => {
+  it('CA-5: toda entrada está en minúsculas, mide 12 o más puntos de código y tiene número y símbolo', () => {
     for (const entry of COMMON_PASSWORDS) {
       const length = Array.from(entry).length;
 

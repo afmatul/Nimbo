@@ -15,19 +15,19 @@ const PLANS_PATH = '/api/v1/billing/plans';
 
 /** Semilla de la 006a (RN-1): orden por precio ascendente, bytes como cadena decimal. */
 const SEEDED_CATALOG = [
-  { slug: 'personal', priceCents: 0, quotaBytes: '16106127360', maxFileBytes: '52428800' },
-  { slug: 'pro', priceCents: 4500, quotaBytes: '107374182400', maxFileBytes: '524288000' },
+  { slug: 'personal', priceCents: 0, quotaBytes: '15000000000', maxFileBytes: '50000000' },
+  { slug: 'pro', priceCents: 4500, quotaBytes: '100000000000', maxFileBytes: '500000000' },
   {
     slug: 'equipo',
     priceCents: 11000,
-    quotaBytes: '375809638400',
-    maxFileBytes: '1073741824',
+    quotaBytes: '350000000000',
+    maxFileBytes: '1000000000',
   },
   {
     slug: 'institucional',
     priceCents: 45000,
-    quotaBytes: '2199023255552',
-    maxFileBytes: '2147483648',
+    quotaBytes: '2000000000000',
+    maxFileBytes: '2000000000',
   },
 ];
 

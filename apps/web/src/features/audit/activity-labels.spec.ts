@@ -1,9 +1,10 @@
-import type { AuditEventResponse } from '@nimbo/contracts';
+import { AUDIT_ACTIONS, type AuditEventResponse } from '@nimbo/contracts';
 
 import {
   activityActionLabel,
   activityActorLabel,
   activityResourceLabel,
+  hasActivityLabel,
   ORIGIN_FILTER_LABELS,
   UNKNOWN_ACTIVITY_LABEL,
 } from './activity-labels';
@@ -152,14 +153,13 @@ describe('textos de «Mi actividad»', () => {
     },
   );
 
-  it.each(['account.bootstrap_admin', 'plan.created', 'plan.deactivated'])(
-    'CA-16 (011): %s no tiene afectado y conserva el texto genérico',
-    (action) => {
-      expect(activityActionLabel(event({ action, origin: 'staff', actorRole: 'ADMIN' }))).toBe(
-        UNKNOWN_ACTIVITY_LABEL,
-      );
-    },
-  );
+  it.each([
+    ['account.bootstrap_admin', 'Se creó la cuenta de administración inicial'],
+    ['plan.created', 'Administración de Nimbo creó un plan'],
+    ['plan.deactivated', 'Administración de Nimbo desactivó un plan'],
+  ])('CA-16 (011): %s no tiene afectado, pero si llegara tiene texto propio', (action, text) => {
+    expect(activityActionLabel(event({ action, origin: 'staff', actorRole: 'ADMIN' }))).toBe(text);
+  });
 
   it('CA-7: una acción que la web aún no conoce se muestra como «Actividad en tu cuenta»', () => {
     expect(activityActionLabel(event({ action: 'account.future_action' }))).toBe(
@@ -197,7 +197,7 @@ describe('textos de «Mi actividad»', () => {
     ['staff', 'SUPPORT', 'Soporte de Nimbo'],
     ['staff', 'ADMIN', 'Administración de Nimbo'],
     ['staff', 'OPERATOR', 'Operación de Nimbo'],
-    ['staff', 'CLIENT', 'Personal de Nimbo'],
+    ['staff', 'CLIENT', 'Una persona con acceso'],
   ] as const)(
     'CA-7: el origen %s con rol %s se rotula sin nombre ni correo',
     (origin, role, text) => {
@@ -218,5 +218,26 @@ describe('textos de «Mi actividad»', () => {
 
   it('CA-10: el filtro de origen es «Todo · Yo · Personal de Nimbo»', () => {
     expect(ORIGIN_FILTER_LABELS).toEqual({ all: 'Todo', self: 'Yo', staff: 'Personal de Nimbo' });
+  });
+
+  it.each(AUDIT_ACTIONS.map((action) => [action]))(
+    'toda acción del catálogo de `contracts` tiene texto propio: %s',
+    (action) => {
+      expect(hasActivityLabel(action)).toBe(true);
+      for (const origin of ['self', 'staff'] as const) {
+        const label = activityActionLabel(event({ action, origin, actorRole: 'SUPPORT' }));
+        expect(label).not.toBe(UNKNOWN_ACTIVITY_LABEL);
+        expect(label).not.toMatch(/undefined|\$\{/);
+      }
+    },
+  );
+
+  it.each([
+    ['share.granted', 'self', 'Compartiste 1 archivo'],
+    ['share.revoked', 'staff', 'Una persona con acceso quitó un acceso compartido a 1 archivo'],
+    ['file.version_restored', 'self', 'Restauraste una versión anterior de 1 archivo'],
+    ['edit.session_opened', 'self', 'Abriste 1 archivo para editarlo'],
+  ] as const)('%s (%s) se lee «%s», sin nombres de archivo', (action, origin, text) => {
+    expect(activityActionLabel(event({ action, origin, actorRole: 'CLIENT' }))).toBe(text);
   });
 });

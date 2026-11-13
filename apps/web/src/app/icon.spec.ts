@@ -1,27 +1,17 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-const CLOUD_PATH = 'M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z';
-
-function tokenValue(css: string, name: string): string {
-  const match = new RegExp(`--${name}: *(#[0-9a-fA-F]{6})`).exec(css);
-  if (match?.[1] === undefined) throw new Error(`Falta el token --${name}`);
-  return match[1].toLowerCase();
-}
+const LOGO_FILE = path.join(__dirname, '..', '..', 'public', 'brand', 'nimbo-icon.svg');
 
 describe('icon.svg (favicon)', () => {
   const svg = fs.readFileSync(path.join(__dirname, 'icon.svg'), 'utf8').toLowerCase();
-  const css = fs.readFileSync(path.join(__dirname, 'globals.css'), 'utf8');
 
-  it('usa el isotipo de nube de PublicHeader (Cloud de lucide)', () => {
-    expect(svg).toContain(CLOUD_PATH.toLowerCase());
+  it('es el logo oficial de Nimbo (docs/design/logos), igual al de public/brand', () => {
+    expect(svg).toBe(fs.readFileSync(LOGO_FILE, 'utf8').toLowerCase());
   });
 
-  it('usa los valores de los tokens primary y primary-foreground, sin otros colores', () => {
-    const colors = new Set(svg.match(/#[0-9a-f]{6}/g));
-
-    expect(colors).toEqual(
-      new Set([tokenValue(css, 'primary'), tokenValue(css, 'primary-foreground')]),
-    );
+  it('lleva la nube azul con la estrella blanca y ningún metadato de generación', () => {
+    expect(new Set(svg.match(/#[0-9a-f]{6}/g))).toEqual(new Set(['#6b8fd6', '#ffffff']));
+    expect(svg).not.toContain('<metadata');
   });
 });

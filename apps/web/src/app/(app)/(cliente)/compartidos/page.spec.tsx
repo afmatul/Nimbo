@@ -5,9 +5,9 @@ import { act, render, screen } from '@testing-library/react';
 
 import { SessionProvider } from '../../../../features/identity/session/session-provider';
 import { receivedShare } from '../../../../features/sharing/test-sharing';
-import type { StorageApi } from '../../../../features/storage/api';
 import { SpaceProvider } from '../../../../features/storage/components/space-provider';
 import { UploadsProvider } from '../../../../features/storage/components/uploads-provider';
+import { sidebarApiFake } from '../../../../features/storage/test-sidebar-api';
 import { GB, spaceSummaryWith } from '../../../../features/storage/test-space-summary';
 import { jsonResponse } from '../../../../lib/test-http';
 
@@ -32,7 +32,7 @@ describe('página «Compartidos conmigo» (/compartidos)', () => {
   it('CA-8: pide GET /shares/received y muestra lo compartido con su ítem del menú activo', async () => {
     render(
       <SessionProvider apiPublicUrl={API}>
-        <UploadsProvider api={{} as StorageApi}>
+        <UploadsProvider api={sidebarApiFake()}>
           <SpaceProvider
             api={{ spaceSummary: () => Promise.resolve(spaceSummaryWith(3 * GB)) }}
             uploadedCount={0}

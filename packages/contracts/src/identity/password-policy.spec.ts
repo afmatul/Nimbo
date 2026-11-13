@@ -35,12 +35,13 @@ describe('evaluatePassword (D-6)', () => {
     expect(failuresOf('Nimbo-Seg-1')).toEqual(['PASSWORD_TOO_SHORT']);
   });
 
-  it('CA-5: 129 puntos de código es muy larga', () => {
-    expect(failuresOf(`Aa1-${'x'.repeat(125)}`)).toEqual(['PASSWORD_TOO_LONG']);
+  it('sin longitud máxima como requisito: 129 puntos de código es válida', () => {
+    expect(failuresOf(`Aa1-${'x'.repeat(125)}`)).toEqual([]);
   });
 
-  it('CA-5: 128 puntos de código es válida', () => {
-    expect(failuresOf(`Aa1-${'x'.repeat(124)}`)).toEqual([]);
+  it('el tope técnico (1024 puntos de código) solo frena entradas enormes', () => {
+    expect(failuresOf(`Aa1-${'x'.repeat(1020)}`)).toEqual([]);
+    expect(failuresOf(`Aa1-${'x'.repeat(1021)}`)).toEqual(['PASSWORD_TOO_LONG']);
   });
 
   it('CA-5: sin mayúscula falla', () => {

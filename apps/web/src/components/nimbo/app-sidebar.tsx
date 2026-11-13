@@ -58,22 +58,31 @@ export interface AppSidebarProps {
   readonly trashCount?: number | undefined;
   readonly section?: React.ReactNode;
   readonly quotaCard?: React.ReactNode;
+  /** Barra de escritorio compacta: solo los íconos; sin sección de la página ni tarjeta de cuota. */
+  readonly collapsed?: boolean;
 }
 
 /** Texto del ítem y, en la Papelera, su contador («6», leído como «Papelera (6 elementos)»). */
 function NavLabel({
   item,
   trashCount,
+  collapsed,
 }: {
   readonly item: NavItem;
   readonly trashCount: number | undefined;
+  readonly collapsed: boolean;
 }): React.JSX.Element {
   const count = item.href === TRASH_HREF && trashCount ? trashCount : 0;
   return (
     <>
-      <span>{item.label}</span>
+      <span className={collapsed ? 'sr-only' : undefined}>{item.label}</span>
       {count > 0 ? (
-        <span className="ml-auto text-xs font-medium tabular-nums text-secondary-foreground">
+        <span
+          className={cn(
+            'text-xs font-medium tabular-nums text-secondary-foreground',
+            collapsed ? 'sr-only' : 'ml-auto',
+          )}
+        >
           <span aria-hidden="true">{count}</span>
           <span className="sr-only">{`(${String(count)} ${count === 1 ? 'elemento' : 'elementos'})`}</span>
         </span>
@@ -86,23 +95,35 @@ interface NavEntryProps {
   readonly item: NavItem;
   readonly styles: VariantStyles;
   readonly trashCount: number | undefined;
+  readonly collapsed: boolean;
 }
 
 /** Un ítem: enlace o, con `onSelect`, botón que antes cierra el cajón móvil (en escritorio no hace nada). */
-function NavEntry({ item, styles, trashCount }: NavEntryProps): React.JSX.Element {
+function NavEntry({ item, styles, trashCount, collapsed }: NavEntryProps): React.JSX.Element {
   const { onNavigate } = useSidebarSlot();
   const Icon = item.icon;
-  const className = cn(LINK_BASE_CLASS, styles.link, item.active ? styles.active : LINK_IDLE_CLASS);
+  const className = cn(
+    LINK_BASE_CLASS,
+    styles.link,
+    item.active ? styles.active : LINK_IDLE_CLASS,
+    collapsed && 'justify-center px-0',
+  );
   const content = (
     <>
       <Icon className={cn('shrink-0', styles.icon)} aria-hidden="true" />
-      <NavLabel item={item} trashCount={trashCount} />
+      <NavLabel item={item} trashCount={trashCount} collapsed={collapsed} />
     </>
   );
+  const title = collapsed ? item.label : undefined;
   const { onSelect } = item;
   if (onSelect === undefined) {
     return (
-      <Link href={item.href} className={className} aria-current={item.active ? 'page' : undefined}>
+      <Link
+        href={item.href}
+        className={className}
+        title={title}
+        aria-current={item.active ? 'page' : undefined}
+      >
         {content}
       </Link>
     );
@@ -112,7 +133,12 @@ function NavEntry({ item, styles, trashCount }: NavEntryProps): React.JSX.Elemen
     onSelect();
   };
   return (
-    <button type="button" onClick={select} className={cn(className, 'w-full text-left')}>
+    <button
+      type="button"
+      onClick={select}
+      title={title}
+      className={cn(className, 'w-full text-left')}
+    >
       {content}
     </button>
   );
@@ -122,12 +148,19 @@ function SidebarNav({
   variant,
   navItems,
   trashCount,
+  collapsed = false,
 }: Omit<AppSidebarProps, 'section' | 'quotaCard'>): React.JSX.Element {
   const styles = VARIANT_STYLES[variant];
   return (
     <nav className={cn('shrink-0', styles.nav)} aria-label={styles.navLabel}>
       {navItems.map((item) => (
-        <NavEntry key={item.label} item={item} styles={styles} trashCount={trashCount} />
+        <NavEntry
+          key={item.label}
+          item={item}
+          styles={styles}
+          trashCount={trashCount}
+          collapsed={collapsed}
+        />
       ))}
     </nav>
   );
@@ -149,6 +182,7 @@ function QuotaSlot({ card }: { readonly card: React.ReactNode }): React.JSX.Elem
  * El contenedor debe ser una columna flex de alto acotado. El margen negativo con relleno deja ver el anillo de foco.
  */
 export function AppSidebar({ section, quotaCard, ...nav }: AppSidebarProps): React.JSX.Element {
+  if (nav.collapsed) return <SidebarNav {...nav} />;
   return (
     <>
       <SidebarNav {...nav} />

@@ -32,19 +32,19 @@ describe('valores del formulario de un plan (011 CA-9, CA-11)', () => {
     expect(integerOf('')).toBeNull();
   });
 
-  it('bytesOf: el número con su unidad, en bytes (base 1024, la del catálogo)', () => {
-    expect(bytesOf('500', 'GB')).toBe(String(500 * 1024 ** 3));
-    expect(bytesOf('500', 'MB')).toBe(String(500 * 1024 ** 2));
-    expect(bytesOf('1', 'TB')).toBe(String(1024 ** 4));
+  it('bytesOf: el número con su unidad, en bytes (base 1000, la de `formatBytes`)', () => {
+    expect(bytesOf('500', 'GB')).toBe(String(500 * 1000 ** 3));
+    expect(bytesOf('500', 'MB')).toBe(String(500 * 1000 ** 2));
+    expect(bytesOf('1', 'TB')).toBe(String(1000 ** 4));
     expect(bytesOf('abc', 'GB')).toBeNull();
   });
 
   it('amountAndUnit: elige la unidad en la que el número sale entero', () => {
-    expect(amountAndUnit(100 * 1024 ** 3, QUOTA_UNITS)).toEqual({ amount: '100', unit: 'GB' });
-    expect(amountAndUnit(500 * 1024 ** 2, MAX_FILE_UNITS)).toEqual({ amount: '500', unit: 'MB' });
+    expect(amountAndUnit(100 * 1000 ** 3, QUOTA_UNITS)).toEqual({ amount: '100', unit: 'GB' });
+    expect(amountAndUnit(500 * 1000 ** 2, MAX_FILE_UNITS)).toEqual({ amount: '500', unit: 'MB' });
   });
 
   it('amountAndUnit: si ninguna unidad da un entero, no hay copia exacta (H-8)', () => {
-    expect(amountAndUnit(500 * 1024 ** 2, QUOTA_UNITS)).toBeNull();
+    expect(amountAndUnit(500 * 1000 ** 2, QUOTA_UNITS)).toBeNull();
   });
 });

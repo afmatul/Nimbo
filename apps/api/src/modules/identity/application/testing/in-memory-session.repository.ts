@@ -67,9 +67,20 @@ export class InMemorySessionRepository implements ISessionRepository {
   }
 
   revokeAllExcept(userId: string, exceptId: string | null, now: Date): Promise<number> {
+    return this.revokeActive(userId, now, (session) => session.id !== exceptId);
+  }
+
+  revokeAllOnDevice(userId: string, deviceId: string, now: Date): Promise<number> {
+    return this.revokeActive(userId, now, (session) => session.deviceId === deviceId);
+  }
+
+  private revokeActive(
+    userId: string,
+    now: Date,
+    matches: (session: Session) => boolean,
+  ): Promise<number> {
     const targets = this.all().filter(
-      (session) =>
-        session.userId === userId && session.id !== exceptId && session.revocadaEn === null,
+      (session) => session.userId === userId && session.revocadaEn === null && matches(session),
     );
     targets.forEach((session) => this.sessions.set(session.id, session.revoke(now)));
     return Promise.resolve(targets.length);

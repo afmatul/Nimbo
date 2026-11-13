@@ -1,6 +1,7 @@
-import { Cloud } from 'lucide-react';
 import Link from 'next/link';
 import type * as React from 'react';
+
+import { BrandMark } from './brand-mark';
 
 export interface BrandLogoProps {
   /** Adónde lleva el logo: el inicio del rol con sesión, o `/` sin ella. */
@@ -12,7 +13,7 @@ export interface BrandLogoProps {
 }
 
 /**
- * Logo de Nimbo (isotipo de `app/icon.svg` y el nombre): el mismo en todas las cabeceras del sistema, con o sin sesión.
+ * Logo de Nimbo (el isotipo oficial de `docs/design/logos/` y el nombre): el mismo en todas las cabeceras del sistema, con o sin sesión.
  * Es un enlace al inicio con área táctil de 44 px.
  */
 export function BrandLogo({
@@ -26,9 +27,7 @@ export function BrandLogo({
       aria-label={compact ? label : undefined}
       className="flex min-h-11 shrink-0 items-center gap-2 rounded-md px-1 text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
-      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-button">
-        <Cloud className="h-5 w-5" aria-hidden="true" />
-      </span>
+      <BrandMark className="h-8 w-auto" />
       {compact ? null : <span className="text-xl font-bold tracking-tight">Nimbo</span>}
     </Link>
   );

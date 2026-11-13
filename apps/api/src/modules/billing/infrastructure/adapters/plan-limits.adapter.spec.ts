@@ -90,8 +90,8 @@ describe('PlanLimitsAdapter (006a CA-2 a CA-5; 009 T-03, PD-80; 016 CA-7, DF-73;
 
     await expect(adapter.limitsFor(createActor(ANA.id, Role.SUPPORT))).resolves.toEqual({
       planName: 'Personal',
-      maxFileBytes: 52_428_800n,
-      storageQuotaBytes: 16_106_127_360n,
+      maxFileBytes: 50_000_000n,
+      storageQuotaBytes: 15_000_000_000n,
       trashRetentionDays: 7,
       retainedVersions: 3,
       readOnly: false,

@@ -146,12 +146,7 @@ describe('bitácoras del inicio de sesión y las sesiones (CA-25)', () => {
     ids.main = main.id;
     const first = expectStatus(await login(main.email), 200);
     const device = setCookie(first.headers, 'nimbo_did')?.value ?? '';
-    const second = expectStatus(
-      await login(main.email, ACCOUNT_PASSWORD, { nimbo_did: device }),
-      200,
-    );
     ids.mainFirstSessionId = sessionIdOf(refreshTokenOf(first));
-    ids.mainSecondSessionId = sessionIdOf(refreshTokenOf(second));
     expectStatus(await login(main.email, WRONG_PASSWORD), 401);
     expectStatus(await login(`nadie-${randomUUID()}@nimbo.me`, WRONG_PASSWORD), 401);
     const rotated = expectStatus(await refresh(refreshTokenOf(first)), 200);
@@ -159,6 +154,12 @@ describe('bitácoras del inicio de sesión y las sesiones (CA-25)', () => {
     clock.advance(PAST_GRACE_MS);
     expectStatus(await refresh(refreshTokenOf(first)), 401);
     expectStatus(await refresh(refreshTokenOf(rotated)), 401);
+    // El segundo inicio desde el mismo navegador reemplaza su sesión (una por dispositivo): va después de la rotación.
+    const second = expectStatus(
+      await login(main.email, ACCOUNT_PASSWORD, { nimbo_did: device }),
+      200,
+    );
+    ids.mainSecondSessionId = sessionIdOf(refreshTokenOf(second));
     expectStatus(await call(LOGOUT_PATH, { nimbo_rt: refreshTokenOf(second) }), 204);
   };
 

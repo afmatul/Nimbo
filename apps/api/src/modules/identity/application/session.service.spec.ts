@@ -211,6 +211,40 @@ describe('SessionService.open (plan 002 §6.3)', () => {
     expect(again.newDevice).toBe(false);
     expect(sent).toHaveLength(0);
   });
+
+  it('un mismo navegador cuenta como una sola sesión: volver a entrar reemplaza la anterior', async () => {
+    const { service, user, sessions, logger } = setup();
+    const first = await service.open(user, client({ deviceSecret: DEVICE_SECRET }), 'login');
+
+    const second = await service.open(user, client({ deviceSecret: DEVICE_SECRET }), 'login');
+
+    const active = sessions.all().filter((session) => session.revocadaEn === null);
+    expect(active.map((session) => session.id)).toEqual([second.sessionId]);
+    expect(sessions.get(first.sessionId)?.revocadaEn).toEqual(NOW);
+    expect(loggedEvents(logger)).toContainEqual({
+      event: 'identity.session.revoked',
+      userId: user.id,
+      reason: 'replaced',
+      count: 1,
+    });
+  });
+
+  it('otro navegador u otra cuenta no reemplazan la sesión de este navegador', async () => {
+    const { service, user, users, sessions } = setup();
+    const other = aClientUser()
+      .withId('7a2f1d4b-2c3e-4f5a-9b0c-1d2e3f4a5b6c')
+      .withEmail('beto@ejemplo.com')
+      .verified()
+      .build();
+    users.seed(other);
+    const mine = await service.open(user, client({ deviceSecret: DEVICE_SECRET }), 'login');
+
+    await service.open(user, client(), 'login');
+    await service.open(other, client({ deviceSecret: DEVICE_SECRET }), 'login');
+
+    expect(sessions.get(mine.sessionId)?.revocadaEn).toBeNull();
+    expect(sessions.all().filter((session) => session.revocadaEn === null)).toHaveLength(3);
+  });
 });
 
 const UNKNOWN_SESSION_ID = '9d2f1c7a-3b4e-4f5a-8b6c-7d8e9f0a1b2c';

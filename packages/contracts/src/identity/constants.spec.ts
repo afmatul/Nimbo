@@ -51,7 +51,7 @@ describe('parámetros de identity (spec §6)', () => {
       MAX_AVISOS_INTENTO_24H: 1,
       FULL_NAME_MAX_LENGTH: 100,
       PASSWORD_MIN_LENGTH: 12,
-      PASSWORD_MAX_LENGTH: 128,
+      PASSWORD_MAX_LENGTH: 1024,
     });
   });
 });

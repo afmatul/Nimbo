@@ -30,7 +30,7 @@ import { insertAccount, insertFileWithVersion } from '../storage/storage-test-db
 const ACCOUNTS = '/api/v1/backoffice/accounts';
 const PRO_PLAN_ID = '10000000-0000-4000-8000-000000000002';
 const PERSONAL_PLAN_ID = '10000000-0000-4000-8000-000000000001';
-const PRO_QUOTA = 107_374_182_400n;
+const PRO_QUOTA = 100_000_000_000n;
 const FIVE_GIB = 5_368_709_120n;
 const HOUR_MS = 3_600_000;
 const DAY_MS = 24 * HOUR_MS;

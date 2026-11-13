@@ -343,7 +343,7 @@ describe('error-catalog', () => {
 
   describe('ajustes de cuota y vigencia (spec 011b §6)', () => {
     it('CA-2: la cuota bajo lo usado nombra lo que la cuenta ya usa, en GB del catálogo', () => {
-      expect(quotaBelowUsageMessage(String(108 * 1024 ** 3))).toBe(
+      expect(quotaBelowUsageMessage(String(108 * 1000 ** 3))).toBe(
         'La cuota total no puede quedar por debajo de lo que la cuenta ya usa (108 GB).',
       );
     });
