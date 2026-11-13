@@ -8,7 +8,7 @@ import { Eye, FilePen, Folder } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 
-import { FileTypeChip } from '../../../components/nimbo/file-type-chip';
+import { fileTypeColors, FileTypeIcon } from '../../../components/nimbo/file-type-chip';
 import { DATE_LOCALE } from '../../../lib/format-date';
 import { editorPath } from '../../editing/routes';
 import { CHIP_TYPE_BY_KIND } from '../file-type';
@@ -162,10 +162,14 @@ function FileCard({
     <li id={rowIdOf(file.id)} className={`${CARD_CLASS} flex flex-col gap-3 p-3`}>
       <div
         aria-hidden="true"
-        className="flex h-28 items-center justify-center rounded-md bg-muted"
+        className="flex h-32 items-center justify-center rounded-md"
+        style={fileTypeColors(CHIP_TYPE_BY_KIND[file.kind])}
         data-testid="file-card-preview"
       >
-        <FileTypeChip fileType={CHIP_TYPE_BY_KIND[file.kind]} />
+        <FileTypeIcon
+          fileType={CHIP_TYPE_BY_KIND[file.kind]}
+          className="[&>svg]:h-14 [&>svg]:w-14 [&>svg]:stroke-[1.5]"
+        />
       </div>
       <div className="flex items-start gap-2">
         <span className="flex min-w-0 flex-1 flex-col">

@@ -11,6 +11,7 @@ import { Alert } from '../../../../components/ui/alert';
 import { Button, buttonVariants } from '../../../../components/ui/button';
 import { messageForCode } from '../../../../lib/error-catalog';
 import { DATE_LOCALE } from '../../../../lib/format-date';
+import { cn } from '../../../../lib/utils';
 import { useAuthFetch } from '../../../identity/session/use-auth-fetch';
 import { requestPreviewUrl, type PreviewUrlRequester } from '../api';
 import { usePreview, type PreviewState } from '../hooks/use-preview';
@@ -301,7 +302,13 @@ function ReaderSlot({ view }: { readonly view: PreviewView }): React.JSX.Element
   );
 }
 
-function PreviewBody({ view }: { readonly view: PreviewView }): React.JSX.Element {
+function PreviewBody({
+  view,
+  embedded,
+}: {
+  readonly view: PreviewView;
+  readonly embedded: boolean;
+}): React.JSX.Element {
   const { attachRegion, state, download, back, actions } = view;
   return (
     <section
@@ -309,7 +316,11 @@ function PreviewBody({ view }: { readonly view: PreviewView }): React.JSX.Elemen
       aria-label="Vista previa"
       tabIndex={-1}
       aria-busy={state.status === 'idle' || state.status === 'loading' || undefined}
-      className="min-h-64 rounded-lg border border-border bg-card p-4 shadow-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:p-6"
+      className={cn(
+        'min-h-64 rounded-lg border border-border bg-card p-4 shadow-card focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:p-6',
+        // En el diálogo el documento se desplaza dentro de su recuadro: la barra vertical queda junto a la horizontal.
+        embedded && 'min-h-0 flex-1 overflow-auto',
+      )}
     >
       <PreviewStates
         state={state}
@@ -330,7 +341,7 @@ function PreviewShell(props: PreviewPageProps): React.JSX.Element {
     <div
       className={
         props.embedded
-          ? 'w-full min-w-0 space-y-4'
+          ? 'flex min-h-0 w-full min-w-0 flex-1 flex-col gap-4'
           : 'mx-auto w-full min-w-0 max-w-6xl space-y-6 px-4 py-6 sm:px-6'
       }
     >
@@ -342,7 +353,7 @@ function PreviewShell(props: PreviewPageProps): React.JSX.Element {
         pending={view.download.pending}
         showDownload={view.state.status !== 'failure'}
       />
-      <PreviewBody view={view} />
+      <PreviewBody view={view} embedded={props.embedded === true} />
     </div>
   );
 }

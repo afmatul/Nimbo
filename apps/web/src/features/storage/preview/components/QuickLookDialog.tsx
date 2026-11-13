@@ -29,7 +29,7 @@ export function QuickLookDialog({
 }: QuickLookDialogProps): React.JSX.Element {
   return (
     <Dialog open={file !== null} onOpenChange={(open) => (open ? undefined : onClose())}>
-      <DialogContent className="max-h-[90vh] max-w-4xl overflow-auto">
+      <DialogContent className="flex max-h-[90vh] max-w-4xl flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle className="break-words">{file?.name ?? 'Vista previa'}</DialogTitle>
           <DialogDescription className="sr-only">
