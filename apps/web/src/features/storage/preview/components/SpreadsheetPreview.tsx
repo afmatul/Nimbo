@@ -217,7 +217,11 @@ function SheetGrid({ name, unit, columns }: SheetGridProps) {
       role="region"
       aria-label={`Celdas de la hoja ${name}`}
       tabIndex={0}
-      className={cn('max-w-full overflow-x-auto rounded-md border border-border', FOCUS_RING)}
+      // Desplazamiento en ambos ejes dentro del recuadro: la barra horizontal queda a la vista, no al final de la hoja.
+      className={cn(
+        'max-h-[60vh] max-w-full overflow-auto rounded-md border border-border',
+        FOCUS_RING,
+      )}
     >
       <table className="min-w-full border-collapse text-left text-sm">
         <caption className="sr-only">Hoja {name}: valores guardados en el archivo</caption>
